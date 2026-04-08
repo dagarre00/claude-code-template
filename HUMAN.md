@@ -52,6 +52,16 @@ Open `docs/` in [Obsidian](https://obsidian.md/) to see the knowledge graph. Key
 - `docs/architecture.md` — stack, conventions, patterns
 - `docs/agent-context/gotchas.md` — known failure points (highest-signal doc)
 
+## Adding Requirements
+
+There are two ways to add or update project requirements:
+
+1. **Guided interview** — Run `/project:interview` for a structured Q&A that populates `docs/project-requirements.md` automatically. Best for initial setup or when adding a major feature area.
+
+2. **Manual edit** — Edit `docs/project-requirements.md` directly, following the existing sections (Vision, User Stories, Functional Requirements, Non-Functional Requirements, Constraints, Out of Scope). Best for quick additions when you already know what you want.
+
+After adding requirements either way, run `/project:plan` to generate prioritized tasks from them.
+
 ## Daily Workflow
 
 **Morning:**
