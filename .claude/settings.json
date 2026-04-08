@@ -1,0 +1,42 @@
+{
+  "_comment": "To enable agent teams: set CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in your environment",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/auto-format.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/sync-todos.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/on-task-complete.sh"
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/auto-checkpoint.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Agent"
+    ]
+  }
+}

@@ -1,0 +1,10 @@
+# Claude Code
+.claude/settings.local.json
+.claude/agent-memory-local/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Session checkpoints (transient)
+docs/agent-context/session-checkpoint.md

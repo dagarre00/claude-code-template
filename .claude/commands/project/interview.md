@@ -1,0 +1,1 @@
+Use the interviewer agent. It will walk me through a structured interview to define project requirements and write them to docs/project-requirements.md. Ask one question at a time. Save progress after each phase.

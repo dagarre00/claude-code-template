@@ -1,0 +1,10 @@
+{
+  "_comment": "Copy this to settings.local.json for per-developer overrides. This file is gitignored.",
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Write",
+      "Edit"
+    ]
+  }
+}
