@@ -2,7 +2,7 @@
 title: Project Requirements
 updated: 2026-01-01
 tokens_estimate: 100
-agents: [orchestrator, initializer, interviewer, researcher]
+agents: [orchestrator, initializer, researcher]
 ---
 
 # Project Requirements

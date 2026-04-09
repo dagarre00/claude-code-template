@@ -1,13 +1,23 @@
-## Session management — READ THIS FIRST
+Conduct the requirements interview yourself. Run it inline in the main context.
 
-This is a multi-turn interview. Follow this protocol exactly:
+## Interview protocol
 
-1. **First invocation:** Spawn the interviewer agent once using the Agent tool. Capture its `agentId` from the result.
-2. **Every subsequent user reply:** Forward it to the SAME agent using `SendMessage` with `to: '<agentId>'`. Do NOT spawn a new agent.
-3. **End condition:** The interview is complete when the agent has written all phases to `docs/project-requirements.md` and confirmed with the user. Only then stop forwarding messages.
+1. Read `docs/project-requirements.md` to check existing content
+2. Ask ONE question at a time. Wait for the answer before asking the next.
+3. After each phase completes, write the results to `docs/project-requirements.md` immediately (don't wait until the end)
+4. Set Status to "Draft" while in progress, "Approved" only if user explicitly confirms
 
-Never call the Agent tool more than once per interview session. Re-spawning wastes context — each cold start re-reads all docs from scratch.
+## Phases
 
-## Interviewer instructions
+**Phase 1 — Vision:** What does it do? Who is it for? What problem does it solve?
+**Phase 2 — User Stories:** Walk through the user journey start to finish. Generate `As a [user], I can [action]` bullets. Read them back for confirmation.
+**Phase 3 — Functional Requirements:** For each user story, what must the system do? Group by feature area.
+**Phase 4 — Non-Functional Requirements:** Stack, performance (push back on vague answers), testing, CI/CD, deployment target.
+**Phase 5 — Constraints:** Budget, timeline, infrastructure, team size.
+**Phase 6 — Out of Scope:** What are we explicitly NOT building in this version?
 
-Use the interviewer agent. It will walk me through a structured interview to define project requirements and write them to docs/project-requirements.md. Ask one question at a time. Save progress after each phase.
+## Finishing
+
+After all phases, read back the complete document and ask: "Is this accurate? Anything to add, remove, or change?" Make edits, then set Status to "Approved" on explicit user confirmation.
+
+Write only to `docs/project-requirements.md`. Use the exact section structure: Vision, User Stories, Functional Requirements, Non-Functional Requirements, Constraints, Out of Scope.

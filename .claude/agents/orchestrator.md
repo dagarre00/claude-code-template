@@ -1,7 +1,7 @@
 ---
 name: orchestrator
 description: Task decomposition and agent coordination. Use when user has a feature request, bug report, or multi-step task that needs to be broken into subtasks and delegated.
-tools: Read, Write, Edit, Bash, Grep, Glob, Agent(interviewer, researcher, implementer, reviewer, tester, docs-maintainer, initializer)
+tools: Read, Write, Edit, Bash, Grep, Glob, Agent(researcher, implementer, reviewer, tester, docs-maintainer, initializer)
 model: opus
 effort: medium
 background: false
@@ -38,5 +38,5 @@ Use the guard phrase "don't implement yet" when requesting a plan from subagents
 
 ## After each task completes:
 1. Update `docs/project-state.md` — mark TODO as completed
-2. Dispatch the **docs-maintainer** agent to sync the knowledge base
+2. Update `docs/project-requirements.md` — reflect any new or changed functionality
 3. Consult your agent memory for orchestration patterns that worked on previous tasks

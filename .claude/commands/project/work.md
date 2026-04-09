@@ -4,4 +4,6 @@ First dispatch the researcher agent to investigate and write a plan to `docs/pla
 
 Then update project-state.md (the sync-todos hook will auto-sync active-todos.md).
 
+Update `docs/project-requirements.md` to reflect any new or changed functionality — requirements must always match what is actually built.
+
 Finally, run the docs-maintainer agent to update the knowledge base.

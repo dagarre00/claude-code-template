@@ -27,11 +27,11 @@ Gotchas (CHECK BEFORE EVERY TASK): `docs/agent-context/gotchas.md`
 6. Use conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`
 7. Context window discipline: if context exceeds 60%, dump state and start fresh
 8. Rollback over fix-forward: if implementation fails review, rollback and retry from scratch
+9. After any feature is added or changed, update `docs/project-requirements.md` to reflect it — requirements must always match what is actually built
 
 ## Agent Routing
 | Task Type | Agent |
 |-----------|-------|
-| Define/refine requirements | interviewer |
 | Investigate before building | researcher |
 | Decompose & coordinate | orchestrator |
 | Write code | implementer |
