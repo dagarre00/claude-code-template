@@ -72,6 +72,9 @@ The wiki-maintainer:
 - Finds concepts mentioned ≥3 times without their own page.
 - Finds broken `[[wiki-links]]`.
 - Finds requirements in `wiki/requirements.md` with no corresponding `entities/` page — potential code drift.
+- Flags approved/shipped entity pages missing a `## Code References` section.
+- Flags Code References rows where the referenced file no longer exists (broken references).
+- Flags entity pages whose `<!-- Last verified: -->` date lags the `updated:` frontmatter by more than 30 days.
 - Suggests new questions to investigate and new sources to seek.
 
 ## Code-Development Adaptation
@@ -82,6 +85,35 @@ This repo is not a passive knowledge base — it builds software. The wiki is th
 - `docs/wiki/requirements.md` is authoritative. If code contradicts it, either the code is wrong or the spec needs to be updated in the same change.
 - `docs/wiki/entities/<feature>.md` documents each feature's expected behavior, interface, and design. The implementer reads the relevant entity page before writing code and **updates it after**.
 - `docs/wiki/decisions/` holds ADRs. Any non-trivial design call gets a decision page.
+
+### Code Reference Convention
+
+Every `entities/<feature>.md` must include a `## Code References` section that links the wiki spec to the actual implementation. This is mandatory for any entity with `status: approved` or `status: shipped`.
+
+**Format:**
+
+```markdown
+## Code References
+
+<!-- Last verified: YYYY-MM-DD -->
+| Symbol | Location | Description |
+|--------|----------|-------------|
+| `functionName()` | `src/module/file.ts:42` | What it does |
+| `CONSTANT_NAME` | `src/config.ts:15` | What it configures |
+| `ClassName` | `src/module/class.ts:1` | What it represents |
+```
+
+**Rules:**
+- File paths are relative to the project root.
+- Line number = declaration line (not a call site).
+- Include: exported functions, classes, interfaces, key constants, configuration knobs.
+- Omit: trivial getters/setters, test helpers, internal-only implementation details, generated code.
+- Update line numbers and the `<!-- Last verified: -->` comment after every refactor.
+- Concept pages use `## Code Locations` (same format, simpler bullet list is fine).
+
+**Enforcement:**
+- `code-ref-check.sh` (PostToolUse) — fires on every `Write`/`Edit` of a source file. Warns if no entity references the file, or if the referencing entity lacks a Code References section.
+- `wiki-drift-check.sh` (Stop) — at session end, lists all approved/shipped entity pages missing a Code References section.
 
 ### The `/project:work` loop
 Pick the top TODO from `wiki/todos.md` and run:
@@ -165,7 +197,7 @@ There is intentionally **no researcher or orchestrator** in this methodology: re
 | Concern | Location |
 |---------|----------|
 | What the project should do | `docs/wiki/requirements.md` |
-| How it's built | `docs/wiki/architecture.md` + `docs/wiki/entities/*` |
+| How it's built | `docs/wiki/architecture.md` + `docs/wiki/entities/*` (with Code References tables) |
 | Why we chose X | `docs/wiki/decisions/*` |
 | What can go wrong | `docs/wiki/gotchas.md` |
 | What's next | `docs/wiki/todos.md` |

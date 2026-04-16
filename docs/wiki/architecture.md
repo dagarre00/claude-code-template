@@ -65,3 +65,27 @@ updated: 2026-04-15
 - Docstrings on public functions/classes
 - No obvious comments (`i += 1  # increment i`)
 - TODO format: `TODO(agent-name): description`
+
+## Code References in Wiki
+
+Every `docs/wiki/entities/<feature>.md` page includes a `## Code References` table that maps wiki concepts to concrete symbols in the codebase. This table is the authoritative cross-reference between spec and implementation.
+
+**Format:**
+```markdown
+## Code References
+
+<!-- Last verified: YYYY-MM-DD -->
+| Symbol | Location | Description |
+|--------|----------|-------------|
+| `functionName()` | `src/module/file.ts:42` | What it does |
+| `ClassName` | `src/module/class.ts:1` | What it represents |
+| `CONSTANT_NAME` | `src/config.ts:15` | What it configures |
+```
+
+**Who updates it:**
+- The **implementer** agent adds/updates rows after writing code.
+- The **wiki-maintainer** agent verifies and repairs rows during `/wiki:ingest` and `/wiki:lint`.
+
+**Enforcement hooks:**
+- `code-ref-check.sh` — PostToolUse, fires on every source file write. Warns if no entity references the file or if the entity lacks the table.
+- `wiki-drift-check.sh` — Stop hook, additionally lists approved/shipped entity pages that are missing the table.

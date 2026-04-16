@@ -65,13 +65,39 @@ fi
   echo "$CODE_TOUCHED" | head -10 | sed 's/^/  • /'
   echo ""
   echo "Before ending the session, dispatch the wiki-maintainer agent to update:"
-  echo "  • docs/wiki/entities/<slug>.md   (behavior/interface/design)"
+  echo "  • docs/wiki/entities/<slug>.md   (behavior/interface/design + Code References)"
   echo "  • docs/wiki/requirements.md      (if the spec changed)"
   echo "  • docs/wiki/decisions/<slug>.md  (if a non-trivial choice was made)"
   echo "  • docs/wiki/completed.md         (if a TODO finished)"
   echo "  • docs/wiki/log.md               (append a work entry)"
   echo ""
 } >&2
+
+# Also check entity pages that are missing a ## Code References section.
+# Only warn if there are shipped/approved entities (stubs and drafts are fine without refs yet).
+if [ -d "docs/wiki/entities" ]; then
+  ENTITIES_WITHOUT_REFS=$(
+    for f in docs/wiki/entities/*.md; do
+      [ "$f" = "docs/wiki/entities/README.md" ] && continue
+      [ -f "$f" ] || continue
+      # Only flag non-draft entities
+      STATUS=$(grep -m1 '^status:' "$f" 2>/dev/null | sed 's/status: *//')
+      case "$STATUS" in
+        draft|"") continue ;;  # stubs/drafts don't need refs yet
+      esac
+      grep -q "^## Code References" "$f" 2>/dev/null || echo "$f"
+    done
+  )
+  if [ -n "$ENTITIES_WITHOUT_REFS" ]; then
+    {
+      echo "📌 ENTITY PAGES MISSING '## Code References' SECTION:"
+      echo "$ENTITIES_WITHOUT_REFS" | head -5 | sed 's/^/  • /'
+      echo "  Add a Code References table to link wiki spec to implementation."
+      echo "  See docs/wiki/entities/README.md for the format."
+      echo ""
+    } >&2
+  fi
+fi
 
 # exit 2 would block; we only want to remind.
 exit 0
