@@ -41,9 +41,10 @@ FILENAME=$(basename "$REL_PATH")
 
 # Decide which section to append to based on subfolder
 case "$REL_PATH" in
-  docs/raw/interviews/*)     SECTION_MARKER="### Interviews"     ;;
+  docs/raw/feature-requests/*) SECTION_MARKER="### Feature requests" ;;
+  docs/raw/interviews/*)       SECTION_MARKER="### Interviews"       ;;
   docs/raw/memory-snapshots/*) SECTION_MARKER="### Memory snapshots" ;;
-  *)                         SECTION_MARKER="### User-dropped"   ;;
+  *)                           SECTION_MARKER="### User-dropped"     ;;
 esac
 
 # Build the row (columns differ by section — use the common shape)

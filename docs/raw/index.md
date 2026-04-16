@@ -25,6 +25,12 @@ updated: 2026-04-15
 
 ## Sources
 
+### Feature requests (`docs/raw/feature-requests/`)
+
+| File | Date added | Status | Summary page |
+|------|------------|--------|--------------|
+| *(none yet — run `/project:feature` to scope and create one)* | | | |
+
 ### Interviews (`docs/raw/interviews/`)
 
 | File | Date added | Status | Summary page |

@@ -20,6 +20,7 @@ The wiki is the **source of truth** for what the project is and how it is built.
 docs/
 ├── raw/                        # immutable sources
 │   ├── index.md                # catalog + ingestion status per source
+│   ├── feature-requests/       # /project:feature specs land here
 │   ├── interviews/             # /project:interview output lands here
 │   ├── memory-snapshots/       # agents drop knowledge dumps here
 │   └── <user-dropped-files>    # PDFs, markdown, transcripts, anything
@@ -150,6 +151,7 @@ Wiki pages may add: `sources:` (list of raw paths), `updated: YYYY-MM-DD`, `stat
 ### Project commands (`/project:*`)
 | Command | Purpose |
 |---------|---------|
+| `/project:feature` | Scope a new feature through Q&A, evaluate viability, write a spec to `docs/raw/feature-requests/`, ingest into wiki, seed a TODO |
 | `/project:interview` | Guided requirements Q&A → writes transcript to `docs/raw/interviews/` then ingests into `wiki/requirements.md` |
 | `/project:init` | Detect stack, scaffold wiki, seed `architecture.md` |
 | `/project:work` | Pick top TODO → query → plan → implement → test → review → update wiki → log |
