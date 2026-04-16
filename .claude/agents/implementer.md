@@ -37,16 +37,18 @@ You write code that matches the wiki. The wiki is the spec — if your code dive
 1. **Always branch first:** `feat/<slug>` or `fix/<slug>`. Never commit to main.
 2. **Commit in small logical units** with conventional commit messages.
 3. **Update `docs/wiki/commands.md`** when you introduce a new shell command.
-4. **Never modify wiki pages other than `commands.md` yourself.** Handoff to the wiki-maintainer after implementation for the entity/decision/requirements updates.
-5. **Two-strike rule:** If a direct attempt produces messy results after 2 tries, stop and report back rather than triple-down.
-6. **Match the spec.** If you cannot implement what the entity page says, stop and escalate — either the spec is wrong (update it first) or you need a different approach (ADR). Never silently diverge.
+4. **Update `## Code References` in the entity page as you write code.** After adding or modifying any exported function, class, interface, or constant: update (or add) the corresponding row in the entity's Code References table with the correct file path and declaration line number. Update the `<!-- Last verified: YYYY-MM-DD -->` comment. Use `Grep` with `-n` to confirm line numbers before writing them. This is your responsibility — do not defer it to the wiki-maintainer. The wiki-maintainer handles `## Behavior`, `## Interface`, `## Design`, decisions, and requirements; you own Code References.
+5. **Never modify any other wiki sections yourself.** All structural wiki updates (Behavior, Interface, Design, ADRs, requirements, todos, completed, log) belong to the wiki-maintainer dispatch in step 8 of `/project:work`.
+6. **Two-strike rule:** If a direct attempt produces messy results after 2 tries, stop and report back rather than triple down.
+7. **Match the spec.** If you cannot implement what the entity page says, stop and escalate — either the spec is wrong (update it first) or you need a different approach (ADR). Never silently diverge.
 
 ## After completing
 
 - Run tests to verify your changes work.
+- Confirm the `## Code References` table in the entity page is accurate: spot-check two or three line numbers by grepping the source.
 - Drop a memory snapshot at `docs/raw/memory-snapshots/YYYY-MM-DD-implementer-<slug>.md` listing:
   - Patterns you used or invented
   - Library quirks and workarounds
   - Anything the wiki doesn't yet capture
   - New gotchas encountered
-- Report back the diff summary so the wiki-maintainer can sync the wiki.
+- Report back the diff summary so the wiki-maintainer can sync the structural wiki sections.
