@@ -1,92 +1,107 @@
-# Using the Multi-Agent Workflow on an Existing Project
+# Adapting This Template to an Existing Project
 
-## The Problem
+## Overview
 
-The scaffold prompt assumes an empty repo. With an existing codebase and docs, you need to **adapt** the scaffold rather than overwrite your project.
+This template ships ready for a new project. When you drop it into an **existing** codebase you need to tell the agents what's already there so they don't overwrite your work and don't treat everything as "not yet built."
+
+The two key commands are `/project:init` (detects your stack, merges rather than overwrites) and `/project:interview` (extracts requirements from what already exists instead of starting from scratch).
 
 ---
 
-## Step 1: Run the scaffold prompt with this prefix
+## Step 1: Copy template files into your project root
 
-Open Claude Code (Opus) **in your existing project root** and prepend this to the main prompt:
-
+```bash
+# In your existing project root:
+cp -r /path/to/claude-code-template/.claude .
+cp -r /path/to/claude-code-template/docs .
+cp    /path/to/claude-code-template/CLAUDE.md .
 ```
-IMPORTANT CONTEXT: This is an existing project with an established codebase and documentation.
 
-Before executing the scaffold steps, do the following adaptation:
+If you already have a `docs/` folder, move its contents first:
 
-1. DO NOT run `git init` — the repo already exists
-2. DO NOT create virtual environments if one already exists (check for venv/, .venv/, node_modules/, etc.)
-3. DO NOT create .gitignore if one exists — append any missing entries instead
-4. When creating `docs/`, preserve any existing `docs/` content by:
-   - Moving existing docs to `docs/legacy/` first
-   - Creating the new knowledge base structure alongside them
-   - Adding `[[legacy/filename]]` links in INDEX.md for each preserved doc
-5. When creating `.claude/rules/behavioral.md`, scan the git log and any existing
-   CLAUDE.md, README, or CONTRIBUTING files for existing conventions and constraints.
-   Encode those as behavioral rules rather than starting from the seed rules alone.
-6. When the initializer agent runs, it should scan the EXISTING codebase and docs to populate:
-   - `architecture.md` from actual code structure (not a blank template)
-   - `quick-ref.md` from real stack detection
-   - `commands-registry.md` from existing package.json scripts, Makefile targets, or shell scripts
-   - `project-state.md` with existing features listed as "Completed" and pending work as TODOs
-7. Scan existing documentation and extract requirements into `project-requirements.md` format
-8. Make the initial commit message: "chore: integrate multi-agent workflow into existing project"
-
-Now proceed with the full scaffold below, respecting these adaptations:
-
-[PASTE THE FULL SCAFFOLD PROMPT HERE]
+```bash
+mkdir -p docs/legacy
+mv docs/* docs/legacy/   # preserve existing docs
+# then copy template structure
 ```
 
 ---
 
-## Step 2: After scaffolding, run the initializer with extra context
+## Step 2: Run `/project:init` (existing-project mode)
+
+Open Claude Code in your project root and run:
 
 ```
 /project:init
 ```
 
-The initializer agent will auto-detect your stack. Then follow up with:
+The initializer agent will:
+- Detect your tech stack (Node, Python, Go, Rust, Java, Docker)
+- **Not** create a venv or run `git init` if they already exist
+- **Not** overwrite an existing `.gitignore` — it appends any missing entries
+- Populate `docs/wiki/architecture.md` `## Stack` and `## Project Structure` from what it finds
+- Discover working commands from `package.json` scripts, `Makefile` targets, `pyproject.toml`, CI configs, etc.
+- Record them in `docs/wiki/commands.md`
+- Generate `docs/wiki/file-map.md` (three levels deep)
+
+**After init runs**, tell it about your existing codebase:
 
 ```
-Use the initializer agent again. This time:
-1. Read every file in docs/legacy/ and extract architectural decisions,
-   conventions, or requirements into the appropriate knowledge base docs
-2. Run the test suite if one exists and record working test commands
-   in commands-registry.md
-3. Run the build/start commands and record what works in commands-registry.md
-4. Analyze git log --oneline -50 to understand recent development activity
-   and update project-state.md
-5. If any commands fail, add them to docs/agent-context/gotchas.md with
-   the error message and workaround
+Also scan the existing code and documentation:
+1. Read README.md and any docs in docs/legacy/ — extract architectural decisions,
+   conventions, and constraints into docs/wiki/architecture.md and docs/wiki/gotchas.md.
+2. Scan git log --oneline -50 to understand recent work. Backfill
+   docs/wiki/completed.md with features that are already shipped.
+3. Create a stub in docs/wiki/entities/ for each major feature/module you find.
+4. If any existing commands fail when you test them, record the error and
+   workaround in docs/wiki/gotchas.md.
 ```
 
 ---
 
-## Step 3: Validate and fill gaps
+## Step 3: Run `/project:interview` (extraction mode)
+
+Rather than asking "what do you want to build?", start the interview by telling Claude what already exists:
 
 ```
-/project:sync-docs
+/project:interview
+
+Context: this is an existing project. Before asking me questions, read:
+- README.md
+- Any files in docs/legacy/
+- The git log (last 30 commits)
+- The main source directories
+
+Use what you find to pre-fill what you can, then ask me only to confirm,
+correct, or fill in gaps — especially for non-functional requirements,
+constraints, and out-of-scope decisions that aren't visible in the code.
 ```
 
-Then manually review — or run `/project:interview` to have Claude walk you through refining — these three files:
-
-- `docs/project-requirements.md` — does it capture your actual requirements?
-- `docs/architecture.md` — does the detected stack and conventions match reality?
-- `docs/project-state.md` — are completed features and TODOs accurate?
-
-Edit anything that's wrong. Add any behavioral rules you already know about to `.claude/rules/behavioral.md` (e.g., "never touch the legacy auth module directly" or "always use the ORM, never raw SQL").
+The interview will:
+- Pre-populate the Vision, User Stories, and Functional Requirements sections from what it reads
+- Ask you to confirm and correct its understanding
+- Ask targeted questions about things it can't infer (performance targets, deployment, team constraints)
+- Generate `docs/wiki/requirements.md`, entity stubs, and a seeded `docs/wiki/todos.md`
 
 ---
 
-## Step 4: Resume normal workflow
+## Step 4: Review and correct
+
+After init + interview, manually review these three files and fix anything wrong:
+
+- `docs/wiki/requirements.md` — does it match your actual requirements?
+- `docs/wiki/architecture.md` — does the detected stack match reality?
+- `docs/wiki/todos.md` — are the priorities right? Add or remove TODOs as needed.
+- `docs/wiki/gotchas.md` — add any known failure points the agents won't have discovered
+
+---
+
+## Step 5: Resume normal workflow
 
 ```
-/project:plan       — generate tasks from requirements
-/project:research   — investigate a specific task before building
-/project:work       — research → plan → confirm → implement → review
-/project:status     — check progress
-/project:review     — review changes before merging
+/project:work    — pick the top TODO and run the full implement→test→review→wiki loop
+/project:status  — check project state
+/wiki:lint       — health-check the wiki after the first few work sessions
 ```
 
 ---
@@ -95,55 +110,56 @@ Edit anything that's wrong. Add any behavioral rules you already know about to `
 
 ### "I have a README and scattered docs but no formal requirements"
 
-After scaffolding, tell Claude:
+After Step 2, tell Claude:
 
 ```
-Read README.md and every markdown file in the project. Extract all implied
+Read README.md and every markdown file under docs/legacy/. Extract all implied
 requirements, architecture decisions, and conventions. Populate
-project-requirements.md, architecture.md, and commands-registry.md
-from what you find. Mark anything uncertain with a [NEEDS HUMAN REVIEW] tag.
+docs/wiki/requirements.md, docs/wiki/architecture.md, and docs/wiki/commands.md
+from what you find. Mark anything uncertain with a [NEEDS HUMAN REVIEW] comment.
 ```
 
-### "I have a mature project with hundreds of files"
+### "I have hundreds of files and a mature codebase"
 
-Add this to the prefix:
+Tell the initializer:
 
 ```
-This is a large project. When generating file-map.md, limit to 3 directory
-levels deep and group files by module/package rather than listing every file.
-For architecture.md, focus on the top-level structure and key patterns —
-don't document every utility function.
+When generating docs/wiki/file-map.md, limit to 3 directory levels deep and
+group by module/package. For architecture.md, focus on the top-level structure
+and key patterns — don't document every utility. For entity stubs, create one
+per top-level feature directory or major module, not one per file.
 ```
 
-### "I have existing CI/CD, Docker, and deployment configs"
+### "I have CI/CD, Docker, and deployment configs"
 
-Add:
+Tell the initializer:
 
 ```
 Scan .github/workflows/, Dockerfile*, docker-compose*, Makefile, and any
 CI config files. Record all working CI/CD and deployment commands in
-commands-registry.md under "CI/CD Commands" and "Deploy Commands" sections.
+docs/wiki/commands.md under "CI/CD" and "Deploy" sections.
 Do not modify any CI/CD configuration files.
 ```
 
-### "My project uses a monorepo with multiple services"
+### "My project is a monorepo with multiple services"
 
-Add:
-
-```
-This is a monorepo. Create a separate quick-ref section per service/package
-in docs/agent-context/. The orchestrator should scope tasks to specific
-services and pass the service path to implementer agents. Update architecture.md
-with a monorepo map showing service boundaries and shared dependencies.
-```
-
-### "My team already has strong git conventions"
-
-Add:
+Tell the initializer:
 
 ```
-Read CONTRIBUTING.md (or equivalent) and encode all git conventions as
-behavioral rules in .claude/rules/behavioral.md. Do NOT put them in CLAUDE.md
-(it's injected every turn and should stay small). Create a git-conventions
-skill in .claude/skills/ that the implementer loads at commit time only.
+This is a monorepo. Create one docs/wiki/entities/ stub per service/package.
+Update docs/wiki/architecture.md with a monorepo map showing service boundaries
+and shared dependencies. When dispatching work agents, scope the task to a
+specific service and pass the service path as context.
+```
+
+### "My team already has strong git / code conventions"
+
+Tell the interview:
+
+```
+Read CONTRIBUTING.md (or equivalent) and encode all existing git and code
+conventions in docs/wiki/architecture.md and docs/wiki/gotchas.md. Also update
+.claude/skills/git-conventions/SKILL.md and .claude/skills/code-style/SKILL.md
+to reflect what's already established — don't override team standards with
+template defaults.
 ```

@@ -49,19 +49,31 @@ esac
 # Build the row (columns differ by section — use the common shape)
 ROW="| [\`$FILENAME\`]($REL_PATH) | $TODAY | pending | — |"
 
-# Insert right after the section header's table header row.
-# We find the section, skip to the next non-blank lines (the table header + separator),
-# then append ROW before the next blank line.
+# Insert the new row right after the table header separator (|---|) for the
+# matching section, then skip the "*(none yet)*" placeholder if still present.
+# This works whether the table is empty (placeholder only) or already has rows.
 awk -v section="$SECTION_MARKER" -v row="$ROW" '
-  BEGIN { in_section = 0; header_skipped = 0 }
+  BEGIN { in_target=0; inserted=0; check_placeholder=0 }
   {
-    if ($0 ~ section) { in_section = 1; print; next }
-    if (in_section && $0 ~ /^\| *\*/ && !inserted) {
-      print row
-      inserted = 1
-      in_section = 0
+    # Activate on the target section header
+    if (!inserted && $0 ~ section) { in_target=1; print; next }
+
+    # Find the header separator line (|---|...|) and insert after it
+    if (in_target && !inserted && $0 ~ /^\|[-| ]+\|/) {
+      print        # print the separator line itself
+      print row    # insert new row immediately after
+      inserted=1
+      check_placeholder=1
+      in_target=0
       next
     }
+
+    # Skip the "*(none yet)*" placeholder that immediately follows the separator
+    if (check_placeholder) {
+      check_placeholder=0
+      if ($0 ~ /^\| *\*/) next
+    }
+
     print
   }
 ' "$INDEX" > "$INDEX.tmp" && mv "$INDEX.tmp" "$INDEX"
