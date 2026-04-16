@@ -20,8 +20,8 @@ You own the wiki. Every page under `docs/wiki/` is yours to create, update, and 
 2. For each source:
    - Read it in full.
    - Write `docs/wiki/summaries/<slug>.md` using the summaries template.
-   - Update affected `entities/` pages. Create stubs for new features/modules referenced.
-   - Update `concepts/` if the source introduces or revises a pattern.
+   - Update affected `entities/` pages. Create stubs for new features/modules referenced. For any entity tied to existing source code, scan `src/` (or equivalent) with `Grep` to populate or update the `## Code References` table with real file paths and line numbers.
+   - Update `concepts/` if the source introduces or revises a pattern. Add a `## Code Locations` section if the concept maps to concrete files.
    - If a non-trivial design choice is present, write an ADR under `decisions/`.
    - Cross-link: add `[[wiki-links]]` on every related page back to the new summary and forward to the new entities/concepts.
    - Flag contradictions inline: `> ⚠ contradicts [[page#section]]: <one-line>`.
@@ -35,6 +35,11 @@ You own the wiki. Every page under `docs/wiki/` is yours to create, update, and 
 
 Run every check listed in `.claude/commands/wiki/lint.md`. Produce a report grouped by Critical / Warning / Suggestion. For the **code-drift** checks, also compare `docs/wiki/requirements.md` feature areas against `docs/wiki/entities/` and `src/` file presence.
 
+Additionally, check for **missing code references**:
+- Flag any `entities/*.md` page (excluding README.md) that lacks a `## Code References` section.
+- Flag any Code References table rows where the referenced file no longer exists at the given path (broken references).
+- Flag entity pages whose `<!-- Last verified: -->` date is more than 30 days older than the `updated:` frontmatter (stale references).
+
 Append `## [YYYY-MM-DD] lint | <n> critical, <m> warnings, <p> suggestions` to `docs/wiki/log.md`.
 
 ### Wiki update after code work (called from `/project:work` step 8)
@@ -42,12 +47,17 @@ Append `## [YYYY-MM-DD] lint | <n> critical, <m> warnings, <p> suggestions` to `
 Inputs you'll receive: the task, the diff, the entity slug.
 
 1. Update `docs/wiki/entities/<slug>.md` so the `## Behavior`, `## Interface`, `## Design` sections match what was shipped.
-2. If the task made a non-trivial choice, write `docs/wiki/decisions/<slug>.md`.
-3. If the spec changed, update `docs/wiki/requirements.md` and note the change in the summary of the work.
-4. Move the TODO row from `In Progress` in `docs/wiki/todos.md` to `docs/wiki/completed.md` (include first commit SHA).
-5. Update `docs/wiki/commands.md` for any new shell commands introduced.
-6. Append `## [YYYY-MM-DD] work | <task-title>` to `docs/wiki/log.md`.
-7. Regenerate `docs/wiki/file-map.md` (three levels deep).
+2. **Update `## Code References`** in the entity page: scan the diff for new/changed exported symbols (functions, classes, interfaces, constants). Add or update rows in the Code References table with the correct file path and line number. Use `grep -n` or `Grep` to find declaration lines. Format:
+   ```
+   | `symbolName()` | `src/path/to/file.ts:LINE` | What it does |
+   ```
+   Update the `<!-- Last verified: YYYY-MM-DD -->` comment.
+3. If the task made a non-trivial choice, write `docs/wiki/decisions/<slug>.md`.
+4. If the spec changed, update `docs/wiki/requirements.md` and note the change in the summary of the work.
+5. Move the TODO row from `In Progress` in `docs/wiki/todos.md` to `docs/wiki/completed.md` (include first commit SHA).
+6. Update `docs/wiki/commands.md` for any new shell commands introduced.
+7. Append `## [YYYY-MM-DD] work | <task-title>` to `docs/wiki/log.md`.
+8. Regenerate `docs/wiki/file-map.md` (three levels deep).
 
 ## Page-type conventions
 

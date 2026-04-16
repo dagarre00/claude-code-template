@@ -32,6 +32,16 @@ How this shows up in the code or product.
 - [[../entities/<x>]]
 - [[../entities/<y>]]
 
+## Code Locations
+
+<!-- Last verified: YYYY-MM-DD -->
+Key files and symbols where this concept is implemented:
+
+- `patternOrHelper()` — `src/shared/helpers.ts:10`
+- `CONCEPT_CONSTANT` — `src/config.ts:30`
+
+_Paths are relative to project root._
+
 ## Related concepts
 - [[<other-concept>]]
 ```
