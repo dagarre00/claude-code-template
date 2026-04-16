@@ -6,5 +6,5 @@
 .DS_Store
 Thumbs.db
 
-# Session checkpoints (transient)
-docs/agent-context/session-checkpoint.md
+# Session checkpoints (transient — regenerated on every /project:checkpoint)
+docs/wiki/session-checkpoint.md

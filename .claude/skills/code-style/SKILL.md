@@ -1,6 +1,7 @@
 ---
 name: code-style
 description: Coding style and conventions for this project. Use whenever writing new code, reviewing code, refactoring, or when the user asks about conventions, naming, or style. Trigger on "style", "convention", "naming", "format", "lint".
+type: skill
 ---
 
 # Code Style Conventions
@@ -40,6 +41,6 @@ description: Coding style and conventions for this project. Use whenever writing
 - Tests mirror the source structure
 
 ## Architecture Compliance
-- Always check `docs/architecture.md` for project-specific patterns
+- Always check `docs/wiki/architecture.md` for project-specific patterns
 - Inner layers (domain, application) never import from outer layers (infrastructure, presentation)
 - Use dependency injection — don't instantiate dependencies inside classes

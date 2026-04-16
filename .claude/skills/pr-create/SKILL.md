@@ -1,6 +1,7 @@
 ---
 name: pr-create
 description: Create a pull request with a structured description. Use when the user says "create PR", "open PR", "pull request", "submit for review", or after completing a feature branch. Generates title, description, pushes, and creates the PR.
+type: skill
 allowed-tools: Bash(git *), Bash(gh *)
 ---
 
@@ -42,6 +43,6 @@ allowed-tools: Bash(git *), Bash(gh *)
 
 ## Rules:
 - Always self-review with `git diff main` before creating the PR
-- Link to the plan file from `docs/plans/` if one exists
+- Link to the relevant `docs/wiki/entities/<slug>.md` and any `docs/wiki/decisions/*` pages
 - Never create a PR with failing tests
 - If the diff is large (>500 lines), note which files are most important to review

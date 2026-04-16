@@ -1,6 +1,6 @@
 #!/bin/bash
 # .claude/hooks/reviewer-write-guard.sh
-# PreToolUse hook: reviewer may only write to docs/agent-context/gotchas.md
+# PreToolUse hook: reviewer may only write to docs/wiki/gotchas.md
 
 INPUT=$(cat)
 
@@ -13,9 +13,9 @@ if [ -z "$FILE_PATH" ]; then
   exit 0
 fi
 
-if [[ "$FILE_PATH" == *"docs/agent-context/gotchas.md"* ]]; then
+if [[ "$FILE_PATH" == *"docs/wiki/gotchas.md"* ]]; then
   exit 0
 fi
 
-echo "Reviewer agent is read-only except for gotchas.md" >&2
+echo "Reviewer agent is read-only except for docs/wiki/gotchas.md" >&2
 exit 2

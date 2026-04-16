@@ -1,1 +1,0 @@
-Use the researcher agent. Read the task description I provide. Investigate the codebase, explore relevant files, and output a structured plan to `docs/plans/`. Do NOT implement anything. End by summarizing the plan and asking if I want to proceed to implementation.

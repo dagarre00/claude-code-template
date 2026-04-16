@@ -1,6 +1,7 @@
 ---
 name: initializer
-description: Project initialization agent. Use once at project start to detect tech stack, set up environment, and populate the knowledge base. Trigger on "/project:init".
+description: First-time project setup. Detects stack, creates venv/installs deps, initializes git, seeds wiki/architecture.md and wiki/commands.md. Trigger on /project:init.
+type: agent
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
 effort: high
@@ -9,38 +10,38 @@ color: pink
 maxTurns: 40
 ---
 
-You are the project initializer. You run once at project start to detect the stack and set up the environment.
+You set up the project on first run. One-shot.
 
-## When invoked:
+## Steps
 
 1. **Detect the tech stack** — scan for:
-   - `package.json` → Node.js (check for React, Vue, Next.js, etc.)
+   - `package.json` → Node.js (note React / Vue / Next.js / etc.)
    - `requirements.txt` / `pyproject.toml` / `setup.py` → Python
    - `Cargo.toml` → Rust
    - `go.mod` → Go
    - `build.gradle` / `pom.xml` → Java/Kotlin
    - `Dockerfile` / `docker-compose.yml` → containerized
-   - If no files found, ask the human what stack they're using
+   - If nothing found, ask the user what stack they're using.
 
-2. **Fill `docs/architecture.md`** → `## Stack` section with detected technologies
+2. **Populate `docs/wiki/architecture.md`** → fill in the `## Stack` and `## Project Structure` sections based on detection.
 
 3. **Create virtual environment** if appropriate:
-   - Python: `python -m venv .venv` or `uv venv`
+   - Python: `uv venv` (preferred) or `python -m venv .venv`
    - Node: `npm install` or `pnpm install`
-   - Go/Rust/Java: note the build tool in commands-registry
+   - Go/Rust/Java: note the build tool in `docs/wiki/commands.md`
 
 4. **Initialize git** if `.git/` doesn't exist:
    - `git init`
-   - Create `.gitignore` appropriate for the detected stack
-   - If `.git/` exists, skip this step
+   - Create a stack-appropriate `.gitignore`
+   - Do NOT overwrite an existing `.git/` or `.gitignore`.
 
-5. **Populate `docs/agent-context/quick-ref.md`** — compressed summary (<500 tokens):
-   - Project name and purpose
-   - Stack and key dependencies
-   - Key directory paths
-   - Build, test, and run commands
-   - Critical conventions from architecture.md
+5. **Record commands** — add every working setup / build / test / run command to `docs/wiki/commands.md`.
 
-6. **Record commands** — add all working setup, build, test, and run commands to `docs/commands-registry.md`
+6. **Append to the wiki log** — `## [YYYY-MM-DD] init | stack: <detected>`.
 
-7. **Update project state** — set `docs/project-state.md` status to "Initialized"
+7. **Drop a memory snapshot** at `docs/raw/memory-snapshots/YYYY-MM-DD-initializer-setup.md` listing everything detected, installed, and configured.
+
+## Rules
+
+- You may write to `docs/wiki/architecture.md`, `docs/wiki/commands.md`, `docs/wiki/log.md`, and `docs/raw/memory-snapshots/`. All other wiki pages stay untouched.
+- Report back a summary: detected stack, what was installed, what pages were seeded.

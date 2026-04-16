@@ -1,8 +1,9 @@
 ---
-title: Architecture & Conventions
-updated: 2026-01-01
-tokens_estimate: 400
-agents: [implementer, reviewer, tester, researcher]
+name: architecture
+description: Stack, conventions, design patterns, testing strategy, git workflow
+type: wiki-spec
+status: draft
+updated: 2026-04-15
 ---
 
 # Architecture & Conventions
@@ -13,7 +14,7 @@ agents: [implementer, reviewer, tester, researcher]
 
 ## Project Structure
 
-> Directory tree goes here after initialization.
+> Directory tree populated after initialization. See also [[file-map]].
 
 ## Design Patterns
 
@@ -30,12 +31,12 @@ agents: [implementer, reviewer, tester, researcher]
 - Constants: `UPPER_SNAKE_CASE`
 - Database tables: `snake_case`, plural
 
-## Error Handling Strategy
+## Error Handling
 
 - Never swallow exceptions silently
 - Use typed/custom errors where the language supports it
-- Log errors with context (what was being attempted, with what input)
-- Return meaningful error messages to the user
+- Log errors with context (what was attempted, with what input)
+- Return meaningful error messages
 
 ## Testing Strategy
 
@@ -46,21 +47,21 @@ agents: [implementer, reviewer, tester, researcher]
 
 ## Git Workflow
 
-- Branch naming: `feat/<task-id>-<short-desc>`, `fix/<task-id>-<short-desc>`
-- Commit format: conventional commits (`feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`)
+- Branch naming: `feat/<slug>`, `fix/<slug>`, `chore/<slug>`
+- Conventional commits (`feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`)
 - Never push directly to main
 - One logical change per commit
 
-## Virtual Environment
+## Environments
 
-- Python: `uv` or `venv` — always activate before running anything
+- Python: `uv` or `venv` — always activate before running
 - Node: `npm` or `pnpm` — use lockfile, no global installs
 - Go: modules enabled by default
 - Rust: cargo manages everything
 
-## Comments Guidelines
+## Comments
 
-- Comment WHY, not WHAT — the code shows what, the comment explains why
-- Docstrings on all public functions/classes
+- Comment WHY, not WHAT
+- Docstrings on public functions/classes
 - No obvious comments (`i += 1  # increment i`)
 - TODO format: `TODO(agent-name): description`

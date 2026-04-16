@@ -1,6 +1,7 @@
 ---
 name: commit
 description: Smart commit workflow. Use when the user says "commit", "save my work", "checkpoint my changes", or after completing a logical unit of work. Stages, validates, and commits with a proper conventional commit message.
+type: skill
 ---
 
 # Smart Commit
@@ -18,7 +19,7 @@ description: Smart commit workflow. Use when the user says "commit", "save my wo
 4. Identify the scope from the primary directory or module affected
 5. Write a concise description (imperative mood, no period, <72 chars)
 6. Stage the relevant files (`git add` — prefer selective staging over `git add .`)
-7. Run tests if a test command exists in `docs/commands-registry.md`
+7. Run tests if a test command exists in `docs/wiki/commands.md`
 8. Commit with the generated message
 
 ## Rules:

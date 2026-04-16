@@ -1,14 +1,15 @@
 ---
 name: gotchas
 description: Known failure points, edge cases, and recurring mistakes for this project. ALWAYS use this skill before writing or modifying code, before debugging, before implementing any feature, or whenever you encounter unexpected behavior. This is the highest-signal context in the project.
+type: skill
 ---
 
 # Project Gotchas
 
-Load and review `docs/agent-context/gotchas.md` before starting any implementation work.
+Load and review `docs/wiki/gotchas.md` before starting any implementation work.
 
 ## How to use this skill:
-1. Read the full contents of `docs/agent-context/gotchas.md`
+1. Read the full contents of `docs/wiki/gotchas.md`
 2. Check if any listed gotcha is relevant to your current task
 3. If you encounter a new failure pattern, append it to the file using the format below
 
@@ -24,5 +25,5 @@ Load and review `docs/agent-context/gotchas.md` before starting any implementati
 
 ## Rules:
 - Never ignore a gotcha that matches your current task
-- If you discover a new gotcha during implementation, report it so the reviewer can add it
+- If you discover a new gotcha during implementation, either append it to `docs/wiki/gotchas.md` yourself (if allowed) or report it so the reviewer can add it. The reviewer agent is the canonical writer for `gotchas.md` via its write-guard.
 - Gotchas are project-specific — they grow organically as the project matures

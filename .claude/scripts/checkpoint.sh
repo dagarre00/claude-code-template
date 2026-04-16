@@ -20,7 +20,7 @@ BRANCH=$(git branch --show-current 2>/dev/null || echo "detached")
 git tag "$TAG_NAME" HEAD
 
 # Write session checkpoint file
-CHECKPOINT_FILE="docs/agent-context/session-checkpoint.md"
+CHECKPOINT_FILE="docs/wiki/session-checkpoint.md"
 mkdir -p "$(dirname "$CHECKPOINT_FILE")"
 
 cat > "$CHECKPOINT_FILE" << CKEOF

@@ -1,28 +1,32 @@
 ---
-title: Knowledge Base Index
-updated: 2026-01-01
-tokens_estimate: 200
-agents: [all]
+name: docs-index
+description: Entry point for the project documentation. Redirects to the wiki index.
+type: wiki-index
+updated: 2026-04-15
 ---
 
-# Project Knowledge Base
+# Documentation Entry Point
 
-## Core Documents
+This project uses a **wiki-driven** methodology. Full details in the root [[../CLAUDE]] schema.
 
-- [[project-requirements]] — What we're building
-- [[project-state]] — Where we are now (TODOs, completed tasks)
-- [[architecture]] — How we build (stack, conventions, patterns)
-- [[commands-registry]] — Working shell commands
-- [[changelog]] — Every change made by agents (append-only)
+## Start here
 
-## Agent Context (lean, token-optimized)
+- [[wiki/index]] — browsable knowledge base (LLM-maintained)
+- [[raw/index]] — catalog of immutable raw sources
+- [[wiki/requirements]] — what the project should do (LIVING SPEC)
+- [[wiki/architecture]] — how it's built
+- [[wiki/todos]] — what's next
+- [[wiki/gotchas]] — what goes wrong
+- [[wiki/log]] — chronological ops log
+- [[changelog]] — session summaries (hook-appended)
 
-- [[agent-context/quick-ref]] — Ultra-compressed project summary (<500 tokens)
-- [[agent-context/file-map]] — Auto-generated file listing
-- [[agent-context/active-todos]] — Current TODOs only
-- [[agent-context/gotchas]] — Known failure points and edge cases
+## Browsing
 
-## Plans
+Open `docs/` as an Obsidian vault. Recommended views:
+- Graph view — see the shape of the knowledge base
+- File explorer — drill into `wiki/` subdirectories
+- Tags: `#spec`, `#entity`, `#decision`, `#gotcha`
 
-Plans are written by the researcher agent before implementation:
-- Browse `docs/plans/` for all research plans
+## Setup
+
+See [[../SETUP]] for environment and optional qmd search-engine setup.

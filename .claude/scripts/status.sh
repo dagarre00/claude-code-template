@@ -17,28 +17,37 @@ else
 fi
 echo ""
 
-# Project state
-STATE_FILE="docs/project-state.md"
-if [ -f "$STATE_FILE" ]; then
-  echo "=== PROJECT STATE ==="
-  cat "$STATE_FILE"
+# TODO queue
+TODOS="docs/wiki/todos.md"
+if [ -f "$TODOS" ]; then
+  echo "=== TODOS (docs/wiki/todos.md) ==="
+  cat "$TODOS"
 else
-  echo "Project state: not found (run /project:init)"
+  echo "TODOs: docs/wiki/todos.md not found (run /project:interview first)"
 fi
 echo ""
 
-# Active TODOs
-TODOS_FILE="docs/agent-context/active-todos.md"
-if [ -f "$TODOS_FILE" ]; then
-  echo "=== ACTIVE TODOS ==="
-  cat "$TODOS_FILE"
+# Recent wiki log entries
+WIKI_LOG="docs/wiki/log.md"
+if [ -f "$WIKI_LOG" ]; then
+  echo "=== LAST 5 WIKI LOG ENTRIES ==="
+  grep "^## \[" "$WIKI_LOG" 2>/dev/null | tail -5
 fi
 echo ""
 
-# Recent changelog
+# Pending raw sources
+RAW_INDEX="docs/raw/index.md"
+if [ -f "$RAW_INDEX" ]; then
+  PENDING=$(grep -c "| pending |" "$RAW_INDEX" 2>/dev/null || echo "0")
+  echo "=== RAW SOURCES ==="
+  echo "Pending ingestion: ${PENDING}"
+fi
+echo ""
+
+# Recent changelog (session-level)
 CHANGELOG="docs/changelog.md"
 if [ -f "$CHANGELOG" ]; then
-  echo "=== LAST 10 CHANGELOG ENTRIES ==="
+  echo "=== LAST 10 CHANGELOG ROWS ==="
   tail -12 "$CHANGELOG"
 fi
 echo ""

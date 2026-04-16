@@ -1,6 +1,7 @@
 ---
 name: git-conventions
 description: Git workflow conventions for this project. Use this skill whenever creating branches, writing commit messages, preparing PRs, or doing any git operation. Trigger on "commit", "branch", "merge", "PR", "pull request", "push", "git".
+type: skill
 ---
 
 # Git Conventions

@@ -1,124 +1,154 @@
-# Multi-Agent Development Workflow — Human Guide
+# Wiki-Driven Development with Claude Code — Human Guide
 
-## What Is This?
+## What is this?
 
-A reusable multi-agent workflow for Claude Code. It provides 8 specialized AI agents, a knowledge base (browsable in Obsidian), hooks for automated logging and formatting, and slash commands for common workflows.
+A template for **wiki-driven development**: an LLM incrementally builds and maintains a persistent Obsidian-compatible wiki as the single source of truth for a project. Code is the implementation; the wiki is the spec. Sources you drop into `docs/raw/` get *ingested* into `docs/wiki/` — they never disappear, and the wiki never silently drifts from what was said.
 
-## Quick Start
+- `docs/raw/` — immutable inputs (interview transcripts, agent memory snapshots, notes, papers)
+- `docs/wiki/` — the LLM-owned knowledge graph (living spec + entities + decisions + gotchas)
+- `CLAUDE.md` — the schema describing both
+
+Code development wraps around this: `/project:work` refuses to drift from the wiki, and a Stop-hook warns at session end if you edited code but forgot to update the wiki.
+
+---
+
+## Quick start
 
 ```bash
-# 1. Set up local permissions (required — unlocks Write/Edit/Bash)
+# 1. Unlock Write/Edit/Bash (required once per clone)
 cp .claude/settings.local.json.template .claude/settings.local.json
 
-# 2. Open this project in Claude Code
+# 2. (Optional) install qmd for semantic wiki search — see SETUP.md
+go install github.com/tobi/qmd@latest
+
+# 3. Open the repo in Claude Code
 claude
 
-# 3. Define your requirements (guided interview)
+# 4. Gather requirements (writes docs/raw/interviews/, then ingests)
 /project:interview
 
-# 4. Detect stack and set up environment
+# 5. Detect stack, seed wiki/architecture.md
 /project:init
 
-# 5. Generate a task plan from requirements
-/project:plan
-
-# 6. Start working — research → implement → review pipeline
+# 6. Start work — the 9-step loop: pick → query → plan → branch → implement → test → review → update wiki → commit
 /project:work
 ```
 
-## Available Commands
+---
+
+## Available commands
+
+### Project commands (code flow)
 
 | Command | What it does |
-|---------|-------------|
-| `/project:interview` | Guided Q&A to define project requirements |
-| `/project:init` | Detect stack, create venv, populate docs |
-| `/project:plan` | Generate prioritized TODOs from requirements |
-| `/project:work` | Full pipeline: research → plan → confirm → implement → review |
-| `/project:research` | Investigate a task, output a plan file (no code) |
-| `/project:review` | Review all uncommitted changes |
-| `/project:status` | Show project state, TODOs, recent changelog |
-| `/project:sync-docs` | Update file map, sync TODOs, verify links |
-| `/project:checkpoint` | Tag current HEAD + save session state |
-| `/project:rollback` | Revert to a previous checkpoint |
-| `/project:fresh` | Start new session from saved checkpoint state |
+|---------|--------------|
+| `/project:interview` | Guided Q&A → transcript in `docs/raw/interviews/` → ingested into `docs/wiki/requirements.md` + seeds `docs/wiki/todos.md` |
+| `/project:init` | Detect stack, set up environment, seed `docs/wiki/architecture.md` |
+| `/project:work` | Full loop: pick todo → query wiki → plan → branch → implement → test → review → update wiki → log |
+| `/project:review` | Review uncommitted changes against wiki spec |
+| `/project:status` | Snapshot: todos, last wiki-log entries, pending raw sources, checkpoints |
+| `/project:checkpoint` | Git tag + dump state to `docs/wiki/session-checkpoint.md` |
+| `/project:rollback` | Revert to a checkpoint |
+| `/project:fresh` | Resume from checkpoint in a new session |
 
-## Browse the Knowledge Base
+### Wiki commands (knowledge flow)
 
-Open `docs/` in [Obsidian](https://obsidian.md/) to see the knowledge graph. Key files:
+| Command | What it does |
+|---------|--------------|
+| `/wiki:ingest [path]` | Process `docs/raw/` (or one file) into the wiki. Touches ~5–15 pages per source and flags contradictions |
+| `/wiki:query <question>` | Answer from the wiki with `[[path#section]]` citations; offers a "file it back?" follow-up |
+| `/wiki:lint` | 11-point health check — dead links, stale frontmatter, orphaned entities, wiki↔code drift |
+| `/wiki:log [n]` | Tail the last `n` entries from `docs/wiki/log.md` |
 
-- `docs/INDEX.md` — entry point with links to everything
-- `docs/project-requirements.md` — what we're building
-- `docs/project-state.md` — current TODOs and completed work
-- `docs/architecture.md` — stack, conventions, patterns
-- `docs/agent-context/gotchas.md` — known failure points (highest-signal doc)
+---
 
-## Adding Requirements
+## Browse the wiki
 
-There are two ways to add or update project requirements:
+Open `docs/wiki/` as a vault in [Obsidian](https://obsidian.md/). Graph view, backlinks, and `[[wiki-links]]` all work out of the box. See [`SETUP.md`](SETUP.md) for vault config.
 
-1. **Guided interview** — Run `/project:interview` for a structured Q&A that populates `docs/project-requirements.md` automatically. Best for initial setup or when adding a major feature area.
+Key pages once content exists:
 
-2. **Manual edit** — Edit `docs/project-requirements.md` directly, following the existing sections (Vision, User Stories, Functional Requirements, Non-Functional Requirements, Constraints, Out of Scope). Best for quick additions when you already know what you want.
+- `docs/wiki/index.md` — catalog
+- `docs/wiki/requirements.md` — living spec (truth)
+- `docs/wiki/architecture.md` — stack, conventions
+- `docs/wiki/gotchas.md` — known failure points (**read before every task**)
+- `docs/wiki/todos.md` / `docs/wiki/completed.md` — work queue
+- `docs/wiki/log.md` — append-only op log
+- `docs/wiki/entities/` — per-feature spec pages (code must match)
+- `docs/wiki/decisions/` — ADRs
 
-After adding requirements either way, run `/project:plan` to generate prioritized tasks from them.
+---
 
-## Daily Workflow
+## Adding requirements
 
-**Morning:**
-1. `/project:status` — where are we?
-2. `/project:plan` — anything new to add?
-3. `/project:work` — start the top TODO
+Two routes — pick by comfort level:
 
-**During work:**
-- `/project:checkpoint` before anything risky
-- `/project:review` after each feature
-- If context feels heavy → `/project:fresh`
+1. **Guided interview** — `/project:interview` runs Q&A, saves the transcript to `docs/raw/interviews/YYYY-MM-DD-<slug>.md`, then ingests into `docs/wiki/requirements.md` and seeds todos. Best for kickoffs or major new feature areas.
+2. **Drop a raw doc** — put any markdown into `docs/raw/` (spec, notes, meeting minutes, research paper). The `raw-index-sync` hook auto-catalogs it as `pending`. Run `/wiki:ingest` when ready.
 
-**End of day:**
-- `/project:checkpoint` — save state
-- `/project:sync-docs` — keep knowledge base current
+**Never edit `docs/raw/` files after creation.** If a transcript is wrong, append a correction doc and re-ingest — raw is immutable by design.
 
-## Team Usage
+---
 
-Multiple developers can work simultaneously:
+## Daily workflow
 
-1. Each developer runs their own Claude Code session
-2. Use git worktrees for isolation: `git worktree add ../feature-x feature-x`
-3. The implementer agent uses worktree isolation by default
-4. Merge branches back to main sequentially to avoid conflicts
+**Morning**
+1. `/project:status` — what's pending and what shifted
+2. `/wiki:log 10` — what was decided/changed recently
+3. `/project:work` — start the top todo
 
-### Enable Agent Teams (experimental)
+**During work**
+- `/project:checkpoint` before risky refactors
+- `/wiki:query <question>` instead of guessing at spec
+- If you edit code, update the matching `docs/wiki/entities/<slug>.md` *in the same commit* — the `wiki-drift-check` hook will warn if you don't
 
-For parallel agent work across multiple Claude Code instances:
+**Ending a session**
+- `/project:checkpoint` — tag + snapshot
+- `/wiki:lint` — catch dead links / drift early
+- If context feels heavy → `/project:fresh` (not `/compact`)
+
+---
+
+## The hard rule
+
+**The wiki is truth. Code that disagrees with the wiki is the bug.**
+
+If behavior should actually change, edit the wiki spec *first*, commit, then align the code. If the code is right and the wiki is wrong, fix the wiki first anyway — the commit history makes the order clear. This is what keeps code and spec from silently diverging over months of LLM work.
+
+---
+
+## Team usage
+
+Multiple developers can share one wiki safely:
+
+1. Each developer runs their own Claude Code session.
+2. Use git worktrees for isolation: `git worktree add ../feature-x feature-x`.
+3. The `implementer` agent works in a worktree by default.
+4. Merge to main sequentially; `/wiki:lint` on main catches conflicting edits.
+
+### Parallel agents (experimental)
 
 ```bash
 export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
 claude
 ```
 
+---
+
 ## Troubleshooting
 
-**Write/Edit/Bash being blocked?**
-- Copy the local permissions template: `cp .claude/settings.local.json.template .claude/settings.local.json`
-- The base `settings.json` is read-only by default for safety — `settings.local.json` unlocks write tools
+**Write/Edit/Bash blocked** — copy the local permissions template: `cp .claude/settings.local.json.template .claude/settings.local.json`. Base `settings.json` stays read-only for safety.
 
-**Hooks not running?**
-- Check that all scripts in `.claude/hooks/` are executable: `chmod +x .claude/hooks/*.sh`
-- Hooks require `jq` — install it: `brew install jq` / `apt install jq`
+**Hooks not running** — `chmod +x .claude/hooks/*.sh` and verify `jq` is installed (`brew install jq` / `apt install jq`).
 
-**Agent not found?**
-- Agents load at session start. Restart Claude Code after adding new agent files.
-- Run `/agents` to see all available agents.
+**Agent not found** — restart Claude Code after adding agent files. Run `/agents` to list them.
 
-**Context getting heavy?**
-- Run `/project:checkpoint` to save state, then `/project:fresh` in a new session
-- Do NOT rely on `/compact` — it's lossy and you don't control what survives
+**`/wiki:query` finds nothing** — either the wiki is empty (run `/project:interview` or `/wiki:ingest`), or your `qmd` index is stale (`qmd index docs/wiki`).
 
-**Want to reset docs?**
-- Delete `docs/` and re-run the scaffold, or
-- Run `/project:init` to re-detect and repopulate
+**Wiki-drift warning at session end** — you edited code but didn't touch a wiki page. Open the relevant `docs/wiki/entities/<slug>.md` and update it; re-commit.
 
-**Behavioral rules not being followed?**
-- CLAUDE.md instructions are followed ~70% of the time
-- For anything that MUST happen 100%, use hooks (not CLAUDE.md or rules)
-- Add new behavioral rules to `.claude/rules/behavioral.md` as failures occur
+**Context heavy** — `/project:checkpoint` then `/project:fresh` in a new session. Don't trust `/compact` — it's lossy and you don't control what survives.
+
+**Reset the wiki** — delete `docs/wiki/` and re-run `/project:init` + `/wiki:ingest docs/raw/`. Raw is the seed of truth; the wiki can always be rebuilt.
+
+**Behavioral rules ignored** — CLAUDE.md guidance is followed ~70% of the time. Hard guarantees belong in hooks (`.claude/hooks/`), not rules. Add new rules to `.claude/rules/behavioral.md` as failures occur.

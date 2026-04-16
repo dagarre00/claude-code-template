@@ -1,5 +1,12 @@
-Use the initializer agent to detect the project stack, set up the development environment, and populate the knowledge base.
+---
+name: project-init
+description: Detect the project stack, set up the dev environment, and scaffold the wiki with architecture + file-map pages.
+type: command
+---
 
-After the initializer finishes, update project-state.md status to "Initialized" (the sync-todos hook will auto-sync active-todos.md).
+Use the **initializer** agent.
 
-Then use the docs-maintainer agent to generate the initial file map and verify all wiki-links.
+After the initializer finishes:
+1. Use the **wiki-maintainer** agent to generate `docs/wiki/file-map.md` from the project tree and populate `docs/wiki/architecture.md` `## Stack` / `## Project Structure` from detection results.
+2. Append to `docs/wiki/log.md`: `## [YYYY-MM-DD] init | stack: <detected>`.
+3. Report to the user: detected stack, what was installed, what pages were seeded.

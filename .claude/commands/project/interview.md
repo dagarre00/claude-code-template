@@ -1,23 +1,37 @@
-Conduct the requirements interview yourself. Run it inline in the main context.
+---
+name: project-interview
+description: Guided requirements Q&A. Writes a transcript to docs/raw/interviews/, then ingests it into docs/wiki/requirements.md.
+type: command
+---
 
-## Interview protocol
+Conduct the requirements interview **inline in the main context** (no sub-agent).
 
-1. Read `docs/project-requirements.md` to check existing content
-2. Ask ONE question at a time. Wait for the answer before asking the next.
-3. After each phase completes, write the results to `docs/project-requirements.md` immediately (don't wait until the end)
-4. Set Status to "Draft" while in progress, "Approved" only if user explicitly confirms
+## Protocol
+
+1. Read `docs/wiki/requirements.md` to see what's already captured.
+2. Open (create if needed) a transcript file at `docs/raw/interviews/YYYY-MM-DD-<slug>.md`.
+3. Ask **ONE question at a time**. Append each Q and A to the transcript immediately — don't batch.
+4. After each phase completes, pause and read back what you captured for confirmation.
 
 ## Phases
 
-**Phase 1 — Vision:** What does it do? Who is it for? What problem does it solve?
-**Phase 2 — User Stories:** Walk through the user journey start to finish. Generate `As a [user], I can [action]` bullets. Read them back for confirmation.
-**Phase 3 — Functional Requirements:** For each user story, what must the system do? Group by feature area.
-**Phase 4 — Non-Functional Requirements:** Stack, performance (push back on vague answers), testing, CI/CD, deployment target.
-**Phase 5 — Constraints:** Budget, timeline, infrastructure, team size.
-**Phase 6 — Out of Scope:** What are we explicitly NOT building in this version?
+- **Vision** — What does it do? Who is it for? What problem does it solve?
+- **User Stories** — Walk through the user journey end-to-end. Generate `As a [user], I can [action]` bullets.
+- **Functional Requirements** — For each story, what must the system do? Group by feature area.
+- **Non-Functional** — Stack, performance (push back on vague answers), testing, CI/CD, deployment.
+- **Constraints** — Budget, timeline, infrastructure, team size.
+- **Out of Scope** — What are we explicitly NOT building in this version?
 
-## Finishing
+## After the interview
 
-After all phases, read back the complete document and ask: "Is this accurate? Anything to add, remove, or change?" Make edits, then set Status to "Approved" on explicit user confirmation.
+1. Read back the full transcript and ask: "Is this accurate? Anything to add/remove/change?"
+2. Once the user says yes, **ingest**:
+   - Set the transcript's status to `ingested` in `docs/raw/index.md`.
+   - Write a summary page at `docs/wiki/summaries/<same-slug>.md`.
+   - Rewrite `docs/wiki/requirements.md` from the transcript, preserving the exact section structure (Vision, User Stories, Functional Requirements, Non-Functional, Constraints, Out of Scope). Set `status: approved` in frontmatter.
+   - Create one `docs/wiki/entities/<feature-slug>.md` stub per functional-requirements feature area.
+   - Seed `docs/wiki/todos.md` with a prioritized TODO row per feature — user confirms priorities.
+   - Update `docs/wiki/index.md` to list new entity pages.
+   - Append to `docs/wiki/log.md`: `## [YYYY-MM-DD] ingest | interview: <slug>`.
 
-Write only to `docs/project-requirements.md`. Use the exact section structure: Vision, User Stories, Functional Requirements, Non-Functional Requirements, Constraints, Out of Scope.
+Never edit the transcript after it's written — it's a raw source. All refinement goes into the wiki pages.
