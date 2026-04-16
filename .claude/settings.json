@@ -25,6 +25,10 @@
           },
           {
             "type": "command",
+            "command": ".claude/hooks/raw-pending-check.sh"
+          },
+          {
+            "type": "command",
             "command": ".claude/hooks/on-task-complete.sh"
           },
           {
