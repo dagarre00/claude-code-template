@@ -4,7 +4,7 @@ description: First-time project setup. Detects stack, creates venv/installs deps
 type: agent
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
-effort: high
+effort: low
 background: false
 color: pink
 maxTurns: 40

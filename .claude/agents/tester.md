@@ -4,7 +4,7 @@ description: Writes and runs tests. Validates that code matches the behavior des
 type: agent
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
-effort: high
+effort: medium
 background: false
 color: orange
 memory: project
