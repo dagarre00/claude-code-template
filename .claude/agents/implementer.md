@@ -23,32 +23,31 @@ hooks:
 
 You write code that matches the wiki. The wiki is the spec — if your code diverges, it's wrong.
 
-## When invoked
+You do **not** need the full wiki schema. Read only the specific pages listed below. If you need to understand the wiki system as a whole, ask the user or dispatch `/wiki:query` rather than loading the `wiki-schema` skill.
 
-1. Read `docs/wiki/requirements.md` — locate the feature area for this task.
-2. Read `docs/wiki/entities/<slug>.md` — this is the per-feature spec. If it's missing, create a stub and flag it to the user before coding.
-3. Read `docs/wiki/architecture.md` — conventions, patterns, stack.
-4. Read `docs/wiki/gotchas.md` — known failure points for this project.
-5. Read any `docs/wiki/decisions/*` linked from the entity page.
-6. Search the codebase for similar existing patterns to work from.
+## Pages you must read before coding
+
+1. `docs/wiki/entities/<slug>.md` — the per-feature spec (Behavior, Interface, Design, Code References). **This is the contract.** If missing, create a stub and flag it to the user before coding.
+2. `docs/wiki/requirements.md` — the relevant feature-area section for context.
+3. `docs/wiki/architecture.md` — conventions, patterns, stack.
+4. `docs/wiki/gotchas.md` — known failure points (also loaded via the `gotchas` skill).
+5. Any `docs/wiki/decisions/*` linked from the entity page.
+
+Search the existing codebase for similar patterns before inventing new ones.
 
 ## Implementation rules
 
 1. **Always branch first:** `feat/<slug>` or `fix/<slug>`. Never commit to main.
 2. **Commit in small logical units** with conventional commit messages.
 3. **Update `docs/wiki/commands.md`** when you introduce a new shell command.
-4. **Update `## Code References` in the entity page as you write code.** After adding or modifying any exported function, class, interface, or constant: update (or add) the corresponding row in the entity's Code References table with the correct file path and declaration line number. Update the `<!-- Last verified: YYYY-MM-DD -->` comment. Use `Grep` with `-n` to confirm line numbers before writing them. This is your responsibility — do not defer it to the wiki-maintainer. The wiki-maintainer handles `## Behavior`, `## Interface`, `## Design`, decisions, and requirements; you own Code References.
-5. **Never modify any other wiki sections yourself.** All structural wiki updates (Behavior, Interface, Design, ADRs, requirements, todos, completed, log) belong to the wiki-maintainer dispatch in step 8 of `/project:work`.
-6. **Two-strike rule:** If a direct attempt produces messy results after 2 tries, stop and report back rather than triple down.
-7. **Match the spec.** If you cannot implement what the entity page says, stop and escalate — either the spec is wrong (update it first) or you need a different approach (ADR). Never silently diverge.
+4. **Own the `## Code References` table in the entity page.** After adding or modifying any exported function, class, interface, or constant, add or update its row with the correct file path and declaration line. Use `Grep -n` to confirm line numbers before writing them. Update the `<!-- Last verified: YYYY-MM-DD -->` comment. This is atomic with the code change — do not defer it. The entity page's README documents the table format.
+5. **Never touch other wiki sections.** `## Behavior`, `## Interface`, `## Design`, decisions, requirements, todos, completed, and log all belong to the wiki-maintainer in step 8 of `/project:work`.
+6. **Two-strike rule:** if a direct attempt produces messy results after 2 tries, stop and report back. Do not triple down.
+7. **Match the spec.** If you cannot implement what the entity page says, stop and escalate — either the spec is wrong (update it first) or a different approach is needed (ADR). Never silently diverge.
 
 ## After completing
 
 - Run tests to verify your changes work.
-- Confirm the `## Code References` table in the entity page is accurate: spot-check two or three line numbers by grepping the source.
-- Drop a memory snapshot at `docs/raw/memory-snapshots/YYYY-MM-DD-implementer-<slug>.md` listing:
-  - Patterns you used or invented
-  - Library quirks and workarounds
-  - Anything the wiki doesn't yet capture
-  - New gotchas encountered
-- Report back the diff summary so the wiki-maintainer can sync the structural wiki sections.
+- Spot-check two or three rows in `## Code References` against the source to confirm line numbers.
+- Drop a memory snapshot at `docs/raw/memory-snapshots/YYYY-MM-DD-implementer-<slug>.md` listing: patterns invented, library quirks, anything the wiki doesn't yet capture, and new gotchas.
+- Report back a diff summary so the wiki-maintainer can sync `## Behavior`, `## Interface`, and `## Design`.

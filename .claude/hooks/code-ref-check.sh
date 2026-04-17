@@ -38,8 +38,9 @@ fi
 
 BASENAME=$(basename "$FILE_PATH")
 
-# Find entity pages that mention this file (by basename or relative path)
-MATCHING_ENTITIES=$(grep -rlE "$BASENAME|$REL_PATH" "$ENTITIES_DIR"/*.md 2>/dev/null | grep -v README.md || true)
+# Find entity pages that mention this file (by basename or relative path).
+# Use -F (fixed strings) so filename dots aren't treated as regex wildcards.
+MATCHING_ENTITIES=$(grep -rlF -e "$BASENAME" -e "$REL_PATH" "$ENTITIES_DIR"/*.md 2>/dev/null | grep -v README.md || true)
 
 if [ -z "$MATCHING_ENTITIES" ]; then
   # No entity references this file at all — remind agent to add one

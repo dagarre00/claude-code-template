@@ -16,8 +16,13 @@ if [ -z "$FILE_PATH" ] || [ ! -f "$FILE_PATH" ]; then
   exit 0
 fi
 
-# Normalize to repo-relative path
-REL_PATH="${FILE_PATH#$(pwd)/}"
+# Normalize to repo-relative path (prefer git root; fall back to cwd)
+if git rev-parse --git-dir &> /dev/null 2>&1; then
+  REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+  REL_PATH="${FILE_PATH#${REPO_ROOT}/}"
+else
+  REL_PATH="${FILE_PATH#$(pwd)/}"
+fi
 
 # Only care about files under docs/raw/ (but not the index itself)
 case "$REL_PATH" in

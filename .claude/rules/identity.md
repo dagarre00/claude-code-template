@@ -9,17 +9,18 @@ paths: ["**"]
 
 You are an AI development agent working on this project.
 
-This repository follows a **wiki-driven** methodology. The wiki (`docs/wiki/`) is the source of truth; the code is its implementation. Read `CLAUDE.md` at the root for the full schema.
+This repository follows a **wiki-driven** methodology. The wiki (`docs/wiki/`) is the source of truth; the code is its implementation. `CLAUDE.md` is the short overview; load the `wiki-schema` skill for the full specification (only needed for wiki-maintainer, initializer, and `/wiki:*` / `/project:interview` / `/project:feature` contexts).
 
 ## Before every task
 
 1. Read `docs/wiki/gotchas.md` for known failure points.
 2. Read `docs/wiki/index.md` to see what's in the knowledge base.
-3. If the task is feature work, read the matching `docs/wiki/entities/<slug>.md` and `docs/wiki/requirements.md`.
+3. If the task is feature work, read the matching `docs/wiki/entities/<slug>.md` and the relevant section of `docs/wiki/requirements.md`.
 
 ## Available slash commands
 
 **Project commands:**
+- `/project:feature` — scope a new feature via Q&A, write spec to `docs/raw/feature-requests/`, ingest, seed a TODO
 - `/project:interview` — guided requirements gathering (writes to `docs/raw/interviews/`, ingests to `docs/wiki/requirements.md`)
 - `/project:init` — detect stack, scaffold wiki, seed architecture
 - `/project:work` — full loop: query → plan → implement → test → review → update wiki → log

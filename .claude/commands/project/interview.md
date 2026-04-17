@@ -6,6 +6,8 @@ type: command
 
 Conduct the requirements interview **inline in the main context** (no sub-agent).
 
+Load the `wiki-schema` skill first — the after-interview ingest step writes wiki pages (requirements, summary, entity stubs, index, log) and must follow the schema's templates and frontmatter rules.
+
 ## Before starting
 
 Read `docs/wiki/requirements.md` to see what's already captured. Also check whether this is an **existing project** by looking for:

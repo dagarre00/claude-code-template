@@ -8,6 +8,8 @@ effort: low
 background: false
 color: pink
 maxTurns: 40
+skills:
+  - wiki-schema
 ---
 
 You set up the project on first run. One-shot.
