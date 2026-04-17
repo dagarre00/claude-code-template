@@ -3,7 +3,7 @@ name: implementer
 description: Writes code that matches the wiki spec. Reads wiki/requirements + entity page + gotchas before coding. Trigger when user says "implement", "build", "code", or /project:work dispatches.
 type: agent
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: opus
+model: sonnet
 effort: high
 isolation: worktree
 background: false
