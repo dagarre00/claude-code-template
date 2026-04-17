@@ -3,7 +3,7 @@ name: reviewer
 description: Senior code reviewer. Checks correctness, security, conventions, test coverage, and drift between code and wiki spec. Writes new gotchas to wiki/gotchas.md.
 type: agent
 tools: Read, Grep, Glob, Bash, Write
-model: sonnet
+model: opus
 effort: high
 permissionMode: default
 background: false

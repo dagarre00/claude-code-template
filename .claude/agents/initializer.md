@@ -3,7 +3,7 @@ name: initializer
 description: First-time project setup. Detects stack, creates venv/installs deps, initializes git, seeds wiki/architecture.md and wiki/commands.md. Trigger on /project:init.
 type: agent
 tools: Read, Write, Edit, Bash, Grep, Glob
-model: sonnet
+model: haiku
 effort: low
 background: false
 color: pink

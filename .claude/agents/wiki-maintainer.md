@@ -3,7 +3,7 @@ name: wiki-maintainer
 description: Owns docs/raw → docs/wiki processing. Ingests sources into summary/entity/concept/decision pages, cross-links, lints, and keeps the index + log current. Dispatched by /wiki:ingest, /wiki:lint, and the wiki-update step of /project:work.
 type: agent
 tools: Read, Write, Edit, Grep, Glob, Bash
-model: sonnet
+model: opus
 effort: high
 background: false
 color: cyan

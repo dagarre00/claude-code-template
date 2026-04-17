@@ -61,13 +61,15 @@ Raw sources land in `docs/raw/`. The **wiki-maintainer** agent ingests them into
 
 ## Agent Routing
 
-| Task | Agent | Needs full wiki schema? |
-|------|-------|-------------------------|
-| Raw→wiki ingestion, lint, cross-linking | `wiki-maintainer` | **Yes** — loads `wiki-schema` skill |
-| First-time setup | `initializer` | Partial — knows where to seed pages |
-| Code implementation | `implementer` | No — reads only the relevant entity page + `architecture.md` + `gotchas.md` |
-| Tests | `tester` | No — reads only the entity page's `## Behavior` + `architecture.md` Testing section |
-| Code review | `reviewer` | No — reads only `architecture.md`, `gotchas.md`, and the relevant entity page |
+| Task | Agent | Model | Needs full wiki schema? |
+|------|-------|-------|-------------------------|
+| Raw→wiki ingestion, lint, cross-linking | `wiki-maintainer` | opus | **Yes** — loads `wiki-schema` skill |
+| Code implementation | `implementer` | opus | No — reads only the relevant entity page + `architecture.md` + `gotchas.md` |
+| Code review | `reviewer` | opus | No — reads only `architecture.md`, `gotchas.md`, and the relevant entity page |
+| Tests | `tester` | sonnet | No — reads only the entity page's `## Behavior` + `architecture.md` Testing section |
+| First-time setup | `initializer` | haiku | Partial — knows where to seed pages |
+
+**Model tier rationale:** opus for open-ended reasoning (synthesizing the knowledge graph, generating code from spec, catching subtle review issues); sonnet for structured derivation (tests from an explicit `## Behavior` contract); haiku for pattern-match setup (stack detection, command discovery, stub creation).
 
 There is intentionally **no researcher or orchestrator**: research happens via `/wiki:query` against an already-rich knowledge base; orchestration is the explicit 9-step loop in `/project:work`.
 
