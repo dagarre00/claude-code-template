@@ -20,8 +20,7 @@ The wiki is the **source of truth** for what the project is and how it is built.
 docs/
 ├── raw/                        # immutable sources
 │   ├── index.md                # catalog + ingestion status per source
-│   ├── interviews/             # /project:interview output lands here
-│   ├── memory-snapshots/       # agents drop knowledge dumps here
+│   ├── interviews/             # /project:interview and /project:feature output lands here
 │   └── <user-dropped-files>    # PDFs, markdown, transcripts, anything
 ├── wiki/                       # LLM-owned knowledge base
 │   ├── index.md                # content catalog (one-line per page)
@@ -83,21 +82,32 @@ This repo is not a passive knowledge base — it builds software. The wiki is th
 - `docs/wiki/entities/<feature>.md` documents each feature's expected behavior, interface, and design. The implementer reads the relevant entity page before writing code and **updates it after**.
 - `docs/wiki/decisions/` holds ADRs. Any non-trivial design call gets a decision page.
 
-### The `/project:work` loop
-Pick the top TODO from `wiki/todos.md` and run:
+### The `/project:work` loop (spec-driven TDD)
 
-1. **Query** — load `wiki/requirements.md` + related entities + `wiki/gotchas.md`. Establish what's expected.
-2. **Plan** — draft a short plan, present to user, wait for confirmation.
-3. **Branch** — `feat/<slug>` or `fix/<slug>` (never commit to main).
-4. **Implement** — write code. Reference the entity page.
-5. **Test** — run tests. Fix until green.
-6. **Review** — self-review against `wiki/gotchas.md` + project conventions.
-7. **Update wiki** — revise the entity page, add ADRs if decisions were made, update `wiki/requirements.md` if behavior changed, append to `wiki/completed.md`.
-8. **Log** — append `## [YYYY-MM-DD] work | <task-title>` to `wiki/log.md`.
-9. **Commit** — conventional message referencing the TODO slug.
+**Classify first** — read the top 3 Pending TODOs and assign each:
+- **Simple** — ≤2 files, <50 lines, no new dependencies, no ADR-worthy decision. Main agent handles all phases.
+- **Complex** — multiple files, new patterns, external dependencies, or ADR-worthy decisions. Multi-agent dispatch.
+- **Batch** — 2–3 consecutive Simple TODOs sharing the same entity or overlapping files. Context loaded once, implemented together.
 
-### Agent memory → raw sources
-When an agent completes a task and learns something worth keeping (gotcha, pattern, decision), it writes a snapshot to `docs/raw/memory-snapshots/YYYY-MM-DD-<agent>-<slug>.md`. The next `/wiki:ingest` integrates it into the right wiki page.
+Then run:
+
+1. **Query** — load `wiki/requirements.md` + relevant entities + `wiki/gotchas.md`. One load serves the whole batch.
+2. **Spec** — verify entity `## Behavior` has concrete Given/When/Then cases. Expand if vague — this is the test contract.
+3. **Plan** — draft implementation plan, present to user, wait for confirmation.
+4. **Branch** — `feat/<slug>` (never commit to main).
+5. **Red** — write all failing tests for the batch/task from `## Behavior`. Confirm all RED.
+   - Simple/Batch: main agent writes tests directly.
+   - Complex: tester agent writes tests + drops `.claude/handoff/<slug>.json` for structured handoff.
+6. **Green** — write minimal code to pass all tests. Confirm all GREEN.
+   - Simple/Batch: main agent implements.
+   - Complex: implementer agent reads handoff file, implements, deletes handoff file on success.
+7. **Refactor** — clean up. Tests must stay GREEN.
+8. **Update wiki** — revise entity page, add ADRs, move TODO(s) to `completed.md`, append to `log.md`.
+   - Simple/Batch: update entity page inline; dispatch wiki-maintainer for full update every **3 simple TODOs**.
+   - Complex: dispatch wiki-maintainer immediately after each task.
+9. **Commit** — conventional message referencing the TODO slug(s).
+
+**Reviewer is periodic** — runs every ~5 completed TODOs via `/project:review`, not in this loop.
 
 ## Frontmatter Convention
 
@@ -118,10 +128,11 @@ Wiki pages may add: `sources:` (list of raw paths), `updated: YYYY-MM-DD`, `stat
 ### Project commands (`/project:*`)
 | Command | Purpose |
 |---------|---------|
-| `/project:interview` | Guided requirements Q&A → writes transcript to `docs/raw/interviews/` then ingests into `wiki/requirements.md` |
+| `/project:interview` | **Initial** project requirements Q&A → full project scope, rewrites `wiki/requirements.md` from scratch |
+| `/project:feature` | **Incremental** feature interview → appends to `requirements.md`, creates entity page + Behavior spec, seeds TODOs |
 | `/project:init` | Detect stack, scaffold wiki, seed `architecture.md` |
-| `/project:work` | Pick top TODO → query → plan → implement → test → review → update wiki → log |
-| `/project:review` | Code review of uncommitted changes (writes gotchas to `wiki/gotchas.md`) |
+| `/project:work` | Classify TODOs (simple/complex/batch) → spec → red → green → refactor → update wiki → commit |
+| `/project:review` | Periodic full audit: all code vs all docs, hidden bugs, stale tests (every ~5 TODOs) |
 | `/project:status` | Dump project state |
 | `/project:checkpoint` | Git-tag current HEAD + write session snapshot |
 | `/project:rollback` | Revert to a checkpoint |
@@ -137,28 +148,31 @@ Wiki pages may add: `sources:` (list of raw paths), `updated: YYYY-MM-DD`, `stat
 
 ## Golden Rules
 
-1. **Wiki is truth.** The wiki describes what the project is and should be. Code that disagrees with the wiki is the bug.
-2. **Always update the wiki in the same change.** If you touch code under `src/`, you must touch the relevant wiki page(s) in the same task. The `wiki-drift-check` hook reminds you at session end.
-3. **Never modify `docs/raw/` content.** Add to it only. Raw sources are immutable.
-4. **Agents own `docs/wiki/`.** Users browse it, agents write it. Exceptions noted in the per-agent instructions.
-5. **One source → many page touches.** A single ingest should land on ~5-15 pages; if it only touched one, you probably under-integrated.
-6. **File back valuable queries.** If a `/wiki:query` output is non-obvious, save it as a `concepts/` page. Your work compounds.
-7. **Always branch before coding.** Never commit to main.
-8. **Conventional commits:** `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`.
-9. **Two-strike rule.** If an approach fails twice, pivot — don't triple down.
-10. **Rollback over fix-forward.** If implementation fails review, `/project:rollback` and retry from scratch.
+1. **Wiki is truth.** Code that disagrees with the wiki is the bug.
+2. **Spec before tests, tests before code.** Entity `## Behavior` → failing tests (RED) → implementation (GREEN) → refactor. No exceptions.
+3. **Never modify tests to make them pass.** Update the spec first, regenerate the test, then implement.
+4. **Always update the wiki in the same change.** Touch `src/` → touch the entity page. The `wiki-drift-check` hook warns at session end.
+5. **Never modify `docs/raw/` content.** Append only. Raw sources are immutable.
+6. **Agents own `docs/wiki/`.** Users browse it, agents write it.
+7. **One source → many page touches.** Ingest should touch ~5-15 pages; fewer means under-integrated.
+8. **File back valuable queries.** Non-obvious `/wiki:query` output → save as `concepts/` page.
+9. **Always branch before coding.** Never commit to main.
+10. **Conventional commits:** `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`.
+11. **Two-strike rule.** Two failed attempts → pivot.
+12. **Rollback over fix-forward.** Two failed implementations → `/project:rollback`.
+13. **Reviewer is periodic.** `/project:review` every ~5 TODOs — not in the work loop. Reviewer creates `review/YYYY-MM-DD` branch before writing anything.
 
 ## Agent Routing
 
 | Task | Agent |
 |------|-------|
-| Code implementation | implementer |
-| Code review | reviewer |
-| Tests | tester |
+| TDD Red phase (write failing tests) | tester |
+| TDD Green+Refactor (make tests pass) | implementer |
+| Periodic full audit (~every 5 TODOs) | reviewer |
 | First-time setup | initializer |
 | Raw→wiki ingestion, lint, cross-linking | wiki-maintainer |
 
-There is intentionally **no researcher or orchestrator** in this methodology: research happens via `/wiki:query` against an already-rich knowledge base, and orchestration is the explicit 9-step loop in `/project:work`.
+There is intentionally **no researcher or orchestrator**: research happens via `/wiki:query`, orchestration is the explicit loop in `/project:work`. The reviewer is **not** part of the work loop — it is a periodic quality gate.
 
 ## What's Stored Where (quick lookup)
 

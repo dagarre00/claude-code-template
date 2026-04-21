@@ -4,7 +4,7 @@
 
 A template for **wiki-driven development**: an LLM incrementally builds and maintains a persistent Obsidian-compatible wiki as the single source of truth for a project. Code is the implementation; the wiki is the spec. Sources you drop into `docs/raw/` get *ingested* into `docs/wiki/` — they never disappear, and the wiki never silently drifts from what was said.
 
-- `docs/raw/` — immutable inputs (interview transcripts, agent memory snapshots, notes, papers)
+- `docs/raw/` — immutable inputs (interview transcripts, notes, papers, any documents you drop in)
 - `docs/wiki/` — the LLM-owned knowledge graph (living spec + entities + decisions + gotchas)
 - `CLAUDE.md` — the schema describing both
 
@@ -24,13 +24,13 @@ go install github.com/tobi/qmd@latest
 # 3. Open the repo in Claude Code
 claude
 
-# 4. Gather requirements (writes docs/raw/interviews/, then ingests)
+# 4. Gather initial requirements (covers the whole project, once)
 /project:interview
 
 # 5. Detect stack, seed wiki/architecture.md
 /project:init
 
-# 6. Start work — the 9-step loop: pick → query → plan → branch → implement → test → review → update wiki → commit
+# 6. Start work — classify → spec → red → green → refactor → update wiki → commit
 /project:work
 ```
 
@@ -42,10 +42,11 @@ claude
 
 | Command | What it does |
 |---------|--------------|
-| `/project:interview` | Guided Q&A → transcript in `docs/raw/interviews/` → ingested into `docs/wiki/requirements.md` + seeds `docs/wiki/todos.md` |
+| `/project:interview` | **Initial** project Q&A → full project scope, rewrites `docs/wiki/requirements.md` from scratch, seeds todos |
+| `/project:feature` | **Incremental** feature Q&A → appends to `requirements.md`, creates entity page with Behavior spec, seeds TODOs |
 | `/project:init` | Detect stack, set up environment, seed `docs/wiki/architecture.md` |
-| `/project:work` | Full loop: pick todo → query wiki → plan → branch → implement → test → review → update wiki → log |
-| `/project:review` | Review uncommitted changes against wiki spec |
+| `/project:work` | Classify TODOs (simple/complex/batch) → spec → red → green → refactor → update wiki → commit |
+| `/project:review` | Periodic full audit: all code vs wiki spec, security, hidden bugs (every ~5 TODOs) |
 | `/project:status` | Snapshot: todos, last wiki-log entries, pending raw sources, checkpoints |
 | `/project:checkpoint` | Git tag + dump state to `docs/wiki/session-checkpoint.md` |
 | `/project:rollback` | Revert to a checkpoint |
@@ -81,10 +82,11 @@ Key pages once content exists:
 
 ## Adding requirements
 
-Two routes — pick by comfort level:
+Three routes — pick by situation:
 
-1. **Guided interview** — `/project:interview` runs Q&A, saves the transcript to `docs/raw/interviews/YYYY-MM-DD-<slug>.md`, then ingests into `docs/wiki/requirements.md` and seeds todos. Best for kickoffs or major new feature areas.
-2. **Drop a raw doc** — put any markdown into `docs/raw/` (spec, notes, meeting minutes, research paper). The `raw-index-sync` hook auto-catalogs it as `pending`. Run `/wiki:ingest` when ready.
+1. **Initial project setup** — `/project:interview` runs a full project Q&A (vision, user stories, functional requirements, constraints), then rewrites `docs/wiki/requirements.md` from scratch and seeds todos. Use once, at the start.
+2. **New feature on an existing project** — `/project:feature` interviews you about one feature only, then **appends** to `requirements.md`, creates the entity page with the Behavior spec filled in, and seeds TODOs. This is the right route for adding an auth method, a new API endpoint, a UI flow, etc.
+3. **Drop a raw doc** — put any markdown into `docs/raw/` (spec, meeting notes, research paper). The `raw-index-sync` hook auto-catalogs it as `pending`. Run `/wiki:ingest` when ready.
 
 **Never edit `docs/raw/` files after creation.** If a transcript is wrong, append a correction doc and re-ingest — raw is immutable by design.
 
@@ -123,8 +125,7 @@ Multiple developers can share one wiki safely:
 
 1. Each developer runs their own Claude Code session.
 2. Use git worktrees for isolation: `git worktree add ../feature-x feature-x`.
-3. The `implementer` agent works in a worktree by default.
-4. Merge to main sequentially; `/wiki:lint` on main catches conflicting edits.
+3. Merge to main sequentially; `/wiki:lint` on main catches conflicting edits.
 
 ### Parallel agents (experimental)
 
@@ -132,6 +133,8 @@ Multiple developers can share one wiki safely:
 export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
 claude
 ```
+
+Note: the implementer agent no longer runs in an isolated worktree by default. Both tester and implementer work in the same branch. For true isolation, use git worktrees manually per developer.
 
 ---
 

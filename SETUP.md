@@ -139,7 +139,17 @@ Then:
 /project:interview
 ```
 
-to gather initial requirements, or `/wiki:ingest` if you've already dropped a transcript into `docs/raw/`.
+to gather **initial** project requirements (full project scope, rewrites requirements.md).
+
+Or if the project already exists and you're adding a feature:
+
+```
+/project:feature
+```
+
+to define a single new feature (appends to requirements.md, creates entity page, seeds TODOs).
+
+Or `/wiki:ingest` if you've already dropped a transcript or spec doc into `docs/raw/`.
 
 ---
 

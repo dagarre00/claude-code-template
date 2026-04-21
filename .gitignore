@@ -8,3 +8,6 @@ Thumbs.db
 
 # Session checkpoints (transient — regenerated on every /project:checkpoint)
 docs/wiki/session-checkpoint.md
+
+# Inter-agent handoff files (transient — written by tester, deleted by implementer)
+.claude/handoff/

@@ -42,7 +42,7 @@ fi
 
 # Heuristic: code files live outside docs/, .claude/, and common top-level config.
 # Adjust CODE_REGEX for your project if needed.
-CODE_REGEX='^(src/|app/|lib/|pkg/|cmd/|internal/|server/|client/|web/|api/|packages/|apps/)'
+CODE_REGEX='^(src/|app/|lib/|pkg/|cmd/|internal/|server/|client/|web/|api/|packages/|apps/|tests?/|spec/|[a-zA-Z][a-zA-Z0-9_-]*\.(py|ts|tsx|js|jsx|go|rs|rb|java|kt|cs|cpp|c|h)$)'
 CODE_TOUCHED=$(echo "$ALL_CHANGED" | grep -E "$CODE_REGEX" || true)
 
 if [ -z "$CODE_TOUCHED" ]; then

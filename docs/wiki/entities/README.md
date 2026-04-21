@@ -34,7 +34,15 @@ updated: YYYY-MM-DD
 What this feature exists for, in one paragraph.
 
 ## Behavior
-How it behaves from the user's perspective. Bullets or prose.
+
+Test cases — the tester agent derives tests directly from this section.
+
+- **Given** <precondition>, **when** <action>, **then** <outcome>
+- **Given** <precondition>, **when** <action>, **then** <outcome>
+- **Error:** <invalid input> → returns/throws <error>
+- **Edge:** <boundary condition> → <expected behavior>
+
+*(Each bullet = ≥1 test. Vague bullets block the Red phase — be specific.)*
 
 ## Interface
 API signatures, CLI surface, UI components — whatever applies.

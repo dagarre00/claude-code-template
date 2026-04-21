@@ -78,4 +78,4 @@ status: draft | approved | stale | shipped | deprecated
 - **Cite forward and backward.** When creating a new page, link to every existing page that relates to it, and add a backlink from those pages.
 - **Keep `docs/wiki/index.md` under ~200 lines.** If it outgrows this, split into sub-indexes under each folder (entities/README.md is already structured for this).
 - **After any wiki edit, update the `updated:` frontmatter field** on the touched page.
-- Record discovered patterns and decisions as a memory snapshot at `docs/raw/memory-snapshots/YYYY-MM-DD-wiki-maintainer-<slug>.md` for future ingests to process.
+- Write discoveries directly to the relevant wiki page (entity, concept, or decision) — no separate memory snapshot needed.

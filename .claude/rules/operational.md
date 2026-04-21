@@ -4,20 +4,20 @@ paths: ["**"]
 # Operational Rules
 
 ## Memory Protocol
-- Load `docs/agent-context/quick-ref.md` and `docs/agent-context/active-todos.md` at the start of every task.
-- Load full docs (architecture.md, etc.) only when quick-ref doesn't have what you need.
-- After completing significant work, update your agent memory with patterns and decisions discovered.
+- Load `docs/wiki/todos.md` and `docs/wiki/gotchas.md` at the start of every task.
+- Load `docs/wiki/requirements.md`, `docs/wiki/architecture.md`, and `docs/wiki/entities/<slug>.md` only when the task requires them.
+- After completing significant work, write discoveries directly to the relevant wiki pages — no separate memory snapshots.
 
 ## Workflow Rules
 - Use existing slash commands and workflows before improvising.
-- Never modify docs directly — use the docs-maintainer agent (except commands-registry.md which any agent may append to).
+- Never modify wiki pages outside of a task — use the wiki-maintainer agent.
 - Always branch before implementing. Never commit to main directly.
 - Use conventional commits: `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`.
 
 ## Sub-Agent Dispatch
-- Each sub-agent gets scoped context, not your full setup.
-- Research before build: dispatch the researcher agent before the implementer for any non-trivial task.
-- Suggest `/rename <task-description>` at the start of each work session.
+- Each sub-agent gets scoped context — task, prior outputs, relevant constraints. Never dump full memory.
+- For complex TODOs: tester → implementer → wiki-maintainer. For simple TODOs: main agent handles all phases.
+- Use `/wiki:query <question>` for research before building — there is no separate researcher agent.
 
 ## Style & Git Rules
 - These belong in skills, not here. This file is for universal operational behavior only.

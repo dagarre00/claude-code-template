@@ -1,8 +1,6 @@
 ---
 title: Project Requirements
 updated: 2026-04-06
-tokens_estimate: 600
-agents: [orchestrator, initializer]
 ---
 
 # Project Requirements

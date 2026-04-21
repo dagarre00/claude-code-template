@@ -1,149 +1,177 @@
-# Using the Multi-Agent Workflow on an Existing Project
+# Existing Project Guide
 
-## The Problem
+## The difference from a new project
 
-The scaffold prompt assumes an empty repo. With an existing codebase and docs, you need to **adapt** the scaffold rather than overwrite your project.
-
----
-
-## Step 1: Run the scaffold prompt with this prefix
-
-Open Claude Code (Opus) **in your existing project root** and prepend this to the main prompt:
-
-```
-IMPORTANT CONTEXT: This is an existing project with an established codebase and documentation.
-
-Before executing the scaffold steps, do the following adaptation:
-
-1. DO NOT run `git init` — the repo already exists
-2. DO NOT create virtual environments if one already exists (check for venv/, .venv/, node_modules/, etc.)
-3. DO NOT create .gitignore if one exists — append any missing entries instead
-4. When creating `docs/`, preserve any existing `docs/` content by:
-   - Moving existing docs to `docs/legacy/` first
-   - Creating the new knowledge base structure alongside them
-   - Adding `[[legacy/filename]]` links in INDEX.md for each preserved doc
-5. When creating `.claude/rules/behavioral.md`, scan the git log and any existing
-   CLAUDE.md, README, or CONTRIBUTING files for existing conventions and constraints.
-   Encode those as behavioral rules rather than starting from the seed rules alone.
-6. When the initializer agent runs, it should scan the EXISTING codebase and docs to populate:
-   - `architecture.md` from actual code structure (not a blank template)
-   - `quick-ref.md` from real stack detection
-   - `commands-registry.md` from existing package.json scripts, Makefile targets, or shell scripts
-   - `project-state.md` with existing features listed as "Completed" and pending work as TODOs
-7. Scan existing documentation and extract requirements into `project-requirements.md` format
-8. Make the initial commit message: "chore: integrate multi-agent workflow into existing project"
-
-Now proceed with the full scaffold below, respecting these adaptations:
-
-[PASTE THE FULL SCAFFOLD PROMPT HERE]
-```
+| New project | Existing project |
+|---|---|
+| `/project:interview` defines everything from scratch | `/project:init` reads your codebase and populates the wiki from what it finds |
+| requirements.md starts blank | requirements.md is backfilled from your existing docs/code |
+| Entity pages are stubs | Entity pages are populated from detected behavior |
+| `/project:interview` for initial requirements | `/project:feature` to add new features (appends, never rewrites) |
 
 ---
 
-## Step 2: After scaffolding, run the initializer with extra context
+## Step by step
+
+### 1. Clone the template files into your project
+
+Copy the `.claude/` directory and top-level config files from this template into your existing repo root. Do **not** overwrite:
+- Your existing `.gitignore` — append the template's entries instead
+- Your existing `docs/` — move them to `docs/legacy/` first if there's a conflict
+
+```bash
+# From the template repo
+cp -r .claude /path/to/your-project/
+cp CLAUDE.md HUMAN.md SETUP.md /path/to/your-project/
+cp .claude/settings.local.json.template /path/to/your-project/.claude/settings.local.json
+```
+
+Commit this as: `chore: integrate wiki-driven workflow`
+
+### 2. Initialize from your existing codebase — `/project:init`
 
 ```
 /project:init
 ```
 
-The initializer agent will auto-detect your stack. Then follow up with:
+The initializer agent scans your project and populates the wiki from what it finds:
+- `docs/wiki/architecture.md` — detected stack, conventions, layering
+- `docs/wiki/commands.md` — commands from `package.json`, `Makefile`, CI configs, etc.
+- `docs/wiki/file-map.md` — project tree (3 levels deep)
+
+Then follow up in the same session:
 
 ```
-Use the initializer agent again. This time:
-1. Read every file in docs/legacy/ and extract architectural decisions,
-   conventions, or requirements into the appropriate knowledge base docs
-2. Run the test suite if one exists and record working test commands
-   in commands-registry.md
-3. Run the build/start commands and record what works in commands-registry.md
-4. Analyze git log --oneline -50 to understand recent development activity
-   and update project-state.md
-5. If any commands fail, add them to docs/agent-context/gotchas.md with
-   the error message and workaround
+Read every file in docs/legacy/ (or README.md and existing docs).
+Extract all implied requirements, architecture decisions, and conventions.
+Populate docs/wiki/requirements.md and docs/wiki/entities/ from what you find.
+Mark anything uncertain with a [NEEDS HUMAN REVIEW] tag.
 ```
+
+### 3. Backfill requirements
+
+Review and correct:
+- `docs/wiki/requirements.md` — does it capture your actual requirements?
+- `docs/wiki/architecture.md` — does the detected stack and conventions match reality?
+- `docs/wiki/entities/` — is there an entity page for each major feature?
+
+Edit anything wrong directly. Then seed the TODO queue for remaining work:
+```
+/project:work    — Claude reads requirements and creates TODOs for gaps
+```
+
+Or run the full initial interview if no structured requirements exist:
+```
+/project:interview
+```
+Note: `/project:interview` **rewrites** `requirements.md`. Only use it if you want to start the spec fresh.
+
+### 4. Add new features — `/project:feature`
+
+When adding a new feature to the existing project (new auth method, new API endpoint, new UI flow):
+
+```
+/project:feature
+```
+
+This interviews you about the **new feature only**, then:
+- **Appends** to `requirements.md` (preserves everything already there)
+- Creates `docs/wiki/entities/<slug>.md` with the `## Behavior` spec filled in
+- Flags contradictions with existing requirements
+- Seeds new TODOs scoped to the feature
+
+After this runs, `/project:work` picks up the new TODOs.
+
+### 5. Build — `/project:work`
+
+Same as a new project. Claude classifies each TODO:
+- **Simple** — main agent handles Red → Green → Refactor inline
+- **Complex** — dispatches tester, implementer, and wiki-maintainer agents
+- **Batch** — groups 2–3 Simple TODOs sharing the same entity
+
+The wiki-drift-check hook warns at session end if you touched code without updating the matching entity page.
 
 ---
 
-## Step 3: Validate and fill gaps
-
-```
-/project:sync-docs
-```
-
-Then manually review — or run `/project:interview` to have Claude walk you through refining — these three files:
-
-- `docs/project-requirements.md` — does it capture your actual requirements?
-- `docs/architecture.md` — does the detected stack and conventions match reality?
-- `docs/project-state.md` — are completed features and TODOs accurate?
-
-Edit anything that's wrong. Add any behavioral rules you already know about to `.claude/rules/behavioral.md` (e.g., "never touch the legacy auth module directly" or "always use the ORM, never raw SQL").
-
----
-
-## Step 4: Resume normal workflow
-
-```
-/project:plan       — generate tasks from requirements
-/project:research   — investigate a specific task before building
-/project:work       — research → plan → confirm → implement → review
-/project:status     — check progress
-/project:review     — review changes before merging
-```
-
----
-
-## Common Scenarios
+## Common scenarios
 
 ### "I have a README and scattered docs but no formal requirements"
 
-After scaffolding, tell Claude:
-
+After `/project:init`, run:
 ```
-Read README.md and every markdown file in the project. Extract all implied
-requirements, architecture decisions, and conventions. Populate
-project-requirements.md, architecture.md, and commands-registry.md
-from what you find. Mark anything uncertain with a [NEEDS HUMAN REVIEW] tag.
+Read README.md and every markdown file in the project.
+Extract all implied requirements, architecture decisions, and conventions.
+Populate docs/wiki/requirements.md and docs/wiki/entities/ from what you find.
+Mark anything uncertain with a [NEEDS HUMAN REVIEW] tag.
 ```
+Then review and edit the generated pages.
 
-### "I have a mature project with hundreds of files"
+### "My project has a large codebase (hundreds of files)"
 
-Add this to the prefix:
-
+Tell the initializer:
 ```
-This is a large project. When generating file-map.md, limit to 3 directory
-levels deep and group files by module/package rather than listing every file.
-For architecture.md, focus on the top-level structure and key patterns —
-don't document every utility function.
+This is a large project. Limit file-map.md to 3 directory levels.
+For architecture.md, focus on top-level structure and key patterns — not every utility.
 ```
 
 ### "I have existing CI/CD, Docker, and deployment configs"
 
-Add:
-
+Tell the initializer:
 ```
-Scan .github/workflows/, Dockerfile*, docker-compose*, Makefile, and any
-CI config files. Record all working CI/CD and deployment commands in
-commands-registry.md under "CI/CD Commands" and "Deploy Commands" sections.
+Scan .github/workflows/, Dockerfile*, docker-compose*, Makefile, and CI config files.
+Record all working CI/CD and deployment commands in docs/wiki/commands.md.
 Do not modify any CI/CD configuration files.
 ```
 
-### "My project uses a monorepo with multiple services"
+### "My project is a monorepo with multiple services"
 
-Add:
-
+Tell the initializer:
 ```
-This is a monorepo. Create a separate quick-ref section per service/package
-in docs/agent-context/. The orchestrator should scope tasks to specific
-services and pass the service path to implementer agents. Update architecture.md
-with a monorepo map showing service boundaries and shared dependencies.
+This is a monorepo. Create a section per service in docs/wiki/architecture.md
+with service boundaries and shared dependencies. Create one entity page per service.
 ```
 
-### "My team already has strong git conventions"
+### "My team has strong git conventions"
 
-Add:
-
+Add your conventions as behavioral rules:
 ```
-Read CONTRIBUTING.md (or equivalent) and encode all git conventions as
-behavioral rules in .claude/rules/behavioral.md. Do NOT put them in CLAUDE.md
-(it's injected every turn and should stay small). Create a git-conventions
-skill in .claude/skills/ that the implementer loads at commit time only.
+Read CONTRIBUTING.md and encode all git conventions in .claude/rules/behavioral.md.
+```
+Or create a skill file in `.claude/skills/` that agents load only at commit time.
+
+### "I have existing tests"
+
+Tell Claude to map them to entity pages:
+```
+Read the test suite. For each test file, find or create the matching
+docs/wiki/entities/<slug>.md and populate ## Behavior from what the tests cover.
+```
+This makes the existing tests the spec, and future `/project:work` iterations extend them.
+
+---
+
+## Daily workflow (same as new project)
+
+**Morning**
+```
+/project:status     — pending TODOs, recent log
+/wiki:log 10        — what changed
+/project:work       — top TODO
+```
+
+**Adding a new feature**
+```
+/project:feature    — interview → spec → entity page → TODOs
+/project:work       — implement the new TODOs
+```
+
+**End of session**
+```
+/project:checkpoint — git tag + snapshot
+/wiki:lint          — catch drift, dead links, orphaned pages
+```
+
+Every ~5 TODOs:
+```
+/project:review     — full audit: code vs spec, security, hidden bugs
 ```

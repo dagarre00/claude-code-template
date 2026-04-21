@@ -22,8 +22,8 @@ This repository follows a **wiki-driven** methodology. The wiki (`docs/wiki/`) i
 **Project commands:**
 - `/project:interview` — guided requirements gathering (writes to `docs/raw/interviews/`, ingests to `docs/wiki/requirements.md`)
 - `/project:init` — detect stack, scaffold wiki, seed architecture
-- `/project:work` — full loop: query → plan → implement → test → review → update wiki → log
-- `/project:review` — code review
+- `/project:work` — TDD loop: spec → red → green → refactor → update wiki → commit
+- `/project:review` — periodic full audit (every ~5 TODOs); reviewer creates own branch
 - `/project:status` — project state snapshot
 - `/project:checkpoint` — git-tag + session snapshot
 - `/project:rollback` — revert to a checkpoint

@@ -1,11 +1,27 @@
 ---
 name: project-review
-description: Review uncommitted changes or changes since the last review tag. Writes new gotchas back to wiki/gotchas.md.
+description: Periodic full project audit — all code vs all wiki docs, hidden bugs, stale tests. Run every ~5 completed TODOs. Reviewer creates its own branch before writing anything.
 type: command
 ---
 
-Use the **reviewer** agent to review all uncommitted changes (or changes since the last `review-*` git tag, if one exists).
+Trigger the **reviewer** agent for a full project audit. Run this every ~5 completed TODOs, not after every task.
 
-Output a structured report organized by **Critical / Warning / Suggestion**.
+## What happens
 
-After the review, if any new gotchas were found, the reviewer must append them to `docs/wiki/gotchas.md` (the write-guard hook enforces this path).
+1. Reviewer creates `review/YYYY-MM-DD` branch.
+2. Full audit: all source code vs all `docs/wiki/entities/*.md` specs.
+3. All test files vs entity `## Behavior` sections.
+4. Security, correctness, conventions, dead code.
+5. Reviewer writes new gotchas to `docs/wiki/gotchas.md` and fixes/adds tests on the review branch.
+6. Commits + opens PR to main branch.
+
+## When to run
+
+- After every ~5 TODOs completed
+- Before cutting a release
+- Whenever you suspect hidden drift between code and docs
+- Explicitly: `claude /project:review`
+
+## Output
+
+Structured report: **Critical / Warning / Suggestion** with file:line references. Critical items must be resolved before the review PR merges.
