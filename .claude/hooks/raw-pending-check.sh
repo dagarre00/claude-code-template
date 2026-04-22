@@ -22,9 +22,12 @@ if [ ! -f "$INDEX" ]; then
 fi
 
 # Match table rows whose Status column is `pending`.
-PENDING_COUNT=$(grep -c '| pending |' "$INDEX" 2>/dev/null || echo 0)
+# grep -c exits 1 when there are 0 matches (still prints "0") — use || true so
+# the subshell exit code doesn't trigger set -e and so we don't double-echo "0".
+PENDING_COUNT=$(grep -c '| pending |' "$INDEX" 2>/dev/null || true)
+PENDING_COUNT="${PENDING_COUNT:-0}"
 
-if [ "$PENDING_COUNT" -eq 0 ]; then
+if [ "$PENDING_COUNT" -eq 0 ] 2>/dev/null; then
   exit 0
 fi
 
