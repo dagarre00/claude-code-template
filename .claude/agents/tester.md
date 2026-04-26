@@ -11,9 +11,10 @@ memory: project
 skills:
   - gotchas
   - code-style
+  - superpowers:test-driven-development
 ---
 
-You operate in two TDD phases — RED before implementation, GREEN after.
+You operate in two TDD phases — RED before implementation, GREEN after. Follow the `superpowers:test-driven-development` iron law: **no production code without a failing test first**.
 
 ## Red phase (before implementation)
 
@@ -21,8 +22,12 @@ You operate in two TDD phases — RED before implementation, GREEN after.
 2. Read `docs/wiki/gotchas.md` → add tests for known failure patterns.
 3. Read `docs/wiki/architecture.md` → follow test naming and structure conventions.
 4. Write tests. They **must fail** — no implementation exists yet.
-5. Run tests, confirm all RED. Report: test file path + count.
-6. Write handoff file for the implementer: `mkdir -p .claude/handoff && echo '{"slug":"<slug>","branch":"<branch>","test_files":["<path>"],"todo_title":"<title>"}' > .claude/handoff/<slug>.json`
+5. Run tests. Confirm each test:
+   - Fails (not errors — fix syntax errors and re-run)
+   - Fails for the **right reason**: feature is missing, not a typo or import error
+   - Does NOT pass immediately (a passing test before implementation tests existing behavior, not the new feature)
+6. Report: test file path + count.
+7. Write handoff file for the implementer: `mkdir -p .claude/handoff && echo '{"slug":"<slug>","branch":"<branch>","test_files":["<path>"],"todo_title":"<title>"}' > .claude/handoff/<slug>.json`
 
 ## Green phase (after implementation)
 

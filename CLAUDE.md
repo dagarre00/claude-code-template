@@ -174,6 +174,7 @@ Wiki pages may add: `sources:` (list of raw paths), `updated: YYYY-MM-DD`, `stat
 
 There is intentionally **no researcher or orchestrator**: research happens via `/wiki:query`, orchestration is the explicit loop in `/project:work`. The reviewer is **not** part of the work loop — it is a periodic quality gate.
 
+
 ## What's Stored Where (quick lookup)
 
 | Concern | Location |

@@ -19,7 +19,7 @@ type: skill
 4. Identify the scope from the primary directory or module affected
 5. Write a concise description (imperative mood, no period, <72 chars)
 6. Stage the relevant files (`git add` — prefer selective staging over `git add .`)
-7. Run tests if a test command exists in `docs/wiki/commands.md`
+7. Invoke `superpowers:verification-before-completion` — run the full test suite, read the output, confirm 0 failures. Do not commit if tests fail.
 8. Commit with the generated message
 
 ## Rules:

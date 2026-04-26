@@ -8,6 +8,7 @@ Define a **new feature** for an existing project via a focused interview, then w
 
 ## Protocol
 
+0. **Brainstorm first** — invoke `superpowers:brainstorming` to explore design, propose approaches, and produce an approved spec before the interview. Skip this step only if the user explicitly brings a pre-formed spec.
 1. Read `docs/wiki/requirements.md` and `docs/wiki/entities/` to understand what already exists — avoid redefining covered ground.
 2. Open a transcript at `docs/raw/interviews/YYYY-MM-DD-feature-<slug>.md`.
 3. Ask **ONE question at a time**. Append each Q and A immediately — no batching.

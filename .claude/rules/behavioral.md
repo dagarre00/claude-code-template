@@ -23,6 +23,8 @@ Hard constraints from real failures. Each rule exists because of a specific past
 12. **Raw sources are immutable.** Never edit files in `docs/raw/`. Only append new ones.
 13. **Reviewer is periodic.** Reviewer runs every ~5 completed TODOs via `/project:review`, not on every work iteration.
 
+14. **Superpowers-first.** Before any implementation, debugging, creative work, or branch completion, check for an applicable superpowers skill and invoke it before acting. Even a 1% chance it applies is enough — see `using-superpowers` skill for the full rule.
+
 ## Add your own
 
 <!-- Append new rules here as failures occur. Format: **Rule name:** description. -->

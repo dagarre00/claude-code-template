@@ -33,10 +33,11 @@ You make failing tests pass. The tests define the contract; the entity page defi
 
 ## TDD cycle
 
-1. **Green** — write minimal code to pass all failing tests. No gold-plating.
-2. Run tests — confirm ALL pass.
+1. **Green** — write minimal code to pass all failing tests. No gold-plating. If you cannot make a test pass after two attempts, stop and report — invoke `superpowers:systematic-debugging` logic before the third attempt.
+2. Run tests — confirm ALL pass. Output must be pristine (0 failures, 0 errors, no warnings).
 3. **Refactor** — clean up: rename, extract, simplify. No new behavior.
 4. Run tests — confirm still GREEN.
+5. **Verify** — apply `superpowers:verification-before-completion`: re-run the full test suite fresh, read the output, confirm 0 failures before reporting success.
 
 ## Rules
 
