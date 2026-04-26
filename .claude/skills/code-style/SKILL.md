@@ -4,43 +4,24 @@ description: Coding style and conventions for this project. Use whenever writing
 type: skill
 ---
 
-# Code Style Conventions
+# Code Style
 
-## General Principles
-- Readability over cleverness — code is read 10x more than it's written
-- Explicit over implicit — don't hide behavior in magic
-- Small functions — if it doesn't fit on one screen, split it
-- Single responsibility — one function does one thing
+The single source of truth for naming, comments, error handling, file organization, and architecture rules is **[`docs/wiki/architecture.md`](../../../docs/wiki/architecture.md)**. Read that file before writing or reviewing code.
 
-## Naming
-- Files: `kebab-case` (e.g., `user-service.ts`, `auth_handler.py`)
-- Classes: `PascalCase` (e.g., `UserService`, `PaymentGateway`)
-- Functions/methods: `camelCase` (JS/TS) or `snake_case` (Python/Rust/Go)
-- Constants: `UPPER_SNAKE_CASE` (e.g., `MAX_RETRY_COUNT`)
-- Booleans: prefix with `is`, `has`, `can`, `should` (e.g., `isActive`, `hasPermission`)
-- Avoid abbreviations — `getUserById` not `getUsrById`
+## What to check (in order)
 
-## Comments
-- Comment WHY, not WHAT — the code shows what, the comment explains why
-- Docstrings on all public functions and classes
-- No obvious comments (`i += 1  # increment i` — never do this)
-- TODO format: `TODO(agent-name): description`
-- Delete commented-out code — git has history
+1. `docs/wiki/architecture.md` → `## Naming Conventions`, `## Comments`, `## Error Handling`, `## Design Patterns`, `## Testing Strategy`.
+2. `docs/wiki/gotchas.md` → known failure points relevant to the area you're editing.
+3. The matching `docs/wiki/entities/<slug>.md` → feature-specific design notes.
 
-## Error Handling
-- Never swallow exceptions silently
-- Use typed/custom errors where the language supports it
-- Log errors with context: what was attempted, with what input
-- Return meaningful error messages — "User not found" not "Error occurred"
-- Fail fast on invalid input — validate at the boundary
+If `architecture.md` doesn't cover a question (e.g. an emerging pattern), surface the gap so it can be recorded — don't invent a new convention silently. File the convention under `docs/wiki/concepts/<slug>.md` if it's reusable.
 
-## File Organization
-- Group by feature/domain, not by file type
-- Keep imports organized: stdlib → external → internal
-- One class per file (with small related helpers allowed)
-- Tests mirror the source structure
+## Hard rules (non-negotiable, regardless of language)
 
-## Architecture Compliance
-- Always check `docs/wiki/architecture.md` for project-specific patterns
-- Inner layers (domain, application) never import from outer layers (infrastructure, presentation)
-- Use dependency injection — don't instantiate dependencies inside classes
+- Readable beats clever — code is read 10x more than written.
+- Comment WHY, not WHAT.
+- No swallowed exceptions.
+- Validate at boundaries, trust internal code.
+- One responsibility per function; one class per file unless tightly coupled.
+
+Everything else (file naming, casing per language, layering, imports order) lives in `architecture.md` and is project-specific. Defer to it.

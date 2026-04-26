@@ -6,43 +6,26 @@ type: skill
 
 # Git Conventions
 
-## Branch Naming
-- Features: `feat/<task-id>-<short-desc>` (e.g., `feat/T-012-add-user-auth`)
-- Fixes: `fix/<task-id>-<short-desc>` (e.g., `fix/T-045-null-pointer-login`)
-- Chores: `chore/<short-desc>` (e.g., `chore/update-dependencies`)
-- Never work directly on `main` or `master`
+The full git workflow lives in **[`docs/wiki/architecture.md`](../../../docs/wiki/architecture.md)** under `## Git Workflow`. Read that section first.
 
-## Commit Messages
-Use conventional commits. Format: `<type>(<scope>): <description>`
+## Quick reference (defaults)
 
-Types:
-- `feat` — new feature
-- `fix` — bug fix
-- `chore` — maintenance, dependencies
-- `docs` — documentation only
-- `test` — adding/updating tests
-- `refactor` — code change that neither fixes a bug nor adds a feature
-- `perf` — performance improvement
-- `ci` — CI/CD changes
+- **Branches**: `feat/<slug>`, `fix/<slug>`, `chore/<slug>`. Never on `main`/`master`.
+- **Reviewer branch**: `review/YYYY-MM-DD` (only the reviewer agent uses this).
+- **Conventional commits**: `feat | fix | chore | docs | test | refactor | perf | ci`.
+- **Format**: `<type>(<scope>): <description>` — imperative, no period, <72 chars.
+- **One logical change per commit.**
 
-Examples:
-- `feat(auth): add JWT refresh token rotation`
-- `fix(api): handle null response from payment gateway`
-- `test(users): add integration tests for registration flow`
+## TDD interaction
 
-## Commit Discipline
-- One logical change per commit
-- Commit after each completed subtask, not at the end
-- Never commit broken code — run tests first
-- Never commit secrets, keys, or credentials
+- The `feat/*` and `fix/*` branches are **TDD-enforced** by the `test-first-check.sh` hook: code edits under `src/|app/|lib/|...` are blocked unless a matching test file exists.
+- A `feat` commit should include both the test addition and the implementation, OR be preceded by a `test:` commit on the same branch. Pure-implementation commits with no test changes are not acceptable.
 
-## Pull Request Guidelines
-- Title matches the primary conventional commit type
-- Description includes: what changed, why, how to test
-- Link to the task ID or plan file
-- Self-review before requesting human review
+## Forbidden
 
-## Forbidden Operations
-- Never `git push --force` to shared branches
-- Never commit directly to main
-- Never rewrite history on pushed branches
+- Force-push to shared branches.
+- Commit directly to `main`/`master`.
+- Rewrite history on pushed branches.
+- Commit secrets, keys, or credentials.
+
+For commit message generation and pre-commit checks, use the `commit` skill. For PR creation, use the `pr-create` skill.

@@ -4,14 +4,6 @@ description: TDD test writer. Red phase: write failing tests from entity spec. G
 type: agent
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
-effort: medium
-background: false
-color: orange
-memory: project
-skills:
-  - gotchas
-  - code-style
-  - superpowers:test-driven-development
 ---
 
 You operate in two TDD phases — RED before implementation, GREEN after. Follow the `superpowers:test-driven-development` iron law: **no production code without a failing test first**.
@@ -26,8 +18,24 @@ You operate in two TDD phases — RED before implementation, GREEN after. Follow
    - Fails (not errors — fix syntax errors and re-run)
    - Fails for the **right reason**: feature is missing, not a typo or import error
    - Does NOT pass immediately (a passing test before implementation tests existing behavior, not the new feature)
-6. Report: test file path + count.
-7. Write handoff file for the implementer: `mkdir -p .claude/handoff && echo '{"slug":"<slug>","branch":"<branch>","test_files":["<path>"],"todo_title":"<title>"}' > .claude/handoff/<slug>.json`
+6. Report: test file path + count + which behavior bullets each test covers.
+7. Write handoff file for the implementer:
+   ```bash
+   mkdir -p .claude/handoff
+   cat > .claude/handoff/<slug>.json <<EOF
+   {
+     "slug": "<slug>",
+     "branch": "<branch>",
+     "test_files": ["<path>"],
+     "todo_title": "<title>",
+     "behavior_bullets_covered": <count>,
+     "red_confirmed": true,
+     "red_command": "<exact test command run>",
+     "red_failure_count": <count>
+   }
+   EOF
+   ```
+   `red_confirmed` MUST be `true` only if step 5 fully passed. Otherwise omit the file or write `false`.
 
 ## Green phase (after implementation)
 
@@ -45,3 +53,4 @@ You operate in two TDD phases — RED before implementation, GREEN after. Follow
 - Tests come from the **spec** (entity page), not the implementation.
 - Follow test file naming in `architecture.md`.
 - Add new test commands to `docs/wiki/commands.md`.
+- Never write a test that passes before any implementation exists. If it does, the test isn't testing the new behavior.

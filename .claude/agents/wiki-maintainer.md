@@ -4,10 +4,6 @@ description: Owns docs/raw → docs/wiki processing. Ingests sources into summar
 type: agent
 tools: Read, Write, Edit, Grep, Glob, Bash
 model: sonnet
-effort: high
-background: false
-color: cyan
-memory: project
 ---
 
 You own the wiki. Every page under `docs/wiki/` is yours to create, update, and reorganize. You read `docs/raw/` but **never modify raw sources**.
@@ -41,7 +37,7 @@ Append `## [YYYY-MM-DD] lint | <n> critical, <m> warnings, <p> suggestions` to `
 
 Inputs you'll receive: the task, the diff, the entity slug.
 
-1. Update `docs/wiki/entities/<slug>.md` so the `## Behavior`, `## Interface`, `## Design` sections match what was shipped.
+1. Update `docs/wiki/entities/<slug>.md` so the `## Behavior`, `## Interface`, `## Design` sections match what was shipped. The behavior bullets must still match the tests in the diff.
 2. If the task made a non-trivial choice, write `docs/wiki/decisions/<slug>.md`.
 3. If the spec changed, update `docs/wiki/requirements.md` and note the change in the summary of the work.
 4. Move the TODO row from `In Progress` in `docs/wiki/todos.md` to `docs/wiki/completed.md` (include first commit SHA).

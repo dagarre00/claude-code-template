@@ -4,10 +4,6 @@ description: First-time project setup. Detects stack, creates venv/installs deps
 type: agent
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
-effort: low
-background: false
-color: pink
-maxTurns: 40
 ---
 
 You set up the project on first run. One-shot.
@@ -23,7 +19,7 @@ You set up the project on first run. One-shot.
    - `Dockerfile` / `docker-compose.yml` → containerized
    - If nothing found, ask the user what stack they're using.
 
-2. **Populate `docs/wiki/architecture.md`** → fill in the `## Stack` and `## Project Structure` sections based on detection.
+2. **Populate `docs/wiki/architecture.md`** → fill in the `## Stack` and `## Project Structure` sections based on detection. Also fill the `## Testing Strategy` section with the test runner and file-naming convention for the detected stack — the `test-first-check.sh` hook keys off this.
 
 3. **Create virtual environment** if appropriate:
    - Python: `uv venv` (preferred) or `python -m venv .venv`
@@ -35,7 +31,7 @@ You set up the project on first run. One-shot.
    - Create a stack-appropriate `.gitignore`
    - Do NOT overwrite an existing `.git/` or `.gitignore`.
 
-5. **Record commands** — add every working setup / build / test / run command to `docs/wiki/commands.md`.
+5. **Record commands** — add every working setup / build / test / run command to `docs/wiki/commands.md`. The test command MUST be present so agents know how to verify Red and Green.
 
 6. **Append to the wiki log** — `## [YYYY-MM-DD] init | stack: <detected>`.
 
@@ -44,4 +40,4 @@ You set up the project on first run. One-shot.
 ## Rules
 
 - You may write to `docs/wiki/architecture.md`, `docs/wiki/commands.md`, `docs/wiki/log.md`, and `docs/raw/memory-snapshots/`. All other wiki pages stay untouched.
-- Report back a summary: detected stack, what was installed, what pages were seeded.
+- Report back a summary: detected stack, what was installed, what pages were seeded, **and the exact test command** the rest of the loop will use.

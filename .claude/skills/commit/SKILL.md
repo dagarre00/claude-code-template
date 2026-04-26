@@ -6,35 +6,44 @@ type: skill
 
 # Smart Commit
 
-## Workflow:
-1. Run `git status` to see what changed
-2. Run `git diff --stat` for a summary of changes
-3. Determine the appropriate conventional commit type from the changes:
-   - New files/features → `feat`
-   - Bug fixes → `fix`
-   - Tests → `test`
-   - Documentation → `docs`
-   - Refactoring without behavior change → `refactor`
-   - Dependencies/tooling → `chore`
-4. Identify the scope from the primary directory or module affected
-5. Write a concise description (imperative mood, no period, <72 chars)
-6. Stage the relevant files (`git add` — prefer selective staging over `git add .`)
-7. Invoke `superpowers:verification-before-completion` — run the full test suite, read the output, confirm 0 failures. Do not commit if tests fail.
-8. Commit with the generated message
+## Workflow
 
-## Rules:
-- Never commit if tests fail
-- Never stage unrelated changes in the same commit
-- Never commit secrets, `.env` files, or credentials
-- If changes span multiple logical units, make multiple commits
-- Show the proposed commit message to the user before committing
+1. Run `git status` to see what changed.
+2. Run `git diff --stat` for a summary.
+3. **TDD discipline check** — before staging anything:
+   - Run `git diff --cached --name-only` and `git diff --name-only` together.
+   - If the diff adds new functions/classes/exports under `src/|app/|lib/|pkg/|cmd/|internal/|server/|client/|web/|api/|packages/|apps/` AND no test file is added or modified in the same diff: **stop**. Either add the missing test or split the commit so the test addition lands first. Exception: pure refactors (`refactor:` type) that don't change behavior are allowed without new tests.
+4. Determine the conventional commit type from the diff:
+   - New behavior + new tests → `feat`
+   - Bug fix + regression test → `fix`
+   - Tests only → `test`
+   - Documentation only → `docs`
+   - Refactor without behavior change → `refactor`
+   - Dependencies / tooling → `chore`
+5. Identify the scope from the primary directory or module affected.
+6. Write a concise description (imperative mood, no period, <72 chars).
+7. Stage the relevant files (`git add` — prefer selective staging over `git add .`).
+8. Invoke `superpowers:verification-before-completion` — run the full test suite, read the output, confirm 0 failures. Do not commit if tests fail.
+9. Commit with the generated message.
 
-## Example output:
+## Rules
+
+- Never commit if tests fail.
+- Never commit new behavior without a corresponding test added or modified in the same diff (refactor commits are the only exception).
+- Never stage unrelated changes in the same commit.
+- Never commit secrets, `.env` files, or credentials.
+- Show the proposed commit message to the user before committing.
+
+## Example output
+
 ```
 Changes detected:
   M src/auth/jwt-service.ts
   M src/auth/jwt-service.test.ts
   A src/auth/refresh-token.ts
+  A src/auth/refresh-token.test.ts
+
+TDD check: ✓ every code file has a matching test edit in this diff.
 
 Proposed commit: feat(auth): add JWT refresh token rotation
 

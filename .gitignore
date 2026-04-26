@@ -1,6 +1,5 @@
 # Claude Code
 .claude/settings.local.json
-.claude/agent-memory-local/
 
 # OS
 .DS_Store
@@ -11,3 +10,6 @@ docs/wiki/session-checkpoint.md
 
 # Inter-agent handoff files (transient — written by tester, deleted by implementer)
 .claude/handoff/
+
+# Obsidian per-user vault config (users open the vault themselves)
+docs/.obsidian/

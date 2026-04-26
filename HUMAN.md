@@ -1,14 +1,15 @@
-# Wiki-Driven Development with Claude Code — Human Guide
+# Wiki-Driven, TDD-Enforced Development with Claude Code — Human Guide
 
 ## What is this?
 
-A template for **wiki-driven development**: an LLM incrementally builds and maintains a persistent Obsidian-compatible wiki as the single source of truth for a project. Code is the implementation; the wiki is the spec. Sources you drop into `docs/raw/` get *ingested* into `docs/wiki/` — they never disappear, and the wiki never silently drifts from what was said.
+A template for **wiki-driven, TDD-enforced development**: an LLM incrementally builds and maintains a persistent Obsidian-compatible wiki as the single source of truth for a project, and a hook-enforced workflow keeps it in lockstep with code.
 
 - `docs/raw/` — immutable inputs (interview transcripts, notes, papers, any documents you drop in)
 - `docs/wiki/` — the LLM-owned knowledge graph (living spec + entities + decisions + gotchas)
 - `CLAUDE.md` — the schema describing both
+- `.claude/hooks/test-first-check.sh` — blocks code edits without a matching test on `feat/*` and `fix/*` branches
 
-Code development wraps around this: `/project:work` refuses to drift from the wiki, and a Stop-hook warns at session end if you edited code but forgot to update the wiki.
+Code that disagrees with the wiki is the bug. Code without a failing test first is also the bug. Both are enforced by the harness, not by Claude's discipline.
 
 ---
 
@@ -27,12 +28,14 @@ claude
 # 4. Gather initial requirements (covers the whole project, once)
 /project:interview
 
-# 5. Detect stack, seed wiki/architecture.md
+# 5. Detect stack, seed wiki/architecture.md, and bootstrap the template
 /project:init
 
 # 6. Start work — classify → spec → red → green → refactor → update wiki → commit
 /project:work
 ```
+
+After step 4 or 5, Claude will also **bootstrap the template into your project** — specializing CLAUDE.md, HUMAN.md, SETUP.md, and the agent prompts to your actual project. This is a one-time event and is committed as `chore: bootstrap template for <project-name>`.
 
 ---
 
@@ -42,10 +45,11 @@ claude
 
 | Command | What it does |
 |---------|--------------|
-| `/project:interview` | **Initial** project Q&A → full project scope, rewrites `docs/wiki/requirements.md` from scratch, seeds todos |
+| `/project:interview` | **Initial** project Q&A → full project scope, rewrites `docs/wiki/requirements.md` from scratch, seeds todos, bootstraps the template |
 | `/project:feature` | **Incremental** feature Q&A → appends to `requirements.md`, creates entity page with Behavior spec, seeds TODOs |
-| `/project:init` | Detect stack, set up environment, seed `docs/wiki/architecture.md` |
+| `/project:init` | Detect stack, set up environment, seed `docs/wiki/architecture.md`, bootstrap the template |
 | `/project:work` | Classify TODOs (simple/complex/batch) → spec → red → green → refactor → update wiki → commit |
+| `/project:tdd-check` | Audit which entities have unrealized Behavior cases (no matching tests) |
 | `/project:review` | Periodic full audit: all code vs wiki spec, security, hidden bugs (every ~5 TODOs) |
 | `/project:status` | Snapshot: todos, last wiki-log entries, pending raw sources, checkpoints |
 | `/project:checkpoint` | Git tag + dump state to `docs/wiki/session-checkpoint.md` |
@@ -65,7 +69,7 @@ claude
 
 ## Browse the wiki
 
-Open `docs/wiki/` as a vault in [Obsidian](https://obsidian.md/). Graph view, backlinks, and `[[wiki-links]]` all work out of the box. See [`SETUP.md`](SETUP.md) for vault config.
+Open `docs/` as a vault in [Obsidian](https://obsidian.md/). Graph view, backlinks, and `[[wiki-links]]` all work out of the box. See [`SETUP.md`](SETUP.md) for vault config.
 
 Key pages once content exists:
 
@@ -84,7 +88,7 @@ Key pages once content exists:
 
 Three routes — pick by situation:
 
-1. **Initial project setup** — `/project:interview` runs a full project Q&A (vision, user stories, functional requirements, constraints), then rewrites `docs/wiki/requirements.md` from scratch and seeds todos. Use once, at the start.
+1. **Initial project setup** — `/project:interview` runs a full project Q&A (vision, user stories, functional requirements, constraints), then rewrites `docs/wiki/requirements.md` from scratch and seeds todos. Use once, at the start. This is also when the template specializes itself into your project.
 2. **New feature on an existing project** — `/project:feature` interviews you about one feature only, then **appends** to `requirements.md`, creates the entity page with the Behavior spec filled in, and seeds TODOs. This is the right route for adding an auth method, a new API endpoint, a UI flow, etc.
 3. **Drop a raw doc** — put any markdown into `docs/raw/` (spec, meeting notes, research paper). The `raw-index-sync` hook auto-catalogs it as `pending`. Run `/wiki:ingest` when ready.
 
@@ -102,6 +106,7 @@ Three routes — pick by situation:
 **During work**
 - `/project:checkpoint` before risky refactors
 - `/wiki:query <question>` instead of guessing at spec
+- The `test-first-check.sh` hook will block code edits without a matching test on `feat/*` and `fix/*` branches — write the failing test first
 - If you edit code, update the matching `docs/wiki/entities/<slug>.md` *in the same commit* — the `wiki-drift-check` hook will warn if you don't
 
 **Ending a session**
@@ -109,13 +114,18 @@ Three routes — pick by situation:
 - `/wiki:lint` — catch dead links / drift early
 - If context feels heavy → `/project:fresh` (not `/compact`)
 
+**Every ~5 completed TODOs**
+- `/project:tdd-check` — see which entities still have un-realized Behavior cases
+- `/project:review` — full audit: code vs spec, security, hidden bugs
+
 ---
 
-## The hard rule
+## The two hard rules
 
-**The wiki is truth. Code that disagrees with the wiki is the bug.**
+1. **The wiki is truth.** Code that disagrees with the wiki is the bug. If behavior should change, edit the spec *first*, commit, then align the code.
+2. **No code without a failing test.** Spec → test → code. The hook enforces this on `feat/*` and `fix/*` — don't try to bypass it, write the test.
 
-If behavior should actually change, edit the wiki spec *first*, commit, then align the code. If the code is right and the wiki is wrong, fix the wiki first anyway — the commit history makes the order clear. This is what keeps code and spec from silently diverging over months of LLM work.
+If the test is wrong, fix the entity page first, regenerate the test, then implement. Never modify a test to make broken code pass.
 
 ---
 
@@ -127,15 +137,6 @@ Multiple developers can share one wiki safely:
 2. Use git worktrees for isolation: `git worktree add ../feature-x feature-x`.
 3. Merge to main sequentially; `/wiki:lint` on main catches conflicting edits.
 
-### Parallel agents (experimental)
-
-```bash
-export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1
-claude
-```
-
-Note: the implementer agent no longer runs in an isolated worktree by default. Both tester and implementer work in the same branch. For true isolation, use git worktrees manually per developer.
-
 ---
 
 ## Troubleshooting
@@ -143,6 +144,8 @@ Note: the implementer agent no longer runs in an isolated worktree by default. B
 **Write/Edit/Bash blocked** — copy the local permissions template: `cp .claude/settings.local.json.template .claude/settings.local.json`. Base `settings.json` stays read-only for safety.
 
 **Hooks not running** — `chmod +x .claude/hooks/*.sh` and verify `jq` is installed (`brew install jq` / `apt install jq`).
+
+**`test-first-check.sh` blocking a legitimate edit** — you're on a `feat/*` or `fix/*` branch and editing source code with no matching test. Either write the test first (correct) or move the edit to a `chore/*` or `refactor/*` branch (only valid for non-behavioral changes).
 
 **Agent not found** — restart Claude Code after adding agent files. Run `/agents` to list them.
 
@@ -154,4 +157,4 @@ Note: the implementer agent no longer runs in an isolated worktree by default. B
 
 **Reset the wiki** — delete `docs/wiki/` and re-run `/project:init` + `/wiki:ingest docs/raw/`. Raw is the seed of truth; the wiki can always be rebuilt.
 
-**Behavioral rules ignored** — CLAUDE.md guidance is followed ~70% of the time. Hard guarantees belong in hooks (`.claude/hooks/`), not rules. Add new rules to `.claude/rules/behavioral.md` as failures occur.
+**Template files still look generic after `/project:interview`** — the bootstrap step was skipped. Open CLAUDE.md, follow the `## Template → Project bootstrap` checklist, and commit as `chore: bootstrap template for <project-name>`.

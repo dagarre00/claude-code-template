@@ -8,6 +8,17 @@
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/test-first-check.sh"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
@@ -50,7 +61,6 @@
       }
     ]
   },
-  "_comment": "Wiki-driven methodology hooks. Copy .claude/settings.local.json.template to .claude/settings.local.json to unlock Write/Edit/Bash.",
   "enabledPlugins": {
     "superpowers@claude-plugins-official": true
   }

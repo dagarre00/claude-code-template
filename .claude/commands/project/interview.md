@@ -34,4 +34,15 @@ Conduct the requirements interview **inline in the main context** (no sub-agent)
    - Update `docs/wiki/index.md` to list new entity pages.
    - Append to `docs/wiki/log.md`: `## [YYYY-MM-DD] ingest | interview: <slug>`.
 
+3. **Bootstrap the template into a real project** — this is the moment the generic template files become project-specific. Follow the `## Template → Project bootstrap` checklist in `CLAUDE.md`:
+   - Specialize `CLAUDE.md` (intro paragraph + `## Project context` section).
+   - Specialize `HUMAN.md` and `SETUP.md`.
+   - Append project conventions to `tester.md` and `implementer.md` (or note that none are needed).
+   - Verify `code-style` and `git-conventions` skills' linked architecture page now has real content.
+   - Clear example gotchas in `docs/wiki/gotchas.md`.
+   - Create a project-specific `README.md`.
+   - Commit as `chore: bootstrap template for <project-name>`.
+
+Skipping this step leaves agents reading template-generic instructions — they will produce template-generic code. **Do not skip.**
+
 Never edit the transcript after it's written — it's a raw source. All refinement goes into the wiki pages.

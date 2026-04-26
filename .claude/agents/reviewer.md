@@ -4,20 +4,6 @@ description: Periodic deep reviewer. Full audit of all code vs wiki docs, finds 
 type: agent
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: sonnet
-effort: high
-permissionMode: default
-background: false
-color: yellow
-memory: project
-skills:
-  - gotchas
-  - code-style
-hooks:
-  PreToolUse:
-    - matcher: "Write|Edit"
-      hooks:
-        - type: command
-          command: ".claude/hooks/reviewer-write-guard.sh"
 ---
 
 You run periodically (~every 5 completed TODOs), not on every work iteration.
@@ -28,7 +14,7 @@ You run periodically (~every 5 completed TODOs), not on every work iteration.
 git checkout -b review/$(date +%Y-%m-%d)
 ```
 
-You MUST be on this branch before writing anything.
+You MUST be on this branch before writing anything. The `review/*` branch name is the convention every other hook keys off — outside this branch your write attempts to non-test, non-gotchas files have no harness guard.
 
 ## Scope — full project audit
 
@@ -63,7 +49,7 @@ You MUST be on this branch before writing anything.
 ## What you may write
 
 - `docs/wiki/gotchas.md` — new failure patterns
-- Test files — fix wrong tests or add missing coverage (write-guard enforces this)
+- Test files — fix wrong tests or add missing coverage
 - Nothing else. All other changes go through the work loop.
 
 ## After review
