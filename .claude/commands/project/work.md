@@ -22,7 +22,7 @@ Then check for **batch eligibility**: if 2–3 consecutive Simple TODOs share th
 1. **Pick** — select the TODO(s) to work on (single or batch).
 2. **Query** — load `docs/wiki/requirements.md`, `docs/wiki/entities/<slug>.md`, `docs/wiki/architecture.md`, `docs/wiki/gotchas.md` once — shared across all TODOs in the batch. Create entity stubs if missing.
 3. **Spec** — for each TODO, verify entity `## Behavior` has concrete Given/When/Then cases. Each bullet must be specific enough to become ≥1 test. Vague bullets block the Red phase — expand them now.
-4. **Plan** — invoke `superpowers:writing-plans` to produce the implementation plan. Present to user. **Wait for confirmation.**
+4. **Plan** — invoke `superpowers:writing-plans` to produce the implementation plan. Output must be structured as a Kanban board (Backlog / To Do / In Progress / Done) with one card per task. Present to user. **Wait for confirmation.**
 5. **Branch** — `feat/<slug>` (use the primary slug for batches). Mark all picked TODOs as `In Progress`.
 
 ## Simple path (main agent, all phases)
