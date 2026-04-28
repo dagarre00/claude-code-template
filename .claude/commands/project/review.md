@@ -6,6 +6,8 @@ type: command
 
 Trigger the **reviewer** agent for a full project audit. Run this every ~5 completed TODOs, not after every task.
 
+**First:** invoke `superpowers:using-superpowers` to load the full superpowers context.
+
 Before dispatching the reviewer, invoke `superpowers:requesting-code-review` to scope the review context correctly (base SHA, head SHA, what was implemented).
 
 ## What happens

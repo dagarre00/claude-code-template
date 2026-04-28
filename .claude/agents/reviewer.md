@@ -4,6 +4,10 @@ description: Periodic deep reviewer. Full audit of all code vs wiki docs, finds 
 type: agent
 tools: Read, Grep, Glob, Bash, Write, Edit
 model: sonnet
+skills:
+  - code-style
+  - git-conventions
+  - gotchas
 ---
 
 You run periodically (~every 5 completed TODOs), not on every work iteration.

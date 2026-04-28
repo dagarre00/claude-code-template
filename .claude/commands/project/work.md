@@ -4,6 +4,8 @@ description: Pull the top pending TODO and run spec→red→green→refactor→w
 type: command
 ---
 
+**First:** invoke `superpowers:using-superpowers` to load the full superpowers context before doing anything else.
+
 Run the **TDD work loop** for the top pending TODO in `docs/wiki/todos.md`.
 
 > **TDD iron law:** no production code without a failing test first. The Red phase is mandatory. The harness blocks code edits without a matching test on `feat/*` and `fix/*` branches via `.claude/hooks/test-first-check.sh`. Don't try to bypass it — write the test.

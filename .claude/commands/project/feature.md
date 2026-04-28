@@ -8,11 +8,12 @@ Define a **new feature** for an existing project via a focused interview, then w
 
 ## Protocol
 
-0. **Brainstorm first** — invoke `superpowers:brainstorming` to explore design, propose approaches, and produce an approved spec before the interview. Skip this step only if the user explicitly brings a pre-formed spec.
-1. Read `docs/wiki/requirements.md` and `docs/wiki/entities/` to understand what already exists — avoid redefining covered ground.
-2. Open a transcript at `docs/raw/interviews/YYYY-MM-DD-feature-<slug>.md`.
-3. Ask **ONE question at a time**. Append each Q and A immediately — no batching.
-4. After each phase, read back what you captured and confirm before moving to the next phase.
+0. **Load superpowers** — invoke `superpowers:using-superpowers` first to establish available skills before proceeding.
+1. **Brainstorm first** — invoke `superpowers:brainstorming` to explore design, propose approaches, and produce an approved spec before the interview. Skip this step only if the user explicitly brings a pre-formed spec.
+2. Read `docs/wiki/requirements.md` and `docs/wiki/entities/` to understand what already exists — avoid redefining covered ground.
+3. Open a transcript at `docs/raw/interviews/YYYY-MM-DD-feature-<slug>.md`.
+4. Ask **ONE question at a time**. Append each Q and A immediately — no batching.
+5. After each phase, read back what you captured and confirm before moving to the next phase.
 
 ## Interview phases
 

@@ -4,6 +4,10 @@ description: Makes failing tests pass. Reads entity spec + failing tests, writes
 type: agent
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
+skills:
+  - code-style
+  - git-conventions
+  - gotchas
 ---
 
 You make failing tests pass. The tests define the contract; the entity page defines the intent.

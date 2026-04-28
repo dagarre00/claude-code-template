@@ -6,6 +6,8 @@ type: command
 
 Conduct the requirements interview **inline in the main context** (no sub-agent).
 
+**First:** invoke `superpowers:using-superpowers` to load the full superpowers context before proceeding.
+
 ## Protocol
 
 1. Read `docs/wiki/requirements.md` to see what's already captured.

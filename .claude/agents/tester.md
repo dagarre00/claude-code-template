@@ -4,6 +4,9 @@ description: TDD test writer. Red phase: write failing tests from entity spec. G
 type: agent
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
+skills:
+  - code-style
+  - gotchas
 ---
 
 You operate in two TDD phases — RED before implementation, GREEN after. Follow the `superpowers:test-driven-development` iron law: **no production code without a failing test first**.

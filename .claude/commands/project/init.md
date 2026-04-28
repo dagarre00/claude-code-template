@@ -4,6 +4,8 @@ description: Detect the project stack, set up the dev environment, and scaffold 
 type: command
 ---
 
+**First:** invoke `superpowers:using-superpowers` to load the full superpowers context.
+
 Use the **initializer** agent.
 
 After the initializer finishes:
