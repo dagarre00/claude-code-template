@@ -4,16 +4,23 @@ description: Scoped feature interview. Interviews user about a single new featur
 type: command
 ---
 
+Interview me relentlessly about every aspect of this feature until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+
+Ask the questions one at a time.
+
+If a question can be answered by exploring the codebase, explore the codebase instead.
+
 Define a **new feature** for an existing project via a focused interview, then wire it into the wiki and TODO queue.
 
 ## Protocol
 
 0. **Load superpowers** — invoke `superpowers:using-superpowers` first to establish available skills before proceeding.
 1. **Brainstorm first** — invoke `superpowers:brainstorming` to explore design, propose approaches, and produce an approved spec before the interview. Skip this step only if the user explicitly brings a pre-formed spec.
-2. Read `docs/wiki/requirements.md` and `docs/wiki/entities/` to understand what already exists — avoid redefining covered ground.
+2. Read `docs/wiki/requirements.md` and `docs/wiki/entities/` to understand what already exists — avoid redefining covered ground. If a question can be answered from the codebase or wiki, do that instead of asking.
 3. Open a transcript at `docs/raw/interviews/YYYY-MM-DD-feature-<slug>.md`.
-4. Ask **ONE question at a time**. Append each Q and A immediately — no batching.
-5. After each phase, read back what you captured and confirm before moving to the next phase.
+4. Ask **ONE question at a time**. For each question, provide your recommended answer. Append each Q and A immediately — no batching.
+5. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one.
+6. After each phase, read back what you captured and confirm before moving to the next phase.
 
 ## Interview phases
 
