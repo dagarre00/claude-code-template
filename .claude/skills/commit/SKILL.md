@@ -25,6 +25,10 @@ type: skill
 7. Stage the relevant files (`git add` — prefer selective staging over `git add .`).
 8. Invoke `superpowers:verification-before-completion` — run the full test suite, read the output, confirm 0 failures. Do not commit if tests fail.
 9. Commit with the generated message.
+10. Append a row to `docs/changelog.md` (if it exists):
+    ```
+    | <ISO timestamp> | <session_id[:8]> | `<branch>` | <commit-sha[:7]> | — |
+    ```
 
 ## Rules
 

@@ -1,11 +1,6 @@
 {
   "permissions": {
-    "allow": [
-      "Read",
-      "Grep",
-      "Glob",
-      "Agent"
-    ]
+    "allow": ["Read", "Grep", "Glob", "Agent"]
   },
   "hooks": {
     "PreToolUse": [
@@ -48,10 +43,6 @@
           {
             "type": "command",
             "command": ".claude/hooks/raw-pending-check.sh"
-          },
-          {
-            "type": "command",
-            "command": ".claude/hooks/on-task-complete.sh"
           },
           {
             "type": "command",
