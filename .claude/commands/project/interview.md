@@ -4,6 +4,12 @@ description: Guided requirements Q&A. Writes a transcript to docs/raw/interviews
 type: command
 ---
 
+Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+
+Ask the questions one at a time.
+
+If a question can be answered by exploring the codebase, explore the codebase instead.
+
 Conduct the requirements interview **inline in the main context** (no sub-agent).
 
 **First:** invoke `superpowers:using-superpowers` to load the full superpowers context before proceeding.
@@ -11,9 +17,11 @@ Conduct the requirements interview **inline in the main context** (no sub-agent)
 ## Protocol
 
 1. Read `docs/wiki/requirements.md` to see what's already captured.
-2. Open (create if needed) a transcript file at `docs/raw/interviews/YYYY-MM-DD-<slug>.md`.
-3. Ask **ONE question at a time**. Append each Q and A to the transcript immediately — don't batch.
-4. After each phase completes, pause and read back what you captured for confirmation.
+2. If a question can be answered by exploring the codebase, do that instead of asking.
+3. Open (create if needed) a transcript file at `docs/raw/interviews/YYYY-MM-DD-<slug>.md`.
+4. Ask **ONE question at a time**. For each question, provide your recommended answer. Append each Q and A to the transcript immediately — don't batch.
+5. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one.
+6. After each phase completes, pause and read back what you captured for confirmation.
 
 ## Phases
 
