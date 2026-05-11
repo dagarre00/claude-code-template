@@ -39,7 +39,7 @@ case "$branch" in
       cmds="docs/wiki/commands.md"
       if [ -f "$cmds" ]; then
         test_cmd=$(awk '/^## Test/{f=1;next} f && /^`/{gsub(/^`|`$/,""); print; exit}' "$cmds")
-        if [ -n "$test_cmd" ]; then
+        if [ -n "$test_cmd" ] && [ "$test_cmd" != "<TBD>" ]; then
           echo "[session-end] running tests: $test_cmd" >&2
           if bash -c "$test_cmd" >&2; then
             echo "[session-end] tests OK" >&2
