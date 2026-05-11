@@ -1,37 +1,23 @@
 ---
 name: todos
-description: Priority-ordered work queue. /project:work always pulls the top pending TODO.
+description: Priority-ordered work queue. /work pulls from the top.
 type: wiki-spec
+updated: 2026-05-11
 status: draft
-updated: 2026-04-15
 ---
 
-# TODOs
+# Todos
 
-> **Source of truth** for what's next. `/project:work` picks the top pending row.
-> Generated from [[requirements]] during `/project:interview` finalization, or added manually as work is discovered.
+> Priority-ordered. `/work` takes the top item (or a batch sharing context). When complete, items move to [[completed]].
 
-## Pending
+## Now (P0 — next)
+*(Empty — run `/interview` to populate.)*
 
-| ID | Priority | Feature area | Description | Entity page |
-|----|----------|--------------|-------------|-------------|
-| *(none — run `/project:interview` and then `/project:work` to generate TODOs from requirements)* | | | | |
+## Next (P1)
+*(Items waiting for capacity. Should map to entity pages.)*
 
-## In Progress
+## Later (P2)
+*(Nice-to-have. Promote to Next when prioritized.)*
 
-| ID | Branch | Started | Owner |
-|----|--------|---------|-------|
-| *(none)* | | | |
-
-## Blocked
-
-| ID | Blocked by | Reason |
-|----|------------|--------|
-| *(none)* | | |
-
-## Priority scale
-
-- `P0` — ship-blocker, must do now
-- `P1` — core feature, scheduled
-- `P2` — nice-to-have, can slip
-- `P3` — someday, park it
+## Backlog
+*(Long-tail. Periodically pruned during `/review`.)*

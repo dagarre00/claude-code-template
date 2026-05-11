@@ -1,43 +1,39 @@
-#!/bin/bash
-# .claude/hooks/auto-format.sh
-# PostToolUse hook: auto-formats files after Write/Edit based on extension
-# Exits 0 silently if no formatter is found
+#!/usr/bin/env bash
+# PostToolUse hook for Write/Edit: format the file in-place by extension if a
+# known formatter is on PATH. Best-effort, non-blocking.
+set -uo pipefail
 
-INPUT=$(cat)
+root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+cd "$root"
 
-if ! command -v jq &> /dev/null; then
-  exit 0
-fi
+input=$(cat 2>/dev/null || echo "{}")
+file=$(printf '%s' "$input" | python -c "import sys,json;d=json.load(sys.stdin);print(d.get('tool_input',{}).get('file_path',''))" 2>/dev/null || echo "")
+[ -z "$file" ] && exit 0
+[ ! -f "$file" ] && exit 0
 
-FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
-if [ -z "$FILE_PATH" ] || [ ! -f "$FILE_PATH" ]; then
-  exit 0
-fi
+format_with() {
+  command -v "$1" >/dev/null 2>&1 || return 1
+  shift
+  "$@" 2>&1 | sed 's/^/  /' >&2 || true
+  return 0
+}
 
-EXT="${FILE_PATH##*.}"
-
-case "$EXT" in
-  py)
-    if command -v ruff &> /dev/null; then
-      ruff format "$FILE_PATH" 2>/dev/null
-    elif command -v black &> /dev/null; then
-      black --quiet "$FILE_PATH" 2>/dev/null
-    fi
+case "$file" in
+  *.py)
+    format_with ruff       ruff format "$file" \
+      || format_with black black -q "$file"
     ;;
-  js|ts|jsx|tsx|css|html|json)
-    if command -v prettier &> /dev/null; then
-      prettier --write "$FILE_PATH" 2>/dev/null
-    fi
+  *.js|*.jsx|*.ts|*.tsx|*.json|*.md|*.yml|*.yaml|*.css|*.html|*.scss)
+    format_with prettier prettier --write --log-level=warn "$file"
     ;;
-  go)
-    if command -v gofmt &> /dev/null; then
-      gofmt -w "$FILE_PATH" 2>/dev/null
-    fi
+  *.go)
+    format_with gofmt gofmt -w "$file"
     ;;
-  rs)
-    if command -v rustfmt &> /dev/null; then
-      rustfmt "$FILE_PATH" 2>/dev/null
-    fi
+  *.rs)
+    format_with rustfmt rustfmt "$file"
+    ;;
+  *.sh)
+    format_with shfmt shfmt -w "$file"
     ;;
 esac
 

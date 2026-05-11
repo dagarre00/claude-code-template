@@ -1,47 +1,67 @@
 ---
 name: requirements
-description: Living specification — what the project should do. Code must match this document.
+description: Living spec — what the project must do. Code that disagrees with this file is the bug.
 type: wiki-spec
+updated: 2026-05-11
 status: draft
-updated: 2026-04-15
 ---
 
-# Project Requirements — LIVING SPEC
+# Requirements
 
-> **Contract:** code must match this document. If you change behavior, update this in the same task. If you discover the spec is wrong, update it first, then fix the code.
-
-## Status: Not Initialized
-
-Run `/project:interview` to populate this document through a guided conversation. The interview writes a transcript to `docs/raw/interviews/` and then ingests it into this page.
+> Living spec. Run `/interview` to fill the gaps below. Update as the project evolves; never let this file go stale relative to the code.
 
 ## Vision
+*(One paragraph. The problem this project solves and who it serves.)*
 
-<!-- One or two sentences: what does this project do and for whom? -->
+`<TBD via /interview>`
 
-## User Stories
+## Users
+*(Who uses this. Multiple user types if applicable. For each: their goal and their constraints.)*
 
-<!-- As a [user], I can [action] -->
+`<TBD via /interview>`
 
-## Functional Requirements
+## User stories
+*(Bridge between users and functional requirements. Each story names the user, the capability, and the benefit. Each story should be small enough to map to one or two entity pages and produce sharp Behavior cases.)*
 
-<!-- Group by feature area. Each feature should have a corresponding [[entities/<feature>]] page. -->
+**Format:**
+```
+- As a <user type>, I want <capability>, so that <benefit>.
+  - Acceptance: <observable check that proves the story is delivered>.
+  - Maps to: [[entities/<slug>]]
+```
 
-## Non-Functional Requirements
+**Example:**
+```
+- As a returning user, I want to log in with email + password, so that my prior data is restored.
+  - Acceptance: valid credentials produce a session cookie and access to /dashboard; invalid credentials produce 401.
+  - Maps to: [[entities/auth-login]]
+```
 
-<!-- Stack, performance, testing strategy, CI/CD, deployment target -->
+**Stories:**
 
-## Constraints
+`<TBD via /interview>`
 
-<!-- Budget, timeline, infrastructure, team size -->
+## Functional requirements
+*(What the system must do. Each item is an observable capability, not an implementation choice. Link to the entity page that owns it.)*
 
-## Out of Scope
+- `<TBD via /interview>` — see [[entities/<slug>]]
 
-<!-- Explicitly NOT building in this version -->
+## Non-functional requirements
+*(Performance, security, observability, compliance, deployment constraints. Specific numbers where possible.)*
 
-## Traceability
+- **Performance:** `<TBD>`
+- **Security:** `<TBD>`
+- **Reliability:** `<TBD>`
+- **Observability:** `<TBD>`
+- **Compliance / data:** `<TBD>`
+- **Deployment target:** `<TBD>`
 
-This section is auto-maintained by the wiki-maintainer. It maps each requirement to its implementing entity page so drift is visible.
+## Out of scope
+*(Explicit non-goals. Things the project will not do, even if asked.)*
 
-| Feature area | Entity page | Status |
-|--------------|-------------|--------|
-| *(populated after features are implemented)* | | |
+- `<TBD>`
+
+## Open questions
+*(Things the wiki doesn't answer yet. Resolve via `/interview` or `human-checkpoint`.)*
+
+- `<TBD>`

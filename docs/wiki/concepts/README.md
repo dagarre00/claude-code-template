@@ -1,41 +1,30 @@
----
-name: concepts-index
-description: Index of pattern, convention, and domain-concept pages. Reusable knowledge that isn't tied to one feature.
-type: wiki-index
-updated: 2026-04-15
----
-
 # Concepts
 
-Patterns, conventions, domain ideas that span features. Also the landing spot for query outputs that are worth keeping (comparisons, analyses, cross-cutting observations).
+Patterns, conventions, and domain ideas that recur across the project. Concept pages exist so the same explanation does not get rewritten in three different entity pages.
 
-## Template
+## When to file a concept page
 
-```markdown
+- A pattern (retry, caching, pagination, request-validation, etc.) appears in three or more entity pages or concepts in their own words.
+- Domain terminology that requires a definition multiple places refer to.
+- A reusable approach the team should follow consistently.
+
+For one-off explanations, keep it inside the entity page. Promote to a concept only when reuse is real.
+
+## Page shape
+
+```yaml
 ---
-name: <concept-slug>
-description: <one-line — what this concept is>
+name: <slug>
+description: <one line>
 type: wiki-concept
-sources: [../raw/...]
 updated: YYYY-MM-DD
+status: draft | approved
+tags: [...]
 ---
-
-# <Concept Name>
-
-## What it is
-Concise definition.
-
-## Why it matters
-How this shows up in the code or product.
-
-## Where it appears
-- [[../entities/<x>]]
-- [[../entities/<y>]]
-
-## Related concepts
-- [[<other-concept>]]
 ```
 
-## Pages
+Body: 1–2 paragraphs explaining the pattern as it applies *in this project*, followed by `## When to use`, `## When NOT to use`, and `## Examples` linking to entities that use it.
 
-*(none yet)*
+## Filing
+
+The `wiki-maintainer` promotes concepts from recurring text (see `wiki-todos.md` queue). Other agents may file a stub concept inline when they spot a clear pattern, but the maintainer normalizes it later.

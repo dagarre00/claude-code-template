@@ -1,21 +1,31 @@
 ---
 name: gotchas
-description: Known failure points, edge cases, and recurring mistakes. Highest-signal page in the wiki — consult BEFORE writing or debugging code.
+description: Project-specific failure modes future agents must avoid. Use the gotcha-recording skill to append.
 type: wiki-spec
-updated: 2026-04-15
+updated: 2026-05-11
+status: draft
 ---
 
 # Gotchas
 
-> **Read before any task.** This page grows organically as the project matures.
-> Format: `- **[area]**: what goes wrong + how to avoid it`
+> Project-specific traps. Generic discipline issues live in `.claude/rules/behavioral.md`. Use the `gotcha-recording` skill to append entries — keep the When/Symptom/Cause/Fix format.
 
-## Examples (delete once real gotchas arrive)
+## Critical
+*(Severe — data corruption, security, silent breakage. Read first.)*
 
-- **[auth]**: JWT refresh tokens can expire silently — always check expiry before the call, don't assume validity
-- **[db]**: ORM lazy-loads relations by default — use eager loading in list endpoints or you'll get N+1 queries
-- **[tests]**: Mock the Redis client in unit tests — the suite hangs on a real connection attempt
+*(None yet.)*
 
-## Project gotchas
+## Runtime
+*(Things that go wrong while the code runs.)*
 
-<!-- Agents and humans append real project gotchas below -->
+*(None yet.)*
+
+## Testing
+*(Test framework, fixtures, isolation, flake.)*
+
+*(None yet.)*
+
+## Tooling
+*(Build, lint, formatter, IDE, env quirks.)*
+
+*(None yet.)*

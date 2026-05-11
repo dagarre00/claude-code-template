@@ -1,14 +1,13 @@
 ---
 name: completed
-description: Ledger of shipped work with back-refs to the entity pages and commits that delivered each item
+description: Shipped work with backrefs to entity pages and commits.
 type: wiki-spec
-updated: 2026-04-15
+updated: 2026-05-11
+status: draft
 ---
 
-# Completed Work
+# Completed
 
-> Append-only. After `/project:work` finishes a TODO, it moves the row from [[todos]] to here, with a link to the entity page and the first commit SHA.
+> Items moved here from [[todos]] when shipped. Each line references the entity page and the merge commit.
 
-| ID | Finished | Feature area | Description | Entity page | First commit |
-|----|----------|--------------|-------------|-------------|--------------|
-| *(none yet)* | | | | | |
+*(Empty — nothing shipped yet.)*
