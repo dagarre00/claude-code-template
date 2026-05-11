@@ -21,9 +21,7 @@ status: draft
 ## Layout
 *(Top-level directories and what lives where. Add as the project grows.)*
 
-```
-<TBD>
-```
+`<TBD>`
 
 ## Data
 *(Where state lives — DB, files, cache, queues. Persistence requirements.)*

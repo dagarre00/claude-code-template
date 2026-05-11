@@ -40,14 +40,16 @@ You are the interviewer. Your job is to grill the human until you reach shared u
    Append each Q+A as you go. **Raw is immutable** — never edit prior answers, only append.
 
 3. **Ask questions, one at a time, in this rough order:**
-   - **Who** uses this? (user types, contexts)
-   - **What** must it do? (capabilities, in priority order)
-   - **What must it NOT do?** (explicit out-of-scope)
-   - **When** does it run? (triggers, schedules, latency budgets)
-   - **Where** does state live? (DB, files, in-memory; durability requirements)
-   - **How** does it fail? (recoverable vs not; what does the user see?)
-   - **What's the smallest first slice?** (MVP boundary)
-   - **What's the test command and the deployment target?**
+   - **Who** uses this? (user types, contexts) → fills `## Users` and seeds `## User stories`
+   - **What** must it do? (capabilities per user, in priority order) → fills `## User stories` and `## Functional requirements`
+   - **What must it NOT do?** (explicit out-of-scope) → fills `## Out of scope`
+   - **When** does it run? (triggers, schedules, latency budgets) → fills Non-functional `Performance`
+   - **Where** does state live? (DB, files, in-memory; durability requirements) → fills `## Data` in architecture
+   - **What external services?** (APIs, queues, auth providers, infra deps) → fills `## External services` in architecture
+   - **How** does it fail? (recoverable vs not; what does the user see?) → fills Non-functional `Reliability` + entity failure Behaviors
+   - **Security, compliance, observability?** (auth model, data retention, logging requirements) → fills Non-functional `Security`, `Observability`, `Compliance / data`
+   - **What's the smallest first slice?** (MVP boundary) → shapes first todos
+   - **What's the test framework, test command, and deployment target?** → fills `## Testing strategy` and `## Deployment` in architecture
 
    Use `AskUserQuestion` with options when there are 2–4 discrete choices. Otherwise plain text.
 
@@ -61,9 +63,9 @@ You are the interviewer. Your job is to grill the human until you reach shared u
 ## After the interview
 
 1. **Ingest the transcript.** For each affected wiki page, apply the changes. Pages this often touches:
-   - `docs/wiki/requirements.md` — update vision/users/functional/non-functional.
+   - `docs/wiki/requirements.md` — fill **all** sections: `## Vision`, `## Users`, `## User stories` (one story per user-capability pair, in `- As a <user type>, I want <capability>, so that <benefit>` format with Acceptance + `Maps to:` link), `## Functional requirements` (link each item to its entity page), `## Non-functional requirements` (specific numbers where known), `## Out of scope`, `## Open questions` (any unresolved items from the interview).
    - `docs/wiki/entities/<slug>.md` — create or update, with Behavior cases.
-   - `docs/wiki/architecture.md` — record any new stack/tooling choices.
+   - `docs/wiki/architecture.md` — fill `## Stack`, `## Layout`, `## Data` (where state lives, persistence requirements), `## External services` (third-party APIs, infra deps), `## Testing strategy` (framework, test command, fixture conventions, coverage target), `## Conventions` (naming, errors, logging, config), `## Deployment` (CI, build artifacts, release process). Leave sections as `<TBD>` only if genuinely not discussed.
    - `docs/wiki/decisions/<slug>.md` — file an ADR per `decision-recording` skill for non-trivial choices.
    - `docs/wiki/todos.md` — add new todos for the work the interview implies.
 

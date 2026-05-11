@@ -39,8 +39,8 @@ You are initializing this project's wiki + schema scaffolding. This is **idempot
 5. **Create missing project-basic pages** (skip any that already exist with non-trivial content):
    - `docs/wiki/index.md` — catalog, one section per category, links by Obsidian wiki-link.
    - `docs/wiki/log.md` — start with the init entry.
-   - `docs/wiki/requirements.md` — empty skeleton with a `## Vision`, `## Users`, `## Functional`, `## Non-functional` section. Leave a note: "Run `/interview` to fill."
-   - `docs/wiki/architecture.md` — fill with what you detected (stack, test command, dirs). Leave gaps marked `<TBD via /interview>`.
+   - `docs/wiki/requirements.md` — empty skeleton with all sections: `## Vision`, `## Users`, `## User stories`, `## Functional requirements`, `## Non-functional requirements`, `## Out of scope`, `## Open questions`. Use the exact section format from the current template (including the `- As a <user type>...` story format under User stories). Leave every section body as `<TBD via /interview>`.
+   - `docs/wiki/architecture.md` — fill what you detected (stack, test command, dirs) under `## Stack` and `## Layout`. Leave all other sections (`## Data`, `## External services`, `## Testing strategy`, `## Conventions`, `## Deployment`) as `<TBD via /interview>`.
    - `docs/wiki/git-conventions.md` — start from `feature-branching` skill; record default branch, prefixes, commit format.
    - `docs/wiki/todos.md` — empty heading list `## P0 / ## P1 / ## P2` (or `## Now / ## Next / ## Later`).
    - `docs/wiki/completed.md` — empty.

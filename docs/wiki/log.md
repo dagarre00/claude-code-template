@@ -13,3 +13,12 @@ status: draft
 ## [2026-05-11 00:00] template-bootstrap
 - Scaffolded the agentic-template wiki. No project content yet.
 - Next: run `/init` then `/interview` to populate.
+
+## [2026-05-11 18:24] session-end
+- Branch: feat/project-reset
+
+## [2026-05-11 18:28] session-end
+- Branch: feat/project-reset
+
+## [2026-05-11 18:31] session-end
+- Branch: feat/project-reset
