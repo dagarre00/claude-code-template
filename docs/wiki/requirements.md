@@ -20,6 +20,27 @@ status: draft
 
 `<TBD via /interview>`
 
+## User stories
+*(Bridge between users and functional requirements. Each story names the user, the capability, and the benefit. Each story should be small enough to map to one or two entity pages and produce sharp Behavior cases.)*
+
+**Format:**
+```
+- As a <user type>, I want <capability>, so that <benefit>.
+  - Acceptance: <observable check that proves the story is delivered>.
+  - Maps to: [[entities/<slug>]]
+```
+
+**Example:**
+```
+- As a returning user, I want to log in with email + password, so that my prior data is restored.
+  - Acceptance: valid credentials produce a session cookie and access to /dashboard; invalid credentials produce 401.
+  - Maps to: [[entities/auth-login]]
+```
+
+**Stories:**
+
+`<TBD via /interview>`
+
 ## Functional requirements
 *(What the system must do. Each item is an observable capability, not an implementation choice. Link to the entity page that owns it.)*
 
