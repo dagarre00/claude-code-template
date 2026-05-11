@@ -1,47 +1,46 @@
 ---
 name: requirements
-description: Living specification — what the project should do. Code must match this document.
+description: Living spec — what the project must do. Code that disagrees with this file is the bug.
 type: wiki-spec
+updated: 2026-05-11
 status: draft
-updated: 2026-04-15
 ---
 
-# Project Requirements — LIVING SPEC
+# Requirements
 
-> **Contract:** code must match this document. If you change behavior, update this in the same task. If you discover the spec is wrong, update it first, then fix the code.
-
-## Status: Not Initialized
-
-Run `/project:interview` to populate this document through a guided conversation. The interview writes a transcript to `docs/raw/interviews/` and then ingests it into this page.
+> Living spec. Run `/interview` to fill the gaps below. Update as the project evolves; never let this file go stale relative to the code.
 
 ## Vision
+*(One paragraph. The problem this project solves and who it serves.)*
 
-<!-- One or two sentences: what does this project do and for whom? -->
+`<TBD via /interview>`
 
-## User Stories
+## Users
+*(Who uses this. Multiple user types if applicable. For each: their goal and their constraints.)*
 
-<!-- As a [user], I can [action] -->
+`<TBD via /interview>`
 
-## Functional Requirements
+## Functional requirements
+*(What the system must do. Each item is an observable capability, not an implementation choice. Link to the entity page that owns it.)*
 
-<!-- Group by feature area. Each feature should have a corresponding [[entities/<feature>]] page. -->
+- `<TBD via /interview>` — see [[entities/<slug>]]
 
-## Non-Functional Requirements
+## Non-functional requirements
+*(Performance, security, observability, compliance, deployment constraints. Specific numbers where possible.)*
 
-<!-- Stack, performance, testing strategy, CI/CD, deployment target -->
+- **Performance:** `<TBD>`
+- **Security:** `<TBD>`
+- **Reliability:** `<TBD>`
+- **Observability:** `<TBD>`
+- **Compliance / data:** `<TBD>`
+- **Deployment target:** `<TBD>`
 
-## Constraints
+## Out of scope
+*(Explicit non-goals. Things the project will not do, even if asked.)*
 
-<!-- Budget, timeline, infrastructure, team size -->
+- `<TBD>`
 
-## Out of Scope
+## Open questions
+*(Things the wiki doesn't answer yet. Resolve via `/interview` or `human-checkpoint`.)*
 
-<!-- Explicitly NOT building in this version -->
-
-## Traceability
-
-This section is auto-maintained by the wiki-maintainer. It maps each requirement to its implementing entity page so drift is visible.
-
-| Feature area | Entity page | Status |
-|--------------|-------------|--------|
-| *(populated after features are implemented)* | | |
+- `<TBD>`

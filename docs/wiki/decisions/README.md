@@ -1,47 +1,17 @@
----
-name: decisions-index
-description: Architectural Decision Records (ADRs). One page per non-trivial design decision.
-type: wiki-index
-updated: 2026-04-15
----
-
 # Decisions (ADRs)
 
-One page per non-trivial design decision. Created during `/project:work` whenever a non-obvious call is made.
+Architectural Decision Records — small, dated notes capturing **why** a non-trivial choice was made. They live here because future readers (including future you) will second-guess otherwise.
 
-## Template
+## When to file
 
-```markdown
----
-name: <decision-slug>
-description: <one-line — what was decided>
-type: wiki-decision
-status: proposed | accepted | superseded
-superseded-by: <slug>    # only if status is superseded
-updated: YYYY-MM-DD
----
+See the `decision-recording` skill (`.claude/skills/decision-recording.md`) for triggers. Short version: file an ADR when picking between reasonable alternatives that will shape future work.
 
-# ADR: <Decision Title>
+## Naming
 
-## Context
-What situation forced the decision?
+`YYYY-MM-DD-<short-kebab-name>.md` — e.g. `2026-05-11-pick-postgres-over-sqlite.md`. The date makes timeline scanning easy; the slug makes search easy.
 
-## Options considered
-- Option A — pros / cons
-- Option B — pros / cons
-- Option C — pros / cons
+## Lifecycle
 
-## Decision
-Which option was chosen and why.
-
-## Consequences
-What this locks us into. What new problems it creates.
-
-## Related
-- [[../entities/<x>]]
-- [[<other-decision>]]
-```
-
-## Pages
-
-*(none yet)*
+- Status: `proposed` → `accepted` → `superseded` / `deprecated`.
+- ADRs are **immutable once accepted**. To change direction, file a new ADR and mark the old one `superseded`. Do not edit the body of an accepted ADR.
+- Review reports also live here (`review-YYYY-MM-DD.md`) — they are a kind of ADR.

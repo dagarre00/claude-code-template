@@ -1,42 +1,36 @@
 ---
-name: wiki-index
-description: Content catalog of the project wiki — links to every page with a one-line summary
+name: index
+description: Catalog of every wiki page, one line each. Updated by wiki-maintainer on every ingest.
 type: wiki-index
-updated: 2026-04-15
+updated: 2026-05-11
+status: draft
 ---
 
-# Project Wiki — Index
+# Wiki Index
 
-The living knowledge base. Open `docs/` in Obsidian to browse visually (graph view recommended).
+> Catalog of the wiki. One line per page. Sorted by section. The `wiki-maintainer` agent keeps this in sync.
 
-## Living spec
+## Project basics
+- [[requirements]] — what the project does (living spec)
+- [[architecture]] — stack, patterns, testing strategy
+- [[git-conventions]] — branching and commit conventions
+- [[commands]] — working shell commands (build, test, lint, run)
 
-- [[requirements]] — what the project should do (LIVING SPEC, always current)
-- [[architecture]] — stack, patterns, conventions
+## Work tracking
 - [[todos]] — priority-ordered work queue
-- [[completed]] — shipped work (with wiki-link back-refs to entities)
+- [[completed]] — shipped work with backrefs
+- [[gotchas]] — known failure points
+- [[wiki-todos]] — cleanup queue for the wiki-maintainer
+- [[log]] — chronological ops log
 
-## Operational
+## Entities
+*(one page per feature / module / component — populated by `/work` and `/interview`)*
 
-- [[gotchas]] — known failure points, edge cases, recurring mistakes
-- [[commands]] — working shell commands (setup, build, test, deploy)
-- [[file-map]] — auto-generated project tree
-- [[log]] — chronological ops log (ingest / work / lint entries)
+## Concepts
+*(patterns, conventions, domain ideas — promoted by the wiki-maintainer when a pattern recurs)*
 
-## Knowledge graph
+## Decisions (ADRs)
+*(architectural decisions — filed via the `decision-recording` skill)*
 
-- [[entities/]] — one page per feature, module, or component
-- [[concepts/]] — patterns, conventions, domain ideas
-- [[decisions/]] — ADRs (architectural decision records)
-- [[summaries/]] — one page per ingested raw source
-
-## Raw sources
-
-- `../raw/index.md` — catalog of un-ingested and ingested raw sources
-
-## How to keep this page current
-
-Every `/wiki:ingest` run should:
-1. Add a row to the relevant section above for each new page
-2. Update the `updated:` frontmatter date
-3. Not exceed ~200 lines (split into sub-indexes if the wiki outgrows this)
+## Summaries
+*(one page per ingested raw source — produced by the wiki-maintainer)*

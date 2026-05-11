@@ -1,22 +1,15 @@
 ---
-name: wiki-log
-description: Chronological append-only log of every ingest, query-filed-back, work task, and lint pass
+name: log
+description: Chronological ops log — ingests, work cycles, reviews, lints, checkpoints, rollbacks.
 type: wiki-log
-updated: 2026-04-15
+updated: 2026-05-11
+status: draft
 ---
 
-# Wiki Log
+# Log
 
-> **Format:** `## [YYYY-MM-DD] <op> | <title>` so entries are parseable.
-> Ops: `ingest`, `work`, `lint`, `query-filed`, `decision`.
-> Parse last 5: `grep "^## \[" docs/wiki/log.md | tail -5`
+> Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd.
 
----
-
-## [2026-04-15] migration | Adopt wiki-driven methodology
-
-Bootstrap entry. Repository migrated from agent-context + plans model to wiki-as-compounding-artifact model.
-- Created `docs/raw/` and `docs/wiki/` layers.
-- Retired researcher, orchestrator, docs-maintainer agents.
-- Introduced wiki-maintainer + `/wiki:ingest|query|lint|log` commands.
-- Added wiki-drift hook to enforce spec-code alignment.
+## [2026-05-11 00:00] template-bootstrap
+- Scaffolded the agentic-template wiki. No project content yet.
+- Next: run `/init` then `/interview` to populate.

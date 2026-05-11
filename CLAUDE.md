@@ -1,259 +1,144 @@
-# Project Schema — Wiki-Driven, TDD-Enforced Development
+# Project Schema — Wiki-Driven, Spec + TDD, Progressive Disclosure
 
-This repository is a **template** for an agentic software-development workflow built around two ideas:
+This repository is a **template for agentic software development**. Two ideas govern everything:
 
-1. **The wiki is the spec.** `docs/wiki/` is the source of truth for what the project is. Code that disagrees with the wiki is the bug.
-2. **TDD is harness-enforced, not honor-system.** No production code without a failing test first. The `test-first-check.sh` hook blocks code edits without a matching test on `feat/*` and `fix/*` branches.
+1. **The wiki is the spec.** `docs/wiki/` is the source of truth for what the project is and how it works. Code that disagrees with the wiki is the bug.
+2. **Progressive disclosure beats specialized agents.** A single `implementer` agent loads task-specific skills on demand. Skills are short, procedural, and tell the agent *how* to do something *in this project* — never *what something is* in the abstract.
 
 ## Identity
 
-You are an AI development agent working on this project. Read this file at the top of every session. Then, before every task:
+You are an AI development agent working on this project. At the top of every session, read this file. Then, **before any implementation or code change**, check the wiki for related context — never modify behavior blind:
 
 1. Read `docs/wiki/gotchas.md` for known failure points.
 2. Read `docs/wiki/todos.md` to know what's next.
-3. If the task touches a feature, read the matching `docs/wiki/entities/<slug>.md` and `docs/wiki/requirements.md`.
+3. If the task touches a feature, read the matching `docs/wiki/entities/<slug>.md` and the relevant section of `docs/wiki/requirements.md`.
+4. Grep `docs/wiki/` for terms from the task to find related concepts, decisions, or summaries before you act.
+5. Let any matching skill auto-load — skills tell you the procedure for *this project's* TDD loop, branching, wiki updates, etc.
 
-## Template → Project bootstrap
+## Operating principles
 
-This repository ships as a **template**. The first time `/project:interview` or `/project:init` runs successfully on a clone, the template becomes a real project. At that moment, the schema files in this repo must be specialized to the project — they are written generically right now and will lie if left alone.
+- **Progressive disclosure.** Agents start with minimal context. Skills load on demand based on task content. Never preload knowledge an agent doesn't need yet.
+- **Skills are how-to, not what-is.** Every skill body says: "When you're doing X, here's the procedure: read these wiki pages, follow these steps, update these pages." No skill explains what backend or TDD *means* — assume the LLM knows.
+- **Dynamic config.** Agents, skills, commands, and hooks are evolved by the meta skills (`update-agent`, `update-skill`, `update-command`, `update-hook`). When the project's needs change, the agent updates its own toolkit.
+- **Spec → Test → Code.** Write the entity Behavior cases first, derive failing tests, then implement. The `test-first-check` hook blocks code edits without a matching test on `feat/*` and `fix/*` branches.
+- **Wiki always current.** Code edits and wiki edits ship together. The `wiki-drift-check` hook warns at session end if you only touched code.
+- **Human in the loop.** When the agent needs the human (uncommitted decisions, missing inputs, risky ops), it stops and asks via the `human-checkpoint` skill — never silently improvises.
 
-Trigger: end of `/project:interview` (after `requirements.md` is approved) **or** end of `/project:init` (if no `requirements.md` exists yet but the stack is detected). The agent running that command MUST do the bootstrap before reporting the command as complete.
+## Three layers
 
-Bootstrap checklist — update each file so it reflects the actual project, not the generic template:
+1. **Raw sources** — `docs/raw/` (immutable drop zone). Interview transcripts, meeting notes, articles, PDFs. Agents read but never edit; only append.
+2. **Wiki** — `docs/wiki/` (LLM-owned). All documentation: project basics (`requirements.md`, `architecture.md`, `git-conventions.md`), entities, concepts, decisions, summaries, log, todos. The agent writes; the human browses (e.g. with Obsidian).
+3. **Schema** — this file plus `.claude/rules/behavioral.md`, `.claude/agents/`, `.claude/skills/`, `.claude/commands/`, `.claude/hooks/`. Tells agents how to operate.
 
-1. **`CLAUDE.md`** (this file)
-   - Replace the opening paragraph with a one-paragraph description of the actual project.
-   - Add a `## Project context` section right after `## Identity` listing: project name, one-line vision, primary stack, primary entities (linking `[[entities/<slug>]]`).
-   - Leave Operations / Frontmatter / Slash Commands / Golden Rules sections untouched — they're stack-agnostic.
-
-2. **`HUMAN.md`**
-   - Replace the "What is this?" intro with the project's actual purpose.
-   - Update the Quick start commands if the stack adds project-specific bootstrap steps (e.g. `docker compose up`, `pnpm install`).
-
-3. **`SETUP.md`**
-   - Add stack-specific install steps under a new `## Project setup` section (Python venv, Node dependencies, DB migrations, env vars).
-
-4. **`.claude/agents/initializer.md`**
-   - Mark as superseded with `status: shipped` in frontmatter — the initializer is one-shot and shouldn't run again. Optionally delete it.
-
-5. **`.claude/agents/tester.md`, `implementer.md`**
-   - Append a `## Project conventions` section pointing to the test command in `docs/wiki/commands.md` and the test-file naming in `docs/wiki/architecture.md`. No need to duplicate them — just point.
-
-6. **`.claude/skills/code-style/SKILL.md`, `git-conventions/SKILL.md`**
-   - These already point to `docs/wiki/architecture.md` — verify that page now has real content (not the template stub).
-
-7. **`docs/wiki/gotchas.md`**
-   - Delete the example bullets under `## Examples`. Real gotchas accumulate as the project runs.
-
-8. **`README.md`** (create if absent)
-   - One paragraph + link to HUMAN.md + link to docs/wiki/index.md. The repo has no README in template form by design — the project gets its own.
-
-9. **Commit the bootstrap as `chore: bootstrap template for <project-name>`** so the template-vs-project transition is visible in git history.
-
-After this commit, `/project:work` is the normal entry point. The template phase is over.
-
-## The Three Layers
-
-1. **Raw sources** — `docs/raw/` (immutable drop-zone)
-   User-provided and agent-emitted documents: interview transcripts, meeting notes, spec PDFs, research articles, API docs, agent memory snapshots. Agents **read from** but never **edit** raw files — they only append new ones.
-
-2. **Wiki** — `docs/wiki/` (LLM-owned)
-   Every markdown file here is written and maintained by the LLM. Entities, concepts, decisions, summaries, living specs. This is your single browsable knowledge base (open `docs/` in Obsidian).
-
-3. **Schema** — this file (`CLAUDE.md`) plus `.claude/rules/behavioral.md`
-   Tells agents how to operate: layout, frontmatter, ingest/query/lint, TDD loop, hard rules.
-
-## Wiki Directory Layout
+## Wiki layout
 
 ```
 docs/
-├── raw/                        # immutable sources
-│   ├── index.md                # catalog + ingestion status per source
-│   ├── interviews/             # /project:interview and /project:feature output
-│   └── <user-dropped-files>    # PDFs, markdown, transcripts, anything
-├── wiki/                       # LLM-owned knowledge base
-│   ├── index.md                # content catalog (one-line per page)
-│   ├── log.md                  # append-only ops log
-│   ├── requirements.md         # LIVING SPEC — code must match
-│   ├── architecture.md         # stack, conventions, patterns, testing strategy
-│   ├── todos.md                # current TODO queue (priority-ordered)
-│   ├── completed.md            # shipped work with wiki-link back-refs
-│   ├── gotchas.md              # known failure points
-│   ├── commands.md             # working shell commands (incl. test command)
-│   ├── file-map.md             # auto-generated project tree
-│   ├── entities/               # one page per feature/module/component
-│   ├── concepts/               # patterns, conventions, domain ideas
-│   ├── decisions/              # ADRs
-│   └── summaries/              # one page per ingested raw source
-├── changelog.md                # hook-appended session summaries
-├── INDEX.md                    # pointer to wiki/index.md
-└── SETUP.md                    # qmd install + environment setup
+├── raw/                    # immutable sources
+│   └── interviews/         # /interview transcripts land here
+└── wiki/                   # LLM-owned knowledge base
+    ├── index.md            # catalog (one line per page)
+    ├── log.md              # chronological ops log
+    ├── requirements.md     # living spec — code must match
+    ├── architecture.md     # stack, patterns, testing strategy
+    ├── git-conventions.md  # branch/commit conventions
+    ├── todos.md            # priority-ordered work queue
+    ├── completed.md        # shipped work with backrefs
+    ├── gotchas.md          # known failure points
+    ├── commands.md         # working shell commands (incl. test command)
+    ├── wiki-todos.md       # queue of cleanup tasks for wiki-maintainer
+    ├── entities/           # one page per feature/module/component
+    ├── concepts/           # patterns, conventions, domain ideas
+    ├── decisions/          # ADRs
+    └── summaries/          # one page per ingested raw source
 ```
 
-## Core Operations
+## Slash commands
 
-### Ingest
-Trigger: `/wiki:ingest` or whenever a new file appears in `docs/raw/`.
-The wiki-maintainer agent:
-1. Reads each un-ingested source in `docs/raw/`.
-2. Writes a summary page to `docs/wiki/summaries/`.
-3. Updates affected entity / concept / decision pages (creates new ones if needed).
-4. Cross-links: every new page linked from `wiki/index.md` and any related page.
-5. Flags contradictions with existing claims — notes them inline with `> ⚠ contradicts [[page#section]]`.
-6. Appends one log entry: `## [YYYY-MM-DD] ingest | <source-title>`.
-7. Marks the raw source's status in `docs/raw/index.md` as ingested.
+| Command | Purpose |
+|---------|---------|
+| `/init` | Detect project state, scaffold `docs/wiki/`, fill base docs (requirements, architecture, git-conventions, commands), initialize git if needed |
+| `/interview` | Grill-me-relentlessly Q&A. Used both for initial requirements and for adding features. Writes a transcript to `docs/raw/interviews/`, then updates affected wiki pages |
+| `/work` | Pick the top todo (or batch consecutive todos sharing context), open a `feat/*` branch, run spec→red→green→refactor→wiki-update→commit |
+| `/review` | Throughout review of code vs wiki. Runs in a fresh worktree with isolated context |
+| `/checkpoint` | Tag HEAD as `checkpoint-<timestamp>` for risky operations |
+| `/rollback` | List checkpoints, revert to one |
+| `/status` | Branch, top todos, recent log, uncommitted summary |
+| `/wiki-lint` | Health-check the wiki: contradictions, orphans, broken links, drift, unprocessed `wiki-todos.md` items |
 
-### Query
-Trigger: `/wiki:query <question>` or inline whenever you need to know something.
-The agent:
-1. Reads `docs/wiki/index.md` to locate relevant pages.
-2. Drills into those pages, follows `[[wiki-links]]` as needed.
-3. If qmd is installed, shells out for hybrid search (`qmd search "<query>" docs/wiki/`).
-4. Synthesizes an answer with citations like `[[entities/payment-flow#retry-policy]]`.
-5. If the answer is non-trivial (a comparison, analysis, new connection), offers to **file it back** as a wiki page under `concepts/` or `decisions/` — queries that compound matter.
+## Agent routing
 
-### Lint
-Trigger: `/wiki:lint` periodically (suggest weekly or after 10+ sources ingested).
-The wiki-maintainer:
-- Detects contradictions between pages.
-- Flags orphan pages (no inbound links) and hub pages that should be split.
-- Finds concepts mentioned ≥3 times without their own page.
-- Finds broken `[[wiki-links]]`.
-- Finds requirements in `wiki/requirements.md` with no corresponding `entities/` page — potential code drift.
-- Suggests new questions to investigate and new sources to seek.
+| Task | Agent |
+|------|-------|
+| TDD Red — write failing tests | `tester` |
+| TDD Green + Refactor — make tests pass | `implementer` (loads skills based on task content) |
+| Periodic full audit (≈every 5 todos via `/review`) | `reviewer` (worktree-isolated for clean context) |
+| Periodic wiki health, ingest, cross-link | `wiki-maintainer` — **manual only** via `/wiki-lint` or explicit human request |
 
-### TDD coverage check
-Trigger: `/project:tdd-check` after a batch of work or before `/project:review`.
-Lists every entity whose `## Behavior` bullets aren't yet realized in test files. Surfaces shipped entities with no tests as Critical drift.
+There is intentionally no domain-specialized agent (no "backend agent", no "database agent"). Domain knowledge lives in skills the implementer loads on demand.
 
-## Code-Development Adaptation
+**Wiki edits — inline vs deferred.** Other agents (implementer, tester, reviewer) make **small wiki edits inline** in the same commit as the code (entity-page Behavior tick, single ADR, single gotcha line, log entry). For **larger or cross-page work** (orphan cleanup, contradictions, mass cross-linking, raw-source ingest), they append a one-line entry to `docs/wiki/wiki-todos.md` for the wiki-maintainer to process on the next `/wiki-lint`. **No agent auto-invokes the wiki-maintainer.**
 
-This repo is not a passive knowledge base — it builds software. The wiki is the **spec**; the code is the **implementation**; the tests are the **contract** between them.
+## Skill catalog (initial)
 
-### The code-wiki contract
-- `docs/wiki/requirements.md` is authoritative. If code contradicts it, either the code is wrong or the spec needs to be updated in the same change.
-- `docs/wiki/entities/<feature>.md` documents each feature's expected behavior, interface, and design. Each `## Behavior` bullet is a test contract: the tester agent derives ≥1 test per bullet.
-- `docs/wiki/decisions/` holds ADRs. Any non-trivial design call gets a decision page.
+**Meta skills** — evolve the agent's own toolkit:
+- `update-agent`, `update-skill`, `update-command`, `update-hook`
 
-### The `/project:work` loop (spec-driven, TDD-enforced)
+**Core process skills** — used during work:
+- `tdd-loop` — red/green/refactor procedure for this project
+- `wiki-update` — how agents touch wiki pages while working
+- `feature-branching` — how to start/finish a feature branch
+- `human-checkpoint` — when and how to pause for the human
+- `spec-writing` — how to write entity Behavior cases that produce good tests
+- `decision-recording` — how to file an ADR
+- `gotcha-recording` — how to capture a failure mode for future agents
 
-**Classify first** — read the top 3 Pending TODOs and assign each:
-- **Simple** — ≤2 files, <50 lines, no new dependencies, no ADR-worthy decision. Main agent handles all phases.
-- **Complex** — multiple files, new patterns, external dependencies, or ADR-worthy decisions. Multi-agent dispatch.
-- **Batch** — 2–3 consecutive Simple TODOs sharing the same entity or overlapping files. Context loaded once, implemented together.
+Stack-specific skills (e.g. `backend-impl`, `database-impl`, `frontend-impl`) are not shipped by default. `/interview` adds them after the stack is known.
 
-Then run:
+## Frontmatter convention
 
-1. **Query** — load `wiki/requirements.md` + relevant entities + `wiki/gotchas.md`. One load serves the whole batch.
-2. **Spec** — verify entity `## Behavior` has concrete Given/When/Then cases. Expand if vague — this is the test contract.
-3. **Plan** — draft implementation plan via `superpowers:writing-plans`, present to user, wait for confirmation.
-4. **Branch** — `feat/<slug>` (never commit to main). The branch name turns on TDD enforcement.
-5. **Red** — write all failing tests for the batch/task from `## Behavior`. Run them. **Confirm all RED for the right reason** (missing feature, not import errors). Print failure count.
-   - Simple/Batch: main agent writes tests directly.
-   - Complex: tester agent writes tests + emits `.claude/handoff/<slug>.json` with `red_confirmed: true`, `red_command`, `red_failure_count`.
-6. **Green** — write minimal code to pass all tests. The `test-first-check.sh` hook blocks code edits with no matching test — by design.
-   - Simple/Batch: main agent implements.
-   - Complex: implementer agent re-runs `red_command` to verify reproducibility, then implements, then deletes the handoff.
-7. **Refactor** — clean up. Tests must stay GREEN.
-8. **Verify** — run the full suite fresh. 0 failures or it's not done.
-9. **Update wiki** — revise entity page (Behavior + Code References), add ADRs, move TODO(s) to `completed.md`, append to `log.md`.
-   - Simple/Batch: update entity page inline; dispatch wiki-maintainer for full update every **3 simple TODOs**.
-   - Complex: dispatch wiki-maintainer immediately after each task.
-10. **Commit** — conventional message referencing the TODO slug(s). Never commit while red.
-
-**Reviewer is periodic** — runs every ~5 completed TODOs via `/project:review`, not in this loop.
-
-## Frontmatter Convention
-
-Every `.md` in `.claude/` (agents, commands, skills, rules) and in `docs/wiki/` must have frontmatter so the harness can discover and route correctly:
+Every `.md` in `.claude/` and `docs/wiki/` carries frontmatter so the harness can route correctly:
 
 ```yaml
 ---
 name: <kebab-case-short-name>
-description: <one line, action-oriented — when/why to use>
+description: <one line, action-oriented — when/why to use; for skills, this is the trigger>
 type: agent | command | skill | rule | wiki-entity | wiki-concept | wiki-decision | wiki-summary | wiki-index | wiki-log | wiki-spec
 ---
 ```
 
-Wiki pages may add: `sources:` (list of raw paths), `updated: YYYY-MM-DD`, `status: draft|approved|stale|shipped|deprecated`.
+Wiki pages may add: `sources:` (list of raw paths), `updated: YYYY-MM-DD`, `status: draft | approved | stale | shipped | deprecated`.
 
-Agents only need the standard Claude Code fields: `name`, `description`, `type`, `tools`, `model`. Other fields (`memory`, `effort`, `color`, `background`, `maxTurns`) are not standard harness features and are not used.
+Skills in particular need a precise `description` because Claude Code uses it to decide whether to load the skill. State *exactly* what triggers the skill — the keywords, the situations, the tool calls.
 
-## Slash Commands
+## Hooks
 
-### Project commands (`/project:*`)
-| Command | Purpose |
-|---------|---------|
-| `/project:interview` | **Initial** project requirements Q&A → full project scope, rewrites `wiki/requirements.md` from scratch |
-| `/project:feature` | **Incremental** feature interview → appends to `requirements.md`, creates entity page + Behavior spec, seeds TODOs |
-| `/project:init` | Detect stack, scaffold wiki, seed `architecture.md` |
-| `/project:work` | Classify TODOs (simple/complex/batch) → spec → red → green → refactor → update wiki → commit |
-| `/project:tdd-check` | Audit which entities have unrealized Behavior cases (no matching tests) |
-| `/project:review` | Periodic full audit: all code vs all docs, hidden bugs, stale tests (every ~5 TODOs) |
-| `/project:status` | Dump project state |
-| `/project:checkpoint` | Git-tag current HEAD + write session snapshot |
-| `/project:rollback` | Revert to a checkpoint |
-| `/project:fresh` | Resume from checkpoint in a new session |
-
-### Wiki commands (`/wiki:*`)
-| Command | Purpose |
-|---------|---------|
-| `/wiki:ingest [path]` | Process raw/ → wiki (all pending, or specific path) |
-| `/wiki:query <question>` | Search wiki, synthesize answer with citations, optionally file back |
-| `/wiki:lint` | Health-check the wiki |
-| `/wiki:log [n]` | Show last n log entries |
-
-## Agent Routing
-
-| Task | Agent |
-|------|-------|
-| TDD Red phase (write failing tests) | tester |
-| TDD Green+Refactor (make tests pass) | implementer |
-| Periodic full audit (~every 5 TODOs) | reviewer |
-| First-time setup | initializer |
-| Raw→wiki ingestion, lint, cross-linking | wiki-maintainer |
-
-There is intentionally **no researcher or orchestrator**: research happens via `/wiki:query`, orchestration is the explicit loop in `/project:work`. The reviewer is **not** part of the work loop — it is a periodic quality gate.
-
-## Sub-agent dispatch rules
-
-- Each sub-agent gets **scoped context** — task, prior outputs, relevant constraints. Never dump full memory.
-- Tester → implementer → wiki-maintainer is the complex-path order. Simple TODOs stay in the main agent.
-- Use `/wiki:query <question>` for research before building — there is no separate researcher agent.
-
-## Hooks (harness enforcement)
-
-Configured in `.claude/settings.json`:
+Wired in `.claude/settings.json`:
 
 | Hook | Phase | Purpose |
 |------|-------|---------|
-| `test-first-check.sh` | PreToolUse on Write/Edit | Blocks code edits on `feat/*`/`fix/*` without a matching test file |
-| `auto-format.sh` | PostToolUse on Write/Edit | Runs ruff/black/prettier/gofmt/rustfmt by extension |
-| `raw-index-sync.sh` | PostToolUse on Write/Edit | Auto-catalogs new files under `docs/raw/` as `pending` |
-| `code-ref-check.sh` | PostToolUse on Write/Edit | Reminds when source files lack a Code References section in any entity page |
-| `wiki-drift-check.sh` | Stop | Warns when code was edited but no wiki page was touched this session |
-| `raw-pending-check.sh` | Stop | Warns when raw sources are still `pending` at session end |
-| `on-task-complete.sh` | Stop | Appends a row to `docs/changelog.md` |
-| `auto-checkpoint.sh` | Stop | Tags `checkpoint-<timestamp>-auto` if anything changed since the last checkpoint |
+| `session-start.sh` | SessionStart | `git pull --ff-only`, activate Python venv if present, warn on uncommitted, run test suite if configured |
+| `session-end.sh` | Stop | Prompt to commit if dirty, prompt to push, append session entry to `docs/wiki/log.md` |
+| `test-first-check.sh` | PreToolUse Write/Edit | Block code edits on `feat/*` / `fix/*` branches if no matching test was edited recently |
+| `auto-format.sh` | PostToolUse Write/Edit | Run formatter by file extension |
+| `wiki-drift-check.sh` | Stop | Warn if code was edited but no wiki page was touched in the same session |
 
-These run regardless of agent. They are the harness — agents cannot opt out.
-
-## Golden Rules
+## Golden rules
 
 1. **Wiki is truth.** Code that disagrees with the wiki is the bug.
-2. **No code without a failing test.** Spec → test → code, in that order. The hook enforces this on `feat/*`/`fix/*` branches.
-3. **Never modify tests to make them pass.** Update the spec first, regenerate the test, then implement.
-4. **Always update the wiki in the same change.** Touch `src/` → touch the entity page. The `wiki-drift-check` hook warns at session end.
-5. **Never modify `docs/raw/` content.** Append only. Raw sources are immutable.
-6. **Agents own `docs/wiki/`.** Users browse it, agents write it.
-7. **One source → many page touches.** Ingest should touch ~5–15 pages; fewer means under-integrated.
-8. **File back valuable queries.** Non-obvious `/wiki:query` output → save as `concepts/` page.
-9. **Always branch before coding.** Never commit to main.
-10. **Conventional commits:** `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`.
-11. **Two-strike rule.** Two failed implementations → `/project:rollback`, retry from spec.
-12. **Reviewer is periodic.** `/project:review` every ~5 TODOs — not in the work loop. Reviewer creates `review/YYYY-MM-DD` branch before writing anything.
+2. **No code without a failing test.** The `test-first-check` hook enforces this on `feat/*`/`fix/*`.
+3. **Never modify a test to make it pass.** Update the spec → regenerate the test → implement.
+4. **Always update wiki in the same change.** Touching `src/` requires touching the entity page.
+5. **Never modify `docs/raw/` content.** Append only.
+6. **Agents own `docs/wiki/`.** Humans browse; agents write.
+7. **Always branch before coding.** Never commit to main.
+8. **Conventional commits.** `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`.
+9. **Two-strike rule.** Two failed implementations on the same mechanism → `/rollback` and retry from spec.
+10. **Reviewer is periodic.** `/review` every ~5 todos — not in `/work`. Reviewer runs in a fresh worktree.
+11. **Human-in-the-loop.** When you need a decision the wiki doesn't answer, stop and ask. Don't guess.
+12. **Skills are how-to.** When the project gains a new domain or pattern, add a skill via `update-skill` — don't bury knowledge in agent prompts.
 
-## What's Stored Where (quick lookup)
+## Where things live
 
 | Concern | Location |
 |---------|----------|
@@ -263,9 +148,9 @@ These run regardless of agent. They are the harness — agents cannot opt out.
 | What can go wrong | `docs/wiki/gotchas.md` |
 | What's next | `docs/wiki/todos.md` |
 | What's shipped | `docs/wiki/completed.md` |
-| Working shell commands (incl. test) | `docs/wiki/commands.md` |
-| Project tree | `docs/wiki/file-map.md` |
-| Timeline of ops | `docs/wiki/log.md` |
-| Session summaries | `docs/changelog.md` (hook-maintained) |
+| Working shell + test commands | `docs/wiki/commands.md` |
+| Branch / commit rules | `docs/wiki/git-conventions.md` |
+| Cleanup queue for wiki-maintainer | `docs/wiki/wiki-todos.md` |
+| Timeline | `docs/wiki/log.md` |
 | Raw sources (immutable) | `docs/raw/` |
 | Hard behavioral constraints | `.claude/rules/behavioral.md` |

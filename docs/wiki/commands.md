@@ -1,46 +1,32 @@
 ---
 name: commands
-description: Working shell commands — setup, build, test, deploy, utility. Agents append here whenever they discover or run a new working command.
+description: Working shell commands for this project — install, run, test, lint, build. Single source of truth.
 type: wiki-spec
-updated: 2026-04-15
+updated: 2026-05-11
+status: draft
 ---
 
-# Working Commands
+# Commands
 
-> Append as you learn. A command belongs here once it's been run successfully in this project at least once.
+> The exact commands that work in this repo. Hooks parse the `## Test` section to know what to run at session end. Keep entries copy-pasteable.
 
-## Setup
+## Install
+`<TBD>`
 
-| Command | Purpose | Notes | Date added |
-|---------|---------|-------|------------|
-| | | | |
-
-## Build
-
-| Command | Purpose | Notes | Date added |
-|---------|---------|-------|------------|
-| | | | |
+## Run (dev)
+`<TBD>`
 
 ## Test
+`<TBD>`
 
-| Command | Purpose | Notes | Date added |
-|---------|---------|-------|------------|
-| | | | |
+## Lint
+`<TBD>`
 
-## Run / Dev
+## Format
+`<TBD>`
 
-| Command | Purpose | Notes | Date added |
-|---------|---------|-------|------------|
-| | | | |
+## Build
+`<TBD>`
 
-## Deploy
-
-| Command | Purpose | Notes | Date added |
-|---------|---------|-------|------------|
-| | | | |
-
-## Utility
-
-| Command | Purpose | Notes | Date added |
-|---------|---------|-------|------------|
-| | | | |
+## Notes
+*(Anything non-obvious about running these — env vars, prerequisites, OS differences.)*

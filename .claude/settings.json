@@ -1,16 +1,27 @@
 {
-  "permissions": {
-    "allow": ["Read", "Grep", "Glob", "Agent"]
-  },
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/session-start.sh" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "bash .claude/hooks/session-end.sh" },
+          { "type": "command", "command": "bash .claude/hooks/wiki-drift-check.sh" }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Write|Edit",
         "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/test-first-check.sh"
-          }
+          { "type": "command", "command": "bash .claude/hooks/test-first-check.sh" }
         ]
       }
     ],
@@ -18,41 +29,9 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/auto-format.sh"
-          },
-          {
-            "type": "command",
-            "command": ".claude/hooks/raw-index-sync.sh"
-          },
-          {
-            "type": "command",
-            "command": ".claude/hooks/code-ref-check.sh"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/wiki-drift-check.sh"
-          },
-          {
-            "type": "command",
-            "command": ".claude/hooks/raw-pending-check.sh"
-          },
-          {
-            "type": "command",
-            "command": ".claude/hooks/auto-checkpoint.sh"
-          }
+          { "type": "command", "command": "bash .claude/hooks/auto-format.sh" }
         ]
       }
     ]
-  },
-  "enabledPlugins": {
-    "superpowers@claude-plugins-official": true
   }
 }

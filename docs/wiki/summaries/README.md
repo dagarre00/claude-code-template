@@ -1,49 +1,27 @@
+# Summaries
+
+One summary page per ingested raw source in `docs/raw/`. The summary is what the rest of the wiki cross-references — entities, concepts, and decisions link to the summary, not to the raw file.
+
+## Filing
+
+The `wiki-maintainer` agent produces these during ingest. See `.claude/agents/wiki-maintainer.md` for the procedure.
+
+## Page shape
+
+```yaml
 ---
-name: summaries-index
-description: Index of per-source summary pages. One page per ingested raw source.
-type: wiki-index
-updated: 2026-04-15
----
-
-# Source Summaries
-
-One page per ingested raw source. Contains the key takeaways, extracted entities, and links to every wiki page touched by the source.
-
-## Template
-
-```markdown
----
-name: <source-slug>
-description: <one-line — what this source is about>
+name: <slug>
+description: <one line>
 type: wiki-summary
-source: ../raw/<path-to-raw-source>
-ingested: YYYY-MM-DD
 updated: YYYY-MM-DD
+status: draft | approved
+sources: [docs/raw/<file>]
+tags: [...]
 ---
-
-# Summary: <Source Title>
-
-## One-paragraph summary
-What the source is about.
-
-## Key takeaways
-- Point 1
-- Point 2
-
-## Entities touched
-- [[../entities/<x>]] — how it was updated
-- [[../entities/<y>]]
-
-## Concepts introduced or revised
-- [[../concepts/<z>]]
-
-## Contradictions flagged
-> ⚠ contradicts [[../entities/<x>#<section>]]: <describe>
-
-## Open questions raised
--
 ```
 
-## Pages
+Body: a tight summary of the source (what it says, who it's by, when, key claims), followed by `## Key claims`, `## Open questions`, and `## Updates to the wiki` listing which entity / concept / decision pages this source touched.
 
-*(none yet — populated on `/wiki:ingest`)*
+## Why these aren't the source
+
+The raw file in `docs/raw/` is **immutable** — that's the source of truth. The summary is the *digestible* version for ongoing reference. Cross-link the summary, cite the raw file when accuracy matters.

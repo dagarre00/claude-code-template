@@ -1,67 +1,62 @@
 ---
 name: architecture
-description: Stack, conventions, design patterns, testing strategy, git workflow
+description: Stack, patterns, layout, testing strategy. The how-built companion to requirements.md.
 type: wiki-spec
+updated: 2026-05-11
 status: draft
-updated: 2026-04-15
 ---
 
-# Architecture & Conventions
+# Architecture
+
+> How the project is built. `/init` fills the stack-detection sections; `/interview` fills the rest.
 
 ## Stack
+*(Languages, frameworks, key libraries, runtime.)*
 
-> Auto-populated by the initializer agent. Run `/project:init`.
+- Language: `<TBD>`
+- Framework: `<TBD>`
+- Key libraries: `<TBD>`
+- Runtime: `<TBD>`
 
-## Project Structure
+## Layout
+*(Top-level directories and what lives where. Add as the project grows.)*
 
-> Directory tree populated after initialization. See also [[file-map]].
+```
+<TBD>
+```
 
-## Design Patterns
+## Data
+*(Where state lives — DB, files, cache, queues. Persistence requirements.)*
 
-- Clean architecture layers: domain → application → infrastructure → presentation
-- Dependency inversion: inner layers never import from outer layers
-- Repository pattern for data access
-- Service layer for business logic
+`<TBD>`
 
-## Naming Conventions
+## External services
+*(Third parties, APIs, infra dependencies.)*
 
-- Files: `kebab-case`
-- Classes: `PascalCase`
-- Functions/variables: `camelCase` (JS/TS) or `snake_case` (Python)
-- Constants: `UPPER_SNAKE_CASE`
-- Database tables: `snake_case`, plural
+`<TBD>`
 
-## Error Handling
+## Testing strategy
+*(Unit vs integration vs e2e. Test framework. Fixture conventions. Coverage targets.)*
 
-- Never swallow exceptions silently
-- Use typed/custom errors where the language supports it
-- Log errors with context (what was attempted, with what input)
-- Return meaningful error messages
+- Test framework: `<TBD>`
+- Test command: see [[commands#test]]
+- Fixtures: `<TBD>`
+- Coverage target: `<TBD>`
 
-## Testing Strategy
+## Conventions
+*(Naming, error handling, logging, config — patterns enforced project-wide. Promote each to [[concepts/<pattern>]] when a pattern recurs three times.)*
 
-- Unit tests for business logic (isolated, no I/O)
-- Integration tests for API endpoints and database queries
-- Test file naming: `*.test.ts`, `test_*.py`, or `*_test.go`
-- Run tests before every commit
+- Naming: `<TBD>`
+- Errors: `<TBD>`
+- Logging: `<TBD>`
+- Config: `<TBD>`
 
-## Git Workflow
+## Deployment
+*(How code reaches users. CI, build artefacts, release process.)*
 
-- Branch naming: `feat/<slug>`, `fix/<slug>`, `chore/<slug>`
-- Conventional commits (`feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`)
-- Never push directly to main
-- One logical change per commit
+`<TBD>`
 
-## Environments
-
-- Python: `uv` or `venv` — always activate before running
-- Node: `npm` or `pnpm` — use lockfile, no global installs
-- Go: modules enabled by default
-- Rust: cargo manages everything
-
-## Comments
-
-- Comment WHY, not WHAT
-- Docstrings on public functions/classes
-- No obvious comments (`i += 1  # increment i`)
-- TODO format: `TODO(agent-name): description`
+## Related
+- [[requirements]]
+- [[git-conventions]]
+- [[commands]]
