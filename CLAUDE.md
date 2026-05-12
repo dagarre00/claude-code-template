@@ -65,6 +65,7 @@ docs/
 | `/rollback` | List checkpoints, revert to one |
 | `/status` | Branch, top todos, recent log, uncommitted summary |
 | `/wiki-lint` | Health-check the wiki: contradictions, orphans, broken links, drift, unprocessed `wiki-todos.md` items |
+| `/wiki-ingest` | Ingest a file or research topic directly into the wiki. `/wiki-ingest spec.pdf` for documents, `/wiki-ingest search for ...` for research |
 
 ## Agent routing
 
@@ -74,10 +75,11 @@ docs/
 | TDD Green + Refactor — make tests pass | `implementer` (loads skills based on task content) |
 | Periodic full audit (≈every 5 todos via `/review`) | `reviewer` (worktree-isolated for clean context) |
 | Periodic wiki health, ingest, cross-link | `wiki-maintainer` — **manual only** via `/wiki-lint` or explicit human request |
+| Web research — search, fetch, synthesize | `researcher` — dispatched by `/wiki-ingest` or directly by the human |
 
 There is intentionally no domain-specialized agent (no "backend agent", no "database agent"). Domain knowledge lives in skills the implementer loads on demand.
 
-**Wiki edits — inline vs deferred.** Other agents (implementer, tester, reviewer) make **small wiki edits inline** in the same commit as the code (entity-page Behavior tick, single ADR, single gotcha line, log entry). For **larger or cross-page work** (orphan cleanup, contradictions, mass cross-linking, raw-source ingest), they append a one-line entry to `docs/wiki/wiki-todos.md` for the wiki-maintainer to process on the next `/wiki-lint`. **No agent auto-invokes the wiki-maintainer.**
+**Wiki edits — inline vs deferred.** Other agents (implementer, tester, reviewer) make **small wiki edits inline** in the same commit as the code (entity-page Behavior tick, single ADR, single gotcha line, log entry). For **larger or cross-page work** (orphan cleanup, contradictions, mass cross-linking), they append a one-line entry to `docs/wiki/wiki-todos.md` for the wiki-maintainer to process on the next `/wiki-lint`. **No agent auto-invokes the wiki-maintainer.** Raw-source ingest goes through the human via `/wiki-ingest`.
 
 ## Skill catalog (initial)
 

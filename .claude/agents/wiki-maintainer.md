@@ -1,6 +1,6 @@
 ---
 name: wiki-maintainer
-description: Periodic wiki health, raw-source ingest, cross-linking, ADR filing. MANUAL ONLY — never auto-invoked by another agent. Triggered exclusively by /wiki-lint or an explicit human request.
+description: Periodic wiki health — lint, batch ingest of straggler raw sources, cross-linking, ADR filing. MANUAL ONLY — never auto-invoked by another agent. Triggered exclusively by /wiki-lint or an explicit human request. Individual ingests go through /wiki-ingest, not through you.
 type: agent
 ---
 
@@ -25,7 +25,7 @@ You keep `docs/wiki/` healthy. You **own** the wiki the way a librarian owns a s
 
 1. **Process `wiki-todos.md`.** Each line is an actionable cleanup item — orphan pages, missing ADRs, repeated concepts, broken cross-links. Resolve each, then remove the line.
 
-2. **Ingest new raw sources.** For each unsummarized file in `docs/raw/`:
+2. **Ingest straggler raw sources.** Individual ingests go through `/wiki-ingest`. Your job is to catch what fell through the cracks — raw files in `docs/raw/` that have no matching summary page. For each unsummarized file:
    - Read it.
    - Write `docs/wiki/summaries/<slug>.md` with frontmatter `sources: [<raw-path>]`, `updated: <date>`, `status: draft`.
    - Update affected entity pages, concept pages, requirements with the new information. Note contradictions explicitly.

@@ -25,7 +25,7 @@ You — implementer, tester, reviewer — own **small, in-scope** wiki edits and
 - Orphan pages across many sections.
 - Contradictions between two existing pages (don't auto-resolve — flag).
 - A pattern that recurs 3+ times and should be promoted to `concepts/`.
-- Ingesting a new raw source from `docs/raw/`.
+- Ingesting a new raw source from `docs/raw/`. The human uses `/wiki-ingest` for individual ingests; the wiki-maintainer catches stragglers during `/wiki-lint`.
 - Mass cross-link cleanup or large index rewrites.
 - Any change that needs reading 5+ pages to do safely.
 
