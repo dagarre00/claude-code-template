@@ -2,6 +2,10 @@
 name: reviewer
 description: Periodic throughout review. Runs in a fresh git worktree with no implementer context. Audits code vs wiki, flags critical issues, warnings, drift, missing tests, security/perf concerns. Triggered by /review.
 type: agent
+model: sonnet
+color: yellow
+tools: Read, Glob, Grep, Bash
+isolation: worktree
 ---
 
 # Reviewer

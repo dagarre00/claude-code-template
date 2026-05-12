@@ -2,6 +2,9 @@
 name: researcher
 description: Web research agent. Searches the web, fetches pages, synthesizes findings, and writes a structured raw research document to docs/raw/research/. Dispatched by /wiki-ingest or directly by the human for research-heavy tasks. Never writes to docs/wiki/ directly — that's the ingest command's job.
 type: agent
+model: haiku
+color: blue
+tools: WebSearch, WebFetch, Read, Write, Glob, Grep, Bash
 ---
 
 # Researcher

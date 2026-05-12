@@ -2,6 +2,9 @@
 name: implementer
 description: TDD green + refactor. Makes failing tests pass with minimal code, then refactors. Loads task-specific skills (backend, database, frontend, etc.) on demand. Triggered by /work after the tester agent has confirmed RED.
 type: agent
+model: sonnet
+color: green
+disallowedTools: Agent, WebSearch, WebFetch, NotebookEdit, ListMcpResourcesTool, ReadMcpResourceTool
 ---
 
 # Implementer

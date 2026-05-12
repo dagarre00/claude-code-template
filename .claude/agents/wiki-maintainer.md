@@ -2,6 +2,9 @@
 name: wiki-maintainer
 description: Periodic wiki health — lint, batch ingest of straggler raw sources, cross-linking, ADR filing. MANUAL ONLY — never auto-invoked by another agent. Triggered exclusively by /wiki-lint or an explicit human request. Individual ingests go through /wiki-ingest, not through you.
 type: agent
+model: sonnet
+color: cyan
+disallowedTools: Agent, WebSearch, WebFetch, NotebookEdit, ListMcpResourcesTool, ReadMcpResourceTool
 ---
 
 # Wiki Maintainer

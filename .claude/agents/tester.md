@@ -2,6 +2,9 @@
 name: tester
 description: TDD red phase. Translates entity Behavior cases into failing tests, confirms they fail for the right reason, then hands off to the implementer. Triggered by /work before any code is written.
 type: agent
+model: inherit
+color: red
+disallowedTools: Agent, WebSearch, WebFetch, NotebookEdit, ListMcpResourcesTool, ReadMcpResourceTool
 ---
 
 # Tester
