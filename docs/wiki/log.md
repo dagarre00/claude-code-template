@@ -10,14 +10,3 @@ status: draft
 
 > Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd.
 
-## [2026-05-11 00:00] template-bootstrap
-- Scaffolded the agentic-template wiki. No project content yet.
-- Next: run `/init` then `/interview` to populate.
-
-## [2026-05-11 01:00] feat: add /wiki-ingest command + researcher agent
-- Created `researcher` agent — web research, writes raw findings to `docs/raw/research/`
-- Created `/wiki-ingest` command — file mode (ingest a PDF/doc) and research mode (search → ingest)
-- Updated `wiki-maintainer` — narrowed ingest role to batch/straggler processing during `/wiki-lint`
-- Updated `wiki-update` skill — raw-source ingest now points to `/wiki-ingest`
-- Updated `CLAUDE.md` — added `/wiki-ingest` to slash commands, researcher to agent routing
-
