@@ -8,7 +8,7 @@ status: draft
 
 # Git Conventions
 
-> Project conventions. Updated when the team adopts a new flow; mirror changes into the [[feature-branching|feature-branching skill]] (`.claude/skills/feature-branching.md`).
+> Project conventions. Updated when the team adopts a new flow; mirror changes into the [feature-branching skill](../../.claude/skills/feature-branching.md).
 
 ## Default branch
 `main` — protected. No direct commits.

@@ -1,3 +1,11 @@
+---
+name: entities-readme
+description: Guide to the entities directory — entity page template, naming, and creation.
+type: wiki-entity
+updated: 2026-05-11
+status: approved
+---
+
 # Entities
 
 One page per feature / module / component. Each page is the **spec** for that piece — Behavior cases here drive the failing tests the `tester` agent writes.

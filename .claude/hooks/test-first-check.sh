@@ -13,8 +13,15 @@ case "$branch" in
   *) exit 0 ;;
 esac
 
+# Extract file_path from stdin JSON. Try python, fall back to grep+sed.
 input=$(cat 2>/dev/null || echo "{}")
-file=$(printf '%s' "$input" | python -c "import sys,json;d=json.load(sys.stdin);print(d.get('tool_input',{}).get('file_path',''))" 2>/dev/null || echo "")
+file=""
+if command -v python >/dev/null 2>&1; then
+  file=$(printf '%s' "$input" | python -c "import sys,json;d=json.load(sys.stdin);print(d.get('tool_input',{}).get('file_path',''))" 2>/dev/null || echo "")
+else
+  # Pure-bash fallback: extract "file_path":"<value>" from JSON.
+  file=$(printf '%s' "$input" | grep -o '"file_path"\s*:\s*"[^"]*"' 2>/dev/null | head -1 | sed 's/.*"file_path"\s*:\s*"//;s/"$//' || echo "")
+fi
 [ -z "$file" ] && exit 0
 
 # Allow non-code files, docs, configs, tests
@@ -30,13 +37,21 @@ slug="${slug#fix/}"
 
 handoff=".claude/handoff/${slug}.json"
 if [ -f "$handoff" ]; then
-  confirmed=$(python -c "import json,sys;
+  confirmed="no"
+  if command -v python >/dev/null 2>&1; then
+    confirmed=$(python -c "import json,sys;
 try:
   d=json.load(open('$handoff'))
   print('yes' if d.get('red_confirmed') is True else 'no')
 except Exception:
   print('no')
 " 2>/dev/null || echo "no")
+  else
+    # Pure-bash fallback: grep for red_confirmed in the JSON file.
+    if grep -q '"red_confirmed"\s*:\s*true' "$handoff" 2>/dev/null; then
+      confirmed="yes"
+    fi
+  fi
   if [ "$confirmed" = "yes" ]; then
     exit 0
   fi

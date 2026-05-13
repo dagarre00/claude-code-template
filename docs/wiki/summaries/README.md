@@ -1,3 +1,11 @@
+---
+name: summaries-readme
+description: Guide to the summaries directory — one digest page per ingested raw source.
+type: wiki-summary
+updated: 2026-05-11
+status: approved
+---
+
 # Summaries
 
 One summary page per ingested raw source in `docs/raw/`. The summary is what the rest of the wiki cross-references — entities, concepts, and decisions link to the summary, not to the raw file.

@@ -1,3 +1,11 @@
+---
+name: concepts-readme
+description: Guide to the concepts directory — when and how to file a concept page.
+type: wiki-concept
+updated: 2026-05-11
+status: approved
+---
+
 # Concepts
 
 Patterns, conventions, and domain ideas that recur across the project. Concept pages exist so the same explanation does not get rewritten in three different entity pages.

@@ -7,7 +7,13 @@ root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 cd "$root"
 
 input=$(cat 2>/dev/null || echo "{}")
-file=$(printf '%s' "$input" | python -c "import sys,json;d=json.load(sys.stdin);print(d.get('tool_input',{}).get('file_path',''))" 2>/dev/null || echo "")
+file=""
+if command -v python >/dev/null 2>&1; then
+  file=$(printf '%s' "$input" | python -c "import sys,json;d=json.load(sys.stdin);print(d.get('tool_input',{}).get('file_path',''))" 2>/dev/null || echo "")
+else
+  # Pure-bash fallback: extract "file_path":"<value>" from JSON.
+  file=$(printf '%s' "$input" | grep -o '"file_path"\s*:\s*"[^"]*"' 2>/dev/null | head -1 | sed 's/.*"file_path"\s*:\s*"//;s/"$//' || echo "")
+fi
 [ -z "$file" ] && exit 0
 [ ! -f "$file" ] && exit 0
 

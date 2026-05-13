@@ -1,3 +1,11 @@
+---
+name: decisions-readme
+description: Guide to the decisions directory — when to file an ADR, naming, and lifecycle.
+type: wiki-decision
+updated: 2026-05-11
+status: approved
+---
+
 # Decisions (ADRs)
 
 Architectural Decision Records — small, dated notes capturing **why** a non-trivial choice was made. They live here because future readers (including future you) will second-guess otherwise.
