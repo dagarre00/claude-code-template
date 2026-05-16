@@ -1,6 +1,6 @@
 ---
 name: interview
-description: Grill-me-relentlessly Q&A to define a plan, a feature, or fill requirements. Walks down each branch of the decision tree, resolving dependencies one at a time. Always provides a recommended answer. Writes a transcript to docs/raw/interviews/ and updates affected wiki pages.
+description: Grill-me-relentlessly Q&A to define a plan, a feature, or fill requirements. Walks down each branch of the decision tree, resolving dependencies one at a time. Always provides a recommended answer. Streams a transcript to docs/raw/interviews/ Q-by-Q and A-by-A (never batched at the end), then updates affected wiki pages.
 type: command
 ---
 
@@ -22,12 +22,14 @@ You are the interviewer. Your job is to grill the human until you reach shared u
 4. **Resolve dependencies before broadening.** If question A determines questions B and C, finish A before opening B.
 5. **Surface contradictions.** If an answer contradicts the wiki or a prior answer, stop and flag it.
 6. **Don't stop early.** Cover users, functional behavior, non-functional constraints (perf, security, deployment), failure modes, edge cases, and out-of-scope. The human will tell you when to stop.
+7. **Stream the transcript, never batch.** The transcript file is the source of truth, not your memory. Write the question to disk **before** asking it. Write the answer to disk **immediately** after the human responds — before processing it, before deciding the next question. Treat each Q+A as committed only when it's on disk. This is the `/export` pattern, continuous: if the session ends mid-interview, what's on disk is what we have.
 
 ## Procedure
 
 1. **Frame the scope.** Read the human's prompt. Read `docs/wiki/requirements.md` and any existing entity pages relevant to the topic. State the scope in one line and confirm with the human.
 
-2. **Open a transcript file:** `docs/raw/interviews/YYYY-MM-DD-<slug>.md` with frontmatter:
+2. **Open the transcript file BEFORE asking anything.** Path: `docs/raw/interviews/YYYY-MM-DD-<slug>.md`. Write frontmatter plus a one-paragraph framing of the scope. The file must exist and be on disk before the first question.
+
    ```yaml
    ---
    name: <slug>
@@ -37,9 +39,19 @@ You are the interviewer. Your job is to grill the human until you reach shared u
    status: draft
    ---
    ```
-   Append each Q+A as you go. **Raw is immutable** — never edit prior answers, only append.
 
-3. **Ask questions, one at a time, in this rough order:**
+   **Raw is immutable** (see `.claude/rules/behavioral.md` #11) — never edit prior answers; only append.
+
+3. **Run the interview as an append-only loop.** For each question, follow these steps **in order**, with a disk write between every step:
+
+   a. **Append the question to the transcript first**, under a `## Q<n>. <topic>` heading, including your recommended answer and rationale. Save. The question is now on disk.
+   b. **Ask the human.** Use `AskUserQuestion` with options when there are 2–4 discrete choices; otherwise plain text.
+   c. **Append the human's response verbatim** under `**A:**` immediately upon receipt — before doing anything else. Save. The answer is now on disk.
+   d. **Only now** process the answer and decide the next question. If the answer triggers a follow-up or a course-correction, repeat from (a) — never modify a prior `**A:**`.
+
+   This is the same shape as a `/export`, run continuously. If the session ends mid-interview, the transcript reflects exactly the Q's asked and the A's received. Never buffer Q+A pairs in memory hoping to write them later.
+
+   **Topic checklist (the iteration content — work through these in roughly this order, resolving dependencies first):**
    - **Who** uses this? (user types, contexts) → fills `## Users` and seeds `## User stories`
    - **What** must it do? (capabilities per user, in priority order) → fills `## User stories` and `## Functional requirements`
    - **What must it NOT do?** (explicit out-of-scope) → fills `## Out of scope`
@@ -50,8 +62,6 @@ You are the interviewer. Your job is to grill the human until you reach shared u
    - **Security, compliance, observability?** (auth model, data retention, logging requirements) → fills Non-functional `Security`, `Observability`, `Compliance / data`
    - **What's the smallest first slice?** (MVP boundary) → shapes first todos
    - **What's the test framework, test command, and deployment target?** → fills `## Testing strategy` and `## Deployment` in architecture
-
-   Use `AskUserQuestion` with options when there are 2–4 discrete choices. Otherwise plain text.
 
 4. **Track open branches.** After each answer, list the dependent questions that unblocked. Tackle them next.
 
@@ -72,8 +82,10 @@ You are the interviewer. Your job is to grill the human until you reach shared u
 2. **Sanity check via wiki-update skill.** Obsidian links, frontmatter, entity-page structure.
 
 3. **Log it.** Append to `docs/wiki/log.md`:
+
    ```markdown
    ## [YYYY-MM-DD HH:MM] interview — <slug>
+
    - Transcript: [[summaries/YYYY-MM-DD-<slug>]] (or embedded in raw)
    - Updated: <pages>
    - New todos: <count>
@@ -89,3 +101,6 @@ You are the interviewer. Your job is to grill the human until you reach shared u
 - **Skipping non-functional questions.** Perf, security, observability, deployment — most projects skip these and pay for it later.
 - **Ingesting before the human signs off.** Confirm scope coverage with the human, then write to the wiki.
 - **Asking what you could read.** If the wiki or codebase already answers the question, read first.
+- **Batching the transcript.** Writing the full transcript at the end instead of streaming it Q-by-Q and A-by-A. The transcript must be on disk turn-by-turn — if the session ends mid-interview, every Q+A already asked must be preserved.
+- **Editing prior answers.** Raw is immutable. If you discover an error or want to refine, append a follow-up Q+A clarifying it — never modify history.
+- **Asking without writing the Q first.** If you ask before the Q is on disk and the session ends mid-answer, you've lost the question. Always: write Q → ask → write A.

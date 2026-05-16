@@ -18,6 +18,7 @@ You are initializing this project. This command detects state, interviews the hu
 ### 1. Git state
 
 Run `git status`.
+
 - If not a git repo: `git init`, create a default `.gitignore` (Node, Python, OS, IDE entries), commit `chore: initial commit` on `main`.
 - If on `main` with uncommitted changes: stop and run `human-checkpoint`. Ask whether to commit, stash, or discard.
 - If on a feature branch: warn; don't switch.
@@ -45,9 +46,10 @@ Now interview the human. Follow the procedure from the `/interview` command, but
 9. **Deployment** — how will this ship? (CI, target environment, release process)
 10. **Non-functional** — perf targets, security requirements, observability, compliance.
 
-Open a transcript at `docs/raw/interviews/YYYY-MM-DD-init.md`. Append each Q+A as you go.
+Open a transcript at `docs/raw/interviews/YYYY-MM-DD-init.md` **before** asking the first question. Stream Q-by-Q and A-by-A: write the question to disk, ask, write the answer to disk on receipt — never batch. Same enforcement as `/interview` (see operating rule #7 in `.claude/commands/project/interview.md`).
 
 Stop conditions:
+
 - Human says stop.
 - All sections needed for wiki scaffolding have concrete answers.
 - You have enough to write Behavior cases for the first entity.
@@ -55,6 +57,7 @@ Stop conditions:
 ### 4. Scaffold wiki
 
 Create directories that don't exist:
+
 ```
 docs/raw/interviews/
 docs/wiki/entities/
@@ -96,6 +99,7 @@ Rewrite `CLAUDE.md` to be lean and project-specific. Drop the template framing �
 ## Identity
 
 You are an AI development agent working on <project name>. Before any code change:
+
 1. Read `docs/wiki/gotchas.md` for known failure points.
 2. Read `docs/wiki/todos.md` to know what's next.
 3. If the task touches a feature, read the matching entity page and the relevant section of `docs/wiki/requirements.md`.
@@ -118,52 +122,52 @@ You are an AI development agent working on <project name>. Before any code chang
 
 ## Wiki layout
 
-| Page | Purpose |
-|------|---------|
-| `docs/wiki/requirements.md` | Living spec |
-| `docs/wiki/architecture.md` | Stack, patterns, test strategy |
-| `docs/wiki/entities/*` | One page per feature/module |
-| `docs/wiki/decisions/*` | ADRs |
-| `docs/wiki/todos.md` | Priority-ordered work queue |
-| `docs/wiki/completed.md` | Shipped work |
-| `docs/wiki/gotchas.md` | Known failure points |
-| `docs/wiki/commands.md` | Working shell commands |
-| `docs/wiki/log.md` | Timeline |
-| `docs/wiki/wiki-todos.md` | Cleanup queue for wiki-maintainer |
+| Page                        | Purpose                           |
+| --------------------------- | --------------------------------- |
+| `docs/wiki/requirements.md` | Living spec                       |
+| `docs/wiki/architecture.md` | Stack, patterns, test strategy    |
+| `docs/wiki/entities/*`      | One page per feature/module       |
+| `docs/wiki/decisions/*`     | ADRs                              |
+| `docs/wiki/todos.md`        | Priority-ordered work queue       |
+| `docs/wiki/completed.md`    | Shipped work                      |
+| `docs/wiki/gotchas.md`      | Known failure points              |
+| `docs/wiki/commands.md`     | Working shell commands            |
+| `docs/wiki/log.md`          | Timeline                          |
+| `docs/wiki/wiki-todos.md`   | Cleanup queue for wiki-maintainer |
 
 ## Commands
 
-| Command | Purpose |
-|---------|---------|
-| `/init` | (Re)initialize project wiki and schema |
-| `/interview` | Q&A to define requirements or features |
-| `/work` | Top todo → spec → red → green → refactor → commit |
-| `/review` | Full audit in isolated worktree |
-| `/checkpoint` | Tag HEAD before risky ops |
-| `/rollback` | Revert to a checkpoint |
-| `/status` | Branch, todos, log, uncommitted summary |
-| `/wiki-lint` | Wiki health check |
-| `/wiki-ingest` | Ingest file or research into wiki |
+| Command        | Purpose                                           |
+| -------------- | ------------------------------------------------- |
+| `/init`        | (Re)initialize project wiki and schema            |
+| `/interview`   | Q&A to define requirements or features            |
+| `/work`        | Top todo → spec → red → green → refactor → commit |
+| `/review`      | Full audit in isolated worktree                   |
+| `/checkpoint`  | Tag HEAD before risky ops                         |
+| `/rollback`    | Revert to a checkpoint                            |
+| `/status`      | Branch, todos, log, uncommitted summary           |
+| `/wiki-lint`   | Wiki health check                                 |
+| `/wiki-ingest` | Ingest file or research into wiki                 |
 
 ## Agent routing
 
-| Task | Agent |
-|------|-------|
-| Write failing tests | `tester` |
-| Make tests pass + refactor | `implementer` (loads skills on demand) |
-| Periodic audit | `reviewer` (worktree-isolated) |
-| Wiki health | `wiki-maintainer` (manual only via `/wiki-lint`) |
-| Web research | `researcher` |
+| Task                       | Agent                                            |
+| -------------------------- | ------------------------------------------------ |
+| Write failing tests        | `tester`                                         |
+| Make tests pass + refactor | `implementer` (loads skills on demand)           |
+| Periodic audit             | `reviewer` (worktree-isolated)                   |
+| Wiki health                | `wiki-maintainer` (manual only via `/wiki-lint`) |
+| Web research               | `researcher`                                     |
 
 ## Hooks
 
-| Hook | Phase | Purpose |
-|------|-------|---------|
-| `session-start.sh` | SessionStart | Pull, activate venv, warn on uncommitted |
-| `session-end.sh` | Stop | Prompt to commit/push, append log |
-| `test-first-check.sh` | PreToolUse Write/Edit | Block code edits without a matching test on `feat/*`/`fix/*` |
-| `auto-format.sh` | PostToolUse Write/Edit | Run formatter by file extension |
-| `wiki-drift-check.sh` | Stop | Warn if code edited but no wiki touched |
+| Hook                  | Phase                  | Purpose                                                      |
+| --------------------- | ---------------------- | ------------------------------------------------------------ |
+| `session-start.sh`    | SessionStart           | Pull, activate venv, warn on uncommitted                     |
+| `session-end.sh`      | Stop                   | Prompt to commit/push, append log                            |
+| `test-first-check.sh` | PreToolUse Write/Edit  | Block code edits without a matching test on `feat/*`/`fix/*` |
+| `auto-format.sh`      | PostToolUse Write/Edit | Run formatter by file extension                              |
+| `wiki-drift-check.sh` | Stop                   | Warn if code edited but no wiki touched                      |
 
 ## Golden rules
 
@@ -186,8 +190,10 @@ Trim the template's explanatory prose. The file should be under ~120 lines. Ever
 ### 6. Log it
 
 Append to `docs/wiki/log.md`:
+
 ```markdown
 ## [YYYY-MM-DD HH:MM] init
+
 - Stack: <stack>
 - Test command: <command>
 - Interview transcript: [[summaries/YYYY-MM-DD-init]]
@@ -199,6 +205,7 @@ Append to `docs/wiki/log.md`:
 ### 7. Report
 
 Print:
+
 - Stack and test command.
 - Pages created vs already present.
 - Key decisions from the interview.
