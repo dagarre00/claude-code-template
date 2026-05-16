@@ -26,6 +26,8 @@ Inside Claude Code:
 
 Open `docs/wiki/` in Obsidian on the side. That's your view of the agent's knowledge.
 
+For a worked walkthrough — `/init` → `/interview` → `/work` end-to-end with explanations — see [`docs/getting-started.md`](docs/getting-started.md).
+
 ## What's in the box
 
 ```
@@ -53,4 +55,4 @@ HUMAN.md             # the human's-eye view of how this works
 
 ## License
 
-Use it. Fork it. Bend it.
+MIT — see [`LICENSE`](LICENSE). Use it. Fork it. Bend it.

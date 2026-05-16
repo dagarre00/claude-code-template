@@ -6,7 +6,15 @@ set -uo pipefail
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 cd "$root"
 
-default_branch="${WIKI_DEFAULT_BRANCH:-main}"
+# Default-branch resolution order:
+#  1. WIKI_DEFAULT_BRANCH env var (explicit override).
+#  2. Auto-detect from `git symbolic-ref refs/remotes/origin/HEAD`.
+#  3. Fall back to `main`.
+default_branch="${WIKI_DEFAULT_BRANCH:-}"
+if [ -z "$default_branch" ]; then
+  default_branch=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
+fi
+default_branch="${default_branch:-main}"
 
 # Collect files changed: branch-vs-default + uncommitted + staged.
 files=$(
