@@ -3,7 +3,7 @@
 This repository is a **template for agentic software development**. Two ideas govern everything:
 
 1. **The wiki is the spec.** `docs/wiki/` is the source of truth for what the project is and how it works. Code that disagrees with the wiki is the bug.
-2. **Progressive disclosure beats specialized agents.** A single `implementer` agent loads task-specific skills on demand. Skills are short, procedural, and tell the agent *how* to do something *in this project* — never *what something is* in the abstract.
+2. **Progressive disclosure beats specialized agents.** A single `implementer` agent loads task-specific skills on demand. Skills are short, procedural, and tell the agent _how_ to do something _in this project_ — never _what something is_ in the abstract.
 
 ## Identity
 
@@ -13,12 +13,12 @@ You are an AI development agent working on this project. At the top of every ses
 2. Read `docs/wiki/todos.md` to know what's next.
 3. If the task touches a feature, read the matching `docs/wiki/entities/<slug>.md` and the relevant section of `docs/wiki/requirements.md`.
 4. Grep `docs/wiki/` for terms from the task to find related concepts, decisions, or summaries before you act.
-5. Let any matching skill auto-load — skills tell you the procedure for *this project's* TDD loop, branching, wiki updates, etc.
+5. Let any matching skill auto-load — skills tell you the procedure for _this project's_ TDD loop, branching, wiki updates, etc.
 
 ## Operating principles
 
 - **Progressive disclosure.** Agents start with minimal context. Skills load on demand based on task content. Never preload knowledge an agent doesn't need yet.
-- **Skills are how-to, not what-is.** Every skill body says: "When you're doing X, here's the procedure: read these wiki pages, follow these steps, update these pages." No skill explains what backend or TDD *means* — assume the LLM knows.
+- **Skills are how-to, not what-is.** Every skill body says: "When you're doing X, here's the procedure: read these wiki pages, follow these steps, update these pages." No skill explains what backend or TDD _means_ — assume the LLM knows.
 - **Dynamic config.** Agents, skills, commands, and hooks are evolved by the meta skills (`update-agent`, `update-skill`, `update-command`, `update-hook`). When the project's needs change, the agent updates its own toolkit.
 - **Spec → Test → Code.** Write the entity Behavior cases first, derive failing tests, then implement. The `test-first-check` hook blocks code edits without a matching test on `feat/*` and `fix/*` branches.
 - **Wiki always current.** Code edits and wiki edits ship together. The `wiki-drift-check` hook warns at session end if you only touched code.
@@ -46,6 +46,7 @@ docs/
     ├── completed.md        # shipped work with backrefs
     ├── gotchas.md          # known failure points
     ├── commands.md         # working shell commands (incl. test command)
+    ├── glossary.md         # project vocabulary (domain terms, aliases)
     ├── wiki-todos.md       # queue of cleanup tasks for wiki-maintainer
     ├── entities/           # one page per feature/module/component
     ├── concepts/           # patterns, conventions, domain ideas
@@ -55,27 +56,27 @@ docs/
 
 ## Slash commands
 
-| Command | Purpose |
-|---------|---------|
-| `/init` | Detect project state, scaffold `docs/wiki/`, fill base docs (requirements, architecture, git-conventions, commands), initialize git if needed |
-| `/interview` | Grill-me-relentlessly Q&A. Used both for initial requirements and for adding features. Writes a transcript to `docs/raw/interviews/`, then updates affected wiki pages |
-| `/work` | Pick the top todo (or batch consecutive todos sharing context), open a `feat/*` branch, run spec→red→green→refactor→wiki-update→commit |
-| `/review` | Throughout review of code vs wiki. Runs in a fresh worktree with isolated context |
-| `/checkpoint` | Tag HEAD as `checkpoint-<timestamp>` for risky operations |
-| `/rollback` | List checkpoints, revert to one |
-| `/status` | Branch, top todos, recent log, uncommitted summary |
-| `/wiki-lint` | Health-check the wiki: contradictions, orphans, broken links, drift, unprocessed `wiki-todos.md` items |
-| `/wiki-ingest` | Ingest a file or research topic directly into the wiki. `/wiki-ingest spec.pdf` for documents, `/wiki-ingest search for ...` for research |
+| Command        | Purpose                                                                                                                                                                |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/init`        | Detect project state, scaffold `docs/wiki/`, fill base docs (requirements, architecture, git-conventions, commands), initialize git if needed                          |
+| `/interview`   | Grill-me-relentlessly Q&A. Used both for initial requirements and for adding features. Writes a transcript to `docs/raw/interviews/`, then updates affected wiki pages |
+| `/work`        | Pick the top todo (or batch consecutive todos sharing context), open a `feat/*` branch, run spec→red→green→refactor→wiki-update→commit                                 |
+| `/review`      | Throughout review of code vs wiki. Runs in a fresh worktree with isolated context                                                                                      |
+| `/checkpoint`  | Tag HEAD as `checkpoint-<timestamp>` for risky operations                                                                                                              |
+| `/rollback`    | List checkpoints, revert to one                                                                                                                                        |
+| `/status`      | Branch, top todos, recent log, uncommitted summary                                                                                                                     |
+| `/wiki-lint`   | Health-check the wiki: contradictions, orphans, broken links, drift, unprocessed `wiki-todos.md` items                                                                 |
+| `/wiki-ingest` | Ingest a file or research topic directly into the wiki. `/wiki-ingest spec.pdf` for documents, `/wiki-ingest search for ...` for research                              |
 
 ## Agent routing
 
-| Task | Agent |
-|------|-------|
-| TDD Red — write failing tests | `tester` |
-| TDD Green + Refactor — make tests pass | `implementer` (loads skills based on task content) |
-| Periodic full audit (≈every 5 todos via `/review`) | `reviewer` (worktree-isolated for clean context) |
-| Periodic wiki health, ingest, cross-link | `wiki-maintainer` — **manual only** via `/wiki-lint` or explicit human request |
-| Web research — search, fetch, synthesize | `researcher` — dispatched by `/wiki-ingest` or directly by the human |
+| Task                                               | Agent                                                                          |
+| -------------------------------------------------- | ------------------------------------------------------------------------------ |
+| TDD Red — write failing tests                      | `tester`                                                                       |
+| TDD Green + Refactor — make tests pass             | `implementer` (loads skills based on task content)                             |
+| Periodic full audit (≈every 5 todos via `/review`) | `reviewer` (worktree-isolated for clean context)                               |
+| Periodic wiki health, ingest, cross-link           | `wiki-maintainer` — **manual only** via `/wiki-lint` or explicit human request |
+| Web research — search, fetch, synthesize           | `researcher` — dispatched by `/wiki-ingest` or directly by the human           |
 
 There is intentionally no domain-specialized agent (no "backend agent", no "database agent"). Domain knowledge lives in skills the implementer loads on demand.
 
@@ -84,9 +85,11 @@ There is intentionally no domain-specialized agent (no "backend agent", no "data
 ## Skill catalog (initial)
 
 **Meta skills** — evolve the agent's own toolkit:
+
 - `update-agent`, `update-skill`, `update-command`, `update-hook`
 
 **Core process skills** — used during work:
+
 - `tdd-loop` — red/green/refactor procedure for this project
 - `wiki-update` — how agents touch wiki pages while working
 - `feature-branching` — how to start/finish a feature branch
@@ -111,19 +114,19 @@ type: agent | command | skill | rule | wiki-entity | wiki-concept | wiki-decisio
 
 Wiki pages may add: `sources:` (list of raw paths), `updated: YYYY-MM-DD`, `status: draft | approved | stale | shipped | deprecated`.
 
-Skills in particular need a precise `description` because Claude Code uses it to decide whether to load the skill. State *exactly* what triggers the skill — the keywords, the situations, the tool calls.
+Skills in particular need a precise `description` because Claude Code uses it to decide whether to load the skill. State _exactly_ what triggers the skill — the keywords, the situations, the tool calls.
 
 ## Hooks
 
 Wired in `.claude/settings.json`:
 
-| Hook | Phase | Purpose |
-|------|-------|---------|
-| `session-start.sh` | SessionStart | `git pull --ff-only`, activate Python venv if present, warn on uncommitted, run test suite if configured |
-| `session-end.sh` | Stop | Prompt to commit if dirty, prompt to push, append session entry to `docs/wiki/log.md` |
-| `test-first-check.sh` | PreToolUse Write/Edit | Block code edits on `feat/*` / `fix/*` branches if no matching test was edited recently |
-| `auto-format.sh` | PostToolUse Write/Edit | Run formatter by file extension |
-| `wiki-drift-check.sh` | Stop | Warn if code was edited but no wiki page was touched in the same session |
+| Hook                  | Phase                  | Purpose                                                                                                  |
+| --------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------- |
+| `session-start.sh`    | SessionStart           | `git pull --ff-only`, activate Python venv if present, warn on uncommitted, run test suite if configured |
+| `session-end.sh`      | Stop                   | Prompt to commit if dirty, prompt to push, append session entry to `docs/wiki/log.md`                    |
+| `test-first-check.sh` | PreToolUse Write/Edit  | Block code edits on `feat/*` / `fix/*` branches if no matching test was edited recently                  |
+| `auto-format.sh`      | PostToolUse Write/Edit | Run formatter by file extension                                                                          |
+| `wiki-drift-check.sh` | Stop                   | Warn if code was edited but no wiki page was touched in the same session                                 |
 
 ## Golden rules
 
@@ -142,17 +145,18 @@ Wired in `.claude/settings.json`:
 
 ## Where things live
 
-| Concern | Location |
-|---------|----------|
-| What the project should do | `docs/wiki/requirements.md` |
-| How it's built | `docs/wiki/architecture.md` + `docs/wiki/entities/*` |
-| Why we chose X | `docs/wiki/decisions/*` |
-| What can go wrong | `docs/wiki/gotchas.md` |
-| What's next | `docs/wiki/todos.md` |
-| What's shipped | `docs/wiki/completed.md` |
-| Working shell + test commands | `docs/wiki/commands.md` |
-| Branch / commit rules | `docs/wiki/git-conventions.md` |
-| Cleanup queue for wiki-maintainer | `docs/wiki/wiki-todos.md` |
-| Timeline | `docs/wiki/log.md` |
-| Raw sources (immutable) | `docs/raw/` |
-| Hard behavioral constraints | `.claude/rules/behavioral.md` |
+| Concern                           | Location                                             |
+| --------------------------------- | ---------------------------------------------------- |
+| What the project should do        | `docs/wiki/requirements.md`                          |
+| How it's built                    | `docs/wiki/architecture.md` + `docs/wiki/entities/*` |
+| Why we chose X                    | `docs/wiki/decisions/*`                              |
+| What can go wrong                 | `docs/wiki/gotchas.md`                               |
+| What's next                       | `docs/wiki/todos.md`                                 |
+| What's shipped                    | `docs/wiki/completed.md`                             |
+| Working shell + test commands     | `docs/wiki/commands.md`                              |
+| Project vocabulary                | `docs/wiki/glossary.md`                              |
+| Branch / commit rules             | `docs/wiki/git-conventions.md`                       |
+| Cleanup queue for wiki-maintainer | `docs/wiki/wiki-todos.md`                            |
+| Timeline                          | `docs/wiki/log.md`                                   |
+| Raw sources (immutable)           | `docs/raw/`                                          |
+| Hard behavioral constraints       | `.claude/rules/behavioral.md`                        |
