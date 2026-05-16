@@ -1,0 +1,65 @@
+# GitHub Actions CI starter for this template.
+#
+# Usage:
+#   1. Copy this file to .github/workflows/ci.yml (drop the .example extension).
+#   2. Uncomment the toolchain block(s) that match your stack.
+#   3. Replace the "Run tests" step with the exact command from
+#      docs/wiki/commands.md under "## Test".
+#   4. Commit on a feat/chore branch; the workflow runs on push and PR.
+#
+# This file is intentionally not active (`.example` suffix). The template
+# can't guess your stack — /interview + the implementer agent should set
+# up the real ci.yml once the stack is known.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---------- Toolchain — uncomment the block(s) you need ----------
+
+      # Python:
+      # - uses: actions/setup-python@v5
+      #   with:
+      #     python-version: "3.x"
+      # - run: pip install -e .[dev]
+      #   # or: pip install -r requirements.txt
+
+      # Node / TypeScript:
+      # - uses: actions/setup-node@v4
+      #   with:
+      #     node-version: "20"
+      #     cache: npm
+      # - run: npm ci
+
+      # Go:
+      # - uses: actions/setup-go@v5
+      #   with:
+      #     go-version: stable
+      #     cache: true
+
+      # Rust:
+      # - uses: dtolnay/rust-toolchain@stable
+      # - uses: Swatinem/rust-cache@v2
+
+      # ---------- Lint (optional but recommended) ----------
+      # - name: Lint
+      #   run: |
+      #     # replace with the command from docs/wiki/commands.md#lint
+      #     echo "no lint configured" && exit 0
+
+      # ---------- Tests ----------
+      - name: Run tests
+        run: |
+          # Replace with the command from docs/wiki/commands.md#test.
+          # Example: pytest -q   |   npm test   |   go test ./...   |   cargo test
+          echo "TODO: wire up test command from docs/wiki/commands.md" >&2
+          exit 1
