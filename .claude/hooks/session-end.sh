@@ -44,6 +44,11 @@ fi
 
 # Per-minute dedup as a safety net against rapid re-fires.
 if [ "$work_happened" = "yes" ] && [ -f "$log" ] && [ "$now_min" != "$last_min" ]; then
+  # Skip logging until /project:init has run (it writes the first "init" entry).
+  if ! grep -q '^\#\# \[.*\] init' "$log" 2>/dev/null; then
+    exit 0
+  fi
+
   stamp=$(date -u +"%Y-%m-%d %H:%M")
 
   # Count commits since session start (0 if no marker or same SHA).
