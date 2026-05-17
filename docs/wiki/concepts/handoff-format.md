@@ -71,10 +71,10 @@ One handoff per branch. Multiple concurrent branches each have their own handoff
 
 ## Lifecycle
 
-1. **Tester creates.** After writing the failing tests and running the suite, the tester writes the handoff with `red_confirmed: true` (or `false` with a `notes` explanation if Red didn't materialize).
+1. **Tester creates and commits.** After writing the failing tests and running the suite, the tester writes the handoff with `red_confirmed: true` (or `false` with a `notes` explanation if Red didn't materialize), then commits it alongside the test files in a `test(<slug>): red phase` commit. Committing is mandatory — it is what lets the session resume after a rate limit or container recycle.
 2. **Implementer reads.** First action: read `.claude/handoff/<slug>.json`. If missing or `red_confirmed !== true`, refuse to start and surface the issue.
 3. **`/project:work` owns increments on retry.** When an implementation attempt fails and the loop restarts, `/project:work` increments `attempt` before re-dispatching the tester. The implementer checks `attempt` on read and triggers the two-strike pivot at `>= 2`.
-4. **Deleted on merge.** When the branch is merged, the handoff is deleted. The `.claude/handoff/` directory is `.gitignore`'d, so handoffs never reach the remote.
+4. **Implementer deletes on completion.** The implementer removes `.claude/handoff/<slug>.json` as part of its final commit. This keeps `main` clean after the branch merges — the file only ever lives on the `feat/*` or `fix/*` branch.
 
 ## Hook contract
 

@@ -10,13 +10,31 @@ You orchestrate one TDD cycle (or a small batch). You do **not** write tests or 
 
 ## Preconditions
 
-- Clean working tree on `main`.
+**Starting fresh (on `main`):**
+
+- Clean working tree.
 - `docs/wiki/todos.md` has at least one item.
 - `docs/wiki/commands.md` has a working test command.
 
-If any fails: stop and run `human-checkpoint`.
+**Resuming mid-cycle (already on a `feat/*` or `fix/*` branch):**
+
+- `.claude/handoff/<slug>.json` committed with `red_confirmed: true` → proceed to step 0.
+- Handoff missing or `red_confirmed: false` → unclear state; run `human-checkpoint`.
+
+If any fresh-start precondition fails: stop and run `human-checkpoint`.
 
 ## Steps
+
+0. **Resume detection** _(skip this step when starting fresh on `main`)._
+
+   When the current branch is already `feat/*` or `fix/*` (session restarted after a rate limit or container recycle):
+
+   a. Derive `slug` from the branch name (strip `feat/` or `fix/` prefix).
+   b. Read `.claude/handoff/<slug>.json`. Confirm `red_confirmed: true`. If not, run `human-checkpoint`.
+   c. Run the test command from the handoff.
+   d. **All tests pass** → the implementer finished before the session ended. Skip to step 9 (verify green).
+   e. **Tests still failing** → Red is intact; implementer did not finish. Skip to step 8 (dispatch implementer).
+   f. **Mixed results** (some pass, some fail) → implementer was mid-flight. Skip to step 8; the implementer will pick up where it left off.
 
 1. **Pick the work.**
    - Read `docs/wiki/todos.md`. Take the top item.

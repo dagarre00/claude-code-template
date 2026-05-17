@@ -8,8 +8,9 @@ Thumbs.db
 # Session checkpoints (transient — regenerated on every /project:checkpoint)
 docs/wiki/session-checkpoint.md
 
-# Inter-agent handoff files (transient — written by tester, deleted by implementer)
-.claude/handoff/
+# Planner plan files (transient — overwritten each cycle, not needed after implementation)
+# Handoff JSONs are intentionally committed on feat/* branches so sessions can resume after rate limits.
+.claude/handoff/*-plan.md
 
 # Obsidian per-user vault config (users open the vault themselves)
 docs/.obsidian/

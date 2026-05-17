@@ -51,6 +51,7 @@ All links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rul
 - Test suite green (re-run from `docs/wiki/commands.md`).
 - Entity page reflects current behavior.
 - TODO checked off in `docs/wiki/todos.md`; entry moved to `docs/wiki/completed.md` with a backref.
+- Delete `.claude/handoff/<slug>.json` — include the deletion in the final commit (the tester committed it on this branch; removing it keeps `main` clean after merge).
 - Commit follows `docs/wiki/git-conventions.md`.
 - Pause for the human if anything is uncertain — see `human-checkpoint`.
 
