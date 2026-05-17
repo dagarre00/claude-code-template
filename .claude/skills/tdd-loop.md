@@ -49,7 +49,7 @@ Use `human-checkpoint` if:
 
 After green + any refactor:
 
-- Tick the Behavior cases on the entity page from `[~]` to `[x]`.
+- Tick the Behavior cases on the entity page from `[~]` to `[x]`. The three states (`[ ]` / `[~]` / `[x]`) and their transitions are defined in the `spec-writing` skill — see its "Behavior case states" section.
 - Update the entity page's "Implementation" section with the files now touched.
 - If you discovered a project-specific pitfall, follow `gotcha-recording`.
 - Follow `wiki-update` for the link/format details.

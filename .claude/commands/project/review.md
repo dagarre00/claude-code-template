@@ -29,17 +29,23 @@ If any fails: run `human-checkpoint`.
 
 1. **Optionally pin the scope.** If the human gave a specific area to review, write it down in one line. Otherwise the review is whole-repo.
 
-2. **Create the worktree.** Outside the main checkout:
-   ```bash
-   git worktree add ../<repo>-review-YYYY-MM-DD HEAD
-   ```
-   The reviewer works there; no risk of polluting the main checkout.
+2. **Create the worktree and enter it.** Outside the main checkout:
 
-3. **Dispatch the `reviewer` agent** with:
-   - The worktree path.
+   ```bash
+   WORKTREE="../$(basename "$PWD")-review-$(date -u +%Y-%m-%d)"
+   git worktree add "$WORKTREE" HEAD
+   cd "$WORKTREE"
+   ```
+
+   The reviewer works here; the `cd` is required because the dispatched subagent inherits this cwd. Without it, the reviewer ends up in the main checkout and the isolation is fake.
+
+3. **Dispatch the `reviewer` agent** (you are now inside the worktree) with:
+   - The worktree path (so the reviewer can `pwd`-verify it matches).
    - The scope (whole repo or specific area).
    - The current `docs/wiki/wiki-todos.md` (so it sees outstanding queue items as input).
    - Explicit instruction: no implementer context, fresh read.
+
+   The reviewer's first action is `pwd` and a check against the path you passed. If they mismatch, the reviewer stops and reports — that means step 2's `cd` was skipped or the worktree creation failed.
 
 4. **Reviewer writes** `docs/wiki/decisions/review-YYYY-MM-DD.md` with structured findings (see reviewer agent definition).
 
@@ -49,14 +55,18 @@ If any fails: run `human-checkpoint`.
    - For each Drift item: append to `docs/wiki/wiki-todos.md` for the maintainer.
    - For each Missing ADR: queue the ADR for the next `/work` cycle.
 
-6. **Clean up the worktree:**
+6. **Clean up the worktree.** Return to the main checkout first, then remove:
+
    ```bash
-   git worktree remove ../<repo>-review-YYYY-MM-DD
+   cd -                              # back to main checkout
+   git worktree remove "$WORKTREE"
    ```
 
 7. **Log it.** Append to `docs/wiki/log.md`:
+
    ```markdown
    ## [YYYY-MM-DD HH:MM] review
+
    - Report: [[decisions/review-YYYY-MM-DD]]
    - Critical: <N>, Warnings: <M>, Drift: <K>
    - New todos: <list>

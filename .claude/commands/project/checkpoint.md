@@ -22,22 +22,30 @@ You create a recoverable snapshot via a git tag. This is cheaper than a branch a
    - Ask the human via `human-checkpoint` whether to commit or stash.
 
 2. **Create the tag:**
+
    ```bash
    STAMP=$(date -u +%Y%m%dT%H%M%SZ)
    TAG="checkpoint-$STAMP"
    git tag -a "$TAG" -m "checkpoint: $REASON"
    ```
+
    Where `$REASON` is a one-line description provided by the human or inferred from the next planned operation.
 
 3. **Push the tag** so it survives a local checkout being lost:
+
    ```bash
-   git push origin "$TAG"
+   if git remote get-url origin >/dev/null 2>&1; then
+     git push origin "$TAG"
+   else
+     echo "[checkpoint] no 'origin' remote — tag $TAG is local-only" >&2
+   fi
    ```
-   If no remote: print a warning that the tag is local-only.
 
 4. **Log it.** Append to `docs/wiki/log.md`:
+
    ```markdown
    ## [YYYY-MM-DD HH:MM] checkpoint — <reason>
+
    - Tag: checkpoint-<stamp>
    - HEAD: <short sha>
    - Branch: <name>

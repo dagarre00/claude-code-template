@@ -1,73 +1,46 @@
 ---
 name: feature-branching
-description: Branch and commit conventions for this project. Use whenever starting work on a todo, batching todos, or finishing a feature. Trigger on "branch", "feat/", "fix/", "merge", "PR", "pull request", "conventional commit".
+description: Branching procedure for this project — when to branch, batching rules, finishing-up checklist. Commit-message format itself lives in CLAUDE.md golden rule 8 and docs/wiki/git-conventions.md. Trigger on "start branch", "feat/", "fix/", "batch todos", "finish feature".
 type: skill
 ---
 
-# Branching and Commits
+# Branching
 
-Always branch before code. Never commit to `main`.
-
-## Read first
-
-- `docs/wiki/git-conventions.md` — the canonical conventions for this project (branch prefixes, commit format, PR template).
-- `docs/wiki/todos.md` — what you're branching for.
+Always branch before code. Never commit to `main`. Commit-message format and PR template live in [`docs/wiki/git-conventions.md`](../../docs/wiki/git-conventions.md) and are summarized by `CLAUDE.md` golden rule 8 — this skill won't repeat them.
 
 ## Starting work
 
 1. Confirm clean tree:
+
    ```bash
    git status --porcelain
    ```
-   If dirty: stop and run `human-checkpoint` — don't try to be clever with stashing.
+
+   If dirty: stop and run `human-checkpoint`. Don't be clever with stashing.
 
 2. Sync main:
+
    ```bash
    git checkout main && git pull --ff-only
    ```
 
-3. Branch name: `<type>/<short-slug>` where `<type>` ∈ `feat`, `fix`, `chore`, `docs`, `refactor`, `test`.
-   - `feat/auth-login`
-   - `fix/race-on-double-submit`
-   - `chore/upgrade-pytest`
-   - `feat/profile` (when batching multiple todos under one feature)
+3. Branch as `<type>/<short-slug>` where `<type>` ∈ `feat`, `fix`, `chore`, `docs`, `refactor`, `test`. Examples: `feat/auth-login`, `fix/race-on-double-submit`, `chore/upgrade-pytest`, `feat/profile` (batched).
 
    ```bash
    git checkout -b feat/<slug>
    ```
 
-4. The `test-first-check` hook activates on `feat/*` and `fix/*` branches.
+The `test-first-check` hook activates on `feat/*` and `fix/*` — you'll need the `red_confirmed` handoff (see [[concepts/handoff-format]]) before any code edit.
 
 ## Batching todos
 
-Two todos can share a branch when:
-- They touch the same entity page.
-- The second todo depends on the first.
-- Splitting them produces a meaningless intermediate commit.
-
-If you're unsure, **don't batch** — separate branches are easier to revert.
-
-## Commit messages
-
-Conventional commits, present tense:
-
-```
-<type>(<scope>): <one-line summary>
-
-<optional body — what changed and why, not how>
-
-<optional footer — refs to wiki pages, breaking changes>
-```
-
-Types: `feat`, `fix`, `chore`, `docs`, `test`, `refactor`, `perf`, `style`.
-
-Scope is the entity slug or affected area: `feat(auth-login): …`.
+Two todos share a branch when **all** are true: same entity page, second depends on first, splitting produces a meaningless intermediate commit. Otherwise — separate branches. Batches of 2+ also trigger the planner (see `/work` step 4).
 
 ## Commit cadence
 
-- One commit per green TDD cycle (test + impl + entity-page update).
+- One commit per green TDD cycle (test + impl + entity-page update bundled).
 - Refactor commits are separate from feat commits.
-- Don't commit half-green code. If you stop work mid-cycle, `/checkpoint` and leave the working tree.
+- Don't commit half-green code. Mid-cycle stop → `/checkpoint` and leave the tree.
 
 ## Finishing the feature
 
@@ -75,12 +48,12 @@ Scope is the entity slug or affected area: `feat(auth-login): …`.
 2. Entity page reflects current state; Behavior cases ticked.
 3. TODO moved from `docs/wiki/todos.md` to `docs/wiki/completed.md`.
 4. Push: `git push -u origin <branch>`.
-5. Open a PR using the project's PR template (`pr-create` skill if it exists).
-6. After merge: delete the branch locally and on remote.
+5. PR (only on explicit human go-ahead): follow `pr-create` skill.
+6. After merge: delete branch locally and on remote.
 
 ## Anti-patterns
 
-- **Committing to main.** Forbidden. If you find yourself on main with changes, branch first, then commit.
-- **`--no-verify` to skip hooks.** Hooks exist for a reason. If a hook blocks you, fix the underlying issue.
-- **`git commit -a`.** Stage explicitly so you don't accidentally commit unrelated files.
-- **Squashing locally to hide multiple Red-Green cycles.** The history is the trace of the TDD loop — preserve it.
+- **Committing to `main`.** Branch first.
+- **`--no-verify`.** If a hook blocks, fix the underlying issue.
+- **`git commit -a`.** Stage explicitly.
+- **Squashing locally to hide Red→Green cycles.** History is the trace of the TDD loop.

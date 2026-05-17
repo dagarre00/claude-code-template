@@ -32,6 +32,8 @@ _(one page per feature / module / component — populated by `/work` and `/inter
 
 ## Concepts
 
+- [[concepts/handoff-format]] — schema for the tester→implementer handoff JSON (incl. `attempt` for the two-strike rule)
+
 _(patterns, conventions, domain ideas — promoted by the wiki-maintainer when a pattern recurs)_
 
 ## Decisions (ADRs)

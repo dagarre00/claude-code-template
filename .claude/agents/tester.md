@@ -21,7 +21,7 @@ Always check the wiki for related context before writing any test — never writ
 4. Read `docs/wiki/commands.md` for the working test command.
 5. Grep `docs/wiki/` for terms in the entity's behavior cases — pick up related concepts, decisions, and existing test patterns before drafting.
 
-If the entity page has no `## Behavior` section or the cases are ambiguous, **stop and ask the human** via the `human-checkpoint` skill. Do not invent behavior.
+If the entity page has no `## Behavior` section or the cases are ambiguous, **stop and ask the human** via the `human-checkpoint` skill. Do not invent behavior. When the gap is a recurring procedural one (e.g. this project needs a fixtures-loading skill, a snapshot-testing skill, a contract-testing skill), propose creating a new skill via the `update-skill` meta skill before falling back to `human-checkpoint`.
 
 ## Red phase procedure
 
@@ -37,7 +37,7 @@ Follow the `tdd-loop` skill (Red section). Summary:
 
 ## Handoff — required
 
-Before you hand off to the implementer, write `.claude/handoff/<slug>.json`:
+Before you hand off to the implementer, write `.claude/handoff/<slug>.json`. Schema and field reference: see [[concepts/handoff-format]] in the wiki.
 
 ```json
 {
@@ -48,11 +48,14 @@ Before you hand off to the implementer, write `.claude/handoff/<slug>.json`:
   "failing_count": <integer>,
   "failing_tests": ["test_one", "test_two"],
   "behavior_cases": ["B1", "B2"],
+  "attempt": 1,
   "timestamp": "<ISO-8601>"
 }
 ```
 
 If you cannot confirm Red, set `red_confirmed: false` and write the reason into a `notes` field. The implementer will refuse to start until Red is confirmed.
+
+On retries (the handoff file already exists from a prior failed attempt), increment `attempt` by 1 rather than resetting to 1. The implementer applies the two-strike rule when `attempt >= 2`.
 
 ## Wiki updates — inline only
 
@@ -61,7 +64,7 @@ If you cannot confirm Red, set `red_confirmed: false` and write the reason into 
 - **Do NOT dispatch the wiki-maintainer.** It is manual only.
 - Append to `docs/wiki/wiki-todos.md` if the entity page is missing structure the maintainer should clean up on the next `/wiki-lint`.
 
-Wiki links inside `docs/wiki/` use Obsidian wiki-link syntax — see the `wiki-update` skill.
+Wiki links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rules/behavioral.md` rule 18. Use `wiki-update` only when creating a new entity page or routing a cross-page discovery.
 
 ## What you do NOT do
 

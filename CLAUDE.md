@@ -60,7 +60,8 @@ docs/
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/init`        | Detect project state, scaffold `docs/wiki/`, fill base docs (requirements, architecture, git-conventions, commands), initialize git if needed                          |
 | `/interview`   | Grill-me-relentlessly Q&A. Used both for initial requirements and for adding features. Writes a transcript to `docs/raw/interviews/`, then updates affected wiki pages |
-| `/work`        | Pick the top todo (or batch consecutive todos sharing context), open a `feat/*` branch, run spec→red→green→refactor→wiki-update→commit                                 |
+| `/plan`        | Dispatch the `planner` agent on a todo (or `top`) and stop at the plan file. Useful for estimation, scoping, or pre-planning before `/work`                            |
+| `/work`        | Pick the top todo (or batch consecutive todos sharing context), open a `feat/*` branch, optionally run the planner, then spec→red→green→refactor→wiki-update→commit    |
 | `/review`      | Throughout review of code vs wiki. Runs in a fresh worktree with isolated context                                                                                      |
 | `/checkpoint`  | Tag HEAD as `checkpoint-<timestamp>` for risky operations                                                                                                              |
 | `/rollback`    | List checkpoints, revert to one                                                                                                                                        |
@@ -70,15 +71,16 @@ docs/
 
 ## Agent routing
 
-| Task                                               | Agent                                                                          |
-| -------------------------------------------------- | ------------------------------------------------------------------------------ |
-| TDD Red — write failing tests                      | `tester`                                                                       |
-| TDD Green + Refactor — make tests pass             | `implementer` (loads skills based on task content)                             |
-| Periodic full audit (≈every 5 todos via `/review`) | `reviewer` (worktree-isolated for clean context)                               |
-| Periodic wiki health, ingest, cross-link           | `wiki-maintainer` — **manual only** via `/wiki-lint` or explicit human request |
-| Web research — search, fetch, synthesize           | `researcher` — dispatched by `/wiki-ingest` or directly by the human           |
+| Task                                               | Agent                                                                                                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Plan / decompose a complex or batched todo         | `planner` (Opus) — dispatched by `/work` when a todo is tagged `[complex]` or batching 2+ todos, or directly via `/plan` |
+| TDD Red — write failing tests                      | `tester`                                                                                                                 |
+| TDD Green + Refactor — make tests pass             | `implementer` (loads skills based on task content)                                                                       |
+| Periodic full audit (≈every 5 todos via `/review`) | `reviewer` (worktree-isolated for clean context)                                                                         |
+| Periodic wiki health, ingest, cross-link           | `wiki-maintainer` — **manual only** via `/wiki-lint` or explicit human request                                           |
+| Web research — search, fetch, synthesize           | `researcher` — dispatched by `/wiki-ingest` or directly by the human                                                     |
 
-There is intentionally no domain-specialized agent (no "backend agent", no "database agent"). Domain knowledge lives in skills the implementer loads on demand.
+There is intentionally no domain-specialized agent (no "backend agent", no "database agent"). Domain knowledge lives in skills the implementer loads on demand. The `planner` is the lone Opus agent — planning benefits from stronger reasoning while tester/implementer/reviewer/researcher/wiki-maintainer run on Sonnet.
 
 **Wiki edits — inline vs deferred.** Other agents (implementer, tester, reviewer) make **small wiki edits inline** in the same commit as the code (entity-page Behavior tick, single ADR, single gotcha line, log entry). For **larger or cross-page work** (orphan cleanup, contradictions, mass cross-linking), they append a one-line entry to `docs/wiki/wiki-todos.md` for the wiki-maintainer to process on the next `/wiki-lint`. **No agent auto-invokes the wiki-maintainer.** Raw-source ingest goes through the human via `/wiki-ingest`.
 
@@ -91,10 +93,12 @@ There is intentionally no domain-specialized agent (no "backend agent", no "data
 **Core process skills** — used during work:
 
 - `tdd-loop` — red/green/refactor procedure for this project
+- `plan-writing` — how the planner agent structures a stepwise plan for `[complex]` or batched todos
 - `wiki-update` — how agents touch wiki pages while working
 - `feature-branching` — how to start/finish a feature branch
+- `pr-create` — how to draft a PR body when the human asks to open one
 - `human-checkpoint` — when and how to pause for the human
-- `spec-writing` — how to write entity Behavior cases that produce good tests
+- `spec-writing` — how to write entity Behavior cases that produce good tests (and the canonical `[ ]`/`[~]`/`[x]` notation)
 - `decision-recording` — how to file an ADR
 - `gotcha-recording` — how to capture a failure mode for future agents
 
@@ -120,13 +124,13 @@ Skills in particular need a precise `description` because Claude Code uses it to
 
 Wired in `.claude/settings.json`:
 
-| Hook                  | Phase                  | Purpose                                                                                                  |
-| --------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------- |
-| `session-start.sh`    | SessionStart           | `git pull --ff-only`, activate Python venv if present, warn on uncommitted, run test suite if configured |
-| `session-end.sh`      | Stop                   | Prompt to commit if dirty, prompt to push, append session entry to `docs/wiki/log.md`                    |
-| `test-first-check.sh` | PreToolUse Write/Edit  | Block code edits on `feat/*` / `fix/*` branches if no matching test was edited recently                  |
-| `auto-format.sh`      | PostToolUse Write/Edit | Run formatter by file extension                                                                          |
-| `wiki-drift-check.sh` | Stop                   | Warn if code was edited but no wiki page was touched in the same session                                 |
+| Hook                  | Phase                  | Purpose                                                                                                                                                                                |
+| --------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `session-start.sh`    | SessionStart           | Warn on upstream divergence (no auto-pull), detect Python venv if markers present, warn on uncommitted, record HEAD SHA to `.claude/tmp/session-start-sha` for later hooks             |
+| `session-end.sh`      | Stop                   | Prompt to commit if dirty, append a session entry to `docs/wiki/log.md` (only when HEAD moved or tree dirty — never empty stamps)                                                      |
+| `test-first-check.sh` | PreToolUse Write/Edit  | Block code edits on `feat/*` / `fix/*` branches unless `.claude/handoff/<slug>.json` exists with `red_confirmed: true` (written by the tester agent). See [[concepts/handoff-format]]. |
+| `auto-format.sh`      | PostToolUse Write/Edit | Run formatter by file extension                                                                                                                                                        |
+| `wiki-drift-check.sh` | Stop                   | Warn if code was edited but no `docs/wiki/` page was touched in the same session (scoped via the session-start SHA marker)                                                             |
 
 ## Golden rules
 
