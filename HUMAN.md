@@ -12,26 +12,28 @@ Three layers, each owned by a different actor:
 
 ## Day-to-day workflow
 
-| You want to… | You run… |
-|--------------|----------|
-| Start a new project | `/init` then `/interview` |
-| Add a new feature | `/interview` |
-| Move forward on todos | `/work` |
-| Audit the project | `/review` |
-| Check the wiki is healthy | `/wiki-lint` |
-| See where you are | `/status` |
-| Tag before a risky change | `/checkpoint` |
-| Recover from a bad attempt | `/rollback` |
+| You want to…                                           | You run…                  |
+| ------------------------------------------------------ | ------------------------- |
+| Start a new project                                    | `/init` then `/interview` |
+| Add a new feature                                      | `/interview`              |
+| Move forward on todos                                  | `/work`                   |
+| Plan a complex feature before committing branch effort | `/plan`                   |
+| Audit the project                                      | `/review`                 |
+| Check the wiki is healthy                              | `/wiki-lint`              |
+| See where you are                                      | `/status`                 |
+| Tag before a risky change                              | `/checkpoint`             |
+| Recover from a bad attempt                             | `/rollback`               |
 
 Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the agent knows. Following the `[[wiki-links]]` and the graph view shows the structure.
 
 ## What the agent does on its own
 
 - **Reads the wiki** before any code change.
+- **Plans complex work.** When a todo is tagged `[complex]` or batched (2+ todos), the planner agent (running on Opus) writes a stepwise plan that the tester and implementer follow. Plans live transiently at `.claude/handoff/<slug>-plan.md`.
 - **Writes failing tests first** (Red), confirms they fail for the right reason, then implements (Green), then refactors.
 - **Updates the wiki in the same commit** as the code — entity pages, requirements, log.
-- **Asks you when it's stuck.** Two-strike rule: two failed attempts on the same approach → stop and ask.
-- **Hooks enforce discipline.** Test-first check on `feat/*` branches; format-on-save; session-start git pull; session-end commit prompt.
+- **Asks you when it's stuck.** Two-strike rule: two failed attempts on the same approach → stop and ask. On retry of a `[complex]` cycle, the planner overwrites with a different approach rather than tweaking.
+- **Hooks enforce discipline.** Test-first check on `feat/*`/`fix/*` branches; format-on-save; session-start divergence warning; session-end commit prompt; wiki-drift warning if code shipped without a wiki touch.
 
 ## What it does NOT do without you
 
@@ -46,6 +48,7 @@ Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the age
 The agent ships with a small set of skills, agents, commands, and hooks. As the project grows, add more — the agent uses the meta skills (`update-skill`, `update-agent`, `update-command`, `update-hook`) to extend its own toolkit. You don't need to know the file formats — tell the agent what behavior you want, and it'll create the right artefact in the right place.
 
 Examples:
+
 - "We need a skill for adding database migrations in this project." → agent creates `.claude/skills/database-migrations.md` via the `update-skill` meta skill.
 - "After every commit, run shellcheck on any changed `.sh` files." → agent adds a PostToolUse hook via `update-hook`.
 

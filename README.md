@@ -21,6 +21,7 @@ Inside Claude Code:
 /init        # detect state, scaffold docs/wiki, base docs
 /interview   # grill yourself on requirements; populate the wiki
 /work        # pick the top todo, branch, run TDD (Red → Green → Refactor → wiki)
+/plan        # decompose a complex todo into a stepwise plan (Opus)
 /review      # periodic audit in a fresh worktree
 ```
 
@@ -32,9 +33,9 @@ For a worked walkthrough — `/init` → `/interview` → `/work` end-to-end wit
 
 ```
 .claude/
-├── agents/          # 4 agents: implementer, tester, reviewer, wiki-maintainer
-├── skills/          # process skills (TDD, branching, wiki-update, …) + meta skills
-├── commands/        # /init, /interview, /work, /review, /checkpoint, /rollback, /status, /wiki-lint
+├── agents/          # planner (opus), tester, implementer, reviewer, wiki-maintainer, researcher
+├── skills/          # process skills (TDD, branching, plan-writing, wiki-update, …) + meta skills
+├── commands/        # /init, /interview, /work, /plan, /review, /checkpoint, /rollback, /status, /wiki-lint, /wiki-ingest
 ├── hooks/           # session-start, session-end, test-first-check, auto-format, wiki-drift-check
 ├── settings.json    # hook wiring
 └── rules/           # behavioral constraints

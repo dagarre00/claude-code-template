@@ -10,39 +10,50 @@ status: draft
 
 > Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd.
 
+## [2026-05-16 21:00] log-cleanup
 
-## [2026-05-12 02:06] session-end
-- Branch: main
+- Removed 8 stale empty session-end entries from the session-end hook bug (now fixed).
 
-## [2026-05-12 02:16] session-end
-- Branch: main
+## [2026-05-16 21:04] session-end
 
-## [2026-05-12 02:21] session-end
-- Branch: main
+- Branch: claude/review-workflow-template-QPRit
+- Commits this session: 0
+- Uncommitted files: 21
 
-## [2026-05-16 20:13] session-end
-- Branch: claude/show-file-tree-IjtjQ
+## [2026-05-16 21:05] session-end
 
-## [2026-05-16 20:17] session-end
-- Branch: claude/show-file-tree-IjtjQ
+- Branch: claude/review-workflow-template-QPRit
+- Commits this session: 0
+- Uncommitted files: 21
 
-## [2026-05-16 20:18] session-end
-- Branch: claude/show-file-tree-IjtjQ
+## [2026-05-17 01:47] session-end
 
-## [2026-05-16 20:39] session-end
-- Branch: claude/show-file-tree-IjtjQ
+- Branch: claude/review-workflow-template-QPRit
+- Commits this session: 1
 
-## [2026-05-16 20:44] session-end
-- Branch: claude/show-file-tree-IjtjQ
+## [2026-05-17 02:24] session-end
+
+- Branch: claude/review-workflow-template-QPRit
+- Commits this session: 0
+- Uncommitted files: 1
+
+## [2026-05-17 02:25] session-end
+
+- Branch: claude/review-workflow-template-QPRit
+- Commits this session: 1
 
 ## [2026-05-17 02:36] session-end
+
 - Branch: claude/review-merge-pr-3WlAr
 
 ## [2026-05-17 02:37] session-end
+
 - Branch: claude/review-merge-pr-3WlAr
 
 ## [2026-05-17 02:38] session-end
+
 - Branch: claude/review-merge-pr-3WlAr
 
 ## [2026-05-17 02:40] session-end
+
 - Branch: claude/review-merge-pr-3WlAr

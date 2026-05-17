@@ -20,10 +20,10 @@ Before writing any code — **always check the wiki for related context first**,
 3. Read the matching `docs/wiki/entities/<slug>.md` for the feature you're implementing.
 4. Read the relevant section of `docs/wiki/requirements.md`.
 5. **Grep `docs/wiki/` for terms from the task** — find related concepts, prior decisions (ADRs), or summaries that may already constrain the answer. Don't make a choice the wiki has already made.
-6. Read the handoff at `.claude/handoff/<slug>.json`. **Refuse to start** if `red_confirmed` is not `true`. Run the test command listed there yourself to verify Red.
+6. Read the handoff at `.claude/handoff/<slug>.json`. **Refuse to start** if `red_confirmed` is not `true`. Run the test command listed there yourself to verify Red. Schema reference: [[concepts/handoff-format]]. Check the `attempt` field — if it's `>= 2`, this is a retry and the two-strike rule applies (see below).
 7. Glance at `docs/wiki/architecture.md` for the stack and conventions before picking any pattern.
 
-If your task touches a domain you haven't loaded a skill for (e.g. "add a Postgres migration", "add an API endpoint", "wire a React component"), the matching how-to skill should auto-load. If no skill matches, **stop and ask the human** via the `human-checkpoint` skill — don't improvise.
+If your task touches a domain you haven't loaded a skill for (e.g. "add a Postgres migration", "add an API endpoint", "wire a React component"), the matching how-to skill should auto-load. If no skill matches, **stop and ask the human** via the `human-checkpoint` skill — don't improvise. When the gap is a recurring procedural one (a new domain or pattern this project will use repeatedly), propose creating a new skill via the `update-skill` meta skill before falling back to `human-checkpoint`.
 
 ## TDD loop (green → refactor)
 
@@ -44,7 +44,7 @@ Code and wiki ship together. Do small wiki edits **inline** in the same commit. 
 - **Do NOT dispatch the wiki-maintainer.** It is manual only.
 - If you noticed something larger or cross-page the maintainer should handle later (orphan reference across many pages, repeated concept, mass cross-link cleanup, raw-source ingest), append a one-line entry to `docs/wiki/wiki-todos.md`. The next `/wiki-lint` will process it.
 
-All links inside `docs/wiki/` use Obsidian wiki-link syntax — see the `wiki-update` skill.
+All links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rules/behavioral.md` rule 18. Use `wiki-update` only when creating a new entity page or routing a cross-page discovery; routine Behavior-case ticks and todo→completed moves are covered by `tdd-loop`.
 
 ## When the task is done
 
@@ -57,10 +57,10 @@ All links inside `docs/wiki/` use Obsidian wiki-link syntax — see the `wiki-up
 ## What you do NOT do
 
 - **No new tests.** That's the `tester` agent's job. If a test gap appears, hand back to tester.
-- **No spec changes without consulting the human.** If the test seems wrong, update the entity Behavior case *first* (via `spec-writing` skill), regenerate the test through `tester`, then implement.
+- **No spec changes without consulting the human.** If the test seems wrong, update the entity Behavior case _first_ (via `spec-writing` skill), regenerate the test through `tester`, then implement.
 - **No periodic review.** `/review` runs `reviewer` in a worktree.
 - **No edits to `docs/raw/`.** Append only.
 
 ## Two-strike rule
 
-If your second attempt on the same mechanism fails, stop. Run `/checkpoint`, then `/rollback`, then re-spec via `/interview` or `human-checkpoint`. Don't try the same approach a third time.
+The `attempt` field in the handoff JSON tracks retry count. On dispatch, if `attempt >= 2`, you are on the second try — do NOT just attempt the same approach again. Stop and use `human-checkpoint` to surface the situation; the human will decide whether to `/checkpoint` + `/rollback` and re-spec via `/interview`, or to authorize a different approach. Don't try the same approach a third time.

@@ -4,7 +4,11 @@
       {
         "matcher": "",
         "hooks": [
-          { "type": "command", "command": "bash .claude/hooks/session-start.sh" }
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session-start.sh",
+            "timeout": 10000
+          }
         ]
       }
     ],
@@ -12,8 +16,16 @@
       {
         "matcher": "",
         "hooks": [
-          { "type": "command", "command": "bash .claude/hooks/session-end.sh" },
-          { "type": "command", "command": "bash .claude/hooks/wiki-drift-check.sh" }
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session-end.sh",
+            "timeout": 10000
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/wiki-drift-check.sh",
+            "timeout": 10000
+          }
         ]
       }
     ],
@@ -21,7 +33,11 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "bash .claude/hooks/test-first-check.sh" }
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/test-first-check.sh",
+            "timeout": 10000
+          }
         ]
       }
     ],
@@ -29,7 +45,11 @@
       {
         "matcher": "Write|Edit",
         "hooks": [
-          { "type": "command", "command": "bash .claude/hooks/auto-format.sh" }
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/auto-format.sh",
+            "timeout": 30000
+          }
         ]
       }
     ]

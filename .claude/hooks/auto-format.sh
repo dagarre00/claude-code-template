@@ -6,21 +6,32 @@ set -uo pipefail
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 cd "$root"
 
+# Resolve a Python interpreter once — prefer python3, fall back to python.
+py=""
+if command -v python3 >/dev/null 2>&1; then
+  py=python3
+elif command -v python >/dev/null 2>&1; then
+  py=python
+fi
+
 input=$(cat 2>/dev/null || echo "{}")
 file=""
-if command -v python >/dev/null 2>&1; then
-  file=$(printf '%s' "$input" | python -c "import sys,json;d=json.load(sys.stdin);print(d.get('tool_input',{}).get('file_path',''))" 2>/dev/null || echo "")
+if [ -n "$py" ]; then
+  file=$(printf '%s' "$input" | "$py" -c "import sys,json;d=json.load(sys.stdin);print(d.get('tool_input',{}).get('file_path',''))" 2>/dev/null || echo "")
 else
   # Pure-bash fallback: extract "file_path":"<value>" from JSON.
-  file=$(printf '%s' "$input" | grep -o '"file_path"\s*:\s*"[^"]*"' 2>/dev/null | head -1 | sed 's/.*"file_path"\s*:\s*"//;s/"$//' || echo "")
+  file=$(printf '%s' "$input" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' 2>/dev/null | head -1 | sed 's/.*"file_path"[[:space:]]*:[[:space:]]*"//;s/"$//' || echo "")
 fi
 [ -z "$file" ] && exit 0
 [ ! -f "$file" ] && exit 0
 
+# Each formatter is wrapped in `timeout 25` so a wedged formatter exits cleanly
+# inside the 30s hook timeout configured in .claude/settings.json — this inner
+# timeout backstops the outer one and lets the hook still exit 0 below.
 format_with() {
   command -v "$1" >/dev/null 2>&1 || return 1
   shift
-  "$@" 2>&1 | sed 's/^/  /' >&2 || true
+  timeout 25 "$@" 2>&1 | sed 's/^/  /' >&2 || true
   return 0
 }
 
