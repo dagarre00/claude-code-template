@@ -1,10 +1,10 @@
 ---
 name: checkpoint
-description: Tag HEAD as checkpoint-<timestamp> before a risky operation, so /rollback can come back to it. Use before refactors that touch many files, before a destructive command, or before a two-strike retry.
+description: Tag HEAD as checkpoint-<timestamp> before a risky operation, so /project:rollback can come back to it. Use before refactors that touch many files, before a destructive command, or before a two-strike retry.
 type: command
 ---
 
-# /checkpoint
+# /project:checkpoint
 
 You create a recoverable snapshot via a git tag. This is cheaper than a branch and easier to find.
 
@@ -13,7 +13,7 @@ You create a recoverable snapshot via a git tag. This is cheaper than a branch a
 - Before a refactor that touches many files.
 - Before a destructive command (drop tables, force-update, mass rename).
 - Before retrying a failed implementation (two-strike rule).
-- Before a `/rollback` (so you can undo the rollback if needed).
+- Before a `/project:rollback` (so you can undo the rollback if needed).
 
 ## Steps
 
@@ -51,10 +51,10 @@ You create a recoverable snapshot via a git tag. This is cheaper than a branch a
    - Branch: <name>
    ```
 
-5. **Report to the human.** The tag name. The next planned operation. How to roll back (`/rollback`).
+5. **Report to the human.** The tag name. The next planned operation. How to roll back (`/project:rollback`).
 
 ## What you do NOT do
 
 - **No checkpoints on dirty trees without committing first.** Tags are pointers to commits; uncommitted work isn't tagged.
 - **No checkpoint spam.** One checkpoint per risky operation is enough — don't tag every two minutes.
-- **No tag deletion in this command.** Cleanup happens via `/rollback` or a separate operation.
+- **No tag deletion in this command.** Cleanup happens via `/project:rollback` or a separate operation.

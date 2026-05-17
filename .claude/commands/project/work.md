@@ -4,7 +4,7 @@ description: Pick the top todo (or batch consecutive todos sharing context), ope
 type: command
 ---
 
-# /work
+# /project:work
 
 You orchestrate one TDD cycle (or a small batch). You do **not** write tests or production code directly — you dispatch the `planner` (when needed), `tester`, and `implementer` agents.
 
@@ -21,7 +21,7 @@ If any fails: stop and run `human-checkpoint`.
 1. **Pick the work.**
    - Read `docs/wiki/todos.md`. Take the top item.
    - If the next 1–3 todos share an entity and context, propose a batch. Confirm with the human via `human-checkpoint` if batching is non-obvious.
-   - Identify the matching `docs/wiki/entities/<slug>.md`. If it doesn't exist, **stop** and recommend `/interview` to define the entity first.
+   - Identify the matching `docs/wiki/entities/<slug>.md`. If it doesn't exist, **stop** and recommend `/project:interview` to define the entity first.
 
 2. **Branch.** Follow `feature-branching` skill:
 
@@ -30,7 +30,7 @@ If any fails: stop and run `human-checkpoint`.
    git checkout -b feat/<slug>
    ```
 
-3. **Verify Behavior cases exist.** Read the entity page's `## Behavior` section. If any case is `[ ]` and unimplemented, that's the test target. If the section is empty or vague, **stop** — `/interview` or the `spec-writing` skill must define them first.
+3. **Verify Behavior cases exist.** Read the entity page's `## Behavior` section. If any case is `[ ]` and unimplemented, that's the test target. If the section is empty or vague, **stop** — `/project:interview` or the `spec-writing` skill must define them first.
 
 4. **Decide if a plan is needed.**
    - If the todo line in `docs/wiki/todos.md` is tagged `[complex]`, dispatch the `planner` agent first.
@@ -39,7 +39,7 @@ If any fails: stop and run `human-checkpoint`.
 
    When dispatching `planner`, pass: entity slug, batch contents if any, the test command from `docs/wiki/commands.md`, and paths to the entity page(s), `requirements.md`, `architecture.md`, and `gotchas.md`. The planner writes `.claude/handoff/<slug>-plan.md`.
 
-5. **Verify the plan if one was written.** Read `.claude/handoff/<slug>-plan.md` if it exists. Sanity-check that the steps cover the listed Behavior cases and the scope hasn't drifted. If the plan looks wrong, send back to `planner` with notes (one redo only — second failure means re-spec via `/interview`).
+5. **Verify the plan if one was written.** Read `.claude/handoff/<slug>-plan.md` if it exists. Sanity-check that the steps cover the listed Behavior cases and the scope hasn't drifted. If the plan looks wrong, send back to `planner` with notes (one redo only — second failure means re-spec via `/project:interview`).
 
 6. **Dispatch `tester`** with this scope:
    - The entity slug.
@@ -76,20 +76,20 @@ If any fails: stop and run `human-checkpoint`.
 
 13. **Report to human.** What was done, what's next. Suggest:
     - More todos in the same entity → keep going.
-    - Cross-cutting work piling up → `/review` may be due.
-    - Risky next change → `/checkpoint` first.
+    - Cross-cutting work piling up → `/project:review` may be due.
+    - Risky next change → `/project:checkpoint` first.
 
 ## Failure modes
 
-- **Planner can't produce a coherent plan.** The spec is too ambiguous. Stop and run `/interview` to refine the Behavior cases.
+- **Planner can't produce a coherent plan.** The spec is too ambiguous. Stop and run `/project:interview` to refine the Behavior cases.
 - **Tester can't confirm Red.** Stop. The Behavior cases or the test environment is wrong. Use `human-checkpoint`.
-- **Implementer fails twice on the same mechanism.** Two-strike rule. `/checkpoint` → `/rollback` → re-spec. If a plan exists, re-dispatch `planner` to overwrite with a fundamentally different approach before the next `tester` cycle.
+- **Implementer fails twice on the same mechanism.** Two-strike rule. `/project:checkpoint` → `/project:rollback` → re-spec. If a plan exists, re-dispatch `planner` to overwrite with a fundamentally different approach before the next `tester` cycle.
 - **Test suite has pre-existing failures.** Stop. Don't add work on top of a broken main. Use `human-checkpoint`.
 - **Hooks block.** Read the block message and resolve the underlying issue. Never `--no-verify`.
 
 ## What you do NOT do
 
 - **No coding directly.** You dispatch `planner` (when needed), `tester`, and `implementer`. You can read files and run commands; you don't write tests or production code in this command.
-- **No periodic review.** That's `/review`, dispatched separately in a worktree.
+- **No periodic review.** That's `/project:review`, dispatched separately in a worktree.
 - **No PR creation.** That's a separate step the human chooses when ready.
 - **No silent batching.** If you batch todos, name the batch in the commit message scope.

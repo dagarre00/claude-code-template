@@ -56,7 +56,7 @@ After green + any refactor:
 
 ## Two-strike rule
 
-If your second attempt on the same mechanism fails (broken green, refactor explodes, unsolvable test), stop. `/checkpoint` → `/rollback` → re-spec via `/interview` or `human-checkpoint`.
+If your second attempt on the same mechanism fails (broken green, refactor explodes, unsolvable test), stop. `/project:checkpoint` → `/project:rollback` → re-spec via `/project:interview` or `human-checkpoint`.
 
 ## Anti-patterns
 

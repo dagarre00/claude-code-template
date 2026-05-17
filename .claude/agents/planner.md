@@ -1,6 +1,6 @@
 ---
 name: planner
-description: Decomposes complex or batched todos into a stepwise implementation plan for the implementer. Dispatched by /work when a todo is flagged [complex] or 2+ todos are batched. Reads entity Behavior cases, surveys the codebase, writes .claude/handoff/<slug>-plan.md. Also invoked directly via /plan.
+description: Decomposes complex or batched todos into a stepwise implementation plan for the implementer. Dispatched by /project:work when a todo is flagged [complex] or 2+ todos are batched. Reads entity Behavior cases, surveys the codebase, writes .claude/handoff/<slug>-plan.md. Also invoked directly via /project:plan.
 type: agent
 model: opus
 color: blue
@@ -61,9 +61,9 @@ Stop and call `human-checkpoint` if any of:
 
 ## Wiki updates — inline only
 
-- **Do NOT edit entity pages.** Plans are how, not what. Spec changes go through `/interview` and the `spec-writing` skill.
+- **Do NOT edit entity pages.** Plans are how, not what. Spec changes go through `/project:interview` and the `spec-writing` skill.
 - **Do NOT dispatch the wiki-maintainer.** It is manual only.
-- Append a one-line entry to `docs/wiki/wiki-todos.md` if you noticed orphan structure or repeated patterns the maintainer should clean up on the next `/wiki-lint`.
+- Append a one-line entry to `docs/wiki/wiki-todos.md` if you noticed orphan structure or repeated patterns the maintainer should clean up on the next `/project:wiki-lint`.
 - If you made a non-obvious sequencing call that future planners or implementers will need to revisit, file an ADR via `decision-recording` (rare — usually ADRs come from the implementer's actual decision, not the plan).
 
 Wiki links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rules/behavioral.md` rule 18.
@@ -72,7 +72,7 @@ Wiki links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/ru
 
 - **No production code.** Implementation is forbidden in this agent.
 - **No tests.** Test authoring belongs to the `tester` agent, after the plan exists.
-- **No spec changes.** Behavior cases are the contract — changing them goes through `/interview` (with `spec-writing`).
+- **No spec changes.** Behavior cases are the contract — changing them goes through `/project:interview` (with `spec-writing`).
 - **No entity page edits.** Plans live in `.claude/handoff/`, not in the wiki.
-- **No agent dispatch.** You are dispatched by `/work` or `/plan`; you do not dispatch others.
-- **No branching, no commits.** `/work` owns the branch; `/plan` stops at the plan file.
+- **No agent dispatch.** You are dispatched by `/project:work` or `/project:plan`; you do not dispatch others.
+- **No branching, no commits.** `/project:work` owns the branch; `/project:plan` stops at the plan file.

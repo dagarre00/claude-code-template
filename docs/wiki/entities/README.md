@@ -16,7 +16,7 @@ See the `wiki-update` skill (`.claude/skills/wiki-update.md`) for the canonical 
 
 ## Creating an entity
 
-Most entity pages come out of `/interview`. To create one by hand, use the `spec-writing` skill for the Behavior cases — sharp cases → sharp tests → narrow code.
+Most entity pages come out of `/project:interview`. To create one by hand, use the `spec-writing` skill for the Behavior cases — sharp cases → sharp tests → narrow code.
 
 ## Naming
 

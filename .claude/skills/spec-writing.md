@@ -1,6 +1,6 @@
 ---
 name: spec-writing
-description: How to write entity Behavior cases that produce good tests. Use when adding a new entity page, refining behavior during /interview, or splitting a vague case into testable ones. Trigger on "behavior cases", "spec", "entity behavior", "acceptance criteria", "what does this entity do".
+description: How to write entity Behavior cases that produce good tests. Use when adding a new entity page, refining behavior during /project:interview, or splitting a vague case into testable ones. Trigger on "behavior cases", "spec", "entity behavior", "acceptance criteria", "what does this entity do".
 type: skill
 ---
 

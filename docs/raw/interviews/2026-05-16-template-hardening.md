@@ -75,7 +75,7 @@ Options: Auto-detect with env-var override (recommended), env-var only, settings
 Options: fold into wiki-drift-check, separate hook, skip.
 **A:** _"We need to keep the wiki actions apart from the main workflow. Agents should only touch wiki docs if they have the enough context and know the exact file to touch. If the change is complex, add a wiki-todo for the wiki maintainer to review later."_
 
-→ Interpreted as: do **not** add an automated wiki-link lint hook. Wiki integrity is the wiki-maintainer's job during `/wiki-lint`. The existing rule #16 ("Append, don't bury") already covers the deferral pattern — no new rule needed.
+→ Interpreted as: do **not** add an automated wiki-link lint hook. Wiki integrity is the wiki-maintainer's job during `/project:wiki-lint`. The existing rule #16 ("Append, don't bury") already covers the deferral pattern — no new rule needed.
 
 **Q11. Walkthrough location.**
 Options: HUMAN.md, new `docs/getting-started.md` (chosen), README, skip.
@@ -98,7 +98,7 @@ Options: HUMAN.md, new `docs/getting-started.md` (chosen), README, skip.
 | 6   | Schema versioning: skip for now.                                                                             |
 | 7   | Hooks: drop auto-test-run; soften pull to non-mutating divergence report; gate venv check on Python markers. |
 | 8   | Default branch: auto-detect via `origin/HEAD`, env-var override, `main` fallback.                            |
-| 9   | Wiki integrity: stays manual via `/wiki-lint`. No new automation hook.                                       |
+| 9   | Wiki integrity: stays manual via `/project:wiki-lint`. No new automation hook.                                       |
 | 10  | Walkthrough: new `docs/getting-started.md`.                                                                  |
 
 ---

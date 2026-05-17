@@ -28,7 +28,7 @@ status: draft
 
 ## Entities
 
-_(one page per feature / module / component — populated by `/work` and `/interview`)_
+_(one page per feature / module / component — populated by `/project:work` and `/project:interview`)_
 
 ## Concepts
 

@@ -1,6 +1,6 @@
 # Interviews
 
-Transcripts produced by `/interview`. Append-only.
+Transcripts produced by `/project:interview`. Append-only.
 
 ## Naming
 
@@ -12,8 +12,8 @@ Transcripts produced by `/interview`. Append-only.
 - `docs/wiki/summaries/<slug>.md`: the **digested summary** of the interview, produced by the wiki-maintainer.
 - `docs/wiki/requirements.md`, `docs/wiki/entities/<slug>.md`, `docs/wiki/decisions/`: the **structured outputs** — requirements added, entity created, ADRs filed.
 
-The `/interview` command writes here first, then proposes the structured outputs to the human.
+The `/project:interview` command writes here first, then proposes the structured outputs to the human.
 
 ## Rule
 
-**Never edit a prior answer in a transcript.** If you got it wrong, run `/interview` again on the same topic and write a new transcript. The wiki-maintainer reconciles versions during ingest.
+**Never edit a prior answer in a transcript.** If you got it wrong, run `/project:interview` again on the same topic and write a new transcript. The wiki-maintainer reconciles versions during ingest.

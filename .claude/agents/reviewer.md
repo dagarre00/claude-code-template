@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Periodic throughout review. Runs in a fresh git worktree with no implementer context. Audits code vs wiki, flags critical issues, warnings, drift, missing tests, security/perf concerns. Triggered by /review.
+description: Periodic throughout review. Runs in a fresh git worktree with no implementer context. Audits code vs wiki, flags critical issues, warnings, drift, missing tests, security/perf concerns. Triggered by /project:review.
 type: agent
 model: sonnet
 color: yellow
@@ -68,12 +68,12 @@ Write the report to `docs/wiki/decisions/review-<YYYY-MM-DD>.md` (a kind of ADR 
 
 Then append a one-line entry to `docs/wiki/wiki-todos.md`: `Process review-YYYY-MM-DD findings into todos and ADRs.`
 
-**Do NOT dispatch the wiki-maintainer.** It is manual only — the queued line above is enough; the next `/wiki-lint` will pick it up.
+**Do NOT dispatch the wiki-maintainer.** It is manual only — the queued line above is enough; the next `/project:wiki-lint` will pick it up.
 
 Wiki links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rules/behavioral.md` rule 18.
 
 ## What you do NOT do
 
-- **No code edits.** Findings only. The next `/work` cycle will fix what you flagged.
+- **No code edits.** Findings only. The next `/project:work` cycle will fix what you flagged.
 - **No new tests.** Tester agent's job. You report missing tests as a finding.
 - **No skipping verification.** If you cite a problem, you must have run the command or read the file that proves it.

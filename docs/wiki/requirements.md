@@ -8,19 +8,19 @@ status: draft
 
 # Requirements
 
-> Living spec. Run `/interview` to fill the gaps below. Update as the project evolves; never let this file go stale relative to the code.
+> Living spec. Run `/project:interview` to fill the gaps below. Update as the project evolves; never let this file go stale relative to the code.
 
 ## Vision
 
 _(One paragraph. The problem this project solves and who it serves.)_
 
-`<TBD via /interview>`
+`<TBD via /project:interview>`
 
 ## Users
 
 _(Who uses this — the roles the code needs to know about. Auth/permissions/db tables. One row in some `users` table per type.)_
 
-`<TBD via /interview>`
+`<TBD via /project:interview>`
 
 ## Personas
 
@@ -35,7 +35,7 @@ _(Optional. UX archetypes, not auth roles — keep if your project has multiple 
   - Pain: <current frustration this product addresses>
 ```
 
-`<TBD via /interview>`
+`<TBD via /project:interview>`
 
 ## User stories
 
@@ -59,13 +59,13 @@ _(Bridge between users and functional requirements. Each story names the user, t
 
 **Stories:**
 
-`<TBD via /interview>`
+`<TBD via /project:interview>`
 
 ## Functional requirements
 
 _(What the system must do. Each item is an observable capability, not an implementation choice. Link to the entity page that owns it.)_
 
-- `<TBD via /interview>` — see [[entities/<slug>]]
+- `<TBD via /project:interview>` — see [[entities/<slug>]]
 
 ## Non-functional requirements
 
@@ -104,6 +104,6 @@ _(Things we're treating as given. If any assumption breaks, the spec changes —
 
 ## Open questions
 
-_(Things the wiki doesn't answer yet. Resolve via `/interview` or `human-checkpoint`.)_
+_(Things the wiki doesn't answer yet. Resolve via `/project:interview` or `human-checkpoint`.)_
 
 - `<TBD>`

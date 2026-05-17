@@ -4,7 +4,7 @@ description: Detect project state, interview for requirements, scaffold docs/wik
 type: command
 ---
 
-# /init
+# /project:init
 
 You are initializing this project. This command detects state, interviews the human for requirements, scaffolds the wiki with real answers (not placeholders), and rewrites `CLAUDE.md` to be lean and project-specific.
 
@@ -33,7 +33,7 @@ Note the project directory layout: `src/`, `tests/`, `lib/`, `app/`, etc.
 
 ### 3. Interview
 
-Now interview the human. Follow the procedure from the `/interview` command, but focused on what `/init` needs to fill every wiki section. Cover these topics in order, one question at a time, always providing your recommended answer:
+Now interview the human. Follow the procedure from the `/project:interview` command, but focused on what `/project:init` needs to fill every wiki section. Cover these topics in order, one question at a time, always providing your recommended answer:
 
 1. **Project vision** — one sentence. What does this project do and why does it exist?
 2. **Users** — who uses it? (user types, contexts)
@@ -46,7 +46,7 @@ Now interview the human. Follow the procedure from the `/interview` command, but
 9. **Deployment** — how will this ship? (CI, target environment, release process)
 10. **Non-functional** — perf targets, security requirements, observability, compliance.
 
-Open a transcript at `docs/raw/interviews/YYYY-MM-DD-init.md` **before** asking the first question. Stream Q-by-Q and A-by-A: write the question to disk, ask, write the answer to disk on receipt — never batch. Same enforcement as `/interview` (see operating rule #7 in `.claude/commands/project/interview.md`).
+Open a transcript at `docs/raw/interviews/YYYY-MM-DD-init.md` **before** asking the first question. Stream Q-by-Q and A-by-A: write the question to disk, ask, write the answer to disk on receipt — never batch. Same enforcement as `/project:interview` (see operating rule #7 in `.claude/commands/project/interview.md`).
 
 Stop conditions:
 
@@ -139,15 +139,15 @@ You are an AI development agent working on <project name>. Before any code chang
 
 | Command        | Purpose                                           |
 | -------------- | ------------------------------------------------- |
-| `/init`        | (Re)initialize project wiki and schema            |
-| `/interview`   | Q&A to define requirements or features            |
-| `/work`        | Top todo → spec → red → green → refactor → commit |
-| `/review`      | Full audit in isolated worktree                   |
-| `/checkpoint`  | Tag HEAD before risky ops                         |
-| `/rollback`    | Revert to a checkpoint                            |
-| `/status`      | Branch, todos, log, uncommitted summary           |
-| `/wiki-lint`   | Wiki health check                                 |
-| `/wiki-ingest` | Ingest file or research into wiki                 |
+| `/project:init`        | (Re)initialize project wiki and schema            |
+| `/project:interview`   | Q&A to define requirements or features            |
+| `/project:work`        | Top todo → spec → red → green → refactor → commit |
+| `/project:review`      | Full audit in isolated worktree                   |
+| `/project:checkpoint`  | Tag HEAD before risky ops                         |
+| `/project:rollback`    | Revert to a checkpoint                            |
+| `/project:status`      | Branch, todos, log, uncommitted summary           |
+| `/project:wiki-lint`   | Wiki health check                                 |
+| `/project:wiki-ingest` | Ingest file or research into wiki                 |
 
 ## Agent routing
 
@@ -156,7 +156,7 @@ You are an AI development agent working on <project name>. Before any code chang
 | Write failing tests        | `tester`                                         |
 | Make tests pass + refactor | `implementer` (loads skills on demand)           |
 | Periodic audit             | `reviewer` (worktree-isolated)                   |
-| Wiki health                | `wiki-maintainer` (manual only via `/wiki-lint`) |
+| Wiki health                | `wiki-maintainer` (manual only via `/project:wiki-lint`) |
 | Web research               | `researcher`                                     |
 
 ## Hooks
@@ -179,8 +179,8 @@ You are an AI development agent working on <project name>. Before any code chang
 6. **Agents own `docs/wiki/`.** Humans browse; agents write.
 7. **Always branch before coding.** Never commit to main.
 8. **Conventional commits.** `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`.
-9. **Two-strike rule.** Two failures on the same mechanism → `/rollback` and re-spec.
-10. **Reviewer is periodic.** `/review` every ~5 todos, not in `/work`.
+9. **Two-strike rule.** Two failures on the same mechanism → `/project:rollback` and re-spec.
+10. **Reviewer is periodic.** `/project:review` every ~5 todos, not in `/project:work`.
 11. **Human-in-the-loop.** When wiki doesn't answer, stop and ask.
 12. **Skills are how-to, not what-is.** Add skills via `update-skill`; don't bury knowledge in agent prompts.
 ```
@@ -199,7 +199,7 @@ Append to `docs/wiki/log.md`:
 - Interview transcript: [[summaries/YYYY-MM-DD-init]]
 - Pages created: <count>
 - ADRs: <count>
-- Next: run `/work` to pick up the first todo.
+- Next: run `/project:work` to pick up the first todo.
 ```
 
 ### 7. Report
@@ -209,7 +209,7 @@ Print:
 - Stack and test command.
 - Pages created vs already present.
 - Key decisions from the interview.
-- Recommended next step: `/work` to start on the first todo.
+- Recommended next step: `/project:work` to start on the first todo.
 
 ## Failure modes
 
@@ -220,6 +220,6 @@ Print:
 
 ## What you do NOT do
 
-- **No code creation.** This command sets up wiki and schema. It does not generate `src/`, dependency manifests, or boilerplate. That comes from `/work`.
+- **No code creation.** This command sets up wiki and schema. It does not generate `src/`, dependency manifests, or boilerplate. That comes from `/project:work`.
 - **No assumptions about the stack.** Detect or ask.
 - **No second-guessing existing wiki.** If a page exists, leave it. Append to `wiki-todos.md` if it needs cleanup.

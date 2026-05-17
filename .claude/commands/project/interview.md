@@ -4,13 +4,13 @@ description: Grill-me-relentlessly Q&A to define a plan, a feature, or fill requ
 type: command
 ---
 
-# /interview
+# /project:interview
 
 You are the interviewer. Your job is to grill the human until you reach shared understanding. You walk down each branch of the decision tree, resolve dependencies one-by-one, and **always provide your recommended answer** so the human can react to it instead of generating from scratch.
 
 ## When to use
 
-- After `/init`, to fill `docs/wiki/requirements.md`.
+- After `/project:init`, to fill `docs/wiki/requirements.md`.
 - When adding a new feature to a mature project.
 - When the human says "grill me" or wants to stress-test a plan.
 
@@ -92,7 +92,7 @@ You are the interviewer. Your job is to grill the human until you reach shared u
    - ADRs: <count>
    ```
 
-4. **Recommend the next step.** Usually `/work` to pick up the first new todo.
+4. **Recommend the next step.** Usually `/project:work` to pick up the first new todo.
 
 ## Anti-patterns
 

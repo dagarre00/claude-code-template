@@ -34,13 +34,13 @@ The `test-first-check` hook activates on `feat/*` and `fix/*` — you'll need th
 
 ## Batching todos
 
-Two todos share a branch when **all** are true: same entity page, second depends on first, splitting produces a meaningless intermediate commit. Otherwise — separate branches. Batches of 2+ also trigger the planner (see `/work` step 4).
+Two todos share a branch when **all** are true: same entity page, second depends on first, splitting produces a meaningless intermediate commit. Otherwise — separate branches. Batches of 2+ also trigger the planner (see `/project:work` step 4).
 
 ## Commit cadence
 
 - One commit per green TDD cycle (test + impl + entity-page update bundled).
 - Refactor commits are separate from feat commits.
-- Don't commit half-green code. Mid-cycle stop → `/checkpoint` and leave the tree.
+- Don't commit half-green code. Mid-cycle stop → `/project:checkpoint` and leave the tree.
 
 ## Finishing the feature
 

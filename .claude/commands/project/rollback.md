@@ -4,7 +4,7 @@ description: List available checkpoint tags and revert to one. Destructive — c
 type: command
 ---
 
-# /rollback
+# /project:rollback
 
 You restore the project to a prior `checkpoint-<timestamp>` tag. This is **destructive** to the current working tree — confirm with the human first.
 
@@ -37,7 +37,7 @@ If no checkpoints exist: run `human-checkpoint` — explain there's nothing to r
 
 4. **Confirm scope of destruction.** Default is `git reset --hard <tag>` on the current branch — this **discards uncommitted changes and commits after the tag on the current branch**. State this explicitly before acting.
 
-5. **Optional: pre-rollback checkpoint.** Before resetting, create one more checkpoint via `/checkpoint` so the rollback itself is recoverable.
+5. **Optional: pre-rollback checkpoint.** Before resetting, create one more checkpoint via `/project:checkpoint` so the rollback itself is recoverable.
 
 6. **Reset:**
    ```bash
@@ -54,7 +54,7 @@ If no checkpoints exist: run `human-checkpoint` — explain there's nothing to r
    - Reason: <why>
    ```
 
-9. **Report to the human.** Where they are now. Recommended next step (often `/interview` to re-spec, or `/work` to retry differently — never repeat the same approach that failed).
+9. **Report to the human.** Where they are now. Recommended next step (often `/project:interview` to re-spec, or `/project:work` to retry differently — never repeat the same approach that failed).
 
 ## What you do NOT do
 

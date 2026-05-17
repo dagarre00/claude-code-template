@@ -6,7 +6,7 @@ type: skill
 
 # Updating a Slash Command
 
-Slash commands are repeatable, named entry points the human invokes (`/work`, `/review`, `/interview`). They orchestrate — pulling todos, dispatching agents, branching, running hooks. Commands themselves should be thin; the heavy lifting lives in agents and skills.
+Slash commands are repeatable, named entry points the human invokes (`/project:work`, `/project:review`, `/project:interview`). They orchestrate — pulling todos, dispatching agents, branching, running hooks. Commands themselves should be thin; the heavy lifting lives in agents and skills.
 
 ## Decide first: command or skill?
 
@@ -62,5 +62,5 @@ If the human will type `/foo`, it's a command. If the agent should *just know ho
 
 - **Big command bodies.** If you're writing a procedure longer than ~40 lines, you're hiding skill content in the command. Lift the procedure into a skill and have the command invoke it.
 - **Commands that touch code directly.** Commands orchestrate; agents and skills touch code.
-- **Commands without human checkpoints.** Long-running commands (`/work`, `/review`) must have at least one explicit "pause and report" step.
+- **Commands without human checkpoints.** Long-running commands (`/project:work`, `/project:review`) must have at least one explicit "pause and report" step.
 - **Duplicate commands.** Two commands that mostly do the same thing → merge with a flag.

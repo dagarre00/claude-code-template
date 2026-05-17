@@ -1,10 +1,10 @@
 ---
 name: review
-description: Throughout review of the codebase against the wiki. Runs the reviewer agent in a fresh git worktree with no implementer context. Flags critical issues, warnings, drift, missing tests, security/perf concerns. Use periodically (~every 5 todos), never inside /work.
+description: Throughout review of the codebase against the wiki. Runs the reviewer agent in a fresh git worktree with no implementer context. Flags critical issues, warnings, drift, missing tests, security/perf concerns. Use periodically (~every 5 todos), never inside /project:work.
 type: command
 ---
 
-# /review
+# /project:review
 
 You dispatch the `reviewer` agent in a worktree-isolated context. The reviewer audits code vs wiki with no implementer baggage.
 
@@ -15,7 +15,7 @@ You dispatch the `reviewer` agent in a worktree-isolated context. The reviewer a
 - Before any release.
 - When you suspect drift between the wiki and the code.
 
-Do **not** use `/review` inside `/work`. They're different phases.
+Do **not** use `/project:review` inside `/project:work`. They're different phases.
 
 ## Preconditions
 
@@ -53,7 +53,7 @@ If any fails: run `human-checkpoint`.
    - Read the report.
    - For each Critical / Warning: file a TODO in `docs/wiki/todos.md` with priority.
    - For each Drift item: append to `docs/wiki/wiki-todos.md` for the maintainer.
-   - For each Missing ADR: queue the ADR for the next `/work` cycle.
+   - For each Missing ADR: queue the ADR for the next `/project:work` cycle.
 
 6. **Clean up the worktree.** Return to the main checkout first, then remove:
 
@@ -72,10 +72,10 @@ If any fails: run `human-checkpoint`.
    - New todos: <list>
    ```
 
-8. **Report to the human.** Highlight critical items only. Recommend whether the next step is `/work` (fix critical), `/interview` (spec gap), or `/wiki-lint` (heavy drift).
+8. **Report to the human.** Highlight critical items only. Recommend whether the next step is `/project:work` (fix critical), `/project:interview` (spec gap), or `/project:wiki-lint` (heavy drift).
 
 ## What you do NOT do
 
-- **No code edits.** Findings only. The next `/work` cycle fixes things.
+- **No code edits.** Findings only. The next `/project:work` cycle fixes things.
 - **No skipping the worktree step.** Reviewer must run isolated.
-- **No reviewer-in-`/work`.** This is the cardinal violation — the implementer cannot audit its own work.
+- **No reviewer-in-`/project:work`.** This is the cardinal violation — the implementer cannot audit its own work.

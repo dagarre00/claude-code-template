@@ -14,7 +14,7 @@ File one when:
 - You picked between two reasonable alternatives and the choice will shape future work.
 - A constraint forced a non-obvious answer (compliance, performance, dependency limits).
 - The implementation deviates from what the wiki previously said.
-- A `/review` finding requires a stance going forward.
+- A `/project:review` finding requires a stance going forward.
 
 Do **not** file an ADR for:
 - A choice that's obvious from the requirements or architecture page.
