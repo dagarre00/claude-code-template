@@ -6,24 +6,30 @@ set -uo pipefail
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 cd "$root"
 
-# Default-branch resolution order:
-#  1. WIKI_DEFAULT_BRANCH env var (explicit override).
-#  2. Auto-detect from `git symbolic-ref refs/remotes/origin/HEAD`.
-#  3. Fall back to `main`.
-default_branch="${WIKI_DEFAULT_BRANCH:-}"
-if [ -z "$default_branch" ]; then
-  default_branch=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')
-fi
-default_branch="${default_branch:-main}"
+# Scope the diff to the CURRENT session via the marker written by session-start.sh.
+# Long-lived branches would otherwise false-positive forever when comparing to main.
+# If the marker is missing (hook ran out of order, or first run after this change),
+# fall back to uncommitted + staged only — never diff against the default branch.
+marker=".claude/tmp/session-start-sha"
+session_sha=""
+[ -f "$marker" ] && session_sha=$(cat "$marker" 2>/dev/null || echo "")
 
-# Collect files changed: branch-vs-default + uncommitted + staged.
-files=$(
-  {
-    git diff --name-only "$default_branch"...HEAD 2>/dev/null
-    git diff --name-only HEAD 2>/dev/null
-    git diff --name-only --cached 2>/dev/null
-  } | sort -u | grep -v '^$' || true
-)
+if [ -n "$session_sha" ]; then
+  files=$(
+    {
+      git diff --name-only "$session_sha"..HEAD 2>/dev/null
+      git diff --name-only HEAD 2>/dev/null
+      git diff --name-only --cached 2>/dev/null
+    } | sort -u | grep -v '^$' || true
+  )
+else
+  files=$(
+    {
+      git diff --name-only HEAD 2>/dev/null
+      git diff --name-only --cached 2>/dev/null
+    } | sort -u | grep -v '^$' || true
+  )
+fi
 
 [ -z "$files" ] && exit 0
 
@@ -32,7 +38,7 @@ wiki_touched=false
 while IFS= read -r f; do
   case "$f" in
     docs/wiki/*) wiki_touched=true ;;
-    src/*|app/*|lib/*|tests/*|test/*|cmd/*|internal/*|pkg/*|.claude/*) code_touched=true ;;
+    src/*|app/*|lib/*|tests/*|test/*|cmd/*|internal/*|pkg/*) code_touched=true ;;
     *.py|*.js|*.ts|*.jsx|*.tsx|*.go|*.rs|*.java|*.rb|*.php|*.cs|*.kt|*.swift)
       code_touched=true
       ;;

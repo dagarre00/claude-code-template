@@ -13,6 +13,7 @@ The wiki is browsed in Obsidian. Every link inside `docs/wiki/` must be a valid 
 You — implementer, tester, reviewer — own **small, in-scope** wiki edits and make them in the same commit as the code. The wiki-maintainer is **manual only** (`/wiki-lint` or explicit human request) and handles large or cross-page cleanup.
 
 **Do inline** (same commit, no dispatch):
+
 - Entity-page Behavior tick (`[ ]` → `[~]` → `[x]`).
 - Entity-page Implementation section update (files, functions touched).
 - A single new ADR via `decision-recording`.
@@ -22,6 +23,7 @@ You — implementer, tester, reviewer — own **small, in-scope** wiki edits and
 - Fixing a single broken `[[wiki-link]]` you happened to notice.
 
 **Defer to maintainer** (append a one-line entry to `docs/wiki/wiki-todos.md`):
+
 - Orphan pages across many sections.
 - Contradictions between two existing pages (don't auto-resolve — flag).
 - A pattern that recurs 3+ times and should be promoted to `concepts/`.
@@ -33,13 +35,13 @@ You — implementer, tester, reviewer — own **small, in-scope** wiki edits and
 
 ## Obsidian link syntax — required inside `docs/wiki/`
 
-| Form | Use |
-|------|-----|
-| `[[entities/auth]]` | Link to a wiki page |
-| `[[gotchas#login-flow]]` | Link to a heading |
-| `[[concepts/retry-pattern\|the retry pattern]]` | Aliased link (the `\|` is a pipe) |
-| `![[summaries/some-source]]` | Embed another page's content |
-| `#tag` (in body) or `tags: [tag1, tag2]` (frontmatter) | Tags |
+| Form                                                   | Use                               |
+| ------------------------------------------------------ | --------------------------------- |
+| `[[entities/auth]]`                                    | Link to a wiki page               |
+| `[[gotchas#login-flow]]`                               | Link to a heading                 |
+| `[[concepts/retry-pattern\|the retry pattern]]`        | Aliased link (the `\|` is a pipe) |
+| `![[summaries/some-source]]`                           | Embed another page's content      |
+| `#tag` (in body) or `tags: [tag1, tag2]` (frontmatter) | Tags                              |
 
 **External URLs and non-wiki files** (anything under `.claude/`, `src/`, `tests/`, etc.) keep standard markdown:
 `[label](relative/or/absolute/path)`.
@@ -56,7 +58,7 @@ type: wiki-entity | wiki-concept | wiki-decision | wiki-summary | wiki-index | w
 updated: YYYY-MM-DD
 status: draft | approved | stale | shipped | deprecated
 tags: [optional, list]
-sources: [docs/raw/...]   # only for summary pages
+sources: [docs/raw/...] # only for summary pages
 ---
 ```
 
@@ -75,28 +77,34 @@ tags: [...]
 # <Entity Name>
 
 ## Purpose
+
 One paragraph: what this entity exists to do, in user-facing terms.
 
 ## Behavior
+
 - [ ] B1: <case statement — observable behavior, no implementation detail>
 - [ ] B2: ...
 
-(States: `[ ]` not started, `[~]` in-progress / Red, `[x]` shipped / Green)
+(States: `[ ]` / `[~]` / `[x]` — definitions and transitions live in the `spec-writing` skill under "Behavior case states".)
 
 ## Implementation
+
 - Files: [src/foo.py](../../src/foo.py), [src/bar.py](../../src/bar.py)
 - Key functions: `do_thing()`, `parse_x()`
 - Depends on: [[entities/other-thing]]
 - Used by: [[entities/consumer]]
 
 ## Tests
+
 - Files: [tests/test_foo.py](../../tests/test_foo.py)
 - Mapping: B1 → `test_does_thing`, B2 → `test_parses_x`
 
 ## Notes
+
 - Anything important an LLM should know on revisit.
 
 ## Related
+
 - [[concepts/relevant-pattern]]
 - [[decisions/2026-04-01-some-choice]]
 ```
@@ -104,6 +112,7 @@ One paragraph: what this entity exists to do, in user-facing terms.
 ## During `/work`
 
 Touch — in the same commit that touches code:
+
 1. Entity page Behavior checkboxes (`[ ]` → `[~]` → `[x]`).
 2. Entity page Implementation section (files, functions).
 3. `docs/wiki/todos.md` — move the completed item.
@@ -112,6 +121,7 @@ Touch — in the same commit that touches code:
 ## During a discovery
 
 When you find a project-specific pitfall, design fork, or pattern:
+
 - Pitfall → `gotcha-recording` skill.
 - Design choice → `decision-recording` skill.
 - Repeated pattern → append to `docs/wiki/wiki-todos.md`: `Promote <pattern> to concepts/`.
@@ -125,6 +135,7 @@ For everything the maintainer should clean up later, **don't fix it in your work
 ```
 
 Examples:
+
 - `- [ ] 2026-05-11 implementer: review [[concepts/cache-invalidation]] for staleness`
 - `- [ ] 2026-05-11 tester: missing Behavior cases on [[entities/login]]`
 

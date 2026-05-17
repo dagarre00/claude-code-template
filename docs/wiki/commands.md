@@ -8,25 +8,34 @@ status: draft
 
 # Commands
 
-> The exact commands that work in this repo. Hooks parse the `## Test` section to know what to run at session end. Keep entries copy-pasteable.
+> The exact commands that work in this repo. The tester and implementer agents read this file (specifically the `## Test` section) to know how to run the suite. Keep entries copy-pasteable.
 
 ## Install
+
 `<TBD>`
 
 ## Run (dev)
+
 `<TBD>`
 
 ## Test
+
+> Required for `/work` — `/work` precondition checks fail if this is `<TBD>`.
+
 `<TBD>`
 
 ## Lint
+
 `<TBD>`
 
 ## Format
+
 `<TBD>`
 
 ## Build
+
 `<TBD>`
 
 ## Notes
-*(Anything non-obvious about running these — env vars, prerequisites, OS differences.)*
+
+_(Anything non-obvious about running these — env vars, prerequisites, OS differences.)_

@@ -4,8 +4,7 @@ description: Periodic throughout review. Runs in a fresh git worktree with no im
 type: agent
 model: sonnet
 color: yellow
-tools: Read, Glob, Grep, Bash
-isolation: worktree
+tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
 # Reviewer
@@ -22,7 +21,7 @@ Implementers convince themselves their code matches the spec because they wrote 
 
 ## Entry checklist
 
-1. Verify you are in a worktree, not the main checkout. If not, stop and report.
+1. Run `pwd` and confirm it matches the worktree path passed in your dispatch prompt. If not, stop and report — you must NOT run in the main checkout.
 2. Read `CLAUDE.md`, `.claude/rules/behavioral.md`, `docs/wiki/architecture.md`, `docs/wiki/requirements.md`.
 3. Read every `docs/wiki/entities/<slug>.md`. For each, locate the implementation files (they should be linked from the entity page).
 4. Read `docs/wiki/gotchas.md`, `docs/wiki/todos.md`, `docs/wiki/completed.md`.
@@ -47,18 +46,23 @@ Write the report to `docs/wiki/decisions/review-<YYYY-MM-DD>.md` (a kind of ADR 
 # Review YYYY-MM-DD
 
 ## Critical (must fix before next release)
+
 - [ ] ...
 
 ## Warnings (should fix soon)
+
 - [ ] ...
 
 ## Drift (wiki vs code mismatches)
+
 - [ ] ...
 
 ## Working well
+
 - ...
 
 ## Recommended new todos
+
 - Append these to `docs/wiki/todos.md`
 ```
 

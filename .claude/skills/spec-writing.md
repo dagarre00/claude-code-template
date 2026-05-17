@@ -32,9 +32,9 @@ Examples (good):
 
 Examples (bad):
 
-- `- [ ] B1: Logins work correctly.`  (untestable — what does "correctly" mean?)
-- `- [ ] B2: The login function validates inputs, hashes the password, looks up the user, and returns a session.`  (four cases stuffed into one)
-- `- [ ] B3: The login flow is fast.`  (no observable threshold)
+- `- [ ] B1: Logins work correctly.` (untestable — what does "correctly" mean?)
+- `- [ ] B2: The login function validates inputs, hashes the password, looks up the user, and returns a session.` (four cases stuffed into one)
+- `- [ ] B3: The login flow is fast.` (no observable threshold)
 
 ## Rules
 
@@ -46,6 +46,20 @@ Examples (bad):
 6. **State machines explicit.** If the behavior depends on prior state, say so: "When the user is already logged in and submits a login form, …".
 7. **Errors are first-class.** Every input space has error cases. List them as their own cases, not as "(also handles errors)".
 
+## Behavior case states
+
+A case carries one of three states in its checkbox. The tester and implementer agents flip these as work progresses; this notation is the **single source of truth** — `tdd-loop` and `wiki-update` reference back here.
+
+- `[ ]` — defined, no test yet.
+- `[~]` — test exists and is failing (Red phase, written by the `tester` agent).
+- `[x]` — test passing (Green, ticked by the `implementer` after the wiki update lands in the same commit).
+
+Transitions:
+
+- `[ ] → [~]` happens once per case, when `tester` confirms Red and writes the handoff.
+- `[~] → [x]` happens once per case, when `implementer` confirms Green and updates the entity page.
+- A case never moves backwards. If behavior changes and the case is wrong, file a new case (next free `B<N>`) and mark the old one with a strikethrough plus a one-line note pointing at the replacement. Do not edit a shipped (`[x]`) case in place.
+
 ## Numbering
 
 `B1`, `B2`, … unique within the entity page. Don't renumber when inserting — append new cases at the end (B7 stays B7 even if you delete B3). The number is referenced by test names, commits, and logs.
@@ -53,6 +67,7 @@ Examples (bad):
 ## Splitting a case
 
 Smell tests:
+
 - The word "and" in the outcome.
 - Multiple input conditions joined with "or".
 - A case where the test would need two assertion groups.
