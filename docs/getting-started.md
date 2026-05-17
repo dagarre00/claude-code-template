@@ -66,7 +66,24 @@ Outputs:
 - Updates to `requirements.md`, `architecture.md`, `glossary.md`, and one `entities/<slug>.md` per major feature.
 - Initial entries in `todos.md`.
 
-## 3. `/project:work` — first feature, TDD-style
+## 3. `/project:agent-scout` — configure your toolkit
+
+```
+/project:agent-scout
+```
+
+After the interview fills in real requirements and architecture, run this once to discover which agents and skills your project actually needs. The template ships with a stack-agnostic baseline; `agent-scout` reads your wiki and recommends the gap-fillers — things like `backend-impl`, `database-impl`, `stripe-impl`, or an `auth-impl` skill for the implementer to auto-load when relevant.
+
+What it does:
+
+- Reads `requirements.md`, `architecture.md`, all entity pages, and `todos.md`.
+- Applies a signal table: backend API → `backend-impl` skill, named external services → service-specific skills, security-critical requirements → possible `security-reviewer` agent, and so on.
+- Produces a prioritized report with trigger descriptions, wiki citations, and procedure outlines for each recommendation.
+- **Does not create anything automatically.** It presents the list; you approve what to build. Approved items are created via the `update-skill` / `update-agent` meta skills.
+
+Re-run `/project:agent-scout` after a major `/project:interview` that adds a new stack layer or external service.
+
+## 4. `/project:work` — first feature, TDD-style
 
 ```
 /project:work
@@ -83,7 +100,7 @@ Outputs:
 
 If a step fails twice on the same approach, the **two-strike rule** fires — the agent stops, you `/project:rollback`, and re-spec.
 
-## 4. `/project:review` — every ~5 todos
+## 5. `/project:review` — every ~5 todos
 
 ```
 /project:review
@@ -93,7 +110,7 @@ Runs the `reviewer` agent in a fresh git worktree with no implementer context. I
 
 This is **not** part of `/project:work` — it's periodic and isolated.
 
-## 5. `/project:wiki-lint` — every few cycles
+## 6. `/project:wiki-lint` — every few cycles
 
 ```
 /project:wiki-lint
@@ -328,12 +345,13 @@ Run it at session start, after a long break, or before deciding whether to `/pro
 
 ## Command → when to use
 
-| Command        | When                                                                            |
-| -------------- | ------------------------------------------------------------------------------- |
+| Command                | When                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------- |
 | `/project:init`        | Once at project start                                                           |
 | `/project:interview`   | First time; whenever adding a new feature                                       |
-| `/project:work`        | Main loop — most days you live in `/project:work`                                       |
-| `/project:plan <slug>` | Before `/project:work` if you want to inspect a plan, or for estimation                 |
+| `/project:agent-scout` | Once after init+interview; again after a major feature adds a new stack layer   |
+| `/project:work`        | Main loop — most days you live in `/project:work`                               |
+| `/project:plan <slug>` | Before `/project:work` if you want to inspect a plan, or for estimation         |
 | `/project:review`      | Periodic (every ~5 todos), before a release, after several merges               |
 | `/project:wiki-lint`   | When `wiki-todos.md` piles up or after heavy ingest                             |
 | `/project:wiki-ingest` | When you have a new external doc, or to commission web research                 |
@@ -343,15 +361,15 @@ Run it at session start, after a long break, or before deciding whether to `/pro
 
 ## Where to look when something's wrong
 
-| Symptom                                            | Look at                                                                                |
-| -------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Test-first hook blocking edits                     | Check `.claude/handoff/<slug>.json` exists with `red_confirmed: true`                  |
-| Wiki-drift warning at session end                  | Update the entity page in the same commit as the code                                  |
-| Implementer refusing to start                      | Missing or invalid handoff — see [handoff format](wiki/concepts/handoff-format.md)     |
+| Symptom                                            | Look at                                                                                        |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Test-first hook blocking edits                     | Check `.claude/handoff/<slug>.json` exists with `red_confirmed: true`                          |
+| Wiki-drift warning at session end                  | Update the entity page in the same commit as the code                                          |
+| Implementer refusing to start                      | Missing or invalid handoff — see [handoff format](wiki/concepts/handoff-format.md)             |
 | Planner refusing to plan                           | Entity page missing or `## Behavior` empty — run `/project:interview` first                    |
 | Reviewer claims it's in the wrong dir              | `/project:review` didn't `cd` into the worktree first — re-run, ensure worktree path is passed |
 | `wiki-todos.md` is huge                            | Run `/project:wiki-lint`                                                                       |
-| Implementer keeps trying the same failing approach | Two-strike rule should fire — check `attempt` in `.claude/handoff/<slug>.json`         |
+| Implementer keeps trying the same failing approach | Two-strike rule should fire — check `attempt` in `.claude/handoff/<slug>.json`                 |
 | Plan looks wrong                                   | Edit `.claude/handoff/<slug>-plan.md` or re-run `/project:plan <slug>` to overwrite            |
 
 # The mental model in one paragraph

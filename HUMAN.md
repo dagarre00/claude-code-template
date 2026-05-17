@@ -12,17 +12,18 @@ Three layers, each owned by a different actor:
 
 ## Day-to-day workflow
 
-| You want to…                                           | You run…                  |
-| ------------------------------------------------------ | ------------------------- |
+| You want to…                                           | You run…                                  |
+| ------------------------------------------------------ | ----------------------------------------- |
 | Start a new project                                    | `/project:init` then `/project:interview` |
-| Add a new feature                                      | `/project:interview`              |
-| Move forward on todos                                  | `/project:work`                   |
-| Plan a complex feature before committing branch effort | `/project:plan`                   |
-| Audit the project                                      | `/project:review`                 |
-| Check the wiki is healthy                              | `/project:wiki-lint`              |
-| See where you are                                      | `/project:status`                 |
-| Tag before a risky change                              | `/project:checkpoint`             |
-| Recover from a bad attempt                             | `/project:rollback`               |
+| Configure agents/skills for your stack after init      | `/project:agent-scout`                    |
+| Add a new feature                                      | `/project:interview`                      |
+| Move forward on todos                                  | `/project:work`                           |
+| Plan a complex feature before committing branch effort | `/project:plan`                           |
+| Audit the project                                      | `/project:review`                         |
+| Check the wiki is healthy                              | `/project:wiki-lint`                      |
+| See where you are                                      | `/project:status`                         |
+| Tag before a risky change                              | `/project:checkpoint`                     |
+| Recover from a bad attempt                             | `/project:rollback`                       |
 
 Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the agent knows. Following the `[[wiki-links]]` and the graph view shows the structure.
 

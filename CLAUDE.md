@@ -56,29 +56,30 @@ docs/
 
 ## Slash commands
 
-| Command        | Purpose                                                                                                                                                                |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/project:init`        | Detect project state, scaffold `docs/wiki/`, fill base docs (requirements, architecture, git-conventions, commands), initialize git if needed                          |
-| `/project:interview`   | Grill-me-relentlessly Q&A. Used both for initial requirements and for adding features. Writes a transcript to `docs/raw/interviews/`, then updates affected wiki pages |
-| `/project:plan`        | Dispatch the `planner` agent on a todo (or `top`) and stop at the plan file. Useful for estimation, scoping, or pre-planning before `/project:work`                            |
-| `/project:work`        | Pick the top todo (or batch consecutive todos sharing context), open a `feat/*` branch, optionally run the planner, then spec→red→green→refactor→wiki-update→commit    |
-| `/project:review`      | Throughout review of code vs wiki. Runs in a fresh worktree with isolated context                                                                                      |
-| `/project:checkpoint`  | Tag HEAD as `checkpoint-<timestamp>` for risky operations                                                                                                              |
-| `/project:rollback`    | List checkpoints, revert to one                                                                                                                                        |
-| `/project:status`      | Branch, top todos, recent log, uncommitted summary                                                                                                                     |
-| `/project:wiki-lint`   | Health-check the wiki: contradictions, orphans, broken links, drift, unprocessed `wiki-todos.md` items                                                                 |
-| `/project:wiki-ingest` | Ingest a file or research topic directly into the wiki. `/project:wiki-ingest spec.pdf` for documents, `/project:wiki-ingest search for ...` for research                              |
+| Command                | Purpose                                                                                                                                                                           |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/project:init`        | Detect project state, scaffold `docs/wiki/`, fill base docs (requirements, architecture, git-conventions, commands), initialize git if needed                                     |
+| `/project:interview`   | Grill-me-relentlessly Q&A. Used both for initial requirements and for adding features. Writes a transcript to `docs/raw/interviews/`, then updates affected wiki pages            |
+| `/project:plan`        | Dispatch the `planner` agent on a todo (or `top`) and stop at the plan file. Useful for estimation, scoping, or pre-planning before `/project:work`                               |
+| `/project:work`        | Pick the top todo (or batch consecutive todos sharing context), open a `feat/*` branch, optionally run the planner, then spec→red→green→refactor→wiki-update→commit               |
+| `/project:review`      | Throughout review of code vs wiki. Runs in a fresh worktree with isolated context                                                                                                 |
+| `/project:checkpoint`  | Tag HEAD as `checkpoint-<timestamp>` for risky operations                                                                                                                         |
+| `/project:rollback`    | List checkpoints, revert to one                                                                                                                                                   |
+| `/project:status`      | Branch, top todos, recent log, uncommitted summary                                                                                                                                |
+| `/project:wiki-lint`   | Health-check the wiki: contradictions, orphans, broken links, drift, unprocessed `wiki-todos.md` items                                                                            |
+| `/project:wiki-ingest` | Ingest a file or research topic directly into the wiki. `/project:wiki-ingest spec.pdf` for documents, `/project:wiki-ingest search for ...` for research                         |
+| `/project:agent-scout` | Post-init survey: reads the wiki and recommends specific agents and skills tailored to this project's stack, domain, and external services. Re-run after major feature additions. |
 
 ## Agent routing
 
-| Task                                               | Agent                                                                                                                    |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Plan / decompose a complex or batched todo         | `planner` (Opus) — dispatched by `/project:work` when a todo is tagged `[complex]` or batching 2+ todos, or directly via `/project:plan` |
-| TDD Red — write failing tests                      | `tester`                                                                                                                 |
-| TDD Green + Refactor — make tests pass             | `implementer` (loads skills based on task content)                                                                       |
-| Periodic full audit (≈every 5 todos via `/project:review`) | `reviewer` (worktree-isolated for clean context)                                                                         |
-| Periodic wiki health, ingest, cross-link           | `wiki-maintainer` — **manual only** via `/project:wiki-lint` or explicit human request                                           |
-| Web research — search, fetch, synthesize           | `researcher` — dispatched by `/project:wiki-ingest` or directly by the human                                                     |
+| Task                                                       | Agent                                                                                                                                    |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Plan / decompose a complex or batched todo                 | `planner` (Opus) — dispatched by `/project:work` when a todo is tagged `[complex]` or batching 2+ todos, or directly via `/project:plan` |
+| TDD Red — write failing tests                              | `tester`                                                                                                                                 |
+| TDD Green + Refactor — make tests pass                     | `implementer` (loads skills based on task content)                                                                                       |
+| Periodic full audit (≈every 5 todos via `/project:review`) | `reviewer` (worktree-isolated for clean context)                                                                                         |
+| Periodic wiki health, ingest, cross-link                   | `wiki-maintainer` — **manual only** via `/project:wiki-lint` or explicit human request                                                   |
+| Web research — search, fetch, synthesize                   | `researcher` — dispatched by `/project:wiki-ingest` or directly by the human                                                             |
 
 There is intentionally no domain-specialized agent (no "backend agent", no "database agent"). Domain knowledge lives in skills the implementer loads on demand. The `planner` is the lone Opus agent — planning benefits from stronger reasoning while tester/implementer/reviewer/researcher/wiki-maintainer run on Sonnet.
 
