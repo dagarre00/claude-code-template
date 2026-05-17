@@ -18,16 +18,16 @@ claude
 Inside Claude Code:
 
 ```
-/init        # detect state, scaffold docs/wiki, base docs
-/interview   # grill yourself on requirements; populate the wiki
-/work        # pick the top todo, branch, run TDD (Red → Green → Refactor → wiki)
-/plan        # decompose a complex todo into a stepwise plan (Opus)
-/review      # periodic audit in a fresh worktree
+/project:init        # detect state, scaffold docs/wiki, base docs
+/project:interview   # grill yourself on requirements; populate the wiki
+/project:work        # pick the top todo, branch, run TDD (Red → Green → Refactor → wiki)
+/project:plan        # decompose a complex todo into a stepwise plan (Opus)
+/project:review      # periodic audit in a fresh worktree
 ```
 
 Open `docs/wiki/` in Obsidian on the side. That's your view of the agent's knowledge.
 
-For a worked walkthrough — `/init` → `/interview` → `/work` end-to-end with explanations — see [`docs/getting-started.md`](docs/getting-started.md).
+For a worked walkthrough — `/project:init` → `/project:interview` → `/project:work` end-to-end with explanations — see [`docs/getting-started.md`](docs/getting-started.md).
 
 ## What's in the box
 
@@ -35,7 +35,7 @@ For a worked walkthrough — `/init` → `/interview` → `/work` end-to-end wit
 .claude/
 ├── agents/          # planner (opus), tester, implementer, reviewer, wiki-maintainer, researcher
 ├── skills/          # process skills (TDD, branching, plan-writing, wiki-update, …) + meta skills
-├── commands/        # /init, /interview, /work, /plan, /review, /checkpoint, /rollback, /status, /wiki-lint, /wiki-ingest
+├── commands/        # /project:init, /project:interview, /project:work, /project:plan, /project:review, /project:checkpoint, /project:rollback, /project:status, /project:wiki-lint, /project:wiki-ingest
 ├── hooks/           # session-start, session-end, test-first-check, auto-format, wiki-drift-check
 ├── settings.json    # hook wiring
 └── rules/           # behavioral constraints

@@ -4,13 +4,13 @@ description: Periodic wiki health check. Dispatches the wiki-maintainer to proce
 type: command
 ---
 
-# /wiki-lint
+# /project:wiki-lint
 
 You dispatch the `wiki-maintainer` agent for a full health pass. This is **periodic**, not every-cycle. Heuristics:
 
 - `docs/wiki/wiki-todos.md` has > 10 unticked entries.
-- Last `/wiki-lint` was > 5 work cycles ago.
-- `/review` flagged drift.
+- Last `/project:wiki-lint` was > 5 work cycles ago.
+- `/project:review` flagged drift.
 - A new batch of raw sources landed in `docs/raw/`.
 
 ## Preconditions
@@ -51,12 +51,12 @@ If dirty: run `human-checkpoint`.
    git commit -m "chore(wiki): lint — <N todos processed, M orphans, K broken links>"
    ```
 
-6. **Report to the human.** What was processed, what remains. If the maintainer flagged contradictions or stale claims it couldn't auto-fix, list them explicitly — the human or `/interview` resolves which version is correct.
+6. **Report to the human.** What was processed, what remains. If the maintainer flagged contradictions or stale claims it couldn't auto-fix, list them explicitly — the human or `/project:interview` resolves which version is correct.
 
 ## Failure modes
 
 - **Maintainer touches code outside `docs/wiki/`.** Reset; that's a behavioral violation. Re-dispatch with stricter instructions.
-- **Maintainer rewrites large sections of an entity page.** Reset; entity rewrites go through `/interview`. The maintainer's job is structure, not content overhaul.
+- **Maintainer rewrites large sections of an entity page.** Reset; entity rewrites go through `/project:interview`. The maintainer's job is structure, not content overhaul.
 - **Conflicting versions of the same fact in two pages.** Don't auto-resolve. File both in the report and run `human-checkpoint` to decide which is correct.
 
 ## What you do NOT do

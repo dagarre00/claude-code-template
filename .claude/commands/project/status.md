@@ -4,7 +4,7 @@ description: Show current project state — branch, top todos, recent log, recen
 type: command
 ---
 
-# /status
+# /project:status
 
 You print a one-screen status report. Read-only — never modifies anything.
 
@@ -36,7 +36,7 @@ You print a one-screen status report. Read-only — never modifies anything.
    git tag --list 'checkpoint-*' --sort=-creatordate | head -3
    ```
 
-7. **Pending wiki-todos.** Count of unticked lines in `docs/wiki/wiki-todos.md`. If > 10, suggest `/wiki-lint`.
+7. **Pending wiki-todos.** Count of unticked lines in `docs/wiki/wiki-todos.md`. If > 10, suggest `/project:wiki-lint`.
 
 8. **Print compactly** — one section per topic, two lines max. Format example:
    ```
@@ -56,8 +56,8 @@ You print a one-screen status report. Read-only — never modifies anything.
 
 9. **Suggest next action** based on state:
    - Dirty tree → suggest commit.
-   - On main with todos → suggest `/work`.
-   - Many wiki-todos → suggest `/wiki-lint`.
+   - On main with todos → suggest `/project:work`.
+   - Many wiki-todos → suggest `/project:wiki-lint`.
    - Many `feat/*` branches stale → suggest cleanup.
 
 ## What you do NOT do

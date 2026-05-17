@@ -1,17 +1,17 @@
 ---
 name: wiki-ingest
-description: Direct ingest of a file or research topic into the wiki. Use /wiki-ingest specification.pdf to ingest a document, or /wiki-ingest search for exchange rates APIs to research and ingest. Focused — no lint pass, just ingest.
+description: Direct ingest of a file or research topic into the wiki. Use /project:wiki-ingest specification.pdf to ingest a document, or /project:wiki-ingest search for exchange rates APIs to research and ingest. Focused — no lint pass, just ingest.
 type: command
 ---
 
-# /wiki-ingest
+# /project:wiki-ingest
 
 Ingest a file or research topic directly into the wiki. Two modes:
 
-- **File mode:** `/wiki-ingest path/to/file.pdf` — read a local file and produce a `summaries/` page.
-- **Research mode:** `/wiki-ingest search for exchange rates APIs` — search the web, produce raw research, then ingest it.
+- **File mode:** `/project:wiki-ingest path/to/file.pdf` — read a local file and produce a `summaries/` page.
+- **Research mode:** `/project:wiki-ingest search for exchange rates APIs` — search the web, produce raw research, then ingest it.
 
-This is **focused ingest only** — no orphan scan, no link audit, no lint pass. For the full health pass, use `/wiki-lint`.
+This is **focused ingest only** — no orphan scan, no link audit, no lint pass. For the full health pass, use `/project:wiki-lint`.
 
 ## Preconditions
 
@@ -24,7 +24,7 @@ If dirty outside `docs/`: run `human-checkpoint`.
 
 ## Steps — file mode
 
-Triggered when the argument is a path to an existing file (e.g., `/wiki-ingest docs/spec.pdf`, `/wiki-ingest meeting-notes.md`).
+Triggered when the argument is a path to an existing file (e.g., `/project:wiki-ingest docs/spec.pdf`, `/project:wiki-ingest meeting-notes.md`).
 
 1. **Read the file.** If it's a PDF, read all pages. If it's markdown or plain text, read it fully.
 
@@ -72,7 +72,7 @@ Triggered when the argument is a path to an existing file (e.g., `/wiki-ingest d
 
 6. **Append to `docs/wiki/log.md`:**
    ```markdown
-   ## [YYYY-MM-DD HH:MM] /wiki-ingest file
+   ## [YYYY-MM-DD HH:MM] /project:wiki-ingest file
    - Ingested: <path> → [[summaries/<slug>]]
    - Cross-links added: <list>
    ```
@@ -126,11 +126,11 @@ If the argument could be either (e.g., `search.md` — it's both a valid file pa
 
 ## What you do NOT do
 
-- **No lint pass.** This is ingest only. For lint, use `/wiki-lint`.
+- **No lint pass.** This is ingest only. For lint, use `/project:wiki-lint`.
 - **No code changes.** This touches `docs/wiki/` and `docs/raw/` only.
 - **No raw edits.** The raw source is immutable.
-- **No silent contradiction resolution.** Flag both sides; let the human or `/interview` decide.
-- **No mass rewrites of entity pages.** A cross-link is fine; a full entity-page rewrite to match a new source is `/interview` territory.
+- **No silent contradiction resolution.** Flag both sides; let the human or `/project:interview` decide.
+- **No mass rewrites of entity pages.** A cross-link is fine; a full entity-page rewrite to match a new source is `/project:interview` territory.
 
 ## Wiki updates
 

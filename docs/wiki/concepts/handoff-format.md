@@ -73,7 +73,7 @@ One handoff per branch. Multiple concurrent branches each have their own handoff
 
 1. **Tester creates.** After writing the failing tests and running the suite, the tester writes the handoff with `red_confirmed: true` (or `false` with a `notes` explanation if Red didn't materialize).
 2. **Implementer reads.** First action: read `.claude/handoff/<slug>.json`. If missing or `red_confirmed !== true`, refuse to start and surface the issue.
-3. **`/work` owns increments on retry.** When an implementation attempt fails and the loop restarts, `/work` increments `attempt` before re-dispatching the tester. The implementer checks `attempt` on read and triggers the two-strike pivot at `>= 2`.
+3. **`/project:work` owns increments on retry.** When an implementation attempt fails and the loop restarts, `/project:work` increments `attempt` before re-dispatching the tester. The implementer checks `attempt` on read and triggers the two-strike pivot at `>= 2`.
 4. **Deleted on merge.** When the branch is merged, the handoff is deleted. The `.claude/handoff/` directory is `.gitignore`'d, so handoffs never reach the remote.
 
 ## Hook contract
@@ -92,7 +92,7 @@ See [[glossary#two-strike-rule]]. The handoff's `attempt` field is the canonical
 
 - The implementer stops.
 - Calls the `human-checkpoint` skill to surface the failure pattern.
-- Recommends `/rollback` and a re-spec of the affected Behavior cases.
+- Recommends `/project:rollback` and a re-spec of the affected Behavior cases.
 
 ## Related
 

@@ -14,15 +14,15 @@ Three layers, each owned by a different actor:
 
 | You want to…                                           | You run…                  |
 | ------------------------------------------------------ | ------------------------- |
-| Start a new project                                    | `/init` then `/interview` |
-| Add a new feature                                      | `/interview`              |
-| Move forward on todos                                  | `/work`                   |
-| Plan a complex feature before committing branch effort | `/plan`                   |
-| Audit the project                                      | `/review`                 |
-| Check the wiki is healthy                              | `/wiki-lint`              |
-| See where you are                                      | `/status`                 |
-| Tag before a risky change                              | `/checkpoint`             |
-| Recover from a bad attempt                             | `/rollback`               |
+| Start a new project                                    | `/project:init` then `/project:interview` |
+| Add a new feature                                      | `/project:interview`              |
+| Move forward on todos                                  | `/project:work`                   |
+| Plan a complex feature before committing branch effort | `/project:plan`                   |
+| Audit the project                                      | `/project:review`                 |
+| Check the wiki is healthy                              | `/project:wiki-lint`              |
+| See where you are                                      | `/project:status`                 |
+| Tag before a risky change                              | `/project:checkpoint`             |
+| Recover from a bad attempt                             | `/project:rollback`               |
 
 Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the agent knows. Following the `[[wiki-links]]` and the graph view shows the structure.
 
@@ -40,8 +40,8 @@ Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the age
 - Open or merge PRs.
 - Force-push or rewrite published history.
 - Decide between two reasonable design alternatives (it presents both with a recommendation and waits).
-- Run `/review` mid-`/work` — review is periodic, not in-loop.
-- Auto-invoke the wiki-maintainer. Wiki health passes (`/wiki-lint`) are explicitly triggered by you.
+- Run `/project:review` mid-`/project:work` — review is periodic, not in-loop.
+- Auto-invoke the wiki-maintainer. Wiki health passes (`/project:wiki-lint`) are explicitly triggered by you.
 
 ## How to evolve the template
 
@@ -56,5 +56,5 @@ Examples:
 
 - **Editing `docs/wiki/` by hand.** You can, but it confuses the agent — the wiki is its persistent memory. Prefer asking the agent to make the change.
 - **Editing `docs/raw/` after the fact.** Never. Append new sources instead.
-- **Skipping `/interview`** on a new feature. The Behavior cases are what produce sharp tests; without them, the TDD loop starves.
-- **Letting `docs/wiki/wiki-todos.md` pile up.** When it's long, run `/wiki-lint`.
+- **Skipping `/project:interview`** on a new feature. The Behavior cases are what produce sharp tests; without them, the TDD loop starves.
+- **Letting `docs/wiki/wiki-todos.md` pile up.** When it's long, run `/project:wiki-lint`.

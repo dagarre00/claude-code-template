@@ -16,7 +16,7 @@ Hard constraints from real failures. These override default agent inclinations; 
 
 4. **Tests must fail for the right reason.** A passing test before implementation tests existing behavior, not the new feature. Confirm RED is real (missing feature, not a typo or import error).
 
-5. **Two-strike pivot.** If an approach fails twice on the same mechanism, try a fundamentally different one. Two failures → `/rollback` and re-spec.
+5. **Two-strike pivot.** If an approach fails twice on the same mechanism, try a fundamentally different one. Two failures → `/project:rollback` and re-spec.
 
 6. **Verify before asserting.** Run it, don't assume. Never tell the human a feature works unless tests pass and you read the output yourself.
 
@@ -30,7 +30,7 @@ Hard constraints from real failures. These override default agent inclinations; 
 
 11. **Raw sources are immutable.** Never edit files under `docs/raw/`. Only append new ones.
 
-12. **Reviewer is periodic and isolated.** `/review` runs in a fresh worktree with no implementer context. Not part of the work loop.
+12. **Reviewer is periodic and isolated.** `/project:review` runs in a fresh worktree with no implementer context. Not part of the work loop.
 
 13. **Progressive disclosure.** Don't preload domain knowledge. Skills auto-load when their `description` matches the task. If a needed skill doesn't exist, create one via `update-skill` rather than stuffing it into an agent prompt.
 
@@ -38,7 +38,7 @@ Hard constraints from real failures. These override default agent inclinations; 
 
 15. **Honor the `red_confirmed` handoff.** When `tester` writes failing tests, it emits `.claude/handoff/<slug>.json` with `red_confirmed: true`, the test command, and the failure count. `implementer` must refuse to start if that handoff is missing or `red_confirmed` is not `true`.
 
-16. **Append, don't bury.** When agents discover something the maintainer should clean up later (orphan page, missing ADR, repeated concept), append a one-line entry to `docs/wiki/wiki-todos.md`. Don't wait for `/wiki-lint`.
+16. **Append, don't bury.** When agents discover something the maintainer should clean up later (orphan page, missing ADR, repeated concept), append a one-line entry to `docs/wiki/wiki-todos.md`. Don't wait for `/project:wiki-lint`.
 
 17. **Use the existing workflow before improvising.** Slash commands and skills exist for a reason. If the workflow seems missing, add a command or skill via the meta skills — don't work around the gap silently.
 

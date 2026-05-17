@@ -1,6 +1,6 @@
 ---
 name: tester
-description: TDD red phase. Translates entity Behavior cases into failing tests, confirms they fail for the right reason, then hands off to the implementer. Triggered by /work before any code is written.
+description: TDD red phase. Translates entity Behavior cases into failing tests, confirms they fail for the right reason, then hands off to the implementer. Triggered by /project:work before any code is written.
 type: agent
 model: sonnet
 color: red
@@ -62,7 +62,7 @@ On retries (the handoff file already exists from a prior failed attempt), increm
 - Tick the matching Behavior cases in `docs/wiki/entities/<slug>.md` from `[ ]` to `[~]` (in-progress).
 - If you spotted a pitfall while writing the test, follow `gotcha-recording` (single inline edit).
 - **Do NOT dispatch the wiki-maintainer.** It is manual only.
-- Append to `docs/wiki/wiki-todos.md` if the entity page is missing structure the maintainer should clean up on the next `/wiki-lint`.
+- Append to `docs/wiki/wiki-todos.md` if the entity page is missing structure the maintainer should clean up on the next `/project:wiki-lint`.
 
 Wiki links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rules/behavioral.md` rule 18. Use `wiki-update` only when creating a new entity page or routing a cross-page discovery.
 
@@ -70,4 +70,4 @@ Wiki links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/ru
 
 - **No production code.** Implementation is forbidden in this agent.
 - **No skipping the Red confirmation step.** If you can't get a real failing-for-the-right-reason test, stop and tell the human via `human-checkpoint`.
-- **No editing existing passing tests** to accommodate new behavior. Add new tests; if old behavior is now wrong, that's a spec change → goes through `/interview` first.
+- **No editing existing passing tests** to accommodate new behavior. Add new tests; if old behavior is now wrong, that's a spec change → goes through `/project:interview` first.

@@ -30,7 +30,7 @@ status: draft
 ### entity (page)
 
 **Definition:** A file under `docs/wiki/entities/` documenting one feature, module, or component. Owns the `## Behavior` cases that produce tests.
-**Context:** Created by `/interview` or `/work`. See [[architecture]] for how entities relate to code modules.
+**Context:** Created by `/project:interview` or `/project:work`. See [[architecture]] for how entities relate to code modules.
 **Aliases:** entity page, feature page.
 
 ### handoff (red_confirmed)
@@ -42,19 +42,19 @@ status: draft
 ### implementer
 
 **Definition:** The agent that writes production code to make failing tests pass. Reads the handoff first; loads task-specific skills on demand.
-**Context:** Defined at `.claude/agents/implementer.md`. Invoked by `/work` after the tester confirms Red.
+**Context:** Defined at `.claude/agents/implementer.md`. Invoked by `/project:work` after the tester confirms Red.
 **Aliases:** implementer agent, Green-phase agent.
 
 ### tester
 
 **Definition:** The agent that translates Behavior cases into failing tests and writes the [[glossary#handoff-red_confirmed|handoff]].
-**Context:** Defined at `.claude/agents/tester.md`. Invoked by `/work` during the Red phase.
+**Context:** Defined at `.claude/agents/tester.md`. Invoked by `/project:work` during the Red phase.
 **Aliases:** tester agent, Red-phase agent.
 
 ### planner
 
 **Definition:** The Opus-model agent that decomposes complex or batched todos into a stepwise implementation plan before TDD begins. Writes a transient markdown plan to `.claude/handoff/<slug>-plan.md` that the tester and implementer follow.
-**Context:** Defined at `.claude/agents/planner.md`. Dispatched by `/work` when a todo is tagged `[complex]` or 2+ todos are batched. Also invokable directly via `/plan` for estimation. The lone Opus agent in the template. Procedural details live in the [[glossary#plan-writing|plan-writing]] skill.
+**Context:** Defined at `.claude/agents/planner.md`. Dispatched by `/project:work` when a todo is tagged `[complex]` or 2+ todos are batched. Also invokable directly via `/project:plan` for estimation. The lone Opus agent in the template. Procedural details live in the [[glossary#plan-writing|plan-writing]] skill.
 **Aliases:** planner agent, plan author.
 
 ### plan-writing
@@ -66,13 +66,13 @@ status: draft
 ### reviewer
 
 **Definition:** The periodic auditor. Runs in a fresh git worktree with no implementer context to keep the audit unbiased.
-**Context:** Defined at `.claude/agents/reviewer.md`. Triggered by `/review` roughly every 5 todos — never inside `/work`.
+**Context:** Defined at `.claude/agents/reviewer.md`. Triggered by `/project:review` roughly every 5 todos — never inside `/project:work`.
 **Aliases:** reviewer agent, audit agent.
 
 ### wiki-maintainer
 
 **Definition:** The agent that processes [[wiki-todos]], fixes orphans, files ADRs, and cross-links concepts. **Manual only** — never auto-invoked.
-**Context:** Triggered by `/wiki-lint` or an explicit human request. Owns large or cross-page wiki edits.
+**Context:** Triggered by `/project:wiki-lint` or an explicit human request. Owns large or cross-page wiki edits.
 **Aliases:** wiki agent, maintainer.
 
 ### progressive disclosure
@@ -83,13 +83,13 @@ status: draft
 
 ### two-strike rule
 
-**Definition:** Two failed attempts on the same mechanism → stop, `/rollback`, re-spec. Tracked via the `attempt` field in the handoff JSON.
+**Definition:** Two failed attempts on the same mechanism → stop, `/project:rollback`, re-spec. Tracked via the `attempt` field in the handoff JSON.
 **Context:** See [[concepts/handoff-format]]. Enforced socially by the implementer when `attempt >= 2`.
 **Aliases:** two-strike pivot.
 
 ### wiki-todos.md
 
-**Definition:** A queue of deferred wiki-cleanup tasks — orphans, missing cross-links, repeated concepts. Agents append; `wiki-maintainer` drains on `/wiki-lint`.
+**Definition:** A queue of deferred wiki-cleanup tasks — orphans, missing cross-links, repeated concepts. Agents append; `wiki-maintainer` drains on `/project:wiki-lint`.
 **Context:** Lives at `docs/wiki/wiki-todos.md`. Behavioral rule 16 mandates append-on-discovery.
 **Aliases:** maintainer queue, wiki cleanup queue.
 
@@ -102,13 +102,13 @@ status: draft
 ### raw source
 
 **Definition:** A file under `docs/raw/` (interview transcripts, articles, PDFs). Immutable — agents read but never edit; only append new files.
-**Context:** Behavioral rule 11. Summarized into `docs/wiki/summaries/` by `/wiki-ingest`.
+**Context:** Behavioral rule 11. Summarized into `docs/wiki/summaries/` by `/project:wiki-ingest`.
 **Aliases:** raw doc, source drop.
 
 ### checkpoint
 
-**Definition:** A git tag `checkpoint-<timestamp>` made before a risky operation, used as a `/rollback` target.
-**Context:** Created by `/checkpoint`; listed and reverted to by `/rollback`.
+**Definition:** A git tag `checkpoint-<timestamp>` made before a risky operation, used as a `/project:rollback` target.
+**Context:** Created by `/project:checkpoint`; listed and reverted to by `/project:rollback`.
 **Aliases:** rollback tag, safety tag.
 
 ## Related

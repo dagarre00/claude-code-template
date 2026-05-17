@@ -8,7 +8,7 @@ status: draft
 
 # Architecture
 
-> How the project is built. `/init` fills the stack-detection sections; `/interview` fills the rest.
+> How the project is built. `/project:init` fills the stack-detection sections; `/project:interview` fills the rest.
 
 ## Stack
 

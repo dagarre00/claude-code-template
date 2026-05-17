@@ -74,8 +74,8 @@ When re-dispatched after a failed implementer attempt (the JSON handoff has `att
 ## Anti-patterns
 
 - **Pseudocode in steps.** Steps name the action and the file target, not the implementation. The implementer chooses the code.
-- **Inventing requirements.** If a Behavior case is missing or ambiguous, escalate via `human-checkpoint` and recommend `/interview`. Never write a plan that assumes behavior the entity page does not list.
-- **Editing entity pages.** Plans are how, not what. Spec changes go through `/interview` and `spec-writing`.
+- **Inventing requirements.** If a Behavior case is missing or ambiguous, escalate via `human-checkpoint` and recommend `/project:interview`. Never write a plan that assumes behavior the entity page does not list.
+- **Editing entity pages.** Plans are how, not what. Spec changes go through `/project:interview` and `spec-writing`.
 - **Cross-entity batching without a precedent.** If the batch crosses architectural boundaries (e.g. backend + frontend in one cycle) and no prior cycle did so, stop and ask the human.
 - **Skipping the risks section.** "No risks" is rarely true on a complex todo. If you genuinely see none, state why — usually it means the scope is small enough that it shouldn't have been flagged `[complex]`.
 - **Step count > Behavior case count by a large margin.** A blow-up usually means scope creep snuck in. Re-check `## Out of scope`.

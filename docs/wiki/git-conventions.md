@@ -60,5 +60,5 @@ Conventional commits, present tense:
 
 ## Tags
 
-- `checkpoint-<UTC-timestamp>` — created by `/checkpoint` before risky operations.
+- `checkpoint-<UTC-timestamp>` — created by `/project:checkpoint` before risky operations.
 - Other tags reserved for releases (format defined later).

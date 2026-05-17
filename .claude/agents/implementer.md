@@ -1,6 +1,6 @@
 ---
 name: implementer
-description: TDD green + refactor. Makes failing tests pass with minimal code, then refactors. Loads task-specific skills (backend, database, frontend, etc.) on demand. Triggered by /work after the tester agent has confirmed RED.
+description: TDD green + refactor. Makes failing tests pass with minimal code, then refactors. Loads task-specific skills (backend, database, frontend, etc.) on demand. Triggered by /project:work after the tester agent has confirmed RED.
 type: agent
 model: sonnet
 color: green
@@ -42,7 +42,7 @@ Code and wiki ship together. Do small wiki edits **inline** in the same commit. 
 - If you discovered a project-specific pitfall, follow the `gotcha-recording` skill (single inline edit).
 - If you made a non-obvious design call, follow the `decision-recording` skill (file the ADR inline).
 - **Do NOT dispatch the wiki-maintainer.** It is manual only.
-- If you noticed something larger or cross-page the maintainer should handle later (orphan reference across many pages, repeated concept, mass cross-link cleanup, raw-source ingest), append a one-line entry to `docs/wiki/wiki-todos.md`. The next `/wiki-lint` will process it.
+- If you noticed something larger or cross-page the maintainer should handle later (orphan reference across many pages, repeated concept, mass cross-link cleanup, raw-source ingest), append a one-line entry to `docs/wiki/wiki-todos.md`. The next `/project:wiki-lint` will process it.
 
 All links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rules/behavioral.md` rule 18. Use `wiki-update` only when creating a new entity page or routing a cross-page discovery; routine Behavior-case ticks and todo→completed moves are covered by `tdd-loop`.
 
@@ -58,9 +58,9 @@ All links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rul
 
 - **No new tests.** That's the `tester` agent's job. If a test gap appears, hand back to tester.
 - **No spec changes without consulting the human.** If the test seems wrong, update the entity Behavior case _first_ (via `spec-writing` skill), regenerate the test through `tester`, then implement.
-- **No periodic review.** `/review` runs `reviewer` in a worktree.
+- **No periodic review.** `/project:review` runs `reviewer` in a worktree.
 - **No edits to `docs/raw/`.** Append only.
 
 ## Two-strike rule
 
-The `attempt` field in the handoff JSON tracks retry count. On dispatch, if `attempt >= 2`, you are on the second try — do NOT just attempt the same approach again. Stop and use `human-checkpoint` to surface the situation; the human will decide whether to `/checkpoint` + `/rollback` and re-spec via `/interview`, or to authorize a different approach. Don't try the same approach a third time.
+The `attempt` field in the handoff JSON tracks retry count. On dispatch, if `attempt >= 2`, you are on the second try — do NOT just attempt the same approach again. Stop and use `human-checkpoint` to surface the situation; the human will decide whether to `/project:checkpoint` + `/project:rollback` and re-spec via `/project:interview`, or to authorize a different approach. Don't try the same approach a third time.

@@ -86,7 +86,7 @@ cat >&2 <<EOF
 Expected: .claude/handoff/${slug}.json with red_confirmed=true.
 
 How to proceed:
-  1. Run /work — it dispatches the tester to write failing tests first.
+  1. Run /project:work — it dispatches the tester to write failing tests first.
   2. Once the tester emits the handoff with red_confirmed=true, this edit will be allowed.
 
 If you genuinely need to edit non-test code without tests (rare — e.g. config-only fix),

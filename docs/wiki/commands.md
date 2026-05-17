@@ -20,7 +20,7 @@ status: draft
 
 ## Test
 
-> Required for `/work` — `/work` precondition checks fail if this is `<TBD>`.
+> Required for `/project:work` — `/project:work` precondition checks fail if this is `<TBD>`.
 
 `<TBD>`
 
