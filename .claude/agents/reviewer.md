@@ -70,7 +70,7 @@ Then append a one-line entry to `docs/wiki/wiki-todos.md`: `Process review-YYYY-
 
 **Do NOT dispatch the wiki-maintainer.** It is manual only — the queued line above is enough; the next `/wiki-lint` will pick it up.
 
-Wiki links inside `docs/wiki/` use Obsidian wiki-link syntax — see the `wiki-update` skill.
+Wiki links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rules/behavioral.md` rule 18.
 
 ## What you do NOT do
 

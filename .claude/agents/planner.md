@@ -66,7 +66,7 @@ Stop and call `human-checkpoint` if any of:
 - Append a one-line entry to `docs/wiki/wiki-todos.md` if you noticed orphan structure or repeated patterns the maintainer should clean up on the next `/wiki-lint`.
 - If you made a non-obvious sequencing call that future planners or implementers will need to revisit, file an ADR via `decision-recording` (rare — usually ADRs come from the implementer's actual decision, not the plan).
 
-Wiki links inside `docs/wiki/` use Obsidian wiki-link syntax — see the `wiki-update` skill.
+Wiki links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rules/behavioral.md` rule 18.
 
 ## What you do NOT do
 

@@ -44,7 +44,7 @@ Code and wiki ship together. Do small wiki edits **inline** in the same commit. 
 - **Do NOT dispatch the wiki-maintainer.** It is manual only.
 - If you noticed something larger or cross-page the maintainer should handle later (orphan reference across many pages, repeated concept, mass cross-link cleanup, raw-source ingest), append a one-line entry to `docs/wiki/wiki-todos.md`. The next `/wiki-lint` will process it.
 
-All links inside `docs/wiki/` use Obsidian wiki-link syntax — see the `wiki-update` skill.
+All links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rules/behavioral.md` rule 18. Use `wiki-update` only when creating a new entity page or routing a cross-page discovery; routine Behavior-case ticks and todo→completed moves are covered by `tdd-loop`.
 
 ## When the task is done
 

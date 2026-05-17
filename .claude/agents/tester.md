@@ -64,7 +64,7 @@ On retries (the handoff file already exists from a prior failed attempt), increm
 - **Do NOT dispatch the wiki-maintainer.** It is manual only.
 - Append to `docs/wiki/wiki-todos.md` if the entity page is missing structure the maintainer should clean up on the next `/wiki-lint`.
 
-Wiki links inside `docs/wiki/` use Obsidian wiki-link syntax — see the `wiki-update` skill.
+Wiki links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rules/behavioral.md` rule 18. Use `wiki-update` only when creating a new entity page or routing a cross-page discovery.
 
 ## What you do NOT do
 
