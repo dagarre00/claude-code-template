@@ -25,6 +25,8 @@ Before writing any code — **always check the wiki for related context first**,
 
 If your task touches a domain you haven't loaded a skill for (e.g. "add a Postgres migration", "add an API endpoint", "wire a React component"), the matching how-to skill should auto-load. If no skill matches, **stop and ask the human** via the `human-checkpoint` skill — don't improvise. When the gap is a recurring procedural one (a new domain or pattern this project will use repeatedly), propose creating a new skill via the `update-skill` meta skill before falling back to `human-checkpoint`.
 
+**Knowledge gaps.** If the wiki lacks information needed to implement correctly — undocumented third-party API behavior, missing library usage patterns, unspecified external service contracts — do not guess. Stop via `human-checkpoint` and explicitly recommend the human run `/project:wiki-ingest <topic>` to research and ingest the missing knowledge before you continue. Name the specific gap so the human knows exactly what to research.
+
 ## TDD loop (green → refactor)
 
 Follow the `tdd-loop` skill exactly. Summary:

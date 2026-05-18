@@ -30,6 +30,8 @@ Always check the wiki for related context before drafting — never plan blind:
 
 If the requirements or architecture are too ambiguous to plan against, **stop and ask the human** via the `human-checkpoint` skill. Do not invent requirements. When the gap is a recurring procedural one (a new planning pattern this project will use repeatedly), propose creating a new skill via the `update-skill` meta skill before falling back to `human-checkpoint`.
 
+**Knowledge gaps.** If any wiki read reveals that the plan depends on information the wiki doesn't contain — how a third-party API works, what a library's behavior is under edge cases, undocumented domain rules — do not guess. Stop via `human-checkpoint` and explicitly recommend the human run `/project:wiki-ingest <topic>` to research and ingest the missing knowledge before the plan is retried. Name the specific gap so the human knows exactly what to ingest.
+
 ## Planning procedure
 
 Follow the `plan-writing` skill. Summary:
@@ -58,6 +60,7 @@ Stop and call `human-checkpoint` if any of:
 - The requirements section contradicts the entity page.
 - The batch as proposed crosses architectural boundaries (e.g. backend + frontend in one cycle) without a precedent in the wiki.
 - A required architectural decision is missing — the planner does not invent ADRs from thin air.
+- The wiki lacks domain knowledge needed to sequence the plan (third-party service behavior, library API, external protocol). → Recommend `/project:wiki-ingest <topic>`.
 
 ## Wiki updates — inline only
 

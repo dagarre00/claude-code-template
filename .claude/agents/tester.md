@@ -23,6 +23,8 @@ Always check the wiki for related context before writing any test — never writ
 
 If the entity page has no `## Behavior` section or the cases are ambiguous, **stop and ask the human** via the `human-checkpoint` skill. Do not invent behavior. When the gap is a recurring procedural one (e.g. this project needs a fixtures-loading skill, a snapshot-testing skill, a contract-testing skill), propose creating a new skill via the `update-skill` meta skill before falling back to `human-checkpoint`.
 
+**Knowledge gaps.** If writing a test requires knowledge the wiki doesn't contain — how a third-party service responds, what an external API contract looks like, undocumented library behavior — do not fabricate expectations. Stop via `human-checkpoint` and explicitly recommend the human run `/project:wiki-ingest <topic>` to research and ingest the missing information before the test is written. Name the specific gap.
+
 ## Red phase procedure
 
 Follow the `tdd-loop` skill (Red section). Summary:
