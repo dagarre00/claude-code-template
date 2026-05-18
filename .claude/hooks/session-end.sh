@@ -72,6 +72,22 @@ if [ "$work_happened" = "yes" ] && [ -f "$log" ] && [ "$now_min" != "$last_min" 
     fi
   } >> "$log"
   echo "$now_min" > "$stamp_file"
+
+  # Auto-commit the log entry so the session record doesn't sit in a dirty tree.
+  git commit --only -m "chore(log): session-end $stamp" -- "$log" 2>&1 | head -3 | sed 's/^/  /' >&2 || true
+fi
+
+# 3. Remind to push if on a feature branch and ahead of remote.
+if [ "$branch" != "main" ] && [ "$branch" != "master" ] && [ "$branch" != "(unknown)" ] && [ -n "$branch" ]; then
+  upstream=$(git rev-parse --abbrev-ref "@{u}" 2>/dev/null || echo "")
+  if [ -z "$upstream" ]; then
+    echo "[session-end] '$branch' has no remote upstream — push when ready: git push -u origin $branch" >&2
+  else
+    ahead=$(git rev-list --count "${upstream}..HEAD" 2>/dev/null || echo 0)
+    if [ "${ahead:-0}" -gt 0 ]; then
+      echo "[session-end] '$branch' is ${ahead} commit(s) ahead of $upstream — push when the feature is ready." >&2
+    fi
+  fi
 fi
 
 exit 0
