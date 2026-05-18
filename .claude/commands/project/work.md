@@ -79,7 +79,11 @@ If any fresh-start precondition fails: stop and run `human-checkpoint`.
     - Implementation section reflects current files.
     - TODO moved to `docs/wiki/completed.md`.
 
-11. **Commit.** Follow `feature-branching` skill. Conventional commit, one commit per cycle.
+11. **Commit and push.** Follow `feature-branching` skill. Conventional commit, one commit per cycle. Then push immediately — remote execution containers can be recycled between sessions, and an unpushed commit is effectively lost work:
+
+    ```bash
+    git push -u origin <branch>
+    ```
 
 12. **Append to log.** `docs/wiki/log.md`:
 

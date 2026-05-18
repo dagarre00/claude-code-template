@@ -23,8 +23,11 @@ if [ -n "$session_sha" ]; then
     } | sort -u | grep -v '^$' || true
   )
 else
+  # No session marker — include the last commit as a proxy for session work,
+  # since committed-but-not-pushed changes would be invisible otherwise.
   files=$(
     {
+      git diff --name-only HEAD~1..HEAD 2>/dev/null
       git diff --name-only HEAD 2>/dev/null
       git diff --name-only --cached 2>/dev/null
     } | sort -u | grep -v '^$' || true
