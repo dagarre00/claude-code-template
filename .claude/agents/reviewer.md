@@ -37,6 +37,7 @@ For each entity page, check:
 - **Stale claims.** Does any wiki page reference functions, files, or commands that no longer exist? Grep to verify.
 - **Missing ADRs.** Did the implementer make a non-trivial design choice without a `docs/wiki/decisions/` page?
 - **Two-strike candidates.** Code that's been rewritten multiple times — should it be re-spec'd from scratch?
+- **Knowledge gaps.** Does the code interact with a third-party service, library, or protocol that the wiki doesn't document? Flag these in **Warnings** and recommend `/project:wiki-ingest <topic>` for each gap so future agents have the context they need.
 
 ## Output
 
