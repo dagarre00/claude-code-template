@@ -16,25 +16,63 @@ You orchestrate one TDD cycle (or a small batch). You do **not** write tests or 
 - `docs/wiki/todos.md` has at least one item.
 - `docs/wiki/commands.md` has a working test command.
 
-**Resuming mid-cycle (already on a `feat/*` or `fix/*` branch):**
-
-- `.claude/handoff/<slug>.json` committed with `red_confirmed: true` → proceed to step 0.
-- Handoff missing or `red_confirmed: false` → unclear state; run `human-checkpoint`.
-
-If any fresh-start precondition fails: stop and run `human-checkpoint`.
+If any precondition fails: stop and run `human-checkpoint`.
 
 ## Steps
 
-0. **Resume detection** _(skip this step when starting fresh on `main`)._
+0. **Scan for existing handoffs — always run this first, before picking any new work.**
 
-   When the current branch is already `feat/*` or `fix/*` (session restarted after a rate limit or container recycle):
+   ```bash
+   ls .claude/handoff/*.json 2>/dev/null
+   ```
 
-   a. Derive `slug` from the branch name (strip `feat/` or `fix/` prefix).
-   b. Read `.claude/handoff/<slug>.json`. Confirm `red_confirmed: true`. If not, run `human-checkpoint`.
-   c. Run the test command from the handoff.
-   d. **All tests pass** → the implementer finished before the session ended. Skip to step 9 (verify green).
-   e. **Tests still failing** → Red is intact; implementer did not finish. Skip to step 8 (dispatch implementer).
-   f. **Mixed results** (some pass, some fail) → implementer was mid-flight. Skip to step 8; the implementer will pick up where it left off.
+   **No files found** → skip to step 1.
+
+   **Files found** → for each handoff file, read it and determine which case applies:
+
+   ***
+
+   **Case A — Current branch IS the handoff branch** (session restarted mid-cycle):
+
+   a. Read the handoff. If `red_confirmed` is not `true`, run `human-checkpoint` — the tester did not confirm Red before the session ended.
+   b. Run the test command from the handoff.
+   - **All tests fail** → Red is intact; implementer did not start. Skip to step 8.
+   - **All tests pass** → implementer finished before the session ended. Skip to step 9 (verify green).
+   - **Mixed results** → implementer was mid-flight. Skip to step 8; it will pick up where it left off.
+
+   ***
+
+   **Case B — Current branch is `main` (or other), but the handoff branch still exists in git:**
+
+   ```bash
+   git branch -a | grep "<branch-from-handoff>"
+   ```
+
+   Surface to the human:
+
+   > Found unfinished work: `<slug>` on `<branch>` (handoff written `<timestamp>`, attempt `<attempt>`).
+   > Resume this before starting new work?
+   - **Human confirms resume** → `git checkout <branch>`, then apply Case A logic above.
+   - **Human declines** → leave the handoff in place and continue to step 1 for fresh work. (The handoff will be detected again next session.)
+
+   ***
+
+   **Case C — Handoff branch no longer exists in git** (merged, abandoned, or force-deleted):
+
+   The handoff is a ghost — the branch is gone but the file was never cleaned up. Warn and delete:
+
+   > Removing orphaned handoff `<slug>` — branch `<branch>` no longer exists.
+
+   ```bash
+   git rm .claude/handoff/<slug>.json
+   git commit -m "chore: remove orphaned handoff for <slug>"
+   ```
+
+   Repeat for any additional ghost files, then continue to step 1.
+
+   ***
+
+   **If multiple handoffs exist:** process each one (Case A / B / C) before moving on. Do not start new work while any Case A or B handoff is unresolved.
 
 1. **Pick the work.**
    - Read `docs/wiki/todos.md`. Take the top item.
