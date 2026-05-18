@@ -11,6 +11,7 @@ A gotcha is project-specific failure that would burn the next agent. Generic dis
 ## When to record
 
 Record when, in this session, you:
+
 - Spent more than a few minutes on a problem with a surprising cause.
 - Had a passing test that masked broken behavior.
 - Hit a tool or library quirk specific to this project's setup.
@@ -18,6 +19,7 @@ Record when, in this session, you:
 - Discovered that two pages of the wiki contradicted each other in production.
 
 Do **not** record:
+
 - General language/framework facts. (Those are knowledge, not gotchas — keep them out.)
 - One-off typos or your own brain freezes.
 - Anything that would be solved by reading existing docs.
@@ -29,6 +31,7 @@ Do **not** record:
 
 ```markdown
 ### <Short, scannable title>
+
 **When:** <the trigger — the exact situation that surfaces it>
 **Symptom:** <what you saw>
 **Cause:** <what was actually happening>
@@ -40,6 +43,7 @@ Example:
 
 ```markdown
 ### Pytest fixtures cached across test files in this project
+
 **When:** Using `@pytest.fixture(scope="session")` and the fixture mutates global state.
 **Symptom:** Tests pass alone, fail in suite — order-dependent.
 **Cause:** This project's `conftest.py` has a session-scoped DB fixture that doesn't reset.
@@ -51,7 +55,21 @@ Example:
 
 4. If the gotcha implies a missing skill or hook (e.g. "add a hook that warns on fixture scope"), append to `docs/wiki/wiki-todos.md`.
 
-5. Commit with `docs: gotcha — <short title>`.
+5. **Size check.** After appending, count the non-blank, non-header content lines in `gotchas.md`:
+
+   ```bash
+   grep -c "^\*\*\(When\|Symptom\|Cause\|Fix\|Related\)\*\*" docs/wiki/gotchas.md
+   ```
+
+   If the result is **≥ 20** (roughly 4+ entries per field × 5 fields), append a wiki-todo:
+
+   ```
+   - [ ] YYYY-MM-DD agent: gotchas.md has N field-lines — run /project:gotchas-prune
+   ```
+
+   This keeps the file scannable before it degrades model attention.
+
+6. Commit with `docs: gotcha — <short title>`.
 
 ## Format rules
 

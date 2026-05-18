@@ -23,35 +23,54 @@ If dirty: run `human-checkpoint`.
 ## Steps
 
 1. **Branch for the maintenance pass:**
+
    ```bash
    git checkout -b chore/wiki-lint-YYYY-MM-DD
    ```
+
    Keeps maintenance commits separate from feature work.
 
-2. **Dispatch `wiki-maintainer`** with:
+2. **Check append-only files for overflow** before dispatching:
+
+   ```bash
+   # log.md: count session entries
+   grep -c "^## \[" docs/wiki/log.md 2>/dev/null || echo 0
+   # completed.md: count shipped items
+   grep -c "^- " docs/wiki/completed.md 2>/dev/null || echo 0
+   ```
+
+   - **`log.md` ≥ 100 entries:** Instruct the maintainer to move entries older than 90 days into `docs/wiki/summaries/log-archive-YYYY.md`, leaving only the most recent 30 entries in `log.md`. The archive file is append-only going forward.
+   - **`completed.md` ≥ 50 items:** Instruct the maintainer to move items completed more than 6 months ago into `docs/wiki/summaries/completed-archive-YYYY.md`, leaving only the most recent 20 items in `completed.md`.
+
+   These files grow unboundedly; models loading them lose signal in the noise. The archive is reference-only — agents never load it by default.
+
+3. **Dispatch `wiki-maintainer`** with:
    - The current `docs/wiki/wiki-todos.md` content.
    - The list of raw files added since the last summary in `docs/wiki/summaries/`.
-   - Explicit instructions: process the queue, ingest, lint, and produce a summary at the end.
+   - The overflow check results from step 2 (so the maintainer knows which archival tasks apply).
+   - Explicit instructions: process the queue, ingest, lint, archive overflow, and produce a summary at the end.
 
-3. **Maintainer writes:**
+4. **Maintainer writes:**
    - Resolved `wiki-todos` lines (removed).
    - New `summaries/` pages for any ingested raw sources.
    - Updates to entity/concept/decision pages.
    - Updated `index.md`.
+   - Archival files under `docs/wiki/summaries/` if overflow thresholds were hit.
    - A log entry to `log.md`.
 
-4. **Review the diff** — `git diff --stat`. Sanity-check:
+5. **Review the diff** — `git diff --stat`. Sanity-check:
    - No code outside `docs/wiki/` was touched.
    - No raw files were modified.
    - No mass rewrites of entity pages (the maintainer is conservative; a 500-line entity diff is a red flag).
 
-5. **Commit:**
+6. **Commit:**
+
    ```bash
    git add docs/wiki/
    git commit -m "chore(wiki): lint — <N todos processed, M orphans, K broken links>"
    ```
 
-6. **Report to the human.** What was processed, what remains. If the maintainer flagged contradictions or stale claims it couldn't auto-fix, list them explicitly — the human or `/project:interview` resolves which version is correct.
+7. **Report to the human.** What was processed, what remains. If the maintainer flagged contradictions or stale claims it couldn't auto-fix, list them explicitly — the human or `/project:interview` resolves which version is correct.
 
 ## Failure modes
 
