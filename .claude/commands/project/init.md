@@ -137,8 +137,8 @@ You are an AI development agent working on <project name>. Before any code chang
 
 ## Commands
 
-| Command        | Purpose                                           |
-| -------------- | ------------------------------------------------- |
+| Command                | Purpose                                           |
+| ---------------------- | ------------------------------------------------- |
 | `/project:init`        | (Re)initialize project wiki and schema            |
 | `/project:interview`   | Q&A to define requirements or features            |
 | `/project:work`        | Top todo → spec → red → green → refactor → commit |
@@ -151,13 +151,13 @@ You are an AI development agent working on <project name>. Before any code chang
 
 ## Agent routing
 
-| Task                       | Agent                                            |
-| -------------------------- | ------------------------------------------------ |
-| Write failing tests        | `tester`                                         |
-| Make tests pass + refactor | `implementer` (loads skills on demand)           |
-| Periodic audit             | `reviewer` (worktree-isolated)                   |
+| Task                       | Agent                                                    |
+| -------------------------- | -------------------------------------------------------- |
+| Write failing tests        | `tester`                                                 |
+| Make tests pass + refactor | `implementer` (loads skills on demand)                   |
+| Periodic audit             | `reviewer` (worktree-isolated)                           |
 | Wiki health                | `wiki-maintainer` (manual only via `/project:wiki-lint`) |
-| Web research               | `researcher`                                     |
+| Web research               | `researcher`                                             |
 
 ## Hooks
 
@@ -202,7 +202,19 @@ Append to `docs/wiki/log.md`:
 - Next: run `/project:work` to pick up the first todo.
 ```
 
-### 7. Report
+### 7. Commit
+
+Stage and commit everything created or modified, then push:
+
+```bash
+git add docs/ CLAUDE.md
+git commit -m "chore(init): scaffold wiki and CLAUDE.md"
+git push -u origin main
+```
+
+If the repo has no remote yet, skip the push and note it in the report.
+
+### 8. Report
 
 Print:
 

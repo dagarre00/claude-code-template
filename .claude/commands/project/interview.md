@@ -92,7 +92,17 @@ You are the interviewer. Your job is to grill the human until you reach shared u
    - ADRs: <count>
    ```
 
-4. **Recommend the next step.** Usually `/project:work` to pick up the first new todo.
+4. **Commit.** Stage all wiki and transcript changes, then commit and push so nothing sits uncommitted:
+
+   ```bash
+   git add docs/wiki/ docs/raw/interviews/
+   git commit -m "docs(wiki): interview — <slug>"
+   git push
+   ```
+
+   If this is the very first push on the branch, use `git push -u origin <branch>`.
+
+5. **Recommend the next step.** Usually `/project:work` to pick up the first new todo.
 
 ## Anti-patterns
 
