@@ -117,13 +117,7 @@ If any precondition fails: stop and run `human-checkpoint`.
     - Implementation section reflects current files.
     - TODO moved to `docs/wiki/completed.md`.
 
-11. **Commit and push.** Follow `feature-branching` skill. Conventional commit, one commit per cycle. Then push immediately — remote execution containers can be recycled between sessions, and an unpushed commit is effectively lost work:
-
-    ```bash
-    git push -u origin <branch>
-    ```
-
-12. **Append to log.** `docs/wiki/log.md`:
+11. **Append to log.** `docs/wiki/log.md` (do this before committing so the entry ships in the same commit):
 
     ```markdown
     ## [YYYY-MM-DD HH:MM] work — <slug>
@@ -131,8 +125,17 @@ If any precondition fails: stop and run `human-checkpoint`.
     - TODO(s): <list>
     - Cases: B1, B2
     - Branch: feat/<slug>
-    - Commits: <hashes>
     ```
+
+12. **Commit and push.** Stage everything — implementation, wiki updates, and the log entry — in one conventional commit. Then push immediately — remote execution containers can be recycled between sessions, and an unpushed commit is effectively lost work:
+
+    ```bash
+    git add -p   # stage explicitly; never git add -A blindly
+    git commit -m "feat(<slug>): <summary>"
+    git push -u origin <branch>
+    ```
+
+    No uncommitted files should remain after this step.
 
 13. **Report to human.** What was done, what's next. Suggest:
     - More todos in the same entity → keep going.
