@@ -2,7 +2,7 @@
 # PreToolUse hook for Write/Edit: on feat/* or fix/* branches, block code edits
 # unless a red_confirmed handoff exists for the branch's slug.
 # Exits 0 = allow; exits 2 = block with stderr message shown to the assistant.
-set -uo pipefail
+set -u
 
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 cd "$root"
@@ -41,16 +41,17 @@ case "$rel" in
   "$root"/*) rel="${rel#"$root"/}" ;;
 esac
 
+# Always allow agent-internal files: planner writes .claude/handoff/*-plan.md here
+# before any tester handoff exists, so this must come before the handoff check.
+case "$rel" in
+  .claude/*|.github/*|Dockerfile*|Makefile*) exit 0 ;;
+esac
+
 # Allow non-code files, docs, configs, tests.
 # Note: *.env and *.example are intentionally NOT allowed — secrets risk.
 case "$rel" in
   */test*|*test_*|*_test*|*spec*|tests/*|*/tests/*|__tests__/*|*/__tests__/*) exit 0 ;;
   docs/*|*/docs/*|*.md|*.json|*.yml|*.yaml|*.txt|*.toml|*.ini|*.cfg|*.lock|*.gitignore) exit 0 ;;
-esac
-
-# Anchored prefix checks — .claude/* must literally start the relative path.
-case "$rel" in
-  .claude/*|.github/*|Dockerfile*|Makefile*) exit 0 ;;
 esac
 
 # Derive slug from branch name
