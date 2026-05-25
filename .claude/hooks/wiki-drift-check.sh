@@ -40,6 +40,10 @@ code_touched=false
 wiki_touched=false
 while IFS= read -r f; do
   case "$f" in
+    # log.md / wiki-todos.md are bookkeeping, not substantive spec edits — and
+    # session-end.sh auto-commits log.md on this same Stop, which would otherwise
+    # mask every real "code without wiki" drift. Don't let them count.
+    docs/wiki/log.md|docs/wiki/wiki-todos.md) : ;;
     docs/wiki/*) wiki_touched=true ;;
     src/*|app/*|lib/*|tests/*|test/*|cmd/*|internal/*|pkg/*) code_touched=true ;;
     *.py|*.js|*.ts|*.jsx|*.tsx|*.go|*.rs|*.java|*.rb|*.php|*.cs|*.kt|*.swift)

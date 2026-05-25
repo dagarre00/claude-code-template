@@ -11,12 +11,14 @@ ADRs exist for design choices a future reader will second-guess. They live in `d
 ## When to file an ADR
 
 File one when:
+
 - You picked between two reasonable alternatives and the choice will shape future work.
 - A constraint forced a non-obvious answer (compliance, performance, dependency limits).
 - The implementation deviates from what the wiki previously said.
 - A `/project:review` finding requires a stance going forward.
 
 Do **not** file an ADR for:
+
 - A choice that's obvious from the requirements or architecture page.
 - A small refactor that doesn't change interfaces.
 - A workaround for an upstream bug (that's a gotcha, not a decision).
@@ -40,36 +42,40 @@ tags: [decision, <domain>]
 # <Title — one line>
 
 ## Status
+
 Accepted as of YYYY-MM-DD.
 
 ## Context
+
 2–4 sentences: what problem is this decision answering, what forces are in play, what constraints exist?
 
 ## Decision
+
 1–3 sentences: what is the choice, stated as an active assertion ("We will use X for Y because Z").
 
 ## Consequences
+
 - **Positive:** ...
 - **Negative:** ...
 - **Follow-ups:** [[todos]] items this creates.
 
 ## Alternatives considered
+
 - **Option A:** rejected because …
 - **Option B:** rejected because …
 
 ## References
+
 - Relates to: [[entities/<slug>]], [[concepts/<pattern>]]
 - Supersedes: [[decisions/<previous-slug>]] (if applicable)
 - Sources: [docs/raw/<file>](../../raw/<file>) (if applicable)
 ```
 
-3. Update `docs/wiki/index.md` — add a one-liner under the decisions section.
+3. Backlink from affected entity pages: under their `## Related`, add `[[decisions/<slug>]]` — that's what makes the ADR reachable (there is no central index).
 
-4. Backlink from affected entity pages: under their `## Related`, add `[[decisions/<slug>]]`.
+4. If the decision created new work, file todos in `docs/wiki/todos.md`.
 
-5. If the decision created new work, file todos in `docs/wiki/todos.md`.
-
-6. Commit with `docs: add ADR <slug>`.
+5. Commit with `docs: add ADR <slug>`.
 
 ## Superseding an ADR
 

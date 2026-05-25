@@ -6,7 +6,7 @@ type: skill
 
 # Plan Writing
 
-Use this every time you draft a plan for a `[complex]` todo or a batched cycle. Output is one markdown file at `.claude/handoff/<slug>-plan.md`, sibling to the tester's JSON handoff.
+Use this as the `planner` every time you draft a plan for a `[complex]` todo or a batched cycle, before any test is written. Output is one markdown file at `.claude/handoff/<slug>-plan.md` (gitignored scratch). You write the plan; the `developer` executes it.
 
 ## Read first
 
@@ -57,23 +57,23 @@ Write the plan to `.claude/handoff/<slug>-plan.md` using this exact template:
 
 ## Sizing rule
 
-Each step should be small enough that **a single test can drive it**. If a step needs more than three sub-changes or covers more than one Behavior case, split it. The implementer should be able to map step N → test N → green N → commit N (or grouped commit) without ambiguity.
+Each step should be small enough that **a single test can drive it**. If a step needs more than three sub-changes or covers more than one Behavior case, split it. The `developer` should be able to map step N → test N → green N without ambiguity.
 
 ## Where it lives
 
-`.claude/handoff/<slug>-plan.md`. One plan per branch — sibling to the JSON handoff at `.claude/handoff/<slug>.json` (see [[concepts/handoff-format]]). The directory is `.gitignore`'d, so plans are transient and never reach the remote. Overwrite on retry rather than versioning.
+`.claude/handoff/<slug>-plan.md`. One plan per branch. `*-plan.md` is `.gitignore`'d, so plans are transient scratch and never reach the remote. Overwrite on retry rather than versioning; `/project:work` clears it when the cycle is done. **Because the plan is not committed, it does not survive a container recycle** — but neither does the rest of the cycle (the bundled commit happens only at the end of `/project:work`), so a recycle just restarts the todo, re-dispatches the planner, and the plan is regenerated from the entity page's Behavior cases, which are the authoritative contract.
 
-## Interaction with tester
+## Handoff to the developer
 
-The tester reads the plan to understand the intended decomposition before drafting failing tests. Tests are written one Behavior case at a time, and the plan's `## Steps` order should match the test order. If the tester finds the plan's sequence forces them to write a test that can't fail for the right reason, they hand back — fix the plan, then re-dispatch tester.
+You do not write tests or code — the `developer` does, reading your plan first. Steps are written one Behavior case at a time, and the `## Steps` order is the order the developer will write tests in. Make the sequence drive Red cleanly: if a step would force a test that can't fail for the right reason, fix the ordering in the plan rather than leaving the developer to bend the test.
 
 ## Update on retry
 
-When re-dispatched after a failed implementer attempt (the JSON handoff has `attempt >= 2`), **overwrite the plan with a fundamentally different approach**. Do not tweak — the two-strike rule (see [[glossary#two-strike-rule]]) applies. In the new `## Approach` section, explicitly name the prior approach, why it failed, and why the new approach should succeed. Keep `## Behavior cases covered` identical; only the sequencing and shape change.
+When re-dispatched after a failed `developer` attempt (two-strike rule — behavioral rule 5), **overwrite the plan with a fundamentally different approach**. Do not tweak. In the new `## Approach` section, explicitly name the prior approach, why it failed, and why the new approach should succeed. Keep `## Behavior cases covered` identical; only the sequencing and shape change.
 
 ## Anti-patterns
 
-- **Pseudocode in steps.** Steps name the action and the file target, not the implementation. The implementer chooses the code.
+- **Pseudocode in steps.** Steps name the action and the file target, not the implementation. The `developer` chooses the code at the Green step.
 - **Inventing requirements.** If a Behavior case is missing or ambiguous, escalate via `human-checkpoint` and recommend `/project:interview`. Never write a plan that assumes behavior the entity page does not list.
 - **Editing entity pages.** Plans are how, not what. Spec changes go through `/project:interview` and `spec-writing`.
 - **Cross-entity batching without a precedent.** If the batch crosses architectural boundaries (e.g. backend + frontend in one cycle) and no prior cycle did so, stop and ask the human.

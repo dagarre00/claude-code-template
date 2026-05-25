@@ -10,16 +10,16 @@ Stop and ask when the wiki doesn't have an answer. Don't guess. Don't silently i
 
 ## When to stop
 
-| Situation | Action |
-|-----------|--------|
-| Two failed attempts on the same mechanism | Stop. `/project:checkpoint`. Present the two attempts and ask for direction. |
-| Test seems to encode wrong behavior | Stop. Spec change must come from human; don't change the test. |
-| Design fork the wiki doesn't pre-decide | Stop. Present both options with tradeoffs and recommendation. |
-| Uncommitted changes from a prior session | Stop. Ask whether to commit, stash, or discard. |
-| Branch state unclear (off main, prior PR merged?) | Stop. Run `/project:status` and show output. |
-| About to delete files, force-push, drop tables, hit a third party | Stop. Confirm scope and authorization. |
-| A skill or wiki page you need doesn't exist | Stop. Ask before improvising; offer to create it via `update-skill`. |
-| Test command runs but produces ambiguous output | Stop. Show the output, ask what to interpret it as. |
+| Situation                                                         | Action                                                                                              |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Two failed attempts on the same mechanism                         | Stop. Tag the state (`git tag checkpoint-<stamp>`). Present the two attempts and ask for direction. |
+| Test seems to encode wrong behavior                               | Stop. Spec change must come from human; don't change the test.                                      |
+| Design fork the wiki doesn't pre-decide                           | Stop. Present both options with tradeoffs and recommendation.                                       |
+| Uncommitted changes from a prior session                          | Stop. Ask whether to commit, stash, or discard.                                                     |
+| Branch state unclear (off main, prior PR merged?)                 | Stop. Run `git status` and `git log --oneline -10` and show output.                                 |
+| About to delete files, force-push, drop tables, hit a third party | Stop. Confirm scope and authorization.                                                              |
+| A skill or wiki page you need doesn't exist                       | Stop. Ask before improvising; offer to create it via `update-skill`.                                |
+| Test command runs but produces ambiguous output                   | Stop. Show the output, ask what to interpret it as.                                                 |
 
 ## How to ask
 
@@ -42,6 +42,7 @@ Use this structure — clear, structured, no padding:
 ```
 
 Use the `AskUserQuestion` tool when:
+
 - The choice has 2–4 discrete options.
 - Each option can be summarized in 1–2 lines.
 

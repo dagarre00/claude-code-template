@@ -16,7 +16,7 @@ You dispatch the `wiki-maintainer` agent for a full health pass. This is **perio
 ## Preconditions
 
 - Working tree clean (the maintainer will write to `docs/wiki/`).
-- `docs/wiki/index.md` exists.
+- `docs/wiki/` exists with at least `requirements.md` and `wiki-todos.md`.
 
 If dirty: run `human-checkpoint`.
 
@@ -35,14 +35,11 @@ If dirty: run `human-checkpoint`.
    ```bash
    # log.md: count session entries
    grep -c "^## \[" docs/wiki/log.md 2>/dev/null || echo 0
-   # completed.md: count shipped items
-   grep -c "^- " docs/wiki/completed.md 2>/dev/null || echo 0
    ```
 
    - **`log.md` ≥ 100 entries:** Instruct the maintainer to move entries older than 90 days into `docs/wiki/summaries/log-archive-YYYY.md`, leaving only the most recent 30 entries in `log.md`. The archive file is append-only going forward.
-   - **`completed.md` ≥ 50 items:** Instruct the maintainer to move items completed more than 6 months ago into `docs/wiki/summaries/completed-archive-YYYY.md`, leaving only the most recent 20 items in `completed.md`.
 
-   These files grow unboundedly; models loading them lose signal in the noise. The archive is reference-only — agents never load it by default.
+   `log.md` grows unboundedly; models loading it lose signal in the noise. The archive is reference-only — agents never load it by default. (Shipped work isn't tracked in a `completed.md` — git history is the record.)
 
 3. **Dispatch `wiki-maintainer`** with:
    - The current `docs/wiki/wiki-todos.md` content.
@@ -53,8 +50,7 @@ If dirty: run `human-checkpoint`.
 4. **Maintainer writes:**
    - Resolved `wiki-todos` lines (removed).
    - New `summaries/` pages for any ingested raw sources.
-   - Updates to entity/concept/decision pages.
-   - Updated `index.md`.
+   - Updates to entity/concept/decision pages, including cross-links so new pages are reachable (no central index).
    - Archival files under `docs/wiki/summaries/` if overflow thresholds were hit.
    - A log entry to `log.md`.
 

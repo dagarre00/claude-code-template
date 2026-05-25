@@ -12,7 +12,7 @@ You read the initialized wiki and produce a prioritized list of agents and skill
 
 - Right after `/project:init` fills in real requirements and architecture (not `<TBD>`).
 - After `/project:interview` adds a major feature that changes the stack or domain.
-- When the implementer is repeatedly improvising the same procedure that should be a skill.
+- When the developer is repeatedly improvising the same procedure that should be a skill.
 
 ## Preconditions
 
@@ -47,9 +47,9 @@ Only recommend what is genuinely missing. Do not re-recommend agents or skills t
 
 ### 3. Analyze signals
 
-For each category below, check whether the wiki provides a positive signal. A positive signal means: "the implementer will encounter this repeatedly and needs a project-specific procedure."
+For each category below, check whether the wiki provides a positive signal. A positive signal means: "the developer will encounter this repeatedly and needs a project-specific procedure."
 
-**Stack signals → implementer skills**
+**Stack signals → developer skills**
 
 | Signal in wiki                                  | Skill to recommend |
 | ----------------------------------------------- | ------------------ |
@@ -94,7 +94,7 @@ For each named external service in `architecture.md → ## External services`, c
 | Security-critical project (fintech, health, auth provider) | `security-reviewer` — runs SAST and checks trust boundaries; separate from the general reviewer |
 | Microservices / multi-repo with API contracts              | `contract-reviewer` — checks API surface drift across services                                  |
 | Data pipeline / ML — requires evaluating model outputs     | `eval-agent` — runs evals and writes findings to `docs/raw/evals/`                              |
-| Heavy migration work (DB schema, API versioning)           | `migration-planner` — plans and validates migrations before implementer touches schema          |
+| Heavy migration work (DB schema, API versioning)           | `migration-planner` — plans and validates migrations before developer touches schema            |
 
 Default: if no agent signal is strong, do **not** recommend a new agent. Skills are almost always the right answer.
 
@@ -106,15 +106,15 @@ Write a structured report with these sections:
 ## Agent Scout Report — <Project Name>
 **Date:** YYYY-MM-DD
 
-### New skills recommended (for the implementer to auto-load)
+### New skills recommended (for the developer to auto-load)
 
 For each skill, in priority order:
 
 **Priority:** High | Medium | Low
 **Skill:** `<skill-name>`
-**Trigger:** <one sentence — what situation causes the implementer to load this skill>
+**Trigger:** <one sentence — what situation causes the developer to load this skill>
 **Why this project:** <cite the specific requirement, entity, or architecture detail that drives the need>
-**Procedure outline:** <3-5 bullet points of what the skill body should tell the implementer to do>
+**Procedure outline:** <3-5 bullet points of what the skill body should tell the developer to do>
 
 ---
 

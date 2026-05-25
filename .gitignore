@@ -5,11 +5,8 @@
 .DS_Store
 Thumbs.db
 
-# Session checkpoints (transient — regenerated on every /project:checkpoint)
-docs/wiki/session-checkpoint.md
-
-# Planner plan files (transient — overwritten each cycle, not needed after implementation)
-# Handoff JSONs are intentionally committed on feat/* branches so sessions can resume after rate limits.
+# Plan scratch files (transient — the developer overwrites each cycle and
+# deletes when done; not needed after the bundled commit, never pushed).
 .claude/handoff/*-plan.md
 
 # Obsidian per-user vault config (users open the vault themselves)

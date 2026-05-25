@@ -68,13 +68,11 @@ docs/wiki/summaries/
 
 Create or update these pages with **real content from the interview** (no `<TBD>` placeholders except for topics genuinely not discussed):
 
-- `docs/wiki/index.md` — catalog with links to all created pages.
 - `docs/wiki/requirements.md` — fill **all** sections: `## Vision`, `## Users`, `## User stories` (one per user-capability pair in `- As a <user type>, I want <capability>, so that <benefit>` format with Acceptance + `Maps to:` link), `## Functional requirements`, `## Non-functional requirements`, `## Out of scope`, `## Open questions`.
 - `docs/wiki/architecture.md` — fill `## Stack`, `## Layout`, `## Data`, `## External services`, `## Testing strategy`, `## Conventions`, `## Deployment`. Leave a section as `<TBD>` only if it was genuinely not discussed.
 - `docs/wiki/git-conventions.md` — default branch, branch prefixes, commit format.
 - `docs/wiki/commands.md` — test command, build command, lint command (whatever was detected/confirmed).
 - `docs/wiki/todos.md` — seeded with first work items from the interview.
-- `docs/wiki/completed.md` — empty.
 - `docs/wiki/gotchas.md` — empty headings: `## Critical`, `## Runtime`, `## Testing`, `## Tooling`.
 - `docs/wiki/wiki-todos.md` — empty.
 - `docs/wiki/log.md` — init entry (see step 6).
@@ -129,7 +127,6 @@ You are an AI development agent working on <project name>. Before any code chang
 | `docs/wiki/entities/*`      | One page per feature/module       |
 | `docs/wiki/decisions/*`     | ADRs                              |
 | `docs/wiki/todos.md`        | Priority-ordered work queue       |
-| `docs/wiki/completed.md`    | Shipped work                      |
 | `docs/wiki/gotchas.md`      | Known failure points              |
 | `docs/wiki/commands.md`     | Working shell commands            |
 | `docs/wiki/log.md`          | Timeline                          |
@@ -143,31 +140,29 @@ You are an AI development agent working on <project name>. Before any code chang
 | `/project:interview`   | Q&A to define requirements or features            |
 | `/project:work`        | Top todo → spec → red → green → refactor → commit |
 | `/project:review`      | Full audit in isolated worktree                   |
-| `/project:checkpoint`  | Tag HEAD before risky ops                         |
-| `/project:rollback`    | Revert to a checkpoint                            |
-| `/project:status`      | Branch, todos, log, uncommitted summary           |
 | `/project:wiki-lint`   | Wiki health check                                 |
 | `/project:wiki-ingest` | Ingest file or research into wiki                 |
+| `/project:agent-scout` | Recommend project-specific agents and skills      |
 
 ## Agent routing
 
-| Task                       | Agent                                                    |
-| -------------------------- | -------------------------------------------------------- |
-| Write failing tests        | `tester`                                                 |
-| Make tests pass + refactor | `implementer` (loads skills on demand)                   |
-| Periodic audit             | `reviewer` (worktree-isolated)                           |
-| Wiki health                | `wiki-maintainer` (manual only via `/project:wiki-lint`) |
-| Web research               | `researcher`                                             |
+| Task                       | Agent                                                        |
+| -------------------------- | ------------------------------------------------------------ |
+| Plan complex/batched todos | `planner` (Opus) — before the developer, via `/project:work` |
+| TDD cycle                  | `developer` (red → green → refactor; loads skills on demand) |
+| Periodic audit             | `reviewer` (worktree-isolated)                               |
+| Wiki health                | `wiki-maintainer` (manual only via `/project:wiki-lint`)     |
+| Web research               | `researcher`                                                 |
 
 ## Hooks
 
-| Hook                  | Phase                  | Purpose                                                      |
-| --------------------- | ---------------------- | ------------------------------------------------------------ |
-| `session-start.sh`    | SessionStart           | Pull, activate venv, warn on uncommitted                     |
-| `session-end.sh`      | Stop                   | Prompt to commit/push, append log                            |
-| `test-first-check.sh` | PreToolUse Write/Edit  | Block code edits without a matching test on `feat/*`/`fix/*` |
-| `auto-format.sh`      | PostToolUse Write/Edit | Run formatter by file extension                              |
-| `wiki-drift-check.sh` | Stop                   | Warn if code edited but no wiki touched                      |
+| Hook                  | Phase                  | Purpose                                                           |
+| --------------------- | ---------------------- | ----------------------------------------------------------------- |
+| `session-start.sh`    | SessionStart           | Pull, activate venv, warn on uncommitted                          |
+| `session-end.sh`      | Stop                   | Prompt to commit/push, append log                                 |
+| `test-first-check.sh` | PreToolUse Write/Edit  | Remind (not block) on code edits with no test on `feat/*`/`fix/*` |
+| `auto-format.sh`      | PostToolUse Write/Edit | Run formatter by file extension                                   |
+| `wiki-drift-check.sh` | Stop                   | Warn if code edited but no wiki touched                           |
 
 ## Golden rules
 
@@ -179,7 +174,7 @@ You are an AI development agent working on <project name>. Before any code chang
 6. **Agents own `docs/wiki/`.** Humans browse; agents write.
 7. **Always branch before coding.** Never commit to main.
 8. **Conventional commits.** `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`.
-9. **Two-strike rule.** Two failures on the same mechanism → `/project:rollback` and re-spec.
+9. **Two-strike rule.** Two failures on the same mechanism → `git tag checkpoint-<stamp>`, `git reset --hard` to a known-good commit, and re-spec.
 10. **Reviewer is periodic.** `/project:review` every ~5 todos, not in `/project:work`.
 11. **Human-in-the-loop.** When wiki doesn't answer, stop and ask.
 12. **Skills are how-to, not what-is.** Add skills via `update-skill`; don't bury knowledge in agent prompts.
@@ -197,7 +192,7 @@ Append to `docs/wiki/log.md`:
 
 - Stack: <stack>
 - Test command: <command>
-- Interview transcript: [[summaries/YYYY-MM-DD-init]]
+- Interview transcript: [YYYY-MM-DD-init](../raw/interviews/YYYY-MM-DD-init.md)
 - Pages created: <count>
 - ADRs: <count>
 - Next: run `/project:work` to pick up the first todo.

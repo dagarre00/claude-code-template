@@ -10,13 +10,13 @@ Hard constraints from real failures. These override default agent inclinations; 
 
 1. **Wiki-first, code-second.** Never change code behavior without also updating the relevant `docs/wiki/entities/<slug>.md`. If the spec is wrong, fix the spec first, then the code. The `wiki-drift-check` hook warns at session end if you only touched code.
 
-2. **Tests before implementation.** Never write production code without a failing test first. The Red phase is mandatory. The `test-first-check` hook blocks code edits without a matching test on `feat/*` and `fix/*` branches.
+2. **Tests before implementation.** Never write production code without a failing test first. The Red phase is mandatory. The `test-first-check` hook _reminds_ you on `feat/*` and `fix/*` when code is edited with no test in the session's changes — it no longer blocks, so keeping the discipline is on you.
 
 3. **Never modify tests to make them pass.** If a test seems wrong, update the entity Behavior spec → regenerate the test → implement. Changing a test to match broken code is not TDD.
 
 4. **Tests must fail for the right reason.** A passing test before implementation tests existing behavior, not the new feature. Confirm RED is real (missing feature, not a typo or import error).
 
-5. **Two-strike pivot.** If an approach fails twice on the same mechanism, try a fundamentally different one. Two failures → `/project:rollback` and re-spec.
+5. **Two-strike pivot.** If an approach fails twice on the same mechanism, try a fundamentally different one. Two failures → tag the state (`git tag checkpoint-<stamp>`), `git reset --hard` to a known-good commit, and re-spec via `/project:interview`.
 
 6. **Verify before asserting.** Run it, don't assume. Never tell the human a feature works unless tests pass and you read the output yourself.
 
@@ -30,13 +30,13 @@ Hard constraints from real failures. These override default agent inclinations; 
 
 11. **Raw sources are immutable.** Never edit files under `docs/raw/`. Only append new ones.
 
-12. **Reviewer is periodic and isolated.** `/project:review` runs in a fresh worktree with no implementer context. Not part of the work loop.
+12. **Reviewer is periodic and isolated.** `/project:review` runs in a fresh worktree with no `developer` context. Not part of the work loop.
 
 13. **Progressive disclosure.** Don't preload domain knowledge. Skills auto-load when their `description` matches the task. If a needed skill doesn't exist, create one via `update-skill` rather than stuffing it into an agent prompt.
 
 14. **Skills are how-to, not what-is.** When writing or editing a skill, the body must be a procedure: read these wiki pages, follow these steps, update these pages. Never explain a concept the LLM already knows.
 
-15. **Honor the `red_confirmed` handoff.** When `tester` writes failing tests, it emits `.claude/handoff/<slug>.json` with `red_confirmed: true`, the test command, and the failure count. `implementer` must refuse to start if that handoff is missing or `red_confirmed` is not `true`.
+15. **One agent owns the TDD loop.** The `developer` writes the failing test, confirms Red itself, then implements — there is no separate `tester`/`implementer` split and no handoff JSON to write or read. Red must be genuine (rule 4) before any production code; confirm it yourself, don't trust a prior step. The only upstream split is the `planner` (Opus), which writes a `.claude/handoff/<slug>-plan.md` for `[complex]`/batched work — markdown scratch the developer reads, never a contract it must validate.
 
 16. **Append, don't bury.** When agents discover something the maintainer should clean up later (orphan page, missing ADR, repeated concept), append a one-line entry to `docs/wiki/wiki-todos.md`. Don't wait for `/project:wiki-lint`.
 
@@ -44,7 +44,7 @@ Hard constraints from real failures. These override default agent inclinations; 
 
 18. **Obsidian-format the wiki.** Inside `docs/wiki/`, all internal links use `[[wiki-style]]` syntax — e.g. `[[entities/auth]]`, `[[gotchas#login-flow]]`, or `[[concepts/retry-pattern|the retry pattern]]`. Tags use `#tag`. Embeds use `![[summaries/some-source]]`. The wiki is browsed in Obsidian; broken Obsidian links are a bug. External URLs and references to non-wiki files (`.claude/...`, `src/...`) keep standard markdown link syntax.
 
-19. **Finalize with commit + push.** Any command or agent that mutates tracked files ends by committing the change and pushing it to the working branch (`git push -u origin <branch>`). A local commit is not enough: remote execution containers are recycled between sessions, so an unpushed commit is lost work. The orchestrating command owns the final push; an agent that produces the terminal committed state (e.g. `tester` mid-cycle) pushes its own commit so the cycle can resume after a recycle. Read-only commands (`/project:status`, `/project:plan`) and gitignored artifacts are the only exceptions. On network failure, retry the push with exponential backoff; never bypass hooks with `--no-verify`.
+19. **Finalize with commit + push.** Any command or agent that mutates tracked files ends by committing the change and pushing it to the working branch (`git push -u origin <branch>`). A local commit is not enough: remote execution containers are recycled between sessions, so an unpushed commit is lost work. The orchestrating command (`/project:work`) owns the final bundled commit + push. Read-only commands and gitignored artifacts (the `*-plan.md` scratch) are the only exceptions. On network failure, retry the push with exponential backoff; never bypass hooks with `--no-verify`.
 
 ## Adding rules
 

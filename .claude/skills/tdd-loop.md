@@ -6,7 +6,7 @@ type: skill
 
 # TDD Loop
 
-Use this every time you implement code on a `feat/*` or `fix/*` branch. The `test-first-check` hook will block you otherwise.
+Use this every time you implement code on a `feat/*` or `fix/*` branch. The `test-first-check` hook _reminds_ (no longer blocks) when production code is edited with no test in the session's changes — keeping the discipline is on you.
 
 ## Read first
 
@@ -17,11 +17,12 @@ Use this every time you implement code on a `feat/*` or `fix/*` branch. The `tes
 
 ## Red
 
-Owned by the `tester` agent. As implementer, you do not write tests, but you confirm Red yourself:
+You own the whole cycle — write the tests, then implement. There is no separate tester and no handoff JSON.
 
-1. Read `.claude/handoff/<slug>.json`. Refuse to start if `red_confirmed` is not `true`.
-2. Run the `test_command` from the handoff. Confirm the listed `failing_tests` actually fail.
-3. Confirm the failure reason matches "missing implementation" — not a typo, import error, or fixture issue. If it doesn't, hand back to `tester` with notes.
+1. For each Behavior case in scope, write **one** focused test, named after the behavior so it maps back to the case ID.
+2. Run the canonical `test command` from `docs/wiki/commands.md`. Confirm the new tests actually fail.
+3. Confirm the failure reason matches "missing implementation" — not a typo, import error, or fixture issue. If it's the wrong reason, fix the test and re-run until the failure is genuine.
+4. Mark each covered case `[ ]` → `[~]` on the entity page once its test is confirmed failing.
 
 ## Green
 
@@ -56,7 +57,7 @@ After green + any refactor:
 
 ## Two-strike rule
 
-If your second attempt on the same mechanism fails (broken green, refactor explodes, unsolvable test), stop. `/project:checkpoint` → `/project:rollback` → re-spec via `/project:interview` or `human-checkpoint`.
+If your second attempt on the same mechanism fails (broken green, refactor explodes, unsolvable test), stop. Tag the state (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`), `git reset --hard` to a known-good commit, then re-spec via `/project:interview` or pause with `human-checkpoint`.
 
 ## Anti-patterns
 

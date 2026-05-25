@@ -8,7 +8,7 @@ status: approved
 
 # Entities
 
-One page per feature / module / component. Each page is the **spec** for that piece — Behavior cases here drive the failing tests the `tester` agent writes.
+One page per feature / module / component. Each page is the **spec** for that piece — Behavior cases here drive the failing tests the `developer` agent writes.
 
 ## Page template
 
@@ -20,4 +20,4 @@ Most entity pages come out of `/project:interview`. To create one by hand, use t
 
 ## Naming
 
-Files: `<slug>.md` in kebab-case. The slug is what the branch name uses (`feat/<slug>`), what the handoff file uses (`.claude/handoff/<slug>.json`), and what the tests reference. Pick once, keep it stable.
+Files: `<slug>.md` in kebab-case. The slug is what the branch name uses (`feat/<slug>`), what the plan scratch uses (`.claude/handoff/<slug>-plan.md`), and what the tests reference. Pick once, keep it stable.

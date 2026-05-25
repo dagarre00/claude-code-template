@@ -63,7 +63,7 @@ The agent grills you until the spec is sharp enough to write tests against. Expe
 Outputs:
 
 - A transcript in `docs/raw/interviews/YYYY-MM-DD-<slug>.md` (immutable — never edited later).
-- Updates to `requirements.md`, `architecture.md`, `glossary.md`, and one `entities/<slug>.md` per major feature.
+- Updates to `requirements.md`, `architecture.md`, and one `entities/<slug>.md` per major feature.
 - Initial entries in `todos.md`.
 
 ## 3. `/project:agent-scout` — configure your toolkit
@@ -72,7 +72,7 @@ Outputs:
 /project:agent-scout
 ```
 
-After the interview fills in real requirements and architecture, run this once to discover which agents and skills your project actually needs. The template ships with a stack-agnostic baseline; `agent-scout` reads your wiki and recommends the gap-fillers — things like `backend-impl`, `database-impl`, `stripe-impl`, or an `auth-impl` skill for the implementer to auto-load when relevant.
+After the interview fills in real requirements and architecture, run this once to discover which agents and skills your project actually needs. The template ships with a stack-agnostic baseline; `agent-scout` reads your wiki and recommends the gap-fillers — things like `backend-impl`, `database-impl`, `stripe-impl`, or an `auth-impl` skill for the `developer` to auto-load when relevant.
 
 What it does:
 
@@ -89,16 +89,16 @@ Re-run `/project:agent-scout` after a major `/project:interview` that adds a new
 /project:work
 ```
 
-`/project:work` picks the top item from `todos.md` (or batches consecutive todos sharing context), opens a `feat/<slug>` branch, and runs the loop:
+`/project:work` picks the top item from `todos.md` (or batches consecutive todos sharing context), opens a `feat/<slug>` branch, and dispatches the single `developer` agent through one full cycle:
 
-1. **Planner agent (conditional) — Plan.** If the todo is flagged `[complex]` or a batch of 2+ todos was proposed, `/project:work` dispatches the planner first. It writes a stepwise plan to `.claude/handoff/<slug>-plan.md`. The tester and implementer both read it.
-2. **Tester agent — Red.** Reads the matching `entities/<slug>.md#Behavior` cases, writes failing tests, runs them, confirms they fail for the right reason, emits `.claude/handoff/<slug>.json` with `red_confirmed: true`.
-3. **Implementer agent — Green.** Refuses to start without the red_confirmed handoff. Writes the minimal code to make tests pass. The `test-first-check` hook blocks code edits on `feat/*` branches if the handoff is missing.
-4. **Refactor.** Implementer cleans up while keeping tests green.
-5. **Wiki update.** Implementer ticks the entity-page Behavior checklist, updates `completed.md`, appends to `log.md`. Larger wiki cleanup is queued in `wiki-todos.md` for the wiki-maintainer.
-6. **Commit.** Conventional commit format (see [git-conventions.md](wiki/git-conventions.md)).
+1. **Plan (conditional).** If the todo is flagged `[complex]` or a batch of 2+ todos was proposed, `/project:work` dispatches the `planner` agent (on Opus) first; it writes a stepwise plan to `.claude/handoff/<slug>-plan.md` (gitignored scratch) that the developer then follows. A single simple todo skips planning.
+2. **Red.** The developer reads the matching `entities/<slug>.md#Behavior` cases, writes one failing test per case, runs the suite, and confirms the tests fail for the right reason (missing implementation — not a typo or import error). It marks each case `[ ]` → `[~]`.
+3. **Green.** The developer writes the minimal code to make the tests pass. The `test-first-check` hook reminds (it no longer blocks) if production code is edited on a `feat/*` branch with no test in the session's changes yet.
+4. **Refactor.** The developer cleans up while keeping tests green.
+5. **Wiki update.** The developer ticks the entity-page Behavior cases `[~]` → `[x]`, updates the Implementation/Tests sections, and appends to `log.md`. Larger cross-page cleanup it can't safely do inline is queued in `wiki-todos.md` for the wiki-maintainer.
+6. **Commit.** `/project:work` verifies the suite itself, then makes one bundled conventional commit (code + wiki + log) and pushes it (see [git-conventions.md](wiki/git-conventions.md)).
 
-If a step fails twice on the same approach, the **two-strike rule** fires — the agent stops, you `/project:rollback`, and re-spec.
+If a step fails twice on the same approach, the **two-strike rule** fires — the developer stops, you tag a checkpoint and reset, and re-spec.
 
 ## 5. `/project:review` — every ~5 todos
 
@@ -106,7 +106,7 @@ If a step fails twice on the same approach, the **two-strike rule** fires — th
 /project:review
 ```
 
-Runs the `reviewer` agent in a fresh git worktree with no implementer context. It audits code against the wiki and flags drift, missing tests, security/perf concerns. Critical issues block; warnings get queued in `wiki-todos.md`.
+Runs the `reviewer` agent in a fresh git worktree with no developer context. It audits code against the wiki and flags drift, missing tests, security/perf concerns. Critical issues block; warnings get queued in `wiki-todos.md`.
 
 This is **not** part of `/project:work` — it's periodic and isolated.
 
@@ -116,7 +116,7 @@ This is **not** part of `/project:work` — it's periodic and isolated.
 /project:wiki-lint
 ```
 
-Dispatches the `wiki-maintainer` to process the `wiki-todos.md` queue, find orphans, broken `[[wiki-links]]`, stale claims, and contradictions. File ADRs that emerged during work. Returns the wiki to a clean state.
+Dispatches the `wiki-maintainer` to process the `wiki-todos.md` queue, find orphans, broken `[[wiki-links]]`, stale claims, and contradictions, and compact `gotchas.md`/`log.md` when they overflow. Returns the wiki to a clean state.
 
 Run when `wiki-todos.md` is piling up or after a big round of feature work.
 
@@ -138,16 +138,16 @@ A new user story landed. You want it specified, tested, and shipped.
 
    If it's missing, the interview didn't close the loop — ask the agent to add the todo before moving on.
 
-3. **Run `/project:work`.** It picks the top todo, opens `feat/auth-login`, and dispatches the tester. The tester reads `entities/auth-login.md#Behavior`, writes failing tests, and emits `.claude/handoff/auth-login.json` with `red_confirmed: true`. `/project:work` reruns the test command itself to verify Red.
-4. **Implementer takes over.** It reads the handoff, writes the minimum code to turn Red into Green, then refactors. The `test-first-check` hook blocks any production-file edit if the handoff goes missing or is stale.
-5. **Wiki updates land in the same commit.** The implementer ticks the Behavior cases on the entity page, moves the todo to `completed.md`, and appends a one-line log entry. The `wiki-drift-check` hook will warn at session end if code changed but no wiki page did — that's your safety net.
-6. **Commit.** Conventional commit, e.g. `feat(auth-login): reject unknown user`. See [git-conventions.md](wiki/git-conventions.md).
+3. **Run `/project:work`.** It picks the top todo, opens `feat/auth-login`, and dispatches the `developer`. The developer reads `entities/auth-login.md#Behavior`, writes failing tests, and confirms Red.
+4. **The same agent implements.** It writes the minimum code to turn Red into Green, then refactors. There's no handoff to another agent — one developer owns the whole cycle.
+5. **Wiki updates land in the same commit.** The developer ticks the Behavior cases on the entity page, checks the todo off in `docs/wiki/todos.md` (shipped work lives in git history — there's no `completed.md`), and appends a one-line log entry. The `wiki-drift-check` hook will warn at session end if code changed but no wiki page did — that's your safety net.
+6. **Commit.** `/project:work` makes the bundled conventional commit, e.g. `feat(auth-login): reject unknown user`, and pushes it. See [git-conventions.md](wiki/git-conventions.md).
 
-`/project:work` will dispatch the planner **first** if the todo is tagged `[complex]` or a batch of 2+ todos is being run together. For a single simple todo, planning is skipped — straight to tester.
+The developer plans **first** if the todo is tagged `[complex]` or a batch of 2+ todos is being run together. For a single simple todo, planning is skipped — straight to Red.
 
 ## Scenario: Adding a complex feature
 
-Some features are too big for the tester to attack directly — they cross files, need careful sequencing, or have non-obvious tradeoffs. Use the planner.
+Some features are too big to attack directly — they cross files, need careful sequencing, or have non-obvious tradeoffs. The `planner` (on Opus) decomposes them before the developer tests.
 
 1. **Define it.** `/project:interview` as usual. The Behavior cases on the entity page are still the contract.
 2. **Mark the todo `[complex]`.** Edit `docs/wiki/todos.md`:
@@ -156,19 +156,11 @@ Some features are too big for the tester to attack directly — they cross files
    - [ ] [complex] billing-invoices: generate monthly invoice PDF with line items
    ```
 
-   The `[complex]` tag is what `/project:work` keys off to dispatch the planner.
+   The `[complex]` tag is what `/project:work` keys off to dispatch the `planner` before testing.
 
-3. **Optional — `/project:plan <slug>` first.** If you want to see and sanity-check the plan before committing branch effort:
-
-   ```
-   /project:plan billing-invoices
-   ```
-
-   The planner (running on Opus) reads the entity page, the requirements, the gotchas, and surveys similar entities. It writes `.claude/handoff/billing-invoices-plan.md` and reports a summary: goal, approach, step count, top risks, path to the full plan. You can read the plan in Obsidian, ask the agent to revise it, or re-run `/project:plan` to overwrite.
-
-4. **Run `/project:work`.** With `[complex]` set (or a 2+ batch), `/project:work` dispatches the planner (if no plan exists or you want a fresh one), then the tester (which reads both the plan and the Behavior cases), then the implementer (which reads both the plan and the JSON handoff). Same Green/refactor/wiki/commit flow as a simple feature.
-5. **Where the plan lives.** `.claude/handoff/<slug>-plan.md`. The directory is gitignored — plans are transient artefacts. The wiki holds the spec (what); the plan is how-to for one cycle.
-6. **Two-strike interaction.** If the implementer fails twice on the same mechanism, `/project:work` re-dispatches the planner. The planner reads `attempt >= 2` from the JSON handoff, **overwrites** the prior plan with a different shape, and names both the failed approach and the new one in the `## Approach` section. You never silently retry the same plan.
+3. **Run `/project:work`.** With `[complex]` set (or a 2+ batch), `/project:work` first dispatches the `planner` (on Opus), which writes a plan (following the `plan-writing` skill) to `.claude/handoff/billing-invoices-plan.md` — goal, approach, ordered steps, risks, out-of-scope. `/project:work` sanity-checks it, then dispatches the `developer`, which reads the plan and drives the same Red → Green → refactor → wiki → commit flow as a simple feature, following the plan's step order.
+4. **Where the plan lives.** `.claude/handoff/<slug>-plan.md`. The file is gitignored — plans are transient scratch `/project:work` clears when the cycle is done. The wiki holds the spec (what); the plan is how-to for one cycle. Because it isn't committed, a container recycle loses it — but so does it lose the rest of the uncommitted cycle, so `/project:work` simply restarts the still-open todo and re-dispatches the planner to regenerate the plan from the Behavior cases.
+5. **Two-strike interaction.** If the developer fails twice on the same mechanism, it stops, tags a checkpoint, and presents both failed attempts. On an authorized retry, `/project:work` re-dispatches the `planner` to overwrite the plan with a fundamentally different shape — naming the failed approach and the new one in the `## Approach` section. You never silently retry the same plan.
 
 ## Scenario: Batching multiple small todos
 
@@ -189,14 +181,14 @@ When you have several related todos, running them in one cycle is often cheaper 
 **How `/project:work` handles it:**
 
 1. `/project:work` reads the top 1–3 todos. If they share an entity and context, it proposes a batch and asks you to confirm via `human-checkpoint`.
-2. You confirm. `/project:work` flags the cycle as a batch and dispatches the planner (any batch of 2+ triggers the planner automatically).
-3. Tester writes one set of failing tests covering all cases in the batch. Implementer drives them all Green in one pass, refactoring as it goes.
+2. You confirm. `/project:work` flags the cycle as a batch and dispatches the `planner` first (any batch of 2+ triggers a plan).
+3. The developer writes one set of failing tests covering all cases in the batch, then drives them all Green in one pass, refactoring as it goes.
 4. Single commit at the end. Conventional commit scope names the batch, e.g. `feat(auth-login): add rate limiting and lockout (B3, B4, B5)`.
 5. The entity page Behavior section is ticked for every case in the batch in the same commit.
 
 ## Scenario: Requesting a periodic review
 
-The reviewer is fresh eyes on the codebase. It catches drift the implementer can't see because the implementer wrote both the spec and the code.
+The reviewer is fresh eyes on the codebase. It catches drift the developer can't see because the developer wrote both the spec and the code.
 
 **When to fire `/project:review`:**
 
@@ -208,7 +200,7 @@ The reviewer is fresh eyes on the codebase. It catches drift the implementer can
 **What happens:**
 
 1. `/project:review` creates a fresh git worktree at `../<repo>-review-YYYY-MM-DD` (sibling directory, not inside the repo).
-2. Dispatches the reviewer agent **inside the worktree** — no prior implementer context, fresh read of every entity page and the code that implements it.
+2. Dispatches the reviewer agent **inside the worktree** — no prior developer context, fresh read of every entity page and the code that implements it.
 3. Reviewer runs the test suite itself. Trusts nothing.
 4. Findings land in `docs/wiki/decisions/review-YYYY-MM-DD.md` — structured by severity (Critical / Warning / Drift / Missing ADR).
 5. Anything cross-page or wiki-shaped also goes into `docs/wiki/wiki-todos.md` for the maintainer.
@@ -233,8 +225,8 @@ git worktree remove ../<repo>-review-YYYY-MM-DD
 
 A bug in shipped behavior needs a fix. Same TDD discipline as a feature — just a `fix/` prefix.
 
-1. **Branch.** `/project:work` opens `fix/<slug>` (not `feat/<slug>`) because the matching entity already exists; you're correcting a regression. The `test-first-check` hook activates the same way on `fix/*`.
-2. **Regression test first.** The tester writes a test that **reproduces the bug** — assertion fails on the current code. This becomes a new Behavior case on the entity page, e.g.:
+1. **Branch.** `/project:work` opens `fix/<slug>` (not `feat/<slug>`) because the matching entity already exists; you're correcting a regression. The `test-first-check` hook reminds the same way on `fix/*`.
+2. **Regression test first.** The developer writes a test that **reproduces the bug** — assertion fails on the current code. This becomes a new Behavior case on the entity page, e.g.:
 
    ```markdown
    ## Behavior
@@ -246,7 +238,7 @@ A bug in shipped behavior needs a fix. Same TDD discipline as a feature — just
 
    Adding the case to the entity page is part of the same commit as the test.
 
-3. **Implementer fixes.** Minimum change to turn the new Red into Green. Existing tests must stay green. Refactor only if it falls out naturally.
+3. **Fix it.** Minimum change to turn the new Red into Green. Existing tests must stay green. Refactor only if it falls out naturally.
 4. **Capture the gotcha.** Use the `gotcha-recording` skill — append an entry to `docs/wiki/gotchas.md` so the next agent doesn't recreate the bug:
 
    ```markdown
@@ -265,34 +257,33 @@ A bug in shipped behavior needs a fix. Same TDD discipline as a feature — just
 
 Sometimes an approach just doesn't work. The two-strike rule keeps you from grinding.
 
-1. **First failure.** Implementer's attempt doesn't make Red turn Green (or it makes the new tests pass but breaks existing tests it can't reconcile). `/project:work` increments `attempt` to `2` in `.claude/handoff/<slug>.json` and re-dispatches the tester (whose tests may also need a rethink) and then the implementer.
-2. **Second failure.** Implementer reads `attempt: 2` from the handoff, stops, and calls `human-checkpoint`. It does **not** try a third time on the same approach.
+1. **First failure.** The developer's attempt doesn't make Red turn Green (or it makes the new tests pass but breaks existing tests it can't reconcile). It rethinks and tries a second time.
+2. **Second failure.** On the second failure on the same mechanism, the developer stops and calls `human-checkpoint`. It does **not** try a third time on the same approach.
 3. **Your decision.** The agent presents the two attempts, what failed, and at least one fundamentally different approach to consider. Options:
-   - **Roll back and re-spec.** `/project:checkpoint` (to preserve the failed attempts for postmortem), then `/project:rollback` to the last green checkpoint, then `/project:interview` to sharpen the Behavior cases. This is the right call when the spec was too vague to test against.
-   - **Authorize a different approach.** If the spec is fine but the implementation strategy was wrong, tell the agent which alternative to take. If the todo is `[complex]`, `/project:work` will re-dispatch the planner with the failed-attempt context; the planner overwrites the prior plan with the new shape.
+   - **Reset and re-spec.** Tag the failed state for postmortem, reset to the last green commit, then `/project:interview` to sharpen the Behavior cases. This is the right call when the spec was too vague to test against.
+   - **Authorize a different approach.** If the spec is fine but the implementation strategy was wrong, tell the agent which alternative to take. If the todo is `[complex]`, `/project:work` re-dispatches the `planner` to overwrite the prior plan with the new shape before retrying.
 
-4. **Checkpoint and rollback mechanics.**
+4. **Checkpoint and reset mechanics** (plain git — there's no bespoke command):
 
    ```bash
    # Before retrying — preserve the failed branch state under a tag
-   /project:checkpoint
-   # Produces e.g. checkpoint-20260516T184500Z, pushed to origin
+   git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)
 
-   # Roll back to an earlier checkpoint
-   /project:rollback
-   # Lists checkpoint-* tags, you pick one, it runs `git reset --hard <tag>` on the current branch
+   # Reset to an earlier checkpoint (destructive on the current branch — it
+   # discards uncommitted work and commits after the tag)
+   git reset --hard <checkpoint-tag>
    ```
 
-   `/project:rollback` is destructive on the current branch. The command asks for confirmation and shows what it will discard.
+   `git reset --hard` is destructive. Confirm what you'll discard (`git status`, `git log`) before running it.
 
 ## Scenario: Adding a new skill mid-project
 
 When the agent realises a procedural gap, it shouldn't bury that knowledge in an agent prompt — it should ship a new skill.
 
-1. **The agent notices.** During `/project:work`, the implementer hits a recurring task (e.g. "this is the third time I've had to author a Postgres migration; there's no skill for it"). It pauses via `human-checkpoint` and proposes creating one via the `update-skill` meta skill.
+1. **The agent notices.** During `/project:work`, the developer hits a recurring task (e.g. "this is the third time I've had to author a Postgres migration; there's no skill for it"). It pauses via `human-checkpoint` and proposes creating one via the `update-skill` meta skill.
 2. **You approve.** Confirm the skill name and one-line description, or push back if the gap is really a wiki update.
 3. **The agent writes it.** `update-skill` produces `.claude/skills/database-migrations.md` with frontmatter (precise `description` so future tasks auto-load it) and a procedural body — _how_ to do migrations in this project, not _what_ migrations are.
-4. **It auto-loads next time.** On the next task that matches the skill's `description` trigger, the implementer (or whichever agent) loads the skill without you having to ask. This is the progressive-disclosure principle in action.
+4. **It auto-loads next time.** On the next task that matches the skill's `description` trigger, the developer loads the skill without you having to ask. This is the progressive-disclosure principle in action.
 
 The same pattern applies to `update-agent`, `update-command`, and `update-hook` when the gap is bigger than a procedure.
 
@@ -318,63 +309,54 @@ A new spec PDF, an article, or research output needs to enter the agent's knowle
 
      `/project:wiki-ingest` dispatches the `researcher` agent, which searches and fetches, then writes `docs/raw/research/<slug>.md`. The ingest command then produces the matching `summaries/<slug>.md`.
 
-3. **Cross-linking.** The ingest grep's the wiki for related terms and adds `[[summaries/<slug>]]` references on overlapping entity and concept pages. Contradictions get flagged with `> [!contradiction]` in both pages — never silently resolved.
+3. **Cross-linking.** The ingest greps the wiki for related terms and adds `[[summaries/<slug>]]` references on overlapping entity and concept pages — that's what makes the summary reachable, since there's no central index. Contradictions get flagged with `> [!contradiction]` in both pages — never silently resolved.
 4. **`/project:wiki-lint` afterwards.** Heavy ingest tends to create new cross-references and the occasional orphan. Run `/project:wiki-lint` when several summaries have landed.
 
 ## Scenario: Checking project state mid-session
 
-`/project:status` is your "where am I" command — read-only, one screen.
+There's no bespoke status command — plain git tells you where you are:
 
+```bash
+git status                 # branch + uncommitted changes
+git log --oneline -10      # recent commits
+git tag -l 'checkpoint-*'  # checkpoints you can reset to
 ```
-/project:status
-```
 
-It prints:
+For the work queue, open `docs/wiki/todos.md` (top items are next) and `docs/wiki/log.md` (recent activity). If `docs/wiki/wiki-todos.md` has more than ~10 pending lines, it's time for `/project:wiki-lint`.
 
-- Current branch and HEAD short SHA.
-- Uncommitted summary (counts; full list only if < 10 items).
-- Last 5 commits.
-- Top 5 unticked todos.
-- Last 3 log entries.
-- Last 3 checkpoint tags.
-- Count of pending `wiki-todos.md` lines (suggests `/project:wiki-lint` if > 10).
-
-Run it at session start, after a long break, or before deciding whether to `/project:work`, `/project:review`, `/project:wiki-lint`, or roll back. The bottom of the report suggests the next action based on state.
+Check state at session start, after a long break, or before deciding whether to `/project:work`, `/project:review`, or `/project:wiki-lint`.
 
 # Quick reference
 
 ## Command → when to use
 
-| Command                | When                                                                            |
-| ---------------------- | ------------------------------------------------------------------------------- |
-| `/project:init`        | Once at project start                                                           |
-| `/project:interview`   | First time; whenever adding a new feature                                       |
-| `/project:agent-scout` | Once after init+interview; again after a major feature adds a new stack layer   |
-| `/project:work`        | Main loop — most days you live in `/project:work`                               |
-| `/project:plan <slug>` | Before `/project:work` if you want to inspect a plan, or for estimation         |
-| `/project:review`      | Periodic (every ~5 todos), before a release, after several merges               |
-| `/project:wiki-lint`   | When `wiki-todos.md` piles up or after heavy ingest                             |
-| `/project:wiki-ingest` | When you have a new external doc, or to commission web research                 |
-| `/project:checkpoint`  | Before risky operations (large refactor, destructive command, two-strike retry) |
-| `/project:rollback`    | After a failed attempt — pick a checkpoint to reset to                          |
-| `/project:status`      | Session start, after a break, or before deciding what's next                    |
+| Command                | When                                                                          |
+| ---------------------- | ----------------------------------------------------------------------------- |
+| `/project:init`        | Once at project start                                                         |
+| `/project:interview`   | First time; whenever adding a new feature                                     |
+| `/project:agent-scout` | Once after init+interview; again after a major feature adds a new stack layer |
+| `/project:work`        | Main loop — most days you live in `/project:work`                             |
+| `/project:review`      | Periodic (every ~5 todos), before a release, after several merges             |
+| `/project:wiki-lint`   | When `wiki-todos.md` piles up or after heavy ingest                           |
+| `/project:wiki-ingest` | When you have a new external doc, or to commission web research               |
+
+Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `git reset --hard <tag>` to recover, `git status` / `git log` to see where you are — use plain git, not bespoke commands.
 
 ## Where to look when something's wrong
 
-| Symptom                                            | Look at                                                                                        |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Test-first hook blocking edits                     | Check `.claude/handoff/<slug>.json` exists with `red_confirmed: true`                          |
-| Wiki-drift warning at session end                  | Update the entity page in the same commit as the code                                          |
-| Implementer refusing to start                      | Missing or invalid handoff — see [handoff format](wiki/concepts/handoff-format.md)             |
-| Planner refusing to plan                           | Entity page missing or `## Behavior` empty — run `/project:interview` first                    |
-| Reviewer claims it's in the wrong dir              | `/project:review` didn't `cd` into the worktree first — re-run, ensure worktree path is passed |
-| `wiki-todos.md` is huge                            | Run `/project:wiki-lint`                                                                       |
-| Implementer keeps trying the same failing approach | Two-strike rule should fire — check `attempt` in `.claude/handoff/<slug>.json`                 |
-| Plan looks wrong                                   | Edit `.claude/handoff/<slug>-plan.md` or re-run `/project:plan <slug>` to overwrite            |
+| Symptom                                            | Look at                                                                                                                   |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Test-first reminder firing on every edit           | Expected on `feat/*`/`fix/*` if no test is in the session's changes yet — write the test first; it's a nudge, not a block |
+| Wiki-drift warning at session end                  | Update the entity page in the same commit as the code                                                                     |
+| Developer won't start (no Behavior cases)          | Entity page missing or `## Behavior` empty — run `/project:interview` first                                               |
+| Reviewer claims it's in the wrong dir              | `/project:review` didn't `cd` into the worktree first — re-run, ensure worktree path is passed                            |
+| `wiki-todos.md` is huge                            | Run `/project:wiki-lint`                                                                                                  |
+| Developer keeps retrying the same failing approach | Two-strike rule should fire — it stops after the second failure and asks you                                              |
+| Plan looks wrong                                   | Edit `.claude/handoff/<slug>-plan.md`, or just tell the developer the approach to take                                    |
 
 # The mental model in one paragraph
 
-The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD, with the planner stepping in for `[complex]` or batched cycles. The agent updates the wiki in the same commit as the code. When in doubt, the agent stops and asks rather than guessing. Hooks back the discipline (test-first, format-on-save, wiki-drift warning). Periodic `/project:review` and `/project:wiki-lint` keep both layers honest.
+The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD; the `developer` agent runs the cycle (with the `planner` on Opus decomposing `[complex]` or batched todos first), and the wiki is updated in the same commit as the code. When in doubt, the agent stops and asks rather than guessing. Hooks back the discipline (test-first reminder, format-on-save, wiki-drift warning). Periodic `/project:review` and `/project:wiki-lint` keep both layers honest.
 
 # Anti-patterns
 
@@ -384,8 +366,7 @@ The wiki is the project's source of truth — code that disagrees with it is the
 - **Committing on `main`.** Always branch first (`/project:work` handles this).
 - **Letting `wiki-todos.md` pile up.** When it's long, run `/project:wiki-lint`.
 - **Running the same failed approach a third time.** The two-strike rule exists for a reason — pivot or re-spec.
-- **Treating a plan as a spec.** Plans live in `.claude/handoff/` and are transient. The wiki holds the spec. If the plan needs to change, edit the plan; if the contract needs to change, run `/project:interview`.
-- **Hand-editing `.claude/handoff/` files.** They're inter-agent state. Re-dispatching the right agent regenerates them safely.
+- **Treating a plan as a spec.** Plans live in `.claude/handoff/` and are transient scratch. The wiki holds the spec. If the plan needs to change, edit the plan; if the contract needs to change, run `/project:interview`.
 
 # Related
 
@@ -393,6 +374,6 @@ The wiki is the project's source of truth — code that disagrees with it is the
 - [`HUMAN.md`](../HUMAN.md) — the human's-eye view of the workflow
 - [`docs/wiki/git-conventions.md`](wiki/git-conventions.md) — branching and commit format
 - [`docs/wiki/commands.md`](wiki/commands.md) — working shell commands
-- [`docs/wiki/concepts/handoff-format.md`](wiki/concepts/handoff-format.md) — tester→implementer JSON contract
-- [`.claude/agents/planner.md`](../.claude/agents/planner.md) — the planner agent definition
+- [`.claude/agents/planner.md`](../.claude/agents/planner.md) — the planner agent definition (Opus)
+- [`.claude/agents/developer.md`](../.claude/agents/developer.md) — the developer agent definition
 - [`.claude/skills/plan-writing.md`](../.claude/skills/plan-writing.md) — how plans are structured

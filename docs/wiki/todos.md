@@ -8,16 +8,20 @@ status: draft
 
 # Todos
 
-> Priority-ordered. `/project:work` takes the top item (or a batch sharing context). When complete, items move to [[completed]].
+> Priority-ordered. `/project:work` takes the top item (or a batch sharing context). When complete, items are removed — git history is the record of shipped work. Lines tagged `[wiki]` are wiki-cleanup deferrals for `/project:wiki-lint`, not `/project:work`.
 
 ## Now (P0 — next)
-*(Empty — run `/project:interview` to populate.)*
+
+_(Empty — run `/project:interview` to populate.)_
 
 ## Next (P1)
-*(Items waiting for capacity. Should map to entity pages.)*
+
+_(Items waiting for capacity. Should map to entity pages.)_
 
 ## Later (P2)
-*(Nice-to-have. Promote to Next when prioritized.)*
+
+_(Nice-to-have. Promote to Next when prioritized.)_
 
 ## Backlog
-*(Long-tail. Periodically pruned during `/project:review`.)*
+
+_(Long-tail. Periodically pruned during `/project:review`.)_
