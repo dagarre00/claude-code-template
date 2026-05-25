@@ -89,11 +89,14 @@ Within each section: most recently added last (new agents need the latest contex
 
 Change `updated:` to today's date.
 
-### 7. Commit
+### 7. Commit and push
+
+Push immediately — an unpushed commit is lost when the container recycles (see `.claude/rules/behavioral.md` #19):
 
 ```bash
 git add docs/wiki/gotchas.md docs/wiki/gotchas-archive.md
 git commit -m "chore(wiki): prune gotchas — <N kept, M archived, K removed>"
+git push -u origin chore/gotchas-prune-YYYY-MM-DD
 ```
 
 ### 8. Report to human

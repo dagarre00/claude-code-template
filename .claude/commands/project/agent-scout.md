@@ -163,6 +163,18 @@ Append to `docs/wiki/log.md`:
 - Agents created: <names or "none">
 ```
 
+### 7. Commit and push
+
+Stage every skill/agent file created this session plus the log entry, then push immediately — an unpushed commit is lost when the container recycles (see `.claude/rules/behavioral.md` #19):
+
+```bash
+git add .claude/ docs/wiki/log.md
+git commit -m "chore(agents): scout — <N skills, M agents created>"
+git push -u origin "$(git branch --show-current)"
+```
+
+If the human approved no new skills or agents, the log entry alone is still committed and pushed — the survey is a recorded action.
+
 ## What you do NOT do
 
 - **No auto-creation.** Present findings; wait for approval.

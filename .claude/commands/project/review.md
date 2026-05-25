@@ -49,20 +49,26 @@ If any fails: run `human-checkpoint`.
 
 4. **Reviewer writes** `docs/wiki/decisions/review-YYYY-MM-DD.md` with structured findings (see reviewer agent definition).
 
-5. **Process findings back in the main checkout.**
+5. **Return to the main checkout and bring the report over.** The reviewer wrote the report inside the worktree; it is uncommitted there and would be discarded when the worktree is removed. Copy it onto the working branch:
+
+   ```bash
+   cd -                              # back to main checkout
+   cp "$WORKTREE"/docs/wiki/decisions/review-*.md docs/wiki/decisions/
+   ```
+
+6. **Process findings in the main checkout.**
    - Read the report.
    - For each Critical / Warning: file a TODO in `docs/wiki/todos.md` with priority.
    - For each Drift item: append to `docs/wiki/wiki-todos.md` for the maintainer.
    - For each Missing ADR: queue the ADR for the next `/project:work` cycle.
 
-6. **Clean up the worktree.** Return to the main checkout first, then remove:
+7. **Clean up the worktree** (you are already back in the main checkout from step 5):
 
    ```bash
-   cd -                              # back to main checkout
    git worktree remove "$WORKTREE"
    ```
 
-7. **Log it.** Append to `docs/wiki/log.md`:
+8. **Log it.** Append to `docs/wiki/log.md`:
 
    ```markdown
    ## [YYYY-MM-DD HH:MM] review
@@ -72,7 +78,15 @@ If any fails: run `human-checkpoint`.
    - New todos: <list>
    ```
 
-8. **Report to the human.** Highlight critical items only. Recommend whether the next step is `/project:work` (fix critical), `/project:interview` (spec gap), or `/project:wiki-lint` (heavy drift).
+9. **Commit and push.** Stage the report, the new todos, the queued wiki-todos, and the log entry in one commit, then push immediately — an unpushed commit is lost when the container recycles (see `.claude/rules/behavioral.md` #19):
+
+   ```bash
+   git add docs/wiki/
+   git commit -m "docs(review): audit YYYY-MM-DD — <N critical, M warnings, K drift>"
+   git push -u origin "$(git branch --show-current)"
+   ```
+
+10. **Report to the human.** Highlight critical items only. Recommend whether the next step is `/project:work` (fix critical), `/project:interview` (spec gap), or `/project:wiki-lint` (heavy drift).
 
 ## What you do NOT do
 

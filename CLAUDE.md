@@ -148,6 +148,7 @@ Wired in `.claude/settings.json`:
 10. **Reviewer is periodic.** `/project:review` every ~5 todos — not in `/project:work`. Reviewer runs in a fresh worktree.
 11. **Human-in-the-loop.** When you need a decision the wiki doesn't answer, stop and ask. Don't guess.
 12. **Skills are how-to.** When the project gains a new domain or pattern, add a skill via `update-skill` — don't bury knowledge in agent prompts.
+13. **Finalize with commit + push.** Every command or agent that mutates tracked files ends by committing and pushing to the working branch (`git push -u origin <branch>`) — an unpushed commit is lost when the container recycles. Only read-only commands (`/project:status`, `/project:plan`) are exempt.
 
 ## Where things live
 

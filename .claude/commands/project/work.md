@@ -66,6 +66,7 @@ If any precondition fails: stop and run `human-checkpoint`.
    ```bash
    git rm .claude/handoff/<slug>.json
    git commit -m "chore: remove orphaned handoff for <slug>"
+   git push -u origin "$(git branch --show-current)"
    ```
 
    Repeat for any additional ghost files, then continue to step 1.

@@ -54,7 +54,7 @@ All links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rul
 - Entity page reflects current behavior.
 - TODO checked off in `docs/wiki/todos.md`; entry moved to `docs/wiki/completed.md` with a backref.
 - Delete `.claude/handoff/<slug>.json` — include the deletion in the final commit (the tester committed it on this branch; removing it keeps `main` clean after merge).
-- Commit follows `docs/wiki/git-conventions.md`.
+- Commit follows `docs/wiki/git-conventions.md`. In the normal flow, `/project:work` performs the final bundled commit (implementation + wiki + log entry) and pushes to the working branch — see its step 12 and `.claude/rules/behavioral.md` #19. Leave the tree staged-ready, don't split the commit. If you are running **outside** `/project:work`, you own that final commit **and push** yourself (`git push -u origin "$(git branch --show-current)"`) — an unpushed commit is lost when the container recycles.
 - Pause for the human if anything is uncertain — see `human-checkpoint`.
 
 ## What you do NOT do
