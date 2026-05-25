@@ -6,7 +6,7 @@ type: skill
 
 # Wiki Update — Structure and Routing
 
-Routine ticks (`[ ]` → `[~]` → `[x]`, moving a todo to `completed.md`, appending a log line) are documented in `tdd-loop`. This skill covers the two things _it_ doesn't: the entity-page **template**, and the **inline-vs-maintainer routing** when you discover something.
+Routine ticks (`[ ]` → `[~]` → `[x]`, checking off a todo in `todos.md`, appending a log line) are documented in `tdd-loop`. This skill covers the two things _it_ doesn't: the entity-page **template**, and the **inline-vs-maintainer routing** when you discover something.
 
 Pre-loaded context you can rely on: Obsidian link syntax (behavioral rule 18); frontmatter shape (`CLAUDE.md` → Frontmatter convention); `wiki-todos.md` self-documents its line format in its own header.
 
@@ -61,7 +61,7 @@ If you link to a wiki page that doesn't exist yet, **stub it** (frontmatter + on
 
 ## Inline vs maintainer routing
 
-You — implementer, tester, reviewer, planner — own **small, in-scope** wiki edits and make them in the same commit as the code. The wiki-maintainer is **manual only** and handles large or cross-page work.
+You — the `developer` or `reviewer` — own **small, in-scope** wiki edits and make them in the same commit as the code. The wiki-maintainer is **manual only** and handles large or cross-page work.
 
 **Inline** (same commit, no dispatch): single ADR via `decision-recording`; single gotcha via `gotcha-recording`; entity-page edit on the entity you're working on; fixing a single broken `[[link]]` you happened to notice.
 

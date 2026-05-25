@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
-# PreToolUse hook for Write/Edit: on feat/* or fix/* branches, block code edits
-# unless a red_confirmed handoff exists for the branch's slug.
-# Exits 0 = allow; exits 2 = block with stderr message shown to the assistant.
+# PreToolUse hook for Write/Edit: on feat/* or fix/* branches, REMIND (never
+# block) when production code is edited but no test file appears in this
+# session's changes yet. A soft nudge toward test-first — it always exits 0.
+#
+# This used to hard-block on a `red_confirmed` handoff JSON. That was invasive
+# (it blocked refactors, spikes, debugging, config fixes) and honor-system
+# anyway, so it was downgraded to a warning. Test-first is a discipline the
+# author chooses; the tool reminds rather than enforces.
 set -uo pipefail
 
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
@@ -27,76 +32,53 @@ file=""
 if [ -n "$py" ]; then
   file=$(printf '%s' "$input" | "$py" -c "import sys,json;d=json.load(sys.stdin);print(d.get('tool_input',{}).get('file_path',''))" 2>/dev/null || echo "")
 else
-  # Pure-bash fallback: extract "file_path":"<value>" from JSON.
-  # Use [[:space:]] instead of \s for BSD-grep portability.
   file=$(printf '%s' "$input" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' 2>/dev/null | head -1 | sed 's/.*"file_path"[[:space:]]*:[[:space:]]*"//;s/"$//' || echo "")
 fi
 [ -z "$file" ] && exit 0
 
-# Normalize $file to a repo-relative path so we can anchor prefix checks below.
-# Without this, an absolute path like /repo/.claude/foo or a path like
-# my.claude/foo.py would slip through a glob like *.claude/*.
+# Normalize to a repo-relative path so prefix checks anchor correctly.
 rel="$file"
 case "$rel" in
   "$root"/*) rel="${rel#"$root"/}" ;;
 esac
 
-# Allow non-code files, docs, configs, tests.
-# Note: *.env and *.example are intentionally NOT allowed — secrets risk.
-#
-# Test-file patterns are ANCHORED to real naming conventions, not loose
-# substrings. The old `*spec*` / `*test_*` matched production files like
-# `src/respec.py` ("spec") or `src/latest_cache.py` ("test_"), letting them
-# bypass the Red gate. These require a `test_`/`_test`/`.test`/`.spec`/`_spec`
-# boundary or a `test`/`tests`/`spec`/`__tests__` directory segment.
+# Files that never warrant a test-first nudge: tests themselves, docs, config,
+# and anything under .claude/ or .github/. Test-file patterns are ANCHORED to
+# real naming conventions, not loose substrings (so src/respec.py and
+# src/latest_cache.py are treated as production code, not tests).
 case "$rel" in
   test_*|*/test_*|*_test.*|*.test.*|*.spec.*|*_spec.*) exit 0 ;;
   tests/*|*/tests/*|test/*|*/test/*|spec/*|*/spec/*|__tests__/*|*/__tests__/*) exit 0 ;;
   docs/*|*/docs/*|*.md|*.json|*.yml|*.yaml|*.txt|*.toml|*.ini|*.cfg|*.lock|*.gitignore) exit 0 ;;
-esac
-
-# Anchored prefix checks — .claude/* must literally start the relative path.
-case "$rel" in
   .claude/*|.github/*|Dockerfile*|Makefile*) exit 0 ;;
 esac
 
-# Derive slug from branch name
-slug="${branch#feat/}"
-slug="${slug#fix/}"
-
-handoff=".claude/handoff/${slug}.json"
-if [ -f "$handoff" ]; then
-  confirmed="no"
-  if [ -n "$py" ]; then
-    # Pass handoff path via env var to avoid quote-injection in the embedded python.
-    confirmed=$(handoff="$handoff" "$py" -c 'import os,json
-try:
-  d=json.load(open(os.environ["handoff"]))
-  print("yes" if d.get("red_confirmed") is True else "no")
-except Exception:
-  print("no")
-' 2>/dev/null || echo "no")
-  else
-    # Pure-bash fallback: grep for red_confirmed in the JSON file.
-    if grep -q '"red_confirmed"[[:space:]]*:[[:space:]]*true' "$handoff" 2>/dev/null; then
-      confirmed="yes"
-    fi
-  fi
-  if [ "$confirmed" = "yes" ]; then
-    exit 0
-  fi
+# This is a production-code edit. Has any test file been touched this session?
+# Scope to the session via the session-start SHA marker (same approach as
+# wiki-drift-check); fall back to working tree + index if the marker is missing.
+marker=".claude/tmp/session-start-sha"
+session_sha=""
+[ -f "$marker" ] && session_sha=$(cat "$marker" 2>/dev/null || echo "")
+if [ -n "$session_sha" ]; then
+  changed=$({ git diff --name-only "$session_sha"..HEAD; git diff --name-only HEAD; git diff --name-only --cached; } 2>/dev/null | sort -u)
+else
+  changed=$({ git diff --name-only HEAD; git diff --name-only --cached; } 2>/dev/null | sort -u)
 fi
 
-cat >&2 <<EOF
-[test-first-check] BLOCKED: editing code file '$file' on branch '$branch' without a confirmed RED phase.
+has_test=""
+while IFS= read -r f; do
+  [ -z "$f" ] && continue
+  case "$f" in
+    test_*|*/test_*|*_test.*|*.test.*|*.spec.*|*_spec.*|tests/*|*/tests/*|test/*|*/test/*|spec/*|*/spec/*|__tests__/*|*/__tests__/*)
+      has_test="yes"; break ;;
+  esac
+done <<< "$changed"
 
-Expected: .claude/handoff/${slug}.json with red_confirmed=true.
-
-How to proceed:
-  1. Run /project:work — it dispatches the tester to write failing tests first.
-  2. Once the tester emits the handoff with red_confirmed=true, this edit will be allowed.
-
-If you genuinely need to edit non-test code without tests (rare — e.g. config-only fix),
-switch to a non-feat/fix branch (e.g. chore/<slug>) where this hook does not enforce.
+if [ -z "$has_test" ]; then
+  cat >&2 <<EOF
+[test-first-check] reminder: editing '$file' on '$branch' with no test in this session's changes yet.
+Test-first is the project default — write the failing test before the code if you haven't (see the tdd-loop skill).
+This is only a reminder; the edit is allowed.
 EOF
-exit 2
+fi
+exit 0

@@ -64,10 +64,10 @@ Example:
    If the result is **≥ 20** (roughly 4+ entries per field × 5 fields), append a wiki-todo:
 
    ```
-   - [ ] YYYY-MM-DD agent: gotchas.md has N field-lines — run /project:gotchas-prune
+   - [ ] YYYY-MM-DD agent: gotchas.md has N field-lines — compact it during the next /project:wiki-lint
    ```
 
-   This keeps the file scannable before it degrades model attention.
+   This keeps the file scannable before it degrades model attention. (`/project:wiki-lint` compacts `gotchas.md`; there is no standalone prune command.)
 
 6. Commit with `docs: gotcha — <short title>`.
 

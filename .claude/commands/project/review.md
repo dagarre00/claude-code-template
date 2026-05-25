@@ -1,12 +1,12 @@
 ---
 name: review
-description: Throughout review of the codebase against the wiki. Runs the reviewer agent in a fresh git worktree with no implementer context. Flags critical issues, warnings, drift, missing tests, security/perf concerns. Use periodically (~every 5 todos), never inside /project:work.
+description: Throughout review of the codebase against the wiki. Runs the reviewer agent in a fresh git worktree with no developer context. Flags critical issues, warnings, drift, missing tests, security/perf concerns. Use periodically (~every 5 todos), never inside /project:work.
 type: command
 ---
 
 # /project:review
 
-You dispatch the `reviewer` agent in a worktree-isolated context. The reviewer audits code vs wiki with no implementer baggage.
+You dispatch the `reviewer` agent in a worktree-isolated context. The reviewer audits code vs wiki with no developer baggage.
 
 ## When to use
 
@@ -43,7 +43,7 @@ If any fails: run `human-checkpoint`.
    - The absolute worktree path (the reviewer `cd`s into it and `pwd`-verifies before reading anything).
    - The scope (whole repo or specific area).
    - The current `docs/wiki/wiki-todos.md` (so it sees outstanding queue items as input).
-   - Explicit instruction: no implementer context, fresh read.
+   - Explicit instruction: no developer context, fresh read.
 
    The reviewer's first action is `pwd` and a check against the path you passed. If they mismatch, the reviewer stops and reports — that means step 2's `cd` was skipped or the worktree creation failed.
 
@@ -92,4 +92,4 @@ If any fails: run `human-checkpoint`.
 
 - **No code edits.** Findings only. The next `/project:work` cycle fixes things.
 - **No skipping the worktree step.** Reviewer must run isolated.
-- **No reviewer-in-`/project:work`.** This is the cardinal violation — the implementer cannot audit its own work.
+- **No reviewer-in-`/project:work`.** This is the cardinal violation — the `developer` cannot audit its own work.

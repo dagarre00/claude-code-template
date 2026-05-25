@@ -8,7 +8,7 @@ status: draft
 
 # Commands
 
-> The exact commands that work in this repo. The tester and implementer agents read this file (specifically the `## Test` section) to know how to run the suite. Keep entries copy-pasteable.
+> The exact commands that work in this repo. The `developer` agent reads this file (specifically the `## Test` section) to know how to run the suite. Keep entries copy-pasteable.
 
 ## Install
 

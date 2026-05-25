@@ -3,9 +3,9 @@
 # Non-blocking — always exits 0.
 #
 # Test execution is intentionally NOT done here. Tests run during the
-# implementation TDD loop (via the tester/implementer agents); running them
-# again at session close is redundant and can hang the close for minutes
-# on large suites. See docs/wiki/architecture.md#testing-strategy.
+# TDD loop (the developer agent); running them again at session close is
+# redundant and can hang the close for minutes on large suites.
+# See docs/wiki/architecture.md#testing-strategy.
 set -uo pipefail
 
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)

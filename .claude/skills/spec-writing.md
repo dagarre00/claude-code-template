@@ -6,7 +6,7 @@ type: skill
 
 # Writing Behavior Cases
 
-Behavior cases on an entity page are the spec. The `tester` agent translates them directly into failing tests. If your case is vague, your test is vague, your code is vague. Sharp cases → sharp tests → narrow code.
+Behavior cases on an entity page are the spec. The `developer` translates them directly into failing tests. If your case is vague, your test is vague, your code is vague. Sharp cases → sharp tests → narrow code.
 
 ## Read first
 
@@ -48,16 +48,16 @@ Examples (bad):
 
 ## Behavior case states
 
-A case carries one of three states in its checkbox. The tester and implementer agents flip these as work progresses; this notation is the **single source of truth** — `tdd-loop` and `wiki-update` reference back here.
+A case carries one of three states in its checkbox. The `developer` flips these as work progresses; this notation is the **single source of truth** — `tdd-loop` and `wiki-update` reference back here.
 
 - `[ ]` — defined, no test yet.
-- `[~]` — test exists and is failing (Red phase, written by the `tester` agent).
-- `[x]` — test passing (Green, ticked by the `implementer` after the wiki update lands in the same commit).
+- `[~]` — test exists and is failing (Red phase).
+- `[x]` — test passing (Green, ticked after the wiki update lands in the same commit).
 
 Transitions:
 
-- `[ ] → [~]` happens once per case, when `tester` confirms Red and writes the handoff.
-- `[~] → [x]` happens once per case, when `implementer` confirms Green and updates the entity page.
+- `[ ] → [~]` happens once per case, when the `developer` confirms Red.
+- `[~] → [x]` happens once per case, when the `developer` confirms Green and updates the entity page.
 - A case never moves backwards. If behavior changes and the case is wrong, file a new case (next free `B<N>`) and mark the old one with a strikethrough plus a one-line note pointing at the replacement. Do not edit a shipped (`[x]`) case in place.
 
 ## Numbering
@@ -85,7 +85,7 @@ In the entity page's `## Tests` section, map cases to test names explicitly:
 - B3 → `test_login_rate_limits_after_5_failures`
 ```
 
-The `tester` agent uses this mapping to know what to write.
+The `developer` uses this mapping to know what to write.
 
 ## After writing cases
 

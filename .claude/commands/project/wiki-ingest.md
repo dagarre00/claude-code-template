@@ -70,11 +70,9 @@ Triggered when the argument is a path to an existing file (e.g., `/project:wiki-
 
    If the source is already in `docs/raw/`, great — use that path. If it's outside (e.g., a PDF the human just dropped in the repo root), note its current location and suggest moving it to `docs/raw/` in the report.
 
-4. **Cross-link.** Grep `docs/wiki/` for terms from the summary. If an entity or concept page overlaps with claims from the source, add a `[[summaries/<slug>]]` reference in that page's "Related" section. If the source contradicts an existing claim, flag it with `> [!contradiction]` in the summary and note it in both pages.
+4. **Cross-link.** Grep `docs/wiki/` for terms from the summary. If an entity or concept page overlaps with claims from the source, add a `[[summaries/<slug>]]` reference in that page's "Related" section. If the source contradicts an existing claim, flag it with `> [!contradiction]` in the summary and note it in both pages. Linking from the pages it informs is what makes the summary reachable — there is no central index.
 
-5. **Update `docs/wiki/index.md`** — add the new summary page under the "Summaries" section.
-
-6. **Append to `docs/wiki/log.md`:**
+5. **Append to `docs/wiki/log.md`:**
 
    ```markdown
    ## [YYYY-MM-DD HH:MM] /project:wiki-ingest file
@@ -83,7 +81,7 @@ Triggered when the argument is a path to an existing file (e.g., `/project:wiki-
    - Cross-links added: <list>
    ```
 
-7. **Commit and push** (push immediately — an unpushed commit is lost on container recycle; see `.claude/rules/behavioral.md` #19):
+6. **Commit and push** (push immediately — an unpushed commit is lost on container recycle; see `.claude/rules/behavioral.md` #19):
 
    ```bash
    git add docs/wiki/
@@ -91,7 +89,7 @@ Triggered when the argument is a path to an existing file (e.g., `/project:wiki-
    git push -u origin "$(git branch --show-current)"
    ```
 
-8. **Report** to the human: slug, summary path, key claims, any contradictions flagged.
+7. **Report** to the human: slug, summary path, key claims, any contradictions flagged.
 
 ## Steps — research mode
 
@@ -110,7 +108,7 @@ Triggered when the argument is a research query (starts with "search for", "rese
 
 5. **Cross-link** against existing wiki pages (same as file mode step 4).
 
-6. **Update `docs/wiki/index.md`** and `docs/wiki/log.md` (same as file mode steps 5-6).
+6. **Append to `docs/wiki/log.md`** (same as file mode step 5).
 
 7. **Commit and push** (push immediately — an unpushed commit is lost on container recycle; see `.claude/rules/behavioral.md` #19):
 
@@ -145,6 +143,5 @@ If the argument could be either (e.g., `search.md` — it's both a valid file pa
 ## Wiki updates
 
 - `docs/wiki/summaries/<slug>.md` (new)
-- `docs/wiki/index.md` (one line added)
 - `docs/wiki/log.md` (one entry appended)
 - Possibly: entity/concept pages (cross-link in Related section)

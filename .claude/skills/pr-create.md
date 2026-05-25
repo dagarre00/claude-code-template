@@ -11,7 +11,7 @@ Use this when wrapping up a `feat/*` or `fix/*` branch and the human has explici
 ## Read first
 
 - `docs/wiki/git-conventions.md` — the project's PR template and labeling conventions.
-- `docs/wiki/todos.md` and `docs/wiki/completed.md` — the todo(s) this branch closed.
+- `docs/wiki/todos.md` — the open queue; the todo(s) this branch closed were removed from it (see the branch's commits / `git log main..HEAD` for what shipped).
 - `docs/wiki/log.md` — the `## [stamp] work — <slug>` entries for this cycle.
 - The entity page `docs/wiki/entities/<slug>.md` — the Behavior cases that were ticked.
 - `git log main..HEAD --oneline` — the commits on this branch.
@@ -32,7 +32,7 @@ Compose the body from the artefacts above. Default skeleton (override with whate
 
 ## Related TODOs
 
-- Closed: <list from completed.md>
+- Closed: <todo(s) this branch shipped — from the work log entries / commits>
 - Follow-ups queued: <list from todos.md or wiki-todos.md>
 
 ## Test plan
@@ -54,6 +54,7 @@ Compose the body from the artefacts above. Default skeleton (override with whate
 5. **Wait for human confirmation.** If they edit the draft, integrate the edits.
 6. **Open the PR** only after explicit go-ahead. Use the GitHub MCP `mcp__github__create_pull_request` (or `gh pr create` if available) with the confirmed body and the title in conventional-commit form (matching the lead commit on the branch).
 7. **Log it.** Append to `docs/wiki/log.md`:
+
    ```markdown
    ## [YYYY-MM-DD HH:MM] pr — <slug>
 

@@ -30,23 +30,23 @@ Always branch before code. Never commit to `main`. Commit-message format and PR 
    git checkout -b feat/<slug>
    ```
 
-The `test-first-check` hook activates on `feat/*` and `fix/*` — you'll need the `red_confirmed` handoff (see [[concepts/handoff-format]]) before any code edit. **The `<slug>` must equal the entity-page slug.** The hook derives the handoff path from the branch name (`feat/<slug>` → `.claude/handoff/<slug>.json`); a branch slug that doesn't match its entity slug makes the hook hunt for the wrong handoff and block every edit.
+The `test-first-check` hook activates on `feat/*` and `fix/*` — it _reminds_ (never blocks) when you edit production code with no test in the session's changes yet. **The `<slug>` must equal the entity-page slug** — the branch name (`feat/<slug>`), the entity page, the plan scratch (`.claude/handoff/<slug>-plan.md`), and the test names all key off it. Pick it once and keep it stable.
 
 ## Batching todos
 
-Two todos share a branch when **all** are true: same entity page, second depends on first, splitting produces a meaningless intermediate commit. Otherwise — separate branches. Batches of 2+ also trigger the planner (see `/project:work` step 4).
+Two todos share a branch when **all** are true: same entity page, second depends on first, splitting produces a meaningless intermediate commit. Otherwise — separate branches. Batches of 2+ also trigger a plan — the `developer` writes one via `plan-writing` before testing (see `/project:work` step 4).
 
 ## Commit cadence
 
 - One commit per green TDD cycle (test + impl + entity-page update bundled).
 - Refactor commits are separate from feat commits.
-- Don't commit half-green code. Mid-cycle stop → `/project:checkpoint` and leave the tree.
+- Don't commit half-green code. Mid-cycle stop → tag a checkpoint (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`) and leave the tree.
 
 ## Finishing the feature
 
 1. Final test run — full suite, not just the touched tests.
 2. Entity page reflects current state; Behavior cases ticked.
-3. TODO moved from `docs/wiki/todos.md` to `docs/wiki/completed.md`.
+3. TODO checked off / removed from `docs/wiki/todos.md` (shipped work lives in git history).
 4. Push: `git push -u origin <branch>`.
 5. PR (only on explicit human go-ahead): follow `pr-create` skill.
 6. After merge: delete branch locally and on remote.

@@ -6,7 +6,7 @@ type: skill
 
 # Updating a Skill
 
-Skills are how the project encodes "the way we do X here." When the implementer hits a domain it has no skill for (e.g. first time adding a Postgres migration in this project), the right move is to **create the skill**, not stuff the knowledge into a one-off prompt. The skill compounds — next time, it auto-loads.
+Skills are how the project encodes "the way we do X here." When the developer hits a domain it has no skill for (e.g. first time adding a Postgres migration in this project), the right move is to **create the skill**, not stuff the knowledge into a one-off prompt. The skill compounds — next time, it auto-loads.
 
 ## Decide first: skill or wiki page?
 
@@ -20,6 +20,7 @@ If you'd describe it as "always do these steps when…", it's a skill. If it's "
 1. **Read 2–3 existing skills.** Match the style — terse, procedural, project-specific.
 
 2. **Draft the frontmatter:**
+
    ```yaml
    ---
    name: <kebab-case>
@@ -27,6 +28,7 @@ If you'd describe it as "always do these steps when…", it's a skill. If it's "
    type: skill
    ---
    ```
+
    The `description` is everything. Bad: "skill for backend". Good: "Use when adding an HTTP endpoint to the backend. Trigger on 'add endpoint', 'new route', 'API handler'."
 
 3. **Write the body as a procedure**, not an explanation. Structure:
@@ -34,7 +36,7 @@ If you'd describe it as "always do these steps when…", it's a skill. If it's "
    - **Read first**: which wiki pages or files to load (e.g. `docs/wiki/architecture.md`, `docs/wiki/entities/<slug>.md`).
    - **Steps**: numbered, executable steps. Code/command examples where useful.
    - **Wiki update**: which pages the agent must touch when done.
-   - **Anti-patterns**: what *not* to do — the project's specific footguns.
+   - **Anti-patterns**: what _not_ to do — the project's specific footguns.
 
 4. **Place the file.**
    - Meta skills → `.claude/skills/meta/<name>.md`.
@@ -66,7 +68,7 @@ If a paragraph could appear in a textbook chapter on the topic, **delete it**. S
 
 Bad (what-is): "TDD stands for Test-Driven Development. You write a test first, see it fail, then write code to make it pass…"
 
-Good (how-to): "Run `<test-command-from-docs/wiki/commands.md>` after the tester emits `.claude/handoff/<slug>.json`. Confirm the failing tests in the handoff actually fail. Then write the smallest code to make them pass."
+Good (how-to): "Write one failing test per Behavior case, run `<test-command-from-docs/wiki/commands.md>`, and confirm it fails for the right reason. Then write the smallest code to make it pass."
 
 ## Anti-patterns
 

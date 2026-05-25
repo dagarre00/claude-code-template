@@ -15,13 +15,14 @@ Default to **no**. Reasons to create a new agent are narrow:
 - The task needs **a different scope of context** than existing agents (e.g. fresh-context audit vs in-loop implementation).
 - The role has **strict invariants** that conflict with an existing agent's invariants (e.g. "never write code" + "always write code").
 
-If it's just "the implementer needs to know more about databases," that's a **skill**, not an agent. Use `update-skill` instead. This is the progressive-disclosure principle: domain knowledge belongs in skills the implementer loads, not in new agents.
+If it's just "the developer needs to know more about databases," that's a **skill**, not an agent. Use `update-skill` instead. This is the progressive-disclosure principle: domain knowledge belongs in skills the developer loads, not in new agents.
 
 ## Procedure — adding an agent
 
 1. **Locate examples.** Read at least two existing agents in `.claude/agents/` to mirror tone, length, and structure.
 
 2. **Draft the frontmatter:**
+
    ```yaml
    ---
    name: <kebab-case-name>
@@ -29,7 +30,8 @@ If it's just "the implementer needs to know more about databases," that's a **sk
    type: agent
    ---
    ```
-   The `description` is matched against task content — make it precise. Bad: "helps with code". Good: "TDD red phase: writes failing tests from entity Behavior cases, confirms RED, hands off to implementer."
+
+   The `description` is matched against task content — make it precise. Bad: "helps with code". Good: "Fresh-context auditor: reviews code against the wiki in an isolated worktree, flags drift and missing tests."
 
 3. **Write the body in this order:**
    - Role statement (1–2 sentences).
@@ -49,7 +51,7 @@ If it's just "the implementer needs to know more about databases," that's a **sk
 1. Read the current file end-to-end. Know what you're changing.
 2. If you're changing the role (not just wording), update the `description` first. The description is the routing key.
 3. Update only the section that needs changing. Don't refactor "while you're in there."
-4. If the change touches what the agent *won't* do, update the "What you do NOT do" section explicitly.
+4. If the change touches what the agent _won't_ do, update the "What you do NOT do" section explicitly.
 5. Commit with `refactor: <name> agent — <reason>`.
 
 ## Procedure — retiring an agent
@@ -64,5 +66,5 @@ If it's just "the implementer needs to know more about databases," that's a **sk
 
 - **Domain agents.** No "backend agent", no "frontend agent". That's what skills are for.
 - **Long preambles.** Agents are read every dispatch — every paragraph costs context. Be terse.
-- **"What is X" content.** Never explain what testing or refactoring is. The LLM knows. Tell it the *procedure for this project*.
-- **Duplicate invariants.** If `tester` says "no production code" and you add a new agent that also writes tests, decide which one really owns Red — don't split it.
+- **"What is X" content.** Never explain what testing or refactoring is. The LLM knows. Tell it the _procedure for this project_.
+- **Duplicate invariants.** The `developer` owns the whole Red→Green→refactor loop. If you add a new agent that also writes tests or production code, you've split a cycle that's meant to live in one agent — reconsider whether it should be a skill instead.

@@ -52,7 +52,7 @@ Conventional commits, present tense:
 - One commit per green TDD cycle (test + impl + entity-page update).
 - Refactor commits are separate from feat commits.
 - Don't commit half-green code.
-- **Always push after committing** (`git push -u origin <branch>`). An unpushed commit is lost when the execution container recycles — see `.claude/rules/behavioral.md` #19. Read-only commands (`/project:status`, `/project:plan`) are the only exception.
+- **Always push after committing** (`git push -u origin <branch>`). An unpushed commit is lost when the execution container recycles — see `.claude/rules/behavioral.md` #19. Read-only commands (those that don't mutate tracked files) are the only exception.
 
 ## PRs
 
@@ -63,5 +63,5 @@ Conventional commits, present tense:
 
 ## Tags
 
-- `checkpoint-<UTC-timestamp>` — created by `/project:checkpoint` before risky operations.
+- `checkpoint-<UTC-timestamp>` — tag HEAD with plain git (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`) before risky operations, so you can `git reset --hard` back if needed.
 - Other tags reserved for releases (format defined later).

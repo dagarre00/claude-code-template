@@ -12,29 +12,29 @@ Three layers, each owned by a different actor:
 
 ## Day-to-day workflow
 
-| You want to…                                           | You run…                                  |
-| ------------------------------------------------------ | ----------------------------------------- |
-| Start a new project                                    | `/project:init` then `/project:interview` |
-| Configure agents/skills for your stack after init      | `/project:agent-scout`                    |
-| Add a new feature                                      | `/project:interview`                      |
-| Move forward on todos                                  | `/project:work`                           |
-| Plan a complex feature before committing branch effort | `/project:plan`                           |
-| Audit the project                                      | `/project:review`                         |
-| Check the wiki is healthy                              | `/project:wiki-lint`                      |
-| See where you are                                      | `/project:status`                         |
-| Tag before a risky change                              | `/project:checkpoint`                     |
-| Recover from a bad attempt                             | `/project:rollback`                       |
+| You want to…                                      | You run…                                  |
+| ------------------------------------------------- | ----------------------------------------- |
+| Start a new project                               | `/project:init` then `/project:interview` |
+| Configure agents/skills for your stack after init | `/project:agent-scout`                    |
+| Add a new feature                                 | `/project:interview`                      |
+| Move forward on todos                             | `/project:work`                           |
+| Audit the project                                 | `/project:review`                         |
+| Check the wiki is healthy                         | `/project:wiki-lint`                      |
+| Ingest a doc or research a topic                  | `/project:wiki-ingest`                    |
+| See where you are                                 | `git status` / `git log --oneline`        |
+| Tag before a risky change                         | `git tag checkpoint-<stamp>`              |
+| Recover from a bad attempt                        | `git reset --hard <checkpoint-tag>`       |
 
 Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the agent knows. Following the `[[wiki-links]]` and the graph view shows the structure.
 
 ## What the agent does on its own
 
 - **Reads the wiki** before any code change.
-- **Plans complex work.** When a todo is tagged `[complex]` or batched (2+ todos), the planner agent (running on Opus) writes a stepwise plan that the tester and implementer follow. Plans live transiently at `.claude/handoff/<slug>-plan.md`.
-- **Writes failing tests first** (Red), confirms they fail for the right reason, then implements (Green), then refactors.
+- **Plans complex work.** When a todo is tagged `[complex]` or batched (2+ todos), the `developer` writes a stepwise plan before testing. Plans live transiently at `.claude/handoff/<slug>-plan.md` (gitignored scratch).
+- **Writes failing tests first** (Red), confirms they fail for the right reason, then implements (Green), then refactors — all in one `developer` agent.
 - **Updates the wiki in the same commit** as the code — entity pages, requirements, log.
-- **Asks you when it's stuck.** Two-strike rule: two failed attempts on the same approach → stop and ask. On retry of a `[complex]` cycle, the planner overwrites with a different approach rather than tweaking.
-- **Hooks enforce discipline.** Test-first check on `feat/*`/`fix/*` branches; format-on-save; session-start divergence warning; session-end commit prompt; wiki-drift warning if code shipped without a wiki touch.
+- **Asks you when it's stuck.** Two-strike rule: two failed attempts on the same approach → stop and ask. On retry, it overwrites the plan with a fundamentally different approach rather than tweaking.
+- **Hooks back the discipline.** Test-first _reminder_ on `feat/*`/`fix/*` branches (it nudges, doesn't block); format-on-save; session-start divergence warning; session-end commit prompt; wiki-drift warning if code shipped without a wiki touch.
 
 ## What it does NOT do without you
 
