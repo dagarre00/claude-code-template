@@ -59,15 +59,25 @@ If no checkpoints exist: run `human-checkpoint` — explain there's nothing to r
    - Reason: <why>
    ```
 
-9. **Commit the log entry, then attempt a push.** The log append must be committed so the rollback is recorded on the branch (see `.claude/rules/behavioral.md` #19):
+9. **Commit the log entry; push only if it can fast-forward.** The log append must be committed so the rollback is recorded on the branch (see `.claude/rules/behavioral.md` #19):
 
    ```bash
    git add docs/wiki/log.md
    git commit -m "chore: log rollback to <tag>"
-   git push -u origin "$(git branch --show-current)"
+
+   branch="$(git branch --show-current)"
+   if ! git rev-parse --abbrev-ref "@{u}" >/dev/null 2>&1; then
+     # No upstream yet — a normal first push is safe.
+     git push -u origin "$branch"
+   else
+     # Step 6 moved the branch backward, so a push would be non-fast-forward.
+     # Don't attempt a guaranteed-rejected push, and never force-push from here.
+     echo "[rollback] '$branch' now diverges from its remote; the rollback commit is local."
+     echo "[rollback] To publish it, force-push yourself: git push --force-with-lease origin $branch"
+   fi
    ```
 
-   Because step 6 moved the branch backward, this push will be **rejected as non-fast-forward** if the branch was previously pushed. That is expected — do **not** force-push from this command. Surface the rejection to the human (per step 7's divergence warning) and let them decide whether to force-push. The commit is on the branch locally either way.
+   Surface the divergence to the human (per step 7) and let them decide whether to force-push. The commit is on the branch locally either way.
 
 10. **Report to the human.** Where they are now. Recommended next step (often `/project:interview` to re-spec, or `/project:work` to retry differently — never repeat the same approach that failed).
 

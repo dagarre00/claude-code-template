@@ -22,28 +22,36 @@ if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
   echo "[session-end] consider committing before the next session." >&2
 fi
 
-# 2. Append a lightweight log entry — but only when work actually happened.
-#    A session where HEAD didn't move and the tree is clean produces no entry,
-#    so docs/wiki/log.md doesn't fill with empty stamps.
+# 2. Append a lightweight log entry — but only when NEW commits have landed
+#    since the last entry. This Stop hook fires on every assistant idle (it is
+#    not a true "session end"), so the dedup must be SHA-based, not time-based:
+#    keying on "new commits since the last entry we wrote" means a quiet idle
+#    never produces a duplicate, and the log-commit below (which advances HEAD)
+#    is recorded as the new baseline so it can't re-count itself as new work.
 log="docs/wiki/log.md"
 marker=".claude/tmp/session-start-sha"
-stamp_file=".claude/tmp/last-log-stamp"
-mkdir -p "$(dirname "$stamp_file")"
-now_min=$(date -u +"%Y%m%d%H%M")
-last_min=$(cat "$stamp_file" 2>/dev/null || echo "")
+last_log_file=".claude/tmp/last-log-sha"
+mkdir -p "$(dirname "$last_log_file")"
 
 session_sha=""
 [ -f "$marker" ] && session_sha=$(cat "$marker" 2>/dev/null || echo "")
 head_sha=$(git rev-parse HEAD 2>/dev/null || echo "")
 
-# Skip when: marker present, HEAD unchanged since session start, and tree is clean.
-work_happened="yes"
-if [ -n "$session_sha" ] && [ "$session_sha" = "$head_sha" ] && [ -z "$dirty" ]; then
-  work_happened="no"
+# Baseline for "what's new": HEAD recorded just after the last entry we wrote.
+# Fall back to the session-start SHA if we haven't logged yet this container.
+last_logged=$(cat "$last_log_file" 2>/dev/null || echo "")
+[ -z "$last_logged" ] && last_logged="$session_sha"
+
+# Count commits since that baseline (0 if none, or if the SHA is unknown/gone).
+new_commits=0
+if [ -n "$last_logged" ] && [ "$last_logged" != "$head_sha" ]; then
+  new_commits=$(git rev-list --count "$last_logged..HEAD" 2>/dev/null || echo 0)
 fi
 
-# Per-minute dedup as a safety net against rapid re-fires.
-if [ "$work_happened" = "yes" ] && [ -f "$log" ] && [ "$now_min" != "$last_min" ]; then
+# Log only when durable work (a commit) has landed since the last entry.
+# Purely-uncommitted state is already surfaced by the warning in step 1, so it
+# does not trigger a log entry (that path used to spam on every idle while dirty).
+if [ "${new_commits:-0}" -gt 0 ] && [ -f "$log" ]; then
   # Skip logging until /project:init has run (it writes the first "init" entry).
   if ! grep -q '^\#\# \[.*\] init' "$log" 2>/dev/null; then
     exit 0
@@ -51,13 +59,7 @@ if [ "$work_happened" = "yes" ] && [ -f "$log" ] && [ "$now_min" != "$last_min" 
 
   stamp=$(date -u +"%Y-%m-%d %H:%M")
 
-  # Count commits since session start (0 if no marker or same SHA).
-  commits=0
-  if [ -n "$session_sha" ] && [ "$session_sha" != "$head_sha" ]; then
-    commits=$(git rev-list --count "$session_sha..HEAD" 2>/dev/null || echo 0)
-  fi
-
-  # Uncommitted-file count (0 when clean).
+  # Uncommitted-file count (informational; 0 when clean).
   uncommitted=0
   if [ -n "$dirty" ]; then
     uncommitted=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' ')
@@ -66,15 +68,16 @@ if [ "$work_happened" = "yes" ] && [ -f "$log" ] && [ "$now_min" != "$last_min" 
   {
     printf '\n## [%s] session-end\n' "$stamp"
     printf -- '- Branch: %s\n' "$branch"
-    printf -- '- Commits this session: %s\n' "$commits"
+    printf -- '- New commits since last log: %s\n' "$new_commits"
     if [ "${uncommitted:-0}" -gt 0 ]; then
       printf -- '- Uncommitted files: %s\n' "$uncommitted"
     fi
   } >> "$log"
-  echo "$now_min" > "$stamp_file"
 
-  # Auto-commit the log entry so the session record doesn't sit in a dirty tree.
+  # Auto-commit the log entry, then record the resulting HEAD as the new
+  # baseline so this very commit isn't counted as "new work" on the next idle.
   git commit --only -m "chore(log): session-end $stamp" -- "$log" 2>&1 | head -3 | sed 's/^/  /' >&2 || true
+  git rev-parse HEAD 2>/dev/null > "$last_log_file" || true
 fi
 
 # 3. Remind to push if on a feature branch and ahead of remote.

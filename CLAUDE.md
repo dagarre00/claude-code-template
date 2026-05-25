@@ -129,10 +129,10 @@ Wired in `.claude/settings.json`:
 | Hook                  | Phase                  | Purpose                                                                                                                                                                                |
 | --------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `session-start.sh`    | SessionStart           | Warn on upstream divergence (no auto-pull), detect Python venv if markers present, warn on uncommitted, record HEAD SHA to `.claude/tmp/session-start-sha` for later hooks             |
-| `session-end.sh`      | Stop                   | Prompt to commit if dirty, append a session entry to `docs/wiki/log.md` (only when HEAD moved or tree dirty — never empty stamps)                                                      |
+| `session-end.sh`      | Stop                   | Prompt to commit if dirty, append a session entry to `docs/wiki/log.md` (only when new commits landed since the last entry — never empty stamps or per-turn duplicates)                |
 | `test-first-check.sh` | PreToolUse Write/Edit  | Block code edits on `feat/*` / `fix/*` branches unless `.claude/handoff/<slug>.json` exists with `red_confirmed: true` (written by the tester agent). See [[concepts/handoff-format]]. |
 | `auto-format.sh`      | PostToolUse Write/Edit | Run formatter by file extension                                                                                                                                                        |
-| `wiki-drift-check.sh` | Stop                   | Warn if code was edited but no `docs/wiki/` page was touched in the same session (scoped via the session-start SHA marker)                                                             |
+| `wiki-drift-check.sh` | Stop                   | Warn if code was edited but no `docs/wiki/` page was touched in the same session (scoped via the session-start SHA marker; runs before `session-end` and ignores its auto-log entry)   |
 
 ## Golden rules
 

@@ -29,18 +29,18 @@ If any fails: run `human-checkpoint`.
 
 1. **Optionally pin the scope.** If the human gave a specific area to review, write it down in one line. Otherwise the review is whole-repo.
 
-2. **Create the worktree and enter it.** Outside the main checkout:
+2. **Create the worktree.** Outside the main checkout:
 
    ```bash
-   WORKTREE="../$(basename "$PWD")-review-$(date -u +%Y-%m-%d)"
+   MAIN_ROOT="$(git rev-parse --show-toplevel)"   # absolute path back to the main checkout
+   WORKTREE="$(dirname "$MAIN_ROOT")/$(basename "$MAIN_ROOT")-review-$(date -u +%Y-%m-%d)"
    git worktree add "$WORKTREE" HEAD
-   cd "$WORKTREE"
    ```
 
-   The reviewer works here; the `cd` is required because the dispatched subagent inherits this cwd. Without it, the reviewer ends up in the main checkout and the isolation is fake.
+   Do **not** rely on a parent-shell `cd "$WORKTREE"` carrying into the dispatched subagent — that inheritance is not guaranteed. Instead, pass the **absolute** `$WORKTREE` path to the reviewer and let it `cd` in itself as its first action (see the reviewer agent); that is what makes the isolation real. Keep `$MAIN_ROOT` around for the return in step 5.
 
-3. **Dispatch the `reviewer` agent** (you are now inside the worktree) with:
-   - The worktree path (so the reviewer can `pwd`-verify it matches).
+3. **Dispatch the `reviewer` agent** with:
+   - The absolute worktree path (the reviewer `cd`s into it and `pwd`-verifies before reading anything).
    - The scope (whole repo or specific area).
    - The current `docs/wiki/wiki-todos.md` (so it sees outstanding queue items as input).
    - Explicit instruction: no implementer context, fresh read.
@@ -52,7 +52,7 @@ If any fails: run `human-checkpoint`.
 5. **Return to the main checkout and bring the report over.** The reviewer wrote the report inside the worktree; it is uncommitted there and would be discarded when the worktree is removed. Copy it onto the working branch:
 
    ```bash
-   cd -                              # back to main checkout
+   cd "$MAIN_ROOT"                   # absolute — never `cd -` ($OLDPWD does not persist across tool calls)
    cp "$WORKTREE"/docs/wiki/decisions/review-*.md docs/wiki/decisions/
    ```
 

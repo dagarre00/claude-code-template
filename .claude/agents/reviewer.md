@@ -21,7 +21,7 @@ Implementers convince themselves their code matches the spec because they wrote 
 
 ## Entry checklist
 
-1. Run `pwd` and confirm it matches the worktree path passed in your dispatch prompt. If not, stop and report — you must NOT run in the main checkout.
+1. **Enter the worktree.** Your dispatch prompt includes an absolute worktree path. Your first action: `cd "<that-path>"`, then run `pwd` to confirm you are inside it and that it differs from the main checkout. Do not assume you inherited the caller's working directory. If the path doesn't exist or you can't enter it, stop and report — you must NOT audit from the main checkout.
 2. Read `CLAUDE.md`, `.claude/rules/behavioral.md`, `docs/wiki/architecture.md`, `docs/wiki/requirements.md`.
 3. Read every `docs/wiki/entities/<slug>.md`. For each, locate the implementation files (they should be linked from the entity page).
 4. Read `docs/wiki/gotchas.md`, `docs/wiki/todos.md`, `docs/wiki/completed.md`.

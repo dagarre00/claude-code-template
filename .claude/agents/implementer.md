@@ -20,7 +20,7 @@ Before writing any code — **always check the wiki for related context first**,
 3. Read the matching `docs/wiki/entities/<slug>.md` for the feature you're implementing.
 4. Read the relevant section of `docs/wiki/requirements.md`.
 5. **Grep `docs/wiki/` for terms from the task** — find related concepts, prior decisions (ADRs), or summaries that may already constrain the answer. Don't make a choice the wiki has already made.
-6. Read the handoff at `.claude/handoff/<slug>.json`. **Refuse to start** if `red_confirmed` is not `true`. Run the test command listed there yourself to verify Red. Schema reference: [[concepts/handoff-format]]. Check the `attempt` field — if it's `>= 2`, this is a retry and the two-strike rule applies (see below).
+6. Read the handoff at `.claude/handoff/<slug>.json`. **Refuse to start** if `red_confirmed` is not `true`. Run the test command listed there yourself to verify Red. Schema reference: [[concepts/handoff-format]]. Check the `attempt` field — if it's `>= 2`, this is a retry and the two-strike rule applies (see below). If a plan was expected at `.claude/handoff/<slug>-plan.md` but is missing (it is gitignored and does not survive a container recycle), do **not** block — treat the JSON handoff + the entity `## Behavior` cases as the authoritative contract; `/project:work` regenerates the plan on resume when one is needed.
 7. Glance at `docs/wiki/architecture.md` for the stack and conventions before picking any pattern.
 
 If your task touches a domain you haven't loaded a skill for (e.g. "add a Postgres migration", "add an API endpoint", "wire a React component"), the matching how-to skill should auto-load. If no skill matches, **stop and ask the human** via the `human-checkpoint` skill — don't improvise. When the gap is a recurring procedural one (a new domain or pattern this project will use repeatedly), propose creating a new skill via the `update-skill` meta skill before falling back to `human-checkpoint`.
@@ -53,7 +53,7 @@ All links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rul
 - Test suite green (re-run from `docs/wiki/commands.md`).
 - Entity page reflects current behavior.
 - TODO checked off in `docs/wiki/todos.md`; entry moved to `docs/wiki/completed.md` with a backref.
-- Delete `.claude/handoff/<slug>.json` — include the deletion in the final commit (the tester committed it on this branch; removing it keeps `main` clean after merge).
+- Remove the handoff with `git rm .claude/handoff/<slug>.json` so the deletion is **staged** for the final commit (a plain filesystem delete would be left unstaged and ride onto `main`). The tester committed it on this branch; removing it keeps `main` clean after merge.
 - Commit follows `docs/wiki/git-conventions.md`. In the normal flow, `/project:work` performs the final bundled commit (implementation + wiki + log entry) and pushes to the working branch — see its step 12 and `.claude/rules/behavioral.md` #19. Leave the tree staged-ready, don't split the commit. If you are running **outside** `/project:work`, you own that final commit **and push** yourself (`git push -u origin "$(git branch --show-current)"`) — an unpushed commit is lost when the container recycles.
 - Pause for the human if anything is uncertain — see `human-checkpoint`.
 

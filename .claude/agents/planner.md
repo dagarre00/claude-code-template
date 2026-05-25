@@ -44,7 +44,7 @@ Follow the `plan-writing` skill. Summary:
 
 ## Handoff
 
-Output: the markdown plan at `.claude/handoff/<slug>-plan.md`. Format defined in the `plan-writing` skill. One plan per branch — sibling to the tester's JSON handoff at `.claude/handoff/<slug>.json`. The directory is gitignored; plans are transient.
+Output: the markdown plan at `.claude/handoff/<slug>-plan.md`. Format defined in the `plan-writing` skill. One plan per branch — sibling to the tester's JSON handoff at `.claude/handoff/<slug>.json`. `*-plan.md` is gitignored; plans are transient and do **not** survive a container recycle. On resume, `/project:work` re-dispatches you to regenerate the plan when one is needed (see `plan-writing` → "Where it lives").
 
 The tester reads the plan to understand intended decomposition before writing tests. The implementer reads both the plan and the JSON handoff before touching code. See [[concepts/handoff-format]] for the JSON sibling.
 

@@ -16,6 +16,8 @@ The template's central rule is "no code without a failing test." Trusting agents
 
 The `test-first-check` hook (`.claude/hooks/test-first-check.sh`) reads `red_confirmed` from this file on every Write/Edit. If the file is missing or `red_confirmed` is not `true`, code edits on `feat/*` and `fix/*` branches are blocked.
 
+> **Limitation — guardrail, not proof.** The hook only checks that a file named for the current branch contains `red_confirmed: true`. It cannot verify _who_ wrote that file or that a genuine Red phase actually happened — the same agent about to write code could fabricate it. So the handoff reliably prevents _accidental_ code-first edits and enables crash-resume across recycles; it does **not** cryptographically guarantee TDD ordering. Honest agents following the protocol is still load-bearing.
+
 See also: [[glossary#handoff-red_confirmed]], behavioral rule 15.
 
 ## Path
@@ -28,6 +30,8 @@ Where `<slug>` is the branch slug — i.e. the branch name with the `feat/` or `
 - Branch `fix/token-refresh` → handoff at `.claude/handoff/token-refresh.json`
 
 One handoff per branch. Multiple concurrent branches each have their own handoff.
+
+> **Slug coupling.** The branch slug, the entity-page filename under `docs/wiki/entities/`, and this handoff filename must all be **identical**. The hook derives the slug purely from the branch name (`feat/<slug>` → `.claude/handoff/<slug>.json`), so a branch whose slug differs from its entity slug will look for the wrong handoff and block every code edit. `/project:work` enforces this by naming the branch after the entity slug (its step 2).
 
 ## Schema
 
@@ -73,7 +77,7 @@ One handoff per branch. Multiple concurrent branches each have their own handoff
 
 1. **Tester creates and commits.** After writing the failing tests and running the suite, the tester writes the handoff with `red_confirmed: true` (or `false` with a `notes` explanation if Red didn't materialize), then commits it alongside the test files in a `test(<slug>): red phase` commit. Committing is mandatory — it is what lets the session resume after a rate limit or container recycle.
 2. **Implementer reads.** First action: read `.claude/handoff/<slug>.json`. If missing or `red_confirmed !== true`, refuse to start and surface the issue.
-3. **`/project:work` owns increments on retry.** When an implementation attempt fails and the loop restarts, `/project:work` increments `attempt` before re-dispatching the tester. The implementer checks `attempt` on read and triggers the two-strike pivot at `>= 2`.
+3. **The `tester` owns `attempt`.** When an implementation attempt fails and `/project:work` restarts the loop, it re-dispatches the `tester`. The tester sees the existing handoff for this slug and increments `attempt` by 1 before rewriting it (never resetting to 1). `/project:work` does **not** touch the counter itself. Exactly one owner means it can never be double-incremented. The implementer checks `attempt` on read and triggers the two-strike pivot at `>= 2`.
 4. **Implementer deletes on completion.** The implementer removes `.claude/handoff/<slug>.json` as part of its final commit. This keeps `main` clean after the branch merges — the file only ever lives on the `feat/*` or `fix/*` branch.
 
 ## Hook contract

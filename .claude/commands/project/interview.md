@@ -34,11 +34,13 @@ You are the interviewer. Your job is to grill the human until you reach shared u
    ---
    name: <slug>
    description: <one line>
-   type: wiki-summary
+   type: raw-transcript
    updated: YYYY-MM-DD
    status: draft
    ---
    ```
+
+   (`type: raw-transcript`, not `wiki-summary` — this file lives under `docs/raw/`, which is a source layer, not the wiki. A summary page, if one is later made, is a separate `wiki-summary` under `docs/wiki/summaries/`.)
 
    **Raw is immutable** (see `.claude/rules/behavioral.md` #11) — never edit prior answers; only append.
 
@@ -86,7 +88,7 @@ You are the interviewer. Your job is to grill the human until you reach shared u
    ```markdown
    ## [YYYY-MM-DD HH:MM] interview — <slug>
 
-   - Transcript: [[summaries/YYYY-MM-DD-<slug>]] (or embedded in raw)
+   - Transcript: [YYYY-MM-DD-<slug>](../raw/interviews/YYYY-MM-DD-<slug>.md)
    - Updated: <pages>
    - New todos: <count>
    - ADRs: <count>

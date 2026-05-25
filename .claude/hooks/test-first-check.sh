@@ -43,8 +43,15 @@ esac
 
 # Allow non-code files, docs, configs, tests.
 # Note: *.env and *.example are intentionally NOT allowed — secrets risk.
+#
+# Test-file patterns are ANCHORED to real naming conventions, not loose
+# substrings. The old `*spec*` / `*test_*` matched production files like
+# `src/respec.py` ("spec") or `src/latest_cache.py` ("test_"), letting them
+# bypass the Red gate. These require a `test_`/`_test`/`.test`/`.spec`/`_spec`
+# boundary or a `test`/`tests`/`spec`/`__tests__` directory segment.
 case "$rel" in
-  */test*|*test_*|*_test*|*spec*|tests/*|*/tests/*|__tests__/*|*/__tests__/*) exit 0 ;;
+  test_*|*/test_*|*_test.*|*.test.*|*.spec.*|*_spec.*) exit 0 ;;
+  tests/*|*/tests/*|test/*|*/test/*|spec/*|*/spec/*|__tests__/*|*/__tests__/*) exit 0 ;;
   docs/*|*/docs/*|*.md|*.json|*.yml|*.yaml|*.txt|*.toml|*.ini|*.cfg|*.lock|*.gitignore) exit 0 ;;
 esac
 

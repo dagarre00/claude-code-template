@@ -197,7 +197,7 @@ Append to `docs/wiki/log.md`:
 
 - Stack: <stack>
 - Test command: <command>
-- Interview transcript: [[summaries/YYYY-MM-DD-init]]
+- Interview transcript: [YYYY-MM-DD-init](../raw/interviews/YYYY-MM-DD-init.md)
 - Pages created: <count>
 - ADRs: <count>
 - Next: run `/project:work` to pick up the first todo.

@@ -30,7 +30,7 @@ Always branch before code. Never commit to `main`. Commit-message format and PR 
    git checkout -b feat/<slug>
    ```
 
-The `test-first-check` hook activates on `feat/*` and `fix/*` — you'll need the `red_confirmed` handoff (see [[concepts/handoff-format]]) before any code edit.
+The `test-first-check` hook activates on `feat/*` and `fix/*` — you'll need the `red_confirmed` handoff (see [[concepts/handoff-format]]) before any code edit. **The `<slug>` must equal the entity-page slug.** The hook derives the handoff path from the branch name (`feat/<slug>` → `.claude/handoff/<slug>.json`); a branch slug that doesn't match its entity slug makes the hook hunt for the wrong handoff and block every edit.
 
 ## Batching todos
 

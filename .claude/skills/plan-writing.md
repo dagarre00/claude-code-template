@@ -61,7 +61,7 @@ Each step should be small enough that **a single test can drive it**. If a step 
 
 ## Where it lives
 
-`.claude/handoff/<slug>-plan.md`. One plan per branch — sibling to the JSON handoff at `.claude/handoff/<slug>.json` (see [[concepts/handoff-format]]). The directory is `.gitignore`'d, so plans are transient and never reach the remote. Overwrite on retry rather than versioning.
+`.claude/handoff/<slug>-plan.md`. One plan per branch — sibling to the JSON handoff at `.claude/handoff/<slug>.json` (see [[concepts/handoff-format]]). `*-plan.md` is `.gitignore`'d, so plans are transient and never reach the remote. Overwrite on retry rather than versioning. **Because the plan is not committed, it does not survive a container recycle.** If `/project:work` resumes a planned cycle mid-flight and the plan is gone, it re-dispatches the planner to regenerate it from the same scope — the committed Red tests + JSON handoff are the authoritative contract, and a regenerated plan must cover the same Behavior cases.
 
 ## Interaction with tester
 
