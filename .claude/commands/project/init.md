@@ -146,12 +146,13 @@ You are an AI development agent working on <project name>. Before any code chang
 
 ## Agent routing
 
-| Task           | Agent                                                               |
-| -------------- | ------------------------------------------------------------------- |
-| Full TDD cycle | `developer` (plan → red → green → refactor; loads skills on demand) |
-| Periodic audit | `reviewer` (worktree-isolated)                                      |
-| Wiki health    | `wiki-maintainer` (manual only via `/project:wiki-lint`)            |
-| Web research   | `researcher`                                                        |
+| Task                       | Agent                                                        |
+| -------------------------- | ------------------------------------------------------------ |
+| Plan complex/batched todos | `planner` (Opus) — before the developer, via `/project:work` |
+| TDD cycle                  | `developer` (red → green → refactor; loads skills on demand) |
+| Periodic audit             | `reviewer` (worktree-isolated)                               |
+| Wiki health                | `wiki-maintainer` (manual only via `/project:wiki-lint`)     |
+| Web research               | `researcher`                                                 |
 
 ## Hooks
 

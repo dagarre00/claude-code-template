@@ -91,7 +91,7 @@ Re-run `/project:agent-scout` after a major `/project:interview` that adds a new
 
 `/project:work` picks the top item from `todos.md` (or batches consecutive todos sharing context), opens a `feat/<slug>` branch, and dispatches the single `developer` agent through one full cycle:
 
-1. **Plan (conditional).** If the todo is flagged `[complex]` or a batch of 2+ todos was proposed, the developer sketches a stepwise plan to `.claude/handoff/<slug>-plan.md` (gitignored scratch) before testing. A single simple todo skips planning.
+1. **Plan (conditional).** If the todo is flagged `[complex]` or a batch of 2+ todos was proposed, `/project:work` dispatches the `planner` agent (on Opus) first; it writes a stepwise plan to `.claude/handoff/<slug>-plan.md` (gitignored scratch) that the developer then follows. A single simple todo skips planning.
 2. **Red.** The developer reads the matching `entities/<slug>.md#Behavior` cases, writes one failing test per case, runs the suite, and confirms the tests fail for the right reason (missing implementation — not a typo or import error). It marks each case `[ ]` → `[~]`.
 3. **Green.** The developer writes the minimal code to make the tests pass. The `test-first-check` hook reminds (it no longer blocks) if production code is edited on a `feat/*` branch with no test in the session's changes yet.
 4. **Refactor.** The developer cleans up while keeping tests green.
@@ -147,7 +147,7 @@ The developer plans **first** if the todo is tagged `[complex]` or a batch of 2+
 
 ## Scenario: Adding a complex feature
 
-Some features are too big to attack directly — they cross files, need careful sequencing, or have non-obvious tradeoffs. The developer plans before it tests.
+Some features are too big to attack directly — they cross files, need careful sequencing, or have non-obvious tradeoffs. The `planner` (on Opus) decomposes them before the developer tests.
 
 1. **Define it.** `/project:interview` as usual. The Behavior cases on the entity page are still the contract.
 2. **Mark the todo `[complex]`.** Edit `docs/wiki/todos.md`:
@@ -156,11 +156,11 @@ Some features are too big to attack directly — they cross files, need careful 
    - [ ] [complex] billing-invoices: generate monthly invoice PDF with line items
    ```
 
-   The `[complex]` tag is what `/project:work` keys off to tell the developer to plan before testing.
+   The `[complex]` tag is what `/project:work` keys off to dispatch the `planner` before testing.
 
-3. **Run `/project:work`.** With `[complex]` set (or a 2+ batch), the developer first writes a plan (following the `plan-writing` skill) to `.claude/handoff/billing-invoices-plan.md` — goal, approach, ordered steps, risks, out-of-scope. It then drives the same Red → Green → refactor → wiki → commit flow as a simple feature, using the plan as its own sequencing aid.
-4. **Where the plan lives.** `.claude/handoff/<slug>-plan.md`. The file is gitignored — plans are transient scratch the developer deletes when done. The wiki holds the spec (what); the plan is how-to for one cycle. Because it isn't committed, a container recycle loses it — but so does it lose the rest of the uncommitted cycle, so `/project:work` simply restarts the still-open todo and the developer re-derives the plan from the Behavior cases.
-5. **Two-strike interaction.** If the developer fails twice on the same mechanism, it stops, tags a checkpoint, and presents both failed attempts. On an authorized retry it overwrites the plan with a fundamentally different shape — naming the failed approach and the new one in the `## Approach` section. You never silently retry the same plan.
+3. **Run `/project:work`.** With `[complex]` set (or a 2+ batch), `/project:work` first dispatches the `planner` (on Opus), which writes a plan (following the `plan-writing` skill) to `.claude/handoff/billing-invoices-plan.md` — goal, approach, ordered steps, risks, out-of-scope. `/project:work` sanity-checks it, then dispatches the `developer`, which reads the plan and drives the same Red → Green → refactor → wiki → commit flow as a simple feature, following the plan's step order.
+4. **Where the plan lives.** `.claude/handoff/<slug>-plan.md`. The file is gitignored — plans are transient scratch `/project:work` clears when the cycle is done. The wiki holds the spec (what); the plan is how-to for one cycle. Because it isn't committed, a container recycle loses it — but so does it lose the rest of the uncommitted cycle, so `/project:work` simply restarts the still-open todo and re-dispatches the planner to regenerate the plan from the Behavior cases.
+5. **Two-strike interaction.** If the developer fails twice on the same mechanism, it stops, tags a checkpoint, and presents both failed attempts. On an authorized retry, `/project:work` re-dispatches the `planner` to overwrite the plan with a fundamentally different shape — naming the failed approach and the new one in the `## Approach` section. You never silently retry the same plan.
 
 ## Scenario: Batching multiple small todos
 
@@ -181,7 +181,7 @@ When you have several related todos, running them in one cycle is often cheaper 
 **How `/project:work` handles it:**
 
 1. `/project:work` reads the top 1–3 todos. If they share an entity and context, it proposes a batch and asks you to confirm via `human-checkpoint`.
-2. You confirm. `/project:work` flags the cycle as a batch and tells the developer to plan first (any batch of 2+ triggers a plan).
+2. You confirm. `/project:work` flags the cycle as a batch and dispatches the `planner` first (any batch of 2+ triggers a plan).
 3. The developer writes one set of failing tests covering all cases in the batch, then drives them all Green in one pass, refactoring as it goes.
 4. Single commit at the end. Conventional commit scope names the batch, e.g. `feat(auth-login): add rate limiting and lockout (B3, B4, B5)`.
 5. The entity page Behavior section is ticked for every case in the batch in the same commit.
@@ -261,7 +261,7 @@ Sometimes an approach just doesn't work. The two-strike rule keeps you from grin
 2. **Second failure.** On the second failure on the same mechanism, the developer stops and calls `human-checkpoint`. It does **not** try a third time on the same approach.
 3. **Your decision.** The agent presents the two attempts, what failed, and at least one fundamentally different approach to consider. Options:
    - **Reset and re-spec.** Tag the failed state for postmortem, reset to the last green commit, then `/project:interview` to sharpen the Behavior cases. This is the right call when the spec was too vague to test against.
-   - **Authorize a different approach.** If the spec is fine but the implementation strategy was wrong, tell the agent which alternative to take. If the todo is `[complex]`, the developer overwrites the prior plan with the new shape before retrying.
+   - **Authorize a different approach.** If the spec is fine but the implementation strategy was wrong, tell the agent which alternative to take. If the todo is `[complex]`, `/project:work` re-dispatches the `planner` to overwrite the prior plan with the new shape before retrying.
 
 4. **Checkpoint and reset mechanics** (plain git — there's no bespoke command):
 
@@ -356,7 +356,7 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 
 # The mental model in one paragraph
 
-The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD; a single `developer` agent runs the whole cycle (planning first for `[complex]` or batched todos), and the wiki is updated in the same commit as the code. When in doubt, the agent stops and asks rather than guessing. Hooks back the discipline (test-first reminder, format-on-save, wiki-drift warning). Periodic `/project:review` and `/project:wiki-lint` keep both layers honest.
+The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD; the `developer` agent runs the cycle (with the `planner` on Opus decomposing `[complex]` or batched todos first), and the wiki is updated in the same commit as the code. When in doubt, the agent stops and asks rather than guessing. Hooks back the discipline (test-first reminder, format-on-save, wiki-drift warning). Periodic `/project:review` and `/project:wiki-lint` keep both layers honest.
 
 # Anti-patterns
 
@@ -374,5 +374,6 @@ The wiki is the project's source of truth — code that disagrees with it is the
 - [`HUMAN.md`](../HUMAN.md) — the human's-eye view of the workflow
 - [`docs/wiki/git-conventions.md`](wiki/git-conventions.md) — branching and commit format
 - [`docs/wiki/commands.md`](wiki/commands.md) — working shell commands
+- [`.claude/agents/planner.md`](../.claude/agents/planner.md) — the planner agent definition (Opus)
 - [`.claude/agents/developer.md`](../.claude/agents/developer.md) — the developer agent definition
 - [`.claude/skills/plan-writing.md`](../.claude/skills/plan-writing.md) — how plans are structured

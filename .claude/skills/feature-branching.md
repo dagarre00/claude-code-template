@@ -34,7 +34,7 @@ The `test-first-check` hook activates on `feat/*` and `fix/*` — it _reminds_ (
 
 ## Batching todos
 
-Two todos share a branch when **all** are true: same entity page, second depends on first, splitting produces a meaningless intermediate commit. Otherwise — separate branches. Batches of 2+ also trigger a plan — the `developer` writes one via `plan-writing` before testing (see `/project:work` step 4).
+Two todos share a branch when **all** are true: same entity page, second depends on first, splitting produces a meaningless intermediate commit. Otherwise — separate branches. Batches of 2+ also trigger the `planner` — it writes a plan (via `plan-writing`) that the `developer` follows (see `/project:work` step 4).
 
 ## Commit cadence
 

@@ -33,7 +33,7 @@ For a worked walkthrough — `/project:init` → `/project:interview` → `/proj
 
 ```
 .claude/
-├── agents/          # developer, reviewer, wiki-maintainer, researcher
+├── agents/          # planner (opus), developer, reviewer, wiki-maintainer, researcher
 ├── skills/          # process skills (TDD, branching, plan-writing, wiki-update, …) + meta skills
 ├── commands/        # /project:init, /project:interview, /project:work, /project:review, /project:wiki-lint, /project:wiki-ingest, /project:agent-scout
 ├── hooks/           # session-start, session-end, test-first-check, auto-format, wiki-drift-check

@@ -3,7 +3,7 @@
 This repository is a **template for agentic software development**. Two ideas govern everything:
 
 1. **The wiki is the spec.** `docs/wiki/` is the source of truth for what the project is and how it works. Code that disagrees with the wiki is the bug.
-2. **Progressive disclosure beats specialized agents.** A single `developer` agent runs the whole TDD cycle, loading task-specific skills on demand. Skills are short, procedural, and tell the agent _how_ to do something _in this project_ — never _what something is_ in the abstract.
+2. **Progressive disclosure beats specialized agents.** A single `developer` agent runs the whole TDD cycle, loading task-specific skills on demand. The one deliberate split is the `planner` (on Opus), which decomposes `[complex]` or batched work into a plan before the developer executes it. Skills are short, procedural, and tell the agent _how_ to do something _in this project_ — never _what something is_ in the abstract.
 
 ## Identity
 
@@ -55,28 +55,29 @@ Navigation is via the directory tree and Obsidian's own graph — there is no ha
 
 ## Slash commands
 
-| Command                | Purpose                                                                                                                                                                           |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/project:init`        | Detect project state, scaffold `docs/wiki/`, fill base docs (requirements, architecture, git-conventions, commands), initialize git if needed                                     |
-| `/project:interview`   | Grill-me-relentlessly Q&A. Used both for initial requirements and for adding features. Writes a transcript to `docs/raw/interviews/`, then updates affected wiki pages            |
-| `/project:work`        | Pick the top todo (or batch consecutive todos sharing context), open a `feat/*` branch, dispatch the `developer` agent through spec→red→green→refactor→wiki-update, then commit   |
-| `/project:review`      | Throughout review of code vs wiki. Runs the `reviewer` in a fresh worktree with isolated context                                                                                  |
-| `/project:wiki-lint`   | Health-check the wiki: contradictions, orphans, broken links, drift; compacts `gotchas.md`; archives `log.md` when it overflows                                                   |
-| `/project:wiki-ingest` | Ingest a file or research topic directly into the wiki. `/project:wiki-ingest spec.pdf` for documents, `/project:wiki-ingest search for ...` for research                         |
-| `/project:agent-scout` | Post-init survey: reads the wiki and recommends specific agents and skills tailored to this project's stack, domain, and external services. Re-run after major feature additions. |
+| Command                | Purpose                                                                                                                                                                                                                  |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/project:init`        | Detect project state, scaffold `docs/wiki/`, fill base docs (requirements, architecture, git-conventions, commands), initialize git if needed                                                                            |
+| `/project:interview`   | Grill-me-relentlessly Q&A. Used both for initial requirements and for adding features. Writes a transcript to `docs/raw/interviews/`, then updates affected wiki pages                                                   |
+| `/project:work`        | Pick the top todo (or batch consecutive todos sharing context), open a `feat/*` branch, dispatch the `planner` (Opus) for complex/batched work, then the `developer` through red→green→refactor→wiki-update, then commit |
+| `/project:review`      | Throughout review of code vs wiki. Runs the `reviewer` in a fresh worktree with isolated context                                                                                                                         |
+| `/project:wiki-lint`   | Health-check the wiki: contradictions, orphans, broken links, drift; compacts `gotchas.md`; archives `log.md` when it overflows                                                                                          |
+| `/project:wiki-ingest` | Ingest a file or research topic directly into the wiki. `/project:wiki-ingest spec.pdf` for documents, `/project:wiki-ingest search for ...` for research                                                                |
+| `/project:agent-scout` | Post-init survey: reads the wiki and recommends specific agents and skills tailored to this project's stack, domain, and external services. Re-run after major feature additions.                                        |
 
 Routine git operations — snapshotting before a risky change (`git tag checkpoint-<stamp>`), reverting (`git reset --hard <tag>`), and status (`git status` / `git log`) — are done with plain git, not bespoke commands.
 
 ## Agent routing
 
-| Task                                                               | Agent                                                                                  |
-| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| Full TDD cycle — plan (if complex) → red → green → refactor → wiki | `developer` — dispatched by `/project:work`; loads skills based on task content        |
-| Periodic full audit (≈every 5 todos via `/project:review`)         | `reviewer` (worktree-isolated for clean context)                                       |
-| Periodic wiki health, ingest, cross-link                           | `wiki-maintainer` — **manual only** via `/project:wiki-lint` or explicit human request |
-| Web research — search, fetch, synthesize                           | `researcher` — dispatched by `/project:wiki-ingest` or directly by the human           |
+| Task                                                         | Agent                                                                                  |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| Decompose a `[complex]` or batched todo into a stepwise plan | `planner` (Opus) — dispatched by `/project:work` before the `developer`                |
+| TDD cycle — red → green → refactor → wiki                    | `developer` — dispatched by `/project:work`; loads skills based on task content        |
+| Periodic full audit (≈every 5 todos via `/project:review`)   | `reviewer` (worktree-isolated for clean context)                                       |
+| Periodic wiki health, ingest, cross-link                     | `wiki-maintainer` — **manual only** via `/project:wiki-lint` or explicit human request |
+| Web research — search, fetch, synthesize                     | `researcher` — dispatched by `/project:wiki-ingest` or directly by the human           |
 
-There is intentionally no domain-specialized agent (no "backend agent", no "database agent"). Domain knowledge lives in skills the `developer` loads on demand. All agents run on Sonnet.
+There is intentionally no domain-specialized agent (no "backend agent", no "database agent"). Domain knowledge lives in skills the `developer` loads on demand. The `planner` runs on **Opus** (decomposition is reasoning-heavy); all other agents run on Sonnet.
 
 **Wiki edits — inline only.** The `developer` and `reviewer` make wiki edits **inline** in the same commit as the code (entity-page Behavior tick, single ADR, single gotcha line, log entry). Larger or cross-page work (orphan cleanup, contradictions, mass cross-linking) is left for the human to run `/project:wiki-lint`, which dispatches the `wiki-maintainer`. **No agent auto-invokes the wiki-maintainer.** Raw-source ingest goes through the human via `/project:wiki-ingest`.
 
@@ -89,7 +90,7 @@ There is intentionally no domain-specialized agent (no "backend agent", no "data
 **Core process skills** — used during work:
 
 - `tdd-loop` — red/green/refactor procedure for this project
-- `plan-writing` — how the `developer` sketches a stepwise plan for a `[complex]` or batched todo before testing
+- `plan-writing` — how the `planner` decomposes a `[complex]` or batched todo into a stepwise plan before testing
 - `wiki-update` — how agents touch wiki pages while working
 - `feature-branching` — how to start/finish a feature branch
 - `pr-create` — how to draft a PR body when the human asks to open one

@@ -30,8 +30,8 @@ Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the age
 ## What the agent does on its own
 
 - **Reads the wiki** before any code change.
-- **Plans complex work.** When a todo is tagged `[complex]` or batched (2+ todos), the `developer` writes a stepwise plan before testing. Plans live transiently at `.claude/handoff/<slug>-plan.md` (gitignored scratch).
-- **Writes failing tests first** (Red), confirms they fail for the right reason, then implements (Green), then refactors — all in one `developer` agent.
+- **Plans complex work.** When a todo is tagged `[complex]` or batched (2+ todos), `/project:work` dispatches the `planner` agent (on Opus) to write a stepwise plan before testing. Plans live transiently at `.claude/handoff/<slug>-plan.md` (gitignored scratch).
+- **Writes failing tests first** (Red), confirms they fail for the right reason, then implements (Green), then refactors — all in one `developer` agent (which follows the planner's plan when there is one).
 - **Updates the wiki in the same commit** as the code — entity pages, requirements, log.
 - **Asks you when it's stuck.** Two-strike rule: two failed attempts on the same approach → stop and ask. On retry, it overwrites the plan with a fundamentally different approach rather than tweaking.
 - **Hooks back the discipline.** Test-first _reminder_ on `feat/*`/`fix/*` branches (it nudges, doesn't block); format-on-save; session-start divergence warning; session-end commit prompt; wiki-drift warning if code shipped without a wiki touch.

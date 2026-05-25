@@ -36,7 +36,7 @@ Hard constraints from real failures. These override default agent inclinations; 
 
 14. **Skills are how-to, not what-is.** When writing or editing a skill, the body must be a procedure: read these wiki pages, follow these steps, update these pages. Never explain a concept the LLM already knows.
 
-15. **One agent owns the whole cycle.** The `developer` writes the failing test, confirms Red itself, then implements — there is no separate `tester`/`implementer` split and no handoff JSON to write or read. Red must be genuine (rule 4) before any production code; confirm it yourself, don't trust a prior step.
+15. **One agent owns the TDD loop.** The `developer` writes the failing test, confirms Red itself, then implements — there is no separate `tester`/`implementer` split and no handoff JSON to write or read. Red must be genuine (rule 4) before any production code; confirm it yourself, don't trust a prior step. The only upstream split is the `planner` (Opus), which writes a `.claude/handoff/<slug>-plan.md` for `[complex]`/batched work — markdown scratch the developer reads, never a contract it must validate.
 
 16. **Append, don't bury.** When agents discover something the maintainer should clean up later (orphan page, missing ADR, repeated concept), append a one-line entry to `docs/wiki/wiki-todos.md`. Don't wait for `/project:wiki-lint`.
 
