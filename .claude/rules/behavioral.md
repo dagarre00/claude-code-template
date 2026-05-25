@@ -44,6 +44,8 @@ Hard constraints from real failures. These override default agent inclinations; 
 
 18. **Obsidian-format the wiki.** Inside `docs/wiki/`, all internal links use `[[wiki-style]]` syntax — e.g. `[[entities/auth]]`, `[[gotchas#login-flow]]`, or `[[concepts/retry-pattern|the retry pattern]]`. Tags use `#tag`. Embeds use `![[summaries/some-source]]`. The wiki is browsed in Obsidian; broken Obsidian links are a bug. External URLs and references to non-wiki files (`.claude/...`, `src/...`) keep standard markdown link syntax.
 
+19. **Finalize with commit + push.** Any command or agent that mutates tracked files ends by committing the change and pushing it to the working branch (`git push -u origin <branch>`). A local commit is not enough: remote execution containers are recycled between sessions, so an unpushed commit is lost work. The orchestrating command owns the final push; an agent that produces the terminal committed state (e.g. `tester` mid-cycle) pushes its own commit so the cycle can resume after a recycle. Read-only commands (`/project:status`, `/project:plan`) and gitignored artifacts are the only exceptions. On network failure, retry the push with exponential backoff; never bypass hooks with `--no-verify`.
+
 ## Adding rules
 
 When a new failure pattern emerges that's broader than a project-specific quirk (i.e. it's a discipline issue, not a domain detail), append it here as a numbered rule. Project-specific failures go in `docs/wiki/gotchas.md`.

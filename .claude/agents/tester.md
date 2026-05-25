@@ -59,18 +59,19 @@ If you cannot confirm Red, set `red_confirmed: false` and write the reason into 
 
 On retries (the handoff file already exists from a prior failed attempt), increment `attempt` by 1 rather than resetting to 1. The implementer applies the two-strike rule when `attempt >= 2`.
 
-## Commit — required
+## Commit and push — required
 
-After writing the handoff, commit the test files, the handoff JSON, and the entity page wiki tick together in a single commit:
+After writing the handoff, commit the test files, the handoff JSON, and the entity page wiki tick together in a single commit, then **push immediately**:
 
 ```bash
 git add <test-files>
 git add .claude/handoff/<slug>.json
 git add docs/wiki/entities/<slug>.md
 git commit -m "test(<slug>): red phase — <N> failing tests (<B1, B2, ...>)"
+git push -u origin "$(git branch --show-current)"
 ```
 
-This commit is what lets `/project:work` resume from the correct stage if the session ends mid-cycle (rate limit, remote container recycle). Without it, a new session starts with no tests and no handoff, and the whole Red phase must repeat.
+This is what lets `/project:work` resume from the correct stage if the session ends mid-cycle (rate limit, remote container recycle). The push is not optional: a remote container is reclaimed wholesale, so a commit that was never pushed is gone with it — a new session would start with no tests and no handoff, and the whole Red phase would repeat. See `.claude/rules/behavioral.md` #19.
 
 ## Wiki updates — inline only
 

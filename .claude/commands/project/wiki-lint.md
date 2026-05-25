@@ -63,11 +63,12 @@ If dirty: run `human-checkpoint`.
    - No raw files were modified.
    - No mass rewrites of entity pages (the maintainer is conservative; a 500-line entity diff is a red flag).
 
-6. **Commit:**
+6. **Commit and push.** Push immediately — an unpushed commit is lost when the container recycles (see `.claude/rules/behavioral.md` #19):
 
    ```bash
    git add docs/wiki/
    git commit -m "chore(wiki): lint — <N todos processed, M orphans, K broken links>"
+   git push -u origin chore/wiki-lint-YYYY-MM-DD
    ```
 
 7. **Report to the human.** What was processed, what remains. If the maintainer flagged contradictions or stale claims it couldn't auto-fix, list them explicitly — the human or `/project:interview` resolves which version is correct.

@@ -11,9 +11,11 @@ status: draft
 > Project conventions. Updated when the team adopts a new flow; mirror changes into the [feature-branching skill](../../.claude/skills/feature-branching.md).
 
 ## Default branch
+
 `main` — protected. No direct commits.
 
 ## Branch naming
+
 `<type>/<short-slug>`, where `<type>` ∈:
 
 - `feat` — new capability
@@ -50,6 +52,7 @@ Conventional commits, present tense:
 - One commit per green TDD cycle (test + impl + entity-page update).
 - Refactor commits are separate from feat commits.
 - Don't commit half-green code.
+- **Always push after committing** (`git push -u origin <branch>`). An unpushed commit is lost when the execution container recycles — see `.claude/rules/behavioral.md` #19. Read-only commands (`/project:status`, `/project:plan`) are the only exception.
 
 ## PRs
 

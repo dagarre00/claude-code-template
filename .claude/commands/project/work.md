@@ -66,6 +66,7 @@ If any precondition fails: stop and run `human-checkpoint`.
    ```bash
    git rm .claude/handoff/<slug>.json
    git commit -m "chore: remove orphaned handoff for <slug>"
+   git push -u origin "$(git branch --show-current)"
    ```
 
    Repeat for any additional ghost files, then continue to step 1.
@@ -130,7 +131,9 @@ If any precondition fails: stop and run `human-checkpoint`.
 12. **Commit and push.** Stage everything — implementation, wiki updates, and the log entry — in one conventional commit. Then push immediately — remote execution containers can be recycled between sessions, and an unpushed commit is effectively lost work:
 
     ```bash
-    git add -p   # stage explicitly; never git add -A blindly
+    # Stage explicitly by path — never `git add -A` blindly, and never
+    # `git add -p` (interactive patch mode hangs with no human at the prompt).
+    git add <impl-paths> docs/wiki/
     git commit -m "feat(<slug>): <summary>"
     git push -u origin <branch>
     ```

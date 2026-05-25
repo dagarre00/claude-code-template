@@ -183,6 +183,7 @@ You are an AI development agent working on <project name>. Before any code chang
 10. **Reviewer is periodic.** `/project:review` every ~5 todos, not in `/project:work`.
 11. **Human-in-the-loop.** When wiki doesn't answer, stop and ask.
 12. **Skills are how-to, not what-is.** Add skills via `update-skill`; don't bury knowledge in agent prompts.
+13. **Finalize with commit + push.** Every mutating command/agent ends by committing and pushing to the working branch (`git push -u origin <branch>`); read-only commands are exempt.
 ```
 
 Trim the template's explanatory prose. The file should be under ~120 lines. Every section earns its place — if a section doesn't help an agent operate, cut it.

@@ -49,18 +49,22 @@ Triggered when the argument is a path to an existing file (e.g., `/project:wiki-
    **Date:** <date from file or today if unknown>
 
    ## Summary
+
    2-3 paragraphs: what this source says, who it's from, why it matters to this project.
 
    ## Key claims
+
    - Claim 1
    - Claim 2
    - ...
 
    ## Open questions
+
    - Things the source raises but doesn't answer.
    - Things that contradict existing wiki pages (link them with [[wiki-links]]).
 
    ## Updates to the wiki
+
    - Which entity/concept/decision pages you updated based on this source.
    ```
 
@@ -71,16 +75,20 @@ Triggered when the argument is a path to an existing file (e.g., `/project:wiki-
 5. **Update `docs/wiki/index.md`** — add the new summary page under the "Summaries" section.
 
 6. **Append to `docs/wiki/log.md`:**
+
    ```markdown
    ## [YYYY-MM-DD HH:MM] /project:wiki-ingest file
+
    - Ingested: <path> → [[summaries/<slug>]]
    - Cross-links added: <list>
    ```
 
-7. **Commit:**
+7. **Commit and push** (push immediately — an unpushed commit is lost on container recycle; see `.claude/rules/behavioral.md` #19):
+
    ```bash
    git add docs/wiki/
    git commit -m "docs: ingest <filename> → [[summaries/<slug>]]"
+   git push -u origin "$(git branch --show-current)"
    ```
 
 8. **Report** to the human: slug, summary path, key claims, any contradictions flagged.
@@ -104,10 +112,12 @@ Triggered when the argument is a research query (starts with "search for", "rese
 
 6. **Update `docs/wiki/index.md`** and `docs/wiki/log.md` (same as file mode steps 5-6).
 
-7. **Commit:**
+7. **Commit and push** (push immediately — an unpushed commit is lost on container recycle; see `.claude/rules/behavioral.md` #19):
+
    ```bash
    git add docs/raw/research/ docs/wiki/
    git commit -m "docs: ingest research <slug> → [[summaries/<slug>]]"
+   git push -u origin "$(git branch --show-current)"
    ```
 
 8. **Report** to the human: topic, slug, top findings, key recommendations, any contradictions flagged.

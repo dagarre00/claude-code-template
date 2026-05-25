@@ -51,7 +51,15 @@ You create a recoverable snapshot via a git tag. This is cheaper than a branch a
    - Branch: <name>
    ```
 
-5. **Report to the human.** The tag name. The next planned operation. How to roll back (`/project:rollback`).
+5. **Commit and push the log entry.** The log append in step 4 is itself an uncommitted change — commit and push it so the action is recorded on the branch, not just locally (see `.claude/rules/behavioral.md` #19). The checkpoint tag points at the pre-log commit; that's intentional:
+
+   ```bash
+   git add docs/wiki/log.md
+   git commit -m "chore: log checkpoint <reason>"
+   git push -u origin "$(git branch --show-current)"
+   ```
+
+6. **Report to the human.** The tag name. The next planned operation. How to roll back (`/project:rollback`).
 
 ## What you do NOT do
 
