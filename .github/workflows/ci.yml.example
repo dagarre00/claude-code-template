@@ -8,8 +8,9 @@
 #   4. Commit on a feat/chore branch; the workflow runs on push and PR.
 #
 # This file is intentionally not active (`.example` suffix). The template
-# can't guess your stack — /interview + the implementer agent should set
-# up the real ci.yml once the stack is known.
+# can't guess your stack — /project:interview plus a /project:work cycle
+# (driven by the developer agent) should set up the real ci.yml once the
+# stack is known.
 #
 # ----------------------------------------------------------------------
 # Jobs in this workflow and what they enforce:
@@ -24,11 +25,11 @@
 #                  marker that doesn't exist on CI). Fails the job if a PR
 #                  modifies code without touching any docs/wiki/ page.
 #
-#   Note: the local `test-first-check` hook is not mirrored here. It enforces
-#   the Red-before-Green handoff during interactive Write/Edit on feat/* and
-#   fix/* branches — by the time changes reach a PR into main, the handoff
-#   has already done its job locally and the .claude/handoff/ directory is
-#   .gitignore'd. Test-first enforcement is intentionally local-only.
+#   Note: the local `test-first-check` hook is not mirrored here. It is a
+#   non-blocking reminder that fires during interactive Write/Edit on feat/*
+#   and fix/* branches when production code is edited with no test in the
+#   session's changes yet — a discipline nudge, not a gate. There is nothing
+#   to enforce server-side, so test-first stays intentionally local-only.
 # ----------------------------------------------------------------------
 
 name: CI
@@ -118,6 +119,9 @@ jobs:
           wiki_touched=false
           while IFS= read -r f; do
             case "$f" in
+              # Bookkeeping files don't count as a substantive wiki update —
+              # mirror the local hook (.claude/hooks/wiki-drift-check.sh).
+              docs/wiki/log.md|docs/wiki/wiki-todos.md) : ;;
               docs/wiki/*) wiki_touched=true ;;
               src/*|app/*|lib/*|tests/*|test/*|cmd/*|internal/*|pkg/*) code_touched=true ;;
               *.py|*.js|*.ts|*.jsx|*.tsx|*.go|*.rs|*.java|*.rb|*.php|*.cs|*.kt|*.swift)

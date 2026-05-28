@@ -156,13 +156,13 @@ You are an AI development agent working on <project name>. Before any code chang
 
 ## Hooks
 
-| Hook                  | Phase                  | Purpose                                                           |
-| --------------------- | ---------------------- | ----------------------------------------------------------------- |
-| `session-start.sh`    | SessionStart           | Pull, activate venv, warn on uncommitted                          |
-| `session-end.sh`      | Stop                   | Prompt to commit/push, append log                                 |
-| `test-first-check.sh` | PreToolUse Write/Edit  | Remind (not block) on code edits with no test on `feat/*`/`fix/*` |
-| `auto-format.sh`      | PostToolUse Write/Edit | Run formatter by file extension                                   |
-| `wiki-drift-check.sh` | Stop                   | Warn if code edited but no wiki touched                           |
+| Hook                  | Phase                  | Purpose                                                                      |
+| --------------------- | ---------------------- | ---------------------------------------------------------------------------- |
+| `session-start.sh`    | SessionStart           | Warn on upstream divergence (no auto-pull), detect venv, warn on uncommitted |
+| `session-end.sh`      | Stop                   | Prompt to commit/push, append log                                            |
+| `test-first-check.sh` | PreToolUse Write/Edit  | Remind (not block) on code edits with no test on `feat/*`/`fix/*`            |
+| `auto-format.sh`      | PostToolUse Write/Edit | Run formatter by file extension                                              |
+| `wiki-drift-check.sh` | Stop                   | Warn if code edited but no wiki touched                                      |
 
 ## Golden rules
 
