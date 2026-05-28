@@ -80,15 +80,29 @@ if [ "${new_commits:-0}" -gt 0 ] && [ -f "$log" ]; then
   git rev-parse HEAD 2>/dev/null > "$last_log_file" || true
 fi
 
-# 3. Remind to push if on a feature branch and ahead of remote.
+# 3. Push/pull status for the current branch.
 if [ "$branch" != "main" ] && [ "$branch" != "master" ] && [ "$branch" != "(unknown)" ] && [ -n "$branch" ]; then
   upstream=$(git rev-parse --abbrev-ref "@{u}" 2>/dev/null || echo "")
   if [ -z "$upstream" ]; then
     echo "[session-end] '$branch' has no remote upstream — push when ready: git push -u origin $branch" >&2
   else
     ahead=$(git rev-list --count "${upstream}..HEAD" 2>/dev/null || echo 0)
-    if [ "${ahead:-0}" -gt 0 ]; then
-      echo "[session-end] '$branch' is ${ahead} commit(s) ahead of $upstream — push when the feature is ready." >&2
+    behind=$(git rev-list --count "HEAD..${upstream}" 2>/dev/null || echo 0)
+    if [ "${ahead:-0}" -gt 0 ] && [ "${behind:-0}" -gt 0 ]; then
+      echo "[session-end] WARNING: '$branch' has DIVERGED from $upstream ($ahead ahead, $behind behind). Rebase before pushing: git rebase $upstream" >&2
+    elif [ "${ahead:-0}" -gt 0 ]; then
+      echo "[session-end] '$branch' is ${ahead} commit(s) ahead of $upstream — push when ready: git push" >&2
+    elif [ "${behind:-0}" -gt 0 ]; then
+      echo "[session-end] '$branch' is ${behind} commit(s) behind $upstream — pull before resuming: git pull --ff-only" >&2
+    fi
+  fi
+else
+  # On main: check if behind remote (common after a PR merge by someone else).
+  upstream=$(git rev-parse --abbrev-ref "@{u}" 2>/dev/null || echo "")
+  if [ -n "$upstream" ]; then
+    behind=$(git rev-list --count "HEAD..${upstream}" 2>/dev/null || echo 0)
+    if [ "${behind:-0}" -gt 0 ]; then
+      echo "[session-end] 'main' is ${behind} commit(s) behind $upstream — pull before starting new work: git pull --ff-only" >&2
     fi
   fi
 fi
