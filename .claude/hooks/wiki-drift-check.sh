@@ -53,7 +53,12 @@ while IFS= read -r f; do
 done <<< "$files"
 
 if $code_touched && ! $wiki_touched; then
-  cat >&2 <<EOF
+  # Warn once per session. Once the wiki is touched the condition above becomes
+  # false, so no marker write happens and a fresh drift will warn again.
+  session_id=$(cat .claude/tmp/session-start-sha 2>/dev/null | head -c 8 || echo "nosession")
+  drift_marker=".claude/tmp/drift-warned-${session_id}"
+  if [ ! -f "$drift_marker" ]; then
+    cat >&2 <<EOF
 [wiki-drift-check] WARNING: code modified this session, but no docs/wiki/ page touched.
 
 The wiki must travel with the code. Before ending the session:
@@ -61,6 +66,8 @@ The wiki must travel with the code. Before ending the session:
   - If a pattern emerged, file via the gotcha-recording or decision-recording skill.
   - See the wiki-update skill for link format and frontmatter.
 EOF
+    touch "$drift_marker"
+  fi
 fi
 
 exit 0
