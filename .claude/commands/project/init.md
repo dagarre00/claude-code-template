@@ -31,9 +31,23 @@ Look for a test command in `pyproject.toml` / `package.json` scripts / `Makefile
 
 Note the project directory layout: `src/`, `tests/`, `lib/`, `app/`, etc.
 
-### 3. Interview
+### 3. Pre-interview wiki scan
 
-Now interview the human. Follow the procedure from the `/project:interview` command, but focused on what `/project:init` needs to fill every wiki section. Cover these topics in order, one question at a time, always providing your recommended answer:
+Before asking anything, check whether `docs/wiki/requirements.md` and `docs/wiki/architecture.md` already exist and contain real content (not just placeholder headings).
+
+If they do, read them and extract answers for every interview topic below. Mark each topic as either:
+- **covered** — the doc has a concrete, non-placeholder answer; no question needed.
+- **partial** — some content exists but is incomplete or ambiguous; ask a focused follow-up only.
+- **missing** — no content; ask the full question.
+
+Print a one-line summary of what you found before starting the interview, e.g.:
+> "Found existing requirements.md and architecture.md. Vision, users, stack, and data are covered. I'll ask about: user stories, out-of-scope, deployment, and non-functional requirements."
+
+If both files are fully populated and all topics are covered, skip the interview entirely and go straight to step 4.
+
+### 4. Interview
+
+Ask only about topics that are **missing** or **partial** from the pre-interview scan. Follow the procedure from the `/project:interview` command. Cover these topics (in order), one question at a time, always providing your recommended answer:
 
 1. **Project vision** — one sentence. What does this project do and why does it exist?
 2. **Users** — who uses it? (user types, contexts)
@@ -46,12 +60,12 @@ Now interview the human. Follow the procedure from the `/project:interview` comm
 9. **Deployment** — how will this ship? (CI, target environment, release process)
 10. **Non-functional** — perf targets, security requirements, observability, compliance.
 
-Open a transcript at `docs/raw/interviews/YYYY-MM-DD-init.md` **before** asking the first question. Stream Q-by-Q and A-by-A: write the question to disk, ask, write the answer to disk on receipt — never batch. Same enforcement as `/project:interview` (see operating rule #7 in `.claude/commands/project/interview.md`).
+Open a transcript at `docs/raw/interviews/YYYY-MM-DD-init.md` **before** asking the first question (skip creating it if no questions are needed). Stream Q-by-Q and A-by-A: write the question to disk, ask, write the answer to disk on receipt — never batch. Same enforcement as `/project:interview` (see operating rule #7 in `.claude/commands/project/interview.md`).
 
 Stop conditions:
 
 - Human says stop.
-- All sections needed for wiki scaffolding have concrete answers.
+- All sections needed for wiki scaffolding have concrete answers (from pre-scan + interview combined).
 - You have enough to write Behavior cases for the first entity.
 
 ### 4. Scaffold wiki
@@ -66,7 +80,7 @@ docs/wiki/decisions/
 docs/wiki/summaries/
 ```
 
-Create or update these pages with **real content from the interview** (no `<TBD>` placeholders except for topics genuinely not discussed):
+Create or update these pages with **real content from the pre-scan and interview combined** (no `<TBD>` placeholders except for topics genuinely not discussed):
 
 - `docs/wiki/requirements.md` — fill **all** sections: `## Vision`, `## Users`, `## User stories` (one per user-capability pair in `- As a <user type>, I want <capability>, so that <benefit>` format with Acceptance + `Maps to:` link), `## Functional requirements`, `## Non-functional requirements`, `## Out of scope`, `## Open questions`.
 - `docs/wiki/architecture.md` — fill `## Stack`, `## Layout`, `## Data`, `## External services`, `## Testing strategy`, `## Conventions`, `## Deployment`. Leave a section as `<TBD>` only if it was genuinely not discussed.
@@ -192,7 +206,7 @@ Append to `docs/wiki/log.md`:
 
 - Stack: <stack>
 - Test command: <command>
-- Interview transcript: [YYYY-MM-DD-init](../raw/interviews/YYYY-MM-DD-init.md)
+- Interview transcript: [YYYY-MM-DD-init](../raw/interviews/YYYY-MM-DD-init.md) (omit if no questions were needed)
 - Pages created: <count>
 - ADRs: <count>
 - Next: run `/project:work` to pick up the first todo.
