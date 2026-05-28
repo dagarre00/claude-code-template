@@ -40,7 +40,10 @@ case "$file" in
     format_with ruff       ruff format "$file" \
       || format_with black black -q "$file"
     ;;
-  *.js|*.jsx|*.ts|*.tsx|*.json|*.md|*.yml|*.yaml|*.css|*.html|*.scss)
+  # Markdown is intentionally excluded: this repo is markdown-heavy (wiki,
+  # skills, commands, docs) and prettier realigns tables / reflows prose on
+  # every edit, producing noisy diffs. Format prose by hand when needed.
+  *.js|*.jsx|*.ts|*.tsx|*.json|*.yml|*.yaml|*.css|*.html|*.scss)
     format_with prettier prettier --write --log-level=warn "$file"
     ;;
   *.go)

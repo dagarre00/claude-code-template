@@ -1,6 +1,6 @@
 ---
 name: log
-description: Chronological ops log — ingests, work cycles, reviews, lints, checkpoints, rollbacks.
+description: Chronological ops log — ingests, work cycles, reviews, lints, checkpoints.
 type: wiki-log
 updated: 2026-05-11
 status: draft
