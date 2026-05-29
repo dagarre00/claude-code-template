@@ -13,13 +13,23 @@ cd "$root"
 
 branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "(unknown)")
 
-# 1. Prompt to commit if dirty.
+# Derive a short session ID for per-session dedup markers.
+mkdir -p .claude/tmp
+session_id=$(cat .claude/tmp/session-start-sha 2>/dev/null | head -c 8 || echo "nosession")
+
+# 1. Prompt to commit if dirty — once per session.
+#    If the tree is clean the block is skipped naturally; the marker only
+#    suppresses repeated noise when the tree stays dirty across turns.
 dirty=""
 if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
   dirty="yes"
-  echo "[session-end] uncommitted changes on $branch:" >&2
-  git status --short 2>&1 | head -10 | sed 's/^/  /' >&2
-  echo "[session-end] consider committing before the next session." >&2
+  dirty_marker=".claude/tmp/dirty-warned-${session_id}"
+  if [ ! -f "$dirty_marker" ]; then
+    echo "[session-end] uncommitted changes on $branch:" >&2
+    git status --short 2>&1 | head -10 | sed 's/^/  /' >&2
+    echo "[session-end] consider committing before the next session." >&2
+    touch "$dirty_marker"
+  fi
 fi
 
 # 2. Append a lightweight log entry — but only when NEW commits have landed
@@ -80,15 +90,44 @@ if [ "${new_commits:-0}" -gt 0 ] && [ -f "$log" ]; then
   git rev-parse HEAD 2>/dev/null > "$last_log_file" || true
 fi
 
-# 3. Remind to push if on a feature branch and ahead of remote.
+# 3. Push/pull status for the current branch — once per session per state.
+#    The marker encodes the state (ahead/behind counts) so a new warning fires
+#    if the state genuinely changes (e.g. you push some commits then make more).
+#    If the state resolves (push clears ahead=0), the condition block is skipped
+#    naturally and no marker write happens, so a fresh divergence will warn again.
+push_marker_base=".claude/tmp/push-warned-${session_id}"
+
+_warn_push() {
+  local msg="$1" state="$2"
+  local marker="${push_marker_base}-${state}"
+  if [ ! -f "$marker" ]; then
+    echo "$msg" >&2
+    touch "$marker"
+  fi
+}
+
 if [ "$branch" != "main" ] && [ "$branch" != "master" ] && [ "$branch" != "(unknown)" ] && [ -n "$branch" ]; then
   upstream=$(git rev-parse --abbrev-ref "@{u}" 2>/dev/null || echo "")
   if [ -z "$upstream" ]; then
-    echo "[session-end] '$branch' has no remote upstream — push when ready: git push -u origin $branch" >&2
+    _warn_push "[session-end] '$branch' has no remote upstream — push when ready: git push -u origin $branch" "no-upstream"
   else
     ahead=$(git rev-list --count "${upstream}..HEAD" 2>/dev/null || echo 0)
-    if [ "${ahead:-0}" -gt 0 ]; then
-      echo "[session-end] '$branch' is ${ahead} commit(s) ahead of $upstream — push when the feature is ready." >&2
+    behind=$(git rev-list --count "HEAD..${upstream}" 2>/dev/null || echo 0)
+    if [ "${ahead:-0}" -gt 0 ] && [ "${behind:-0}" -gt 0 ]; then
+      _warn_push "[session-end] WARNING: '$branch' has DIVERGED from $upstream ($ahead ahead, $behind behind). Rebase before pushing: git rebase $upstream" "diverged-${ahead}-${behind}"
+    elif [ "${ahead:-0}" -gt 0 ]; then
+      _warn_push "[session-end] '$branch' is ${ahead} commit(s) ahead of $upstream — push when ready: git push" "ahead-${ahead}"
+    elif [ "${behind:-0}" -gt 0 ]; then
+      _warn_push "[session-end] '$branch' is ${behind} commit(s) behind $upstream — pull before resuming: git pull --ff-only" "behind-${behind}"
+    fi
+  fi
+else
+  # On main: check if behind remote (common after a PR merge by someone else).
+  upstream=$(git rev-parse --abbrev-ref "@{u}" 2>/dev/null || echo "")
+  if [ -n "$upstream" ]; then
+    behind=$(git rev-list --count "HEAD..${upstream}" 2>/dev/null || echo 0)
+    if [ "${behind:-0}" -gt 0 ]; then
+      _warn_push "[session-end] 'main' is ${behind} commit(s) behind $upstream — pull before starting new work: git pull --ff-only" "main-behind-${behind}"
     fi
   fi
 fi

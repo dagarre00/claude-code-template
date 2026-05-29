@@ -15,7 +15,11 @@ cd "$root"
 
 echo "[session-start] repo: $root" >&2
 
-# 1. Inform on divergence from upstream — no automatic pull.
+# 1. Fetch remote state so divergence numbers are accurate.
+#    Quiet + non-blocking: network failures are ignored so the session still starts.
+git fetch --quiet origin 2>/dev/null || true
+
+# 2. Inform on divergence from upstream — no automatic pull.
 #    (An aggressive `git pull --ff-only` is hostile mid-rebase or in team flows.)
 branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
 if [ -n "$branch" ]; then
@@ -25,8 +29,12 @@ if [ -n "$branch" ]; then
     if [ -n "$ab" ]; then
       behind=$(echo "$ab" | awk '{print $1}')
       ahead=$(echo "$ab" | awk '{print $2}')
-      if [ "${behind:-0}" -gt 0 ] || [ "${ahead:-0}" -gt 0 ]; then
-        echo "[session-start] $branch: $ahead ahead, $behind behind $upstream (run 'git pull' manually if appropriate)" >&2
+      if [ "${behind:-0}" -gt 0 ] && [ "${ahead:-0}" -gt 0 ]; then
+        echo "[session-start] WARNING: $branch has DIVERGED — $ahead ahead, $behind behind $upstream. Rebase or merge required before pushing." >&2
+      elif [ "${behind:-0}" -gt 0 ]; then
+        echo "[session-start] $branch is $behind commit(s) behind $upstream — run: git pull --ff-only" >&2
+      elif [ "${ahead:-0}" -gt 0 ]; then
+        echo "[session-start] $branch is $ahead commit(s) ahead of $upstream — push when ready." >&2
       fi
     fi
   fi

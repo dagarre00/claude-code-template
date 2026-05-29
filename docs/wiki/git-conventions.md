@@ -61,6 +61,29 @@ Conventional commits, present tense:
 - Description references the entity page and the Behavior cases covered.
 - Squash on merge unless preserving the TDD trace adds value.
 
+## Force-push policy
+
+- `--force-with-lease` is the only acceptable force-push (used after a rebase onto main). It fails safely if the remote branch has been updated since your last fetch.
+- Bare `--force` is never used.
+- Never force-push `main`.
+
+## Merge conflicts
+
+Follow the [[skills/conflict-resolution]] skill when `git merge` or `git rebase` produces `CONFLICT (content)` markers. Key steps: resolve markers, grep for leftovers, run full tests, then `git add + git commit` (merge) or `git add + git rebase --continue` (rebase).
+
+## Branch cleanup (after merge)
+
+```bash
+git checkout main
+git pull --ff-only
+git branch -d feat/<slug>              # -d is safe: errors if unmerged
+git push origin --delete feat/<slug>
+```
+
+## Advanced git operations
+
+Stash, cherry-pick, bisect, blame, reflog recovery, and other edge-case operations are covered by the [[skills/git-recovery]] skill.
+
 ## Tags
 
 - `checkpoint-<UTC-timestamp>` — tag HEAD with plain git (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`) before risky operations, so you can `git reset --hard` back if needed.

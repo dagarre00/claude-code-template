@@ -31,12 +31,15 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
    - If the next 1–3 todos share an entity and context, propose a batch. Confirm with the human via `human-checkpoint` if batching is non-obvious.
    - Identify the matching `docs/wiki/entities/<slug>.md`. If it doesn't exist, **stop** and recommend `/project:interview` to define the entity first.
 
-2. **Branch.** Follow `feature-branching` skill:
+2. **Fetch and branch.** Follow `feature-branching` skill. Fetch first so the divergence check is against actual remote state, not a stale local mirror:
 
    ```bash
-   git checkout main && git pull --ff-only
+   git fetch origin main
+   git checkout main && git merge --ff-only origin/main
    git checkout -b feat/<slug>
    ```
+
+   If `merge --ff-only` fails (main has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force main.
 
 3. **Verify Behavior cases exist.** Read the entity page's `## Behavior` section. If any case is `[ ]` and unimplemented, that's the test target. If the section is empty or vague, **stop** — `/project:interview` or the `spec-writing` skill must define them first.
 
@@ -95,6 +98,8 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 - **Developer can't confirm Red.** Stop. The Behavior cases or the test environment is wrong. Use `human-checkpoint`.
 - **Developer fails twice on the same mechanism.** Two-strike rule (behavioral rule 5). Tag the state (`git tag checkpoint-<stamp>`), `git reset --hard` to a known-good commit, and re-spec via `/project:interview`. For complex/batched work, re-dispatch the `planner` to overwrite the plan with a fundamentally different approach before the next `developer` attempt.
 - **Test suite has pre-existing failures.** Stop. Don't add work on top of a broken main. Use `human-checkpoint`.
+- **Merge conflicts during branch sync.** Follow the `conflict-resolution` skill. If the conflicts are too broad or ambiguous, use `human-checkpoint` rather than guessing.
+- **Lost work after a container recycle.** Commits pushed to remote survive; only unpushed local state is gone. Check `git reflog` on the remote via `git ls-remote` — if the branch was pushed, `git fetch origin feat/<slug> && git checkout feat/<slug>` recovers it. If unpushed, re-run from the last open todo.
 - **Hooks block.** Read the block message and resolve the underlying issue. Never `--no-verify`.
 
 ## What you do NOT do
