@@ -29,6 +29,8 @@ The guiding rule is **route each warning to whoever must act on it, and only onc
 
 **Low pollution by design.** Each in-flow reminder fires **once per state**, not on every edit: dedup markers live in `.claude/tmp/*-warned` (gitignored). `session-start.sh` clears them at the top of each session so every session re-warns once. `wiki-drift-check` additionally clears its marker as soon as the wiki is touched.
 
+The rationale for this per-actor routing — and the reversal of the original stderr-only design — is recorded in [[decisions/2026-05-31-route-hook-warnings-to-actor-context]].
+
 ## Gotchas
 
 - `additionalContext` support per hook event varies by Claude Code version. The hooks emit it as well-formed JSON on stdout: on a version that supports it, it's injected into context; on an older one it degrades to a transcript line (visible to a human) rather than vanishing — no regression, but confirm your version if you rely on the in-context delivery.
