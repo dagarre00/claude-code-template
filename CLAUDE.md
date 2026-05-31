@@ -21,7 +21,7 @@ You are an AI development agent working on this project. At the top of every ses
 - **Skills are how-to, not what-is.** Every skill body says: "When you're doing X, here's the procedure: read these wiki pages, follow these steps, update these pages." No skill explains what backend or TDD _means_ — assume the LLM knows.
 - **Dynamic config.** Agents, skills, commands, and hooks are evolved by the meta skills (`update-agent`, `update-skill`, `update-command`, `update-hook`). When the project's needs change, the agent updates its own toolkit.
 - **Spec → Test → Code.** Write the entity Behavior cases first, derive failing tests, then implement. The `test-first-check` hook _reminds_ (never blocks) when code is edited with no test in the session's changes on `feat/*` and `fix/*` branches — the discipline is yours to keep.
-- **Wiki always current.** Code edits and wiki edits ship together. The `wiki-drift-check` hook warns at session end if you only touched code.
+- **Wiki always current.** Code edits and wiki edits ship together. The `wiki-drift-check` hook warns right after an edit (PostToolUse) if you touched code but no wiki page.
 - **Human in the loop.** When the agent needs the human (uncommitted decisions, missing inputs, risky ops), it stops and asks via the `human-checkpoint` skill — never silently improvises.
 
 ## Three layers
@@ -123,11 +123,11 @@ Wired in `.claude/settings.json`:
 
 | Hook                  | Phase                  | Purpose                                                                                                                                                                              |
 | --------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `session-start.sh`    | SessionStart           | Warn on upstream divergence (no auto-pull), detect Python venv if markers present, warn on uncommitted, record HEAD SHA to `.claude/tmp/session-start-sha` for later hooks           |
+| `session-start.sh`    | SessionStart           | Warn on upstream divergence (no auto-pull), detect Python venv, warn on uncommitted — all to **stdout** (injected into the model's context); record HEAD SHA to `.claude/tmp/session-start-sha`; reset per-session dedup markers                                                              |
 | `session-end.sh`      | Stop                   | Prompt to commit if dirty, append a session entry to `docs/wiki/log.md` (only when new commits landed since the last entry — never empty stamps or per-turn duplicates)              |
-| `test-first-check.sh` | PreToolUse Write/Edit  | **Reminder, not a block:** on `feat/*` / `fix/*`, nudges (always allows) when production code is edited with no test file in the session's changes yet                               |
+| `test-first-check.sh` | PreToolUse Write/Edit  | **Reminder, not a block:** on `feat/*` / `fix/*`, nudges via model-facing `additionalContext` (once per session) when production code is edited with no test in the session's changes yet                                                            |
 | `auto-format.sh`      | PostToolUse Write/Edit | Run formatter by file extension                                                                                                                                                      |
-| `wiki-drift-check.sh` | Stop                   | Warn if code was edited but no `docs/wiki/` page was touched in the same session (scoped via the session-start SHA marker; runs before `session-end` and ignores its auto-log entry) |
+| `wiki-drift-check.sh` | PostToolUse Write/Edit | Warn via model-facing `additionalContext` (once per drift-state) if source code changed this session but no `docs/wiki/` page has been touched; marker clears when the wiki is touched (scoped via the session-start SHA marker)                     |
 
 ## Golden rules
 

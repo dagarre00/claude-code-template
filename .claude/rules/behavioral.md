@@ -8,7 +8,7 @@ type: rule
 
 Hard constraints from real failures. These override default agent inclinations; harness hooks back several of them.
 
-1. **Wiki-first, code-second.** Never change code behavior without also updating the relevant `docs/wiki/entities/<slug>.md`. If the spec is wrong, fix the spec first, then the code. The `wiki-drift-check` hook warns at session end if you only touched code.
+1. **Wiki-first, code-second.** Never change code behavior without also updating the relevant `docs/wiki/entities/<slug>.md`. If the spec is wrong, fix the spec first, then the code. The `wiki-drift-check` hook warns right after an edit (PostToolUse) if you touched code but no wiki page.
 
 2. **Tests before implementation.** Never write production code without a failing test first. The Red phase is mandatory. The `test-first-check` hook _reminds_ you on `feat/*` and `fix/*` when code is edited with no test in the session's changes — it no longer blocks, so keeping the discipline is on you.
 

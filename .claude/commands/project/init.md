@@ -176,7 +176,7 @@ You are an AI development agent working on <project name>. Before any code chang
 | `session-end.sh`      | Stop                   | Prompt to commit/push, append log                                            |
 | `test-first-check.sh` | PreToolUse Write/Edit  | Remind (not block) on code edits with no test on `feat/*`/`fix/*`            |
 | `auto-format.sh`      | PostToolUse Write/Edit | Run formatter by file extension                                              |
-| `wiki-drift-check.sh` | Stop                   | Warn if code edited but no wiki touched                                      |
+| `wiki-drift-check.sh` | PostToolUse Write/Edit | Warn (model-facing, once/state) if code edited but no wiki touched           |
 
 ## Golden rules
 

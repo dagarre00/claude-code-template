@@ -1,84 +1,62 @@
-#!/usr/bin/env bash
-# PreToolUse hook for Write/Edit: on feat/* or fix/* branches, REMIND (never
-# block) when production code is edited but no test file appears in this
-# session's changes yet. A soft nudge toward test-first — it always exits 0.
+#!/bin/bash
+# PreToolUse(Write|Edit) -- TEST-FIRST REMINDER (non-blocking).
+# On feat/* and fix/* branches, nudge when production code is edited
+# but no test file has changed in this session yet.
 #
-# This used to hard-block on a `red_confirmed` handoff JSON. That was invasive
-# (it blocked refactors, spikes, debugging, config fixes) and honor-system
-# anyway, so it was downgraded to a warning. Test-first is a discipline the
-# author chooses; the tool reminds rather than enforces.
-set -uo pipefail
+# CHANNEL: emits hookSpecificOutput.additionalContext JSON on stdout so the
+# nudge reaches the MODEL mid-flow (when it can still act), not a transcript
+# the agent never reads. NEVER blocks: no permissionDecision is set, so the
+# normal permission flow is untouched. Fires once per session (dedup marker),
+# so it informs without spamming the context window.
+set -u
 
-root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
-cd "$root"
+# Read hook input JSON from stdin
+INPUT="$(cat)"
 
-branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
-case "$branch" in
+# Only care on feat/* and fix/* branches
+BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+case "$BRANCH" in
   feat/*|fix/*) ;;
   *) exit 0 ;;
 esac
 
-# Resolve a Python interpreter once — prefer python3, fall back to python.
-py=""
-if command -v python3 >/dev/null 2>&1; then
-  py=python3
-elif command -v python >/dev/null 2>&1; then
-  py=python
-fi
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+MARKER="$ROOT/.claude/tmp/test-first-warned"
+# Already nudged this session -> stay quiet (session-start clears the marker)
+[ -f "$MARKER" ] && exit 0
 
-# Extract file_path from stdin JSON. Try python, fall back to grep+sed.
-input=$(cat 2>/dev/null || echo "{}")
-file=""
-if [ -n "$py" ]; then
-  file=$(printf '%s' "$input" | "$py" -c "import sys,json;d=json.load(sys.stdin);print(d.get('tool_input',{}).get('file_path',''))" 2>/dev/null || echo "")
-else
-  file=$(printf '%s' "$input" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' 2>/dev/null | head -1 | sed 's/.*"file_path"[[:space:]]*:[[:space:]]*"//;s/"$//' || echo "")
-fi
-[ -z "$file" ] && exit 0
+# Extract the file path being written/edited from the tool input
+FILE="$(printf '%s' "$INPUT" | grep -o '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*:[[:space:]]*"//;s/"$//')"
+[ -z "$FILE" ] && exit 0
 
-# Normalize to a repo-relative path so prefix checks anchor correctly.
-rel="$file"
-case "$rel" in
-  "$root"/*) rel="${rel#"$root"/}" ;;
+# Only nudge for production source files
+case "$FILE" in
+  *.test.*|*.spec.*|*_test.*|*test_*|*/tests/*|*/test/*|*/__tests__/*) exit 0 ;;
+esac
+case "$FILE" in
+  *.py|*.js|*.ts|*.jsx|*.tsx|*.go|*.rs|*.java|*.rb|*.php|*.c|*.cpp|*.h|*.hpp) ;;
+  *) exit 0 ;;
 esac
 
-# Files that never warrant a test-first nudge: tests themselves, docs, config,
-# and anything under .claude/ or .github/. Test-file patterns are ANCHORED to
-# real naming conventions, not loose substrings (so src/respec.py and
-# src/latest_cache.py are treated as production code, not tests).
-case "$rel" in
-  test_*|*/test_*|*_test.*|*.test.*|*.spec.*|*_spec.*) exit 0 ;;
-  tests/*|*/tests/*|test/*|*/test/*|spec/*|*/spec/*|__tests__/*|*/__tests__/*) exit 0 ;;
-  docs/*|*/docs/*|*.md|*.json|*.yml|*.yaml|*.txt|*.toml|*.ini|*.cfg|*.lock|*.gitignore) exit 0 ;;
-  .claude/*|.github/*|Dockerfile*|Makefile*) exit 0 ;;
-esac
-
-# This is a production-code edit. Has any test file been touched this session?
-# Scope to the session via the session-start SHA marker (same approach as
-# wiki-drift-check); fall back to working tree + index if the marker is missing.
-marker=".claude/tmp/session-start-sha"
-session_sha=""
-[ -f "$marker" ] && session_sha=$(cat "$marker" 2>/dev/null || echo "")
-if [ -n "$session_sha" ]; then
-  changed=$({ git diff --name-only "$session_sha"..HEAD; git diff --name-only HEAD; git diff --name-only --cached; } 2>/dev/null | sort -u)
+# Has any test file changed in this session (working tree + staged)?
+SHA_FILE="$ROOT/.claude/tmp/session-start-sha"
+TEST_CHANGED=""
+if [ -f "$SHA_FILE" ]; then
+  START_SHA="$(cat "$SHA_FILE" 2>/dev/null)"
+  CHANGED="$(git diff --name-only "$START_SHA" 2>/dev/null; git diff --cached --name-only 2>/dev/null; git diff --name-only 2>/dev/null)"
 else
-  changed=$({ git diff --name-only HEAD; git diff --name-only --cached; } 2>/dev/null | sort -u)
+  CHANGED="$(git diff --cached --name-only 2>/dev/null; git diff --name-only 2>/dev/null)"
 fi
 
-has_test=""
-while IFS= read -r f; do
-  [ -z "$f" ] && continue
-  case "$f" in
-    test_*|*/test_*|*_test.*|*.test.*|*.spec.*|*_spec.*|tests/*|*/tests/*|test/*|*/test/*|spec/*|*/spec/*|__tests__/*|*/__tests__/*)
-      has_test="yes"; break ;;
-  esac
-done <<< "$changed"
-
-if [ -z "$has_test" ]; then
-  cat >&2 <<EOF
-[test-first-check] reminder: editing '$file' on '$branch' with no test in this session's changes yet.
-Test-first is the project default — write the failing test before the code if you haven't (see the tdd-loop skill).
-This is only a reminder; the edit is allowed.
-EOF
+if printf '%s' "$CHANGED" | grep -Eq '(\.test\.|\.spec\.|_test\.|test_|/tests/|/test/|/__tests__/)'; then
+  TEST_CHANGED="yes"
 fi
+
+if [ -z "$TEST_CHANGED" ]; then
+  mkdir -p "$(dirname "$MARKER")" 2>/dev/null
+  : > "$MARKER"
+  MSG="TDD reminder (test-first-check): you are editing production code on '$BRANCH' with no test file changed this session. Write a failing test first (see .claude/skills/tdd-loop). Non-blocking; shown once per session."
+  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"%s"}}\n' "$MSG"
+fi
+
 exit 0
