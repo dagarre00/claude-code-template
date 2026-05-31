@@ -10,6 +10,10 @@ Three layers, each owned by a different actor:
 2. **Wiki** (`docs/wiki/`) — the living spec. **Agents own this.** Code that disagrees with the wiki is the bug. You browse it in Obsidian.
 3. **Schema** (`CLAUDE.md`, `.claude/`) — how the agents operate. You and the agent evolve this together.
 
+## Branches — the agent drives, you approve
+
+The project runs on two protected long-lived branches: **`main`** (released, stable) and **`develop`** (where finished work integrates). The agent cuts every short-lived branch (`feat/*`, `fix/*`, `chore/*`, …) from `develop`, and at the end of each `/project:work` cycle it **proposes merging that branch into `develop` and waits for your go-ahead**. `main` only ever moves when you approve a `/project:release` (which merges `develop → main` and tags a version). **You never run git yourself** — the agent owns branching, merging, tagging, and cleanup; you just approve the merge and release gates. See [`docs/wiki/git-conventions.md`](docs/wiki/git-conventions.md) for the full model.
+
 ## Day-to-day workflow
 
 | You want to…                                      | You run…                                  |
@@ -18,12 +22,11 @@ Three layers, each owned by a different actor:
 | Configure agents/skills for your stack after init | `/project:agent-scout`                    |
 | Add a new feature                                 | `/project:interview`                      |
 | Move forward on todos                             | `/project:work`                           |
+| Ship `develop` to `main` as a tagged release      | `/project:release`                        |
 | Audit the project                                 | `/project:review`                         |
 | Check the wiki is healthy                         | `/project:wiki-lint`                      |
 | Ingest a doc or research a topic                  | `/project:wiki-ingest`                    |
 | See where you are                                 | `git status` / `git log --oneline`        |
-| Tag before a risky change                         | `git tag checkpoint-<stamp>`              |
-| Recover from a bad attempt                        | `git reset --hard <checkpoint-tag>`       |
 
 Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the agent knows. Following the `[[wiki-links]]` and the graph view shows the structure.
 
@@ -33,13 +36,15 @@ Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the age
 - **Plans complex work.** When a todo is tagged `[complex]` or batched (2+ todos), `/project:work` dispatches the `planner` agent (on Opus) to write a stepwise plan before testing. Plans live transiently at `.claude/handoff/<slug>-plan.md` (gitignored scratch).
 - **Writes failing tests first** (Red), confirms they fail for the right reason, then implements (Green), then refactors — all in one `developer` agent (which follows the planner's plan when there is one).
 - **Updates the wiki in the same commit** as the code — entity pages, requirements, log.
+- **Owns git.** Branches off `develop`, commits, pushes, and — once you approve the merge gate — integrates the branch into `develop` with a `--no-ff` merge and deletes it. Tagging and releases (`/project:release`) are agent-run too, behind your approval.
 - **Asks you when it's stuck.** Two-strike rule: two failed attempts on the same approach → stop and ask. On retry, it overwrites the plan with a fundamentally different approach rather than tweaking.
-- **Hooks back the discipline.** Test-first _reminder_ on `feat/*`/`fix/*` branches (it nudges, doesn't block); format-on-save; session-start divergence warning; session-end commit prompt; wiki-drift warning if code shipped without a wiki touch.
+- **Hooks back the discipline.** Test-first _reminder_ on `feat/*`/`fix/*` branches (it nudges, doesn't block); format-on-save; session-start divergence warning; session-end commit/push prompt; wiki-drift warning if code shipped without a wiki touch.
 
 ## What it does NOT do without you
 
-- Open or merge PRs.
-- Force-push or rewrite published history.
+- **Merge into `develop` or `main` without approval.** It proposes the merge at the end of each cycle (and the release) and waits for your go-ahead — but you approve, it executes. You never type the git commands.
+- Force-push or rewrite published history; never force-push `main`/`develop`.
+- Push to `main` outside an approved `/project:release` (or hotfix).
 - Decide between two reasonable design alternatives (it presents both with a recommendation and waits).
 - Run `/project:review` mid-`/project:work` — review is periodic, not in-loop.
 - Auto-invoke the wiki-maintainer. Wiki health passes (`/project:wiki-lint`) are explicitly triggered by you.

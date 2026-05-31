@@ -117,20 +117,20 @@ git filter-repo --path <sensitive-file> --invert-paths
 # After, everyone who cloned must re-clone — communicate this.
 ```
 
-## Clean up a feature branch before PR
+## Clean up a feature branch before merge
 
 ```bash
-# Fetch latest main
-git fetch origin main
+# Fetch latest develop (the base branch)
+git fetch origin develop
 
-# Rebase onto current main (resolves conflicts per commit)
-git rebase origin/main
+# Rebase onto current develop (resolves conflicts per commit)
+git rebase origin/develop
 
 # Safe force-push (fails if remote has diverged beyond your rebase)
 git push --force-with-lease origin <branch>
 ```
 
-Only `--force-with-lease`, never bare `--force`.
+Only `--force-with-lease`, never bare `--force`, and only on feature branches — never `develop` or `main`.
 
 ## Delete a branch
 
@@ -152,6 +152,6 @@ The `feature-branching` skill's "Finishing the feature" checklist includes branc
 git fetch origin
 
 # See what came in
-git log HEAD..origin/main --oneline   # commits on main not in your branch
-git log origin/main..HEAD --oneline   # your commits not yet on main
+git log HEAD..origin/develop --oneline   # commits on develop not in your branch
+git log origin/develop..HEAD --oneline   # your commits not yet on develop
 ```

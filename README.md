@@ -18,12 +18,15 @@ claude
 Inside Claude Code:
 
 ```
-/project:init        # detect state, scaffold docs/wiki, base docs
+/project:init        # detect state, scaffold docs/wiki, base docs, create main + develop
 /project:interview   # grill yourself on requirements; populate the wiki
-/project:work        # pick the top todo, branch, run TDD (Red → Green → Refactor → wiki)
+/project:work        # top todo → branch off develop → TDD (Red → Green → Refactor → wiki) → merge to develop (you approve)
+/project:release     # merge develop → main, tag vX.Y.Z (you approve)
 /project:review      # periodic audit in a fresh worktree
 /project:wiki-lint   # periodic wiki health check
 ```
+
+The agent owns git end to end on a `main` (released) + `develop` (integration) model: it branches from `develop`, and at the end of each cycle proposes merging back — you approve the merge, it runs every git command. See [`docs/wiki/git-conventions.md`](docs/wiki/git-conventions.md).
 
 Open `docs/wiki/` in Obsidian on the side. That's your view of the agent's knowledge.
 
@@ -35,7 +38,7 @@ For a worked walkthrough — `/project:init` → `/project:interview` → `/proj
 .claude/
 ├── agents/          # planner (opus), developer, reviewer, wiki-maintainer, researcher
 ├── skills/          # process skills (TDD, branching, plan-writing, wiki-update, …) + meta skills
-├── commands/        # /project:init, /project:interview, /project:work, /project:review, /project:wiki-lint, /project:wiki-ingest, /project:agent-scout
+├── commands/        # /project:init, /project:interview, /project:work, /project:release, /project:review, /project:wiki-lint, /project:wiki-ingest, /project:agent-scout
 ├── hooks/           # session-start, session-end, test-first-check, auto-format, wiki-drift-check
 ├── settings.json    # hook wiring
 └── rules/           # behavioral constraints

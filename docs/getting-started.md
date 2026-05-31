@@ -38,7 +38,7 @@ What this does:
 
 - Verifies the wiki layout in `docs/wiki/`.
 - Detects whether the repo has a stack already (language, package files) and seeds `architecture.md#Stack` and `commands.md` with the detection.
-- Initializes git if missing.
+- Initializes git if missing and establishes the two-branch model: **`main`** (released) and **`develop`** (integration). After init you're on `develop` — the base for all feature work.
 - Leaves every other section (`Vision`, `Users`, `Personas`, requirements, …) as `<TBD via /project:interview>`.
 
 After `/project:init`, the wiki has the right shape but is mostly empty. That's expected.
@@ -89,14 +89,15 @@ Re-run `/project:agent-scout` after a major `/project:interview` that adds a new
 /project:work
 ```
 
-`/project:work` picks the top item from `todos.md` (or batches consecutive todos sharing context), opens a `feat/<slug>` branch, and dispatches the single `developer` agent through one full cycle:
+`/project:work` picks the top item from `todos.md` (or batches consecutive todos sharing context), cuts a `feat/<slug>` branch **from `develop`**, and dispatches the single `developer` agent through one full cycle:
 
 1. **Plan (conditional).** If the todo is flagged `[complex]` or a batch of 2+ todos was proposed, `/project:work` dispatches the `planner` agent (on Opus) first; it writes a stepwise plan to `.claude/handoff/<slug>-plan.md` (gitignored scratch) that the developer then follows. A single simple todo skips planning.
 2. **Red.** The developer reads the matching `entities/<slug>.md#Behavior` cases, writes one failing test per case, runs the suite, and confirms the tests fail for the right reason (missing implementation — not a typo or import error). It marks each case `[ ]` → `[~]`.
 3. **Green.** The developer writes the minimal code to make the tests pass. The `test-first-check` hook reminds (it no longer blocks) if production code is edited on a `feat/*` branch with no test in the session's changes yet.
 4. **Refactor.** The developer cleans up while keeping tests green.
 5. **Wiki update.** The developer ticks the entity-page Behavior cases `[~]` → `[x]`, updates the Implementation/Tests sections, and appends to `log.md`. Larger cross-page cleanup it can't safely do inline is queued in `wiki-todos.md` for the wiki-maintainer.
-6. **Commit.** `/project:work` verifies the suite itself, then makes one bundled conventional commit (code + wiki + log) and pushes it (see [git-conventions.md](wiki/git-conventions.md)).
+6. **Commit.** `/project:work` verifies the suite itself, then makes one bundled conventional commit (code + wiki + log) and pushes the feature branch.
+7. **Merge to `develop` (you approve).** `/project:work` proposes the merge — cycle summary, Behavior cases ticked, suite green — and waits. On your go-ahead it merges the branch into `develop` with a `--no-ff` merge commit, re-runs the suite on `develop`, pushes, and deletes the branch. Say "hold" and it leaves the branch pushed and unmerged. See [git-conventions.md](wiki/git-conventions.md).
 
 If a step fails twice on the same approach, the **two-strike rule** fires — the developer stops, you tag a checkpoint and reset, and re-spec.
 
@@ -141,7 +142,7 @@ A new user story landed. You want it specified, tested, and shipped.
 3. **Run `/project:work`.** It picks the top todo, opens `feat/auth-login`, and dispatches the `developer`. The developer reads `entities/auth-login.md#Behavior`, writes failing tests, and confirms Red.
 4. **The same agent implements.** It writes the minimum code to turn Red into Green, then refactors. There's no handoff to another agent — one developer owns the whole cycle.
 5. **Wiki updates land in the same commit.** The developer ticks the Behavior cases on the entity page, checks the todo off in `docs/wiki/todos.md` (shipped work lives in git history — there's no `completed.md`), and appends a one-line log entry. The `wiki-drift-check` hook will warn at session end if code changed but no wiki page did — that's your safety net.
-6. **Commit.** `/project:work` makes the bundled conventional commit, e.g. `feat(auth-login): reject unknown user`, and pushes it. See [git-conventions.md](wiki/git-conventions.md).
+6. **Commit and merge.** `/project:work` makes the bundled conventional commit, e.g. `feat(auth-login): reject unknown user`, pushes the `feat/auth-login` branch, then proposes merging it into `develop`. On your go-ahead it merges (`--no-ff`), re-runs the suite on `develop`, pushes, and deletes the branch. See [git-conventions.md](wiki/git-conventions.md).
 
 The developer plans **first** if the todo is tagged `[complex]` or a batch of 2+ todos is being run together. For a single simple todo, planning is skipped — straight to Red.
 
@@ -186,6 +187,17 @@ When you have several related todos, running them in one cycle is often cheaper 
 4. Single commit at the end. Conventional commit scope names the batch, e.g. `feat(auth-login): add rate limiting and lockout (B3, B4, B5)`.
 5. The entity page Behavior section is ticked for every case in the batch in the same commit.
 
+## Scenario: Releasing develop to main
+
+Finished features pile up on `develop`. When you want to cut a release, `main` advances — and only here.
+
+1. **Run `/project:release`.** It syncs `main` and `develop`, confirms there's a delta (`git log main..develop`), and re-runs the full suite on the release candidate.
+2. **Approve the version.** The agent proposes a `vMAJOR.MINOR.PATCH` bump from the conventional commits since the last tag (`feat` → minor, `fix`/`chore` → patch, breaking footer → major) and shows you the changelog. You confirm or override the number — this is the release gate.
+3. **It merges and tags.** On approval the agent merges `develop → main` with a `--no-ff` merge commit, creates an annotated `vX.Y.Z` tag, and pushes `main` with the tag. It returns you to `develop` and logs the release.
+4. **Hotfixes** (urgent fixes to released code) are the one exception to the develop-first rule: the agent cuts `hotfix/<slug>` from `main`, fixes it under TDD, then merges to **both** `main` (tagged patch) and back into `develop`. See [git-conventions.md](wiki/git-conventions.md) → Hotfixes.
+
+You never run the merge or the tag yourself — the agent does, behind your approval.
+
 ## Scenario: Requesting a periodic review
 
 The reviewer is fresh eyes on the codebase. It catches drift the developer can't see because the developer wrote both the spec and the code.
@@ -193,8 +205,8 @@ The reviewer is fresh eyes on the codebase. It catches drift the developer can't
 **When to fire `/project:review`:**
 
 - Roughly every 5 completed todos.
-- Before a release.
-- After a non-trivial set of merges to `main`.
+- Before a release (`/project:release`).
+- After a non-trivial set of merges into `develop`.
 - When you suspect the wiki and the code disagree.
 
 **What happens:**
@@ -221,11 +233,11 @@ git worktree remove ../<repo>-review-YYYY-MM-DD
 
 `/project:review` does this for you at the end. If something goes wrong and the worktree is left over, run that command yourself.
 
-## Scenario: Filing a hotfix on production code
+## Scenario: Fixing a bug
 
-A bug in shipped behavior needs a fix. Same TDD discipline as a feature — just a `fix/` prefix.
+A bug in existing behavior needs a fix. Same TDD discipline as a feature — just a `fix/` prefix, branched from `develop` like any feature. (For an *urgent fix to already-released* code that can't wait for the next release, the agent uses a `hotfix/<slug>` cut from `main` and dual-merges it back to `main` and `develop` — see the release scenario above and [git-conventions.md](wiki/git-conventions.md) → Hotfixes.)
 
-1. **Branch.** `/project:work` opens `fix/<slug>` (not `feat/<slug>`) because the matching entity already exists; you're correcting a regression. The `test-first-check` hook reminds the same way on `fix/*`.
+1. **Branch.** `/project:work` opens `fix/<slug>` (not `feat/<slug>`) from `develop` because the matching entity already exists; you're correcting a regression. The `test-first-check` hook reminds the same way on `fix/*`.
 2. **Regression test first.** The developer writes a test that **reproduces the bug** — assertion fails on the current code. This becomes a new Behavior case on the entity page, e.g.:
 
    ```markdown
@@ -336,6 +348,7 @@ Check state at session start, after a long break, or before deciding whether to 
 | `/project:interview`   | First time; whenever adding a new feature                                     |
 | `/project:agent-scout` | Once after init+interview; again after a major feature adds a new stack layer |
 | `/project:work`        | Main loop — most days you live in `/project:work`                             |
+| `/project:release`     | When `develop` has shippable work — merges `develop → main`, tags `vX.Y.Z`    |
 | `/project:review`      | Periodic (every ~5 todos), before a release, after several merges             |
 | `/project:wiki-lint`   | When `wiki-todos.md` piles up or after heavy ingest                           |
 | `/project:wiki-ingest` | When you have a new external doc, or to commission web research               |
@@ -363,7 +376,7 @@ The wiki is the project's source of truth — code that disagrees with it is the
 - **Skipping `/project:interview` on a new feature.** The Behavior cases on entity pages are what produce sharp tests; without them, the TDD loop starves.
 - **Editing `docs/wiki/` by hand without telling the agent.** You can, but you'll fight the agent's memory. Prefer asking it to make the change.
 - **Editing `docs/raw/` after the fact.** Never. Append new sources instead.
-- **Committing on `main`.** Always branch first (`/project:work` handles this).
+- **Committing on `main` or `develop`.** Both are protected — always branch first (`/project:work` handles this); integration is the human-approved `--no-ff` merge.
 - **Letting `wiki-todos.md` pile up.** When it's long, run `/project:wiki-lint`.
 - **Running the same failed approach a third time.** The two-strike rule exists for a reason — pivot or re-spec.
 - **Treating a plan as a spec.** Plans live in `.claude/handoff/` and are transient scratch. The wiki holds the spec. If the plan needs to change, edit the plan; if the contract needs to change, run `/project:interview`.
@@ -372,7 +385,9 @@ The wiki is the project's source of truth — code that disagrees with it is the
 
 - [`CLAUDE.md`](../CLAUDE.md) — the schema (agent's view)
 - [`HUMAN.md`](../HUMAN.md) — the human's-eye view of the workflow
-- [`docs/wiki/git-conventions.md`](wiki/git-conventions.md) — branching and commit format
+- [`docs/wiki/git-conventions.md`](wiki/git-conventions.md) — the `main` + `develop` branch model, commit format, merge/release flow
+- [`.claude/skills/branch-merge.md`](../.claude/skills/branch-merge.md) — how the agent integrates branches (feature → develop, release, hotfix)
+- [`.claude/commands/project/release.md`](../.claude/commands/project/release.md) — the `/project:release` command
 - [`docs/wiki/commands.md`](wiki/commands.md) — working shell commands
 - [`.claude/agents/planner.md`](../.claude/agents/planner.md) — the planner agent definition (Opus)
 - [`.claude/agents/developer.md`](../.claude/agents/developer.md) — the developer agent definition

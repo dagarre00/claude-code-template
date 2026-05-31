@@ -94,15 +94,18 @@ You are the interviewer. Your job is to grill the human until you reach shared u
    - ADRs: <count>
    ```
 
-4. **Commit.** Stage all wiki and transcript changes, then commit and push so nothing sits uncommitted:
+4. **Commit on a branch, then merge into `develop`.** Spec changes are tracked work, so they never land as a direct commit to the protected `develop`/`main`. If you're on `develop` (or `main`), cut a `docs/<slug>-interview` branch off `develop` first:
 
    ```bash
+   git rev-parse --abbrev-ref HEAD   # if develop/main, branch:
+   git fetch origin develop && git checkout develop && git merge --ff-only origin/develop
+   git checkout -b docs/<slug>-interview
    git add docs/wiki/ docs/raw/interviews/
    git commit -m "docs(wiki): interview — <slug>"
-   git push
+   git push -u origin docs/<slug>-interview
    ```
 
-   If this is the very first push on the branch, use `git push -u origin <branch>`.
+   (Already on a `feat/*`/`docs/*` branch — e.g. mid-feature spec refinement? Commit there and let that cycle's merge carry it.) Then **merge into `develop`** through the human-approved gate via the `branch-merge` skill (`--no-ff`, then delete the branch).
 
 5. **Recommend the next step.** Usually `/project:work` to pick up the first new todo.
 

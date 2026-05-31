@@ -79,20 +79,21 @@ git cherry-pick --abort
 
 Then tag a checkpoint and use `human-checkpoint` to surface the situation.
 
-## Long-running branch drifting from main
+## Long-running branch drifting from develop
 
-When a feature branch is many commits behind main, conflict surface grows. Prefer rebasing onto main _early and often_ (after each push to main) rather than accumulating drift:
+When a feature branch is many commits behind `develop`, conflict surface grows. Prefer rebasing onto `develop` _early and often_ (after each integration lands on develop) rather than accumulating drift:
 
 ```bash
-git fetch origin main
-git rebase origin/main    # conflict-resolve per commit if needed
+git fetch origin develop
+git rebase origin/develop    # conflict-resolve per commit if needed
 git push --force-with-lease origin <branch>   # safe force-push: fails if remote has diverged elsewhere
 ```
 
-`--force-with-lease` is the only acceptable force-push in this project. Never `--force`.
+`--force-with-lease` is the only acceptable force-push in this project, and only on **feature** branches. Never `--force`, and never force-push `develop` or `main`.
 
 ## Anti-patterns
 
 - **Committing conflict markers.** Always grep for `<<<<<<<` before committing.
 - **Accepting "theirs" blindly.** Each side may have introduced correct logic.
-- **Rebasing published shared branches.** Only rebase branches that are yours alone (feature branches not yet merged or reviewed by others). If someone else has pulled your branch, merge instead.
+- **Rebasing `develop` or `main`.** Both are protected — never rebase them. Only rebase short-lived branches that are yours alone. If someone else has pulled your branch, merge instead.
+- **Guessing a merge into a protected branch.** If resolving a `feat/* → develop` (or `develop → main`) merge is ambiguous, `git merge --abort` and use `human-checkpoint` rather than committing a guess.

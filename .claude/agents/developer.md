@@ -53,7 +53,7 @@ All links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rul
 
 - Full test suite green (re-run from `docs/wiki/commands.md`).
 - Entity page current; Behavior cases ticked; the todo checked off in `docs/wiki/todos.md`.
-- In the normal flow `/project:work` performs the final bundled commit + push (and clears the `.claude/handoff/<slug>-plan.md` scratch). If you are running **outside** `/project:work`, commit and push yourself (`git push -u origin "$(git branch --show-current)"`) — an unpushed commit is lost when the container recycles — and delete any plan scratch.
+- In the normal flow `/project:work` performs the final bundled commit + push **and the human-approved merge into `develop`** (and clears the `.claude/handoff/<slug>-plan.md` scratch). You do **not** merge — leave integration to `/project:work` (or the `branch-merge` skill). If you are running **outside** `/project:work`, commit and push yourself (`git push -u origin "$(git branch --show-current)"`) — an unpushed commit is lost when the container recycles — and delete any plan scratch; the merge still waits for human approval via `branch-merge`.
 - Pause for the human (`human-checkpoint`) if anything is uncertain.
 
 ## Two-strike rule

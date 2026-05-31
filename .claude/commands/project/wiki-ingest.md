@@ -22,6 +22,15 @@ This is **focused ingest only** — no orphan scan, no link audit, no lint pass.
 
 If dirty outside `docs/`: run `human-checkpoint`.
 
+**Branch first.** Ingest writes tracked files, so it never commits directly to the protected `develop`/`main`. If you're on `develop` (or `main`), cut a branch off `develop` before writing:
+
+```bash
+git fetch origin develop && git checkout develop && git merge --ff-only origin/develop
+git checkout -b docs/<slug>-ingest
+```
+
+(Already on a `feat/*`/`docs/*` branch? Ingest there and let that cycle's merge carry it.)
+
 ## Steps — file mode
 
 Triggered when the argument is a path to an existing file (e.g., `/project:wiki-ingest docs/spec.pdf`, `/project:wiki-ingest meeting-notes.md`).
@@ -89,7 +98,9 @@ Triggered when the argument is a path to an existing file (e.g., `/project:wiki-
    git push -u origin "$(git branch --show-current)"
    ```
 
-7. **Report** to the human: slug, summary path, key claims, any contradictions flagged.
+7. **Merge into `develop` (human-approved).** Integrate the ingest branch via the `branch-merge` skill (`--no-ff`, then delete it), or hold if the human prefers. Skip if you ingested on an existing `feat/*` branch whose own cycle will merge.
+
+8. **Report** to the human: slug, summary path, key claims, any contradictions flagged.
 
 ## Steps — research mode
 
@@ -118,7 +129,9 @@ Triggered when the argument is a research query (starts with "search for", "rese
    git push -u origin "$(git branch --show-current)"
    ```
 
-8. **Report** to the human: topic, slug, top findings, key recommendations, any contradictions flagged.
+8. **Merge into `develop` (human-approved).** Integrate the ingest branch via the `branch-merge` skill (`--no-ff`, then delete it), or hold if the human prefers. Skip if you ingested on an existing `feat/*` branch whose own cycle will merge.
+
+9. **Report** to the human: topic, slug, top findings, key recommendations, any contradictions flagged.
 
 ## Ambiguous case
 

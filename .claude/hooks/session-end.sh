@@ -106,30 +106,56 @@ _warn_push() {
   fi
 }
 
-if [ "$branch" != "main" ] && [ "$branch" != "master" ] && [ "$branch" != "(unknown)" ] && [ -n "$branch" ]; then
-  upstream=$(git rev-parse --abbrev-ref "@{u}" 2>/dev/null || echo "")
-  if [ -z "$upstream" ]; then
-    _warn_push "[session-end] '$branch' has no remote upstream — push when ready: git push -u origin $branch" "no-upstream"
-  else
-    ahead=$(git rev-list --count "${upstream}..HEAD" 2>/dev/null || echo 0)
-    behind=$(git rev-list --count "HEAD..${upstream}" 2>/dev/null || echo 0)
-    if [ "${ahead:-0}" -gt 0 ] && [ "${behind:-0}" -gt 0 ]; then
-      _warn_push "[session-end] WARNING: '$branch' has DIVERGED from $upstream ($ahead ahead, $behind behind). Rebase before pushing: git rebase $upstream" "diverged-${ahead}-${behind}"
-    elif [ "${ahead:-0}" -gt 0 ]; then
-      _warn_push "[session-end] '$branch' is ${ahead} commit(s) ahead of $upstream — push when ready: git push" "ahead-${ahead}"
-    elif [ "${behind:-0}" -gt 0 ]; then
-      _warn_push "[session-end] '$branch' is ${behind} commit(s) behind $upstream — pull before resuming: git pull --ff-only" "behind-${behind}"
+# Branch classes:
+#   - main/master      : released base — only ever behind locally (others release/hotfix). Behind-only check.
+#   - develop          : integration base — receives merges, so it can be ahead (push) or behind (pull).
+#                        It is NEVER rebased (protected), so a divergence is abnormal → escalate, don't suggest rebase.
+#   - feat/* etc.      : short-lived — full ahead/behind/diverged handling; rebasing onto develop is the fix for divergence.
+case "$branch" in
+  main|master|"(unknown)"|"")
+    # Released base: check if behind remote (common after a release/hotfix elsewhere).
+    upstream=$(git rev-parse --abbrev-ref "@{u}" 2>/dev/null || echo "")
+    if [ -n "$upstream" ]; then
+      behind=$(git rev-list --count "HEAD..${upstream}" 2>/dev/null || echo 0)
+      if [ "${behind:-0}" -gt 0 ]; then
+        _warn_push "[session-end] '$branch' is ${behind} commit(s) behind $upstream — pull before starting new work: git pull --ff-only" "${branch}-behind-${behind}"
+      fi
     fi
-  fi
-else
-  # On main: check if behind remote (common after a PR merge by someone else).
-  upstream=$(git rev-parse --abbrev-ref "@{u}" 2>/dev/null || echo "")
-  if [ -n "$upstream" ]; then
-    behind=$(git rev-list --count "HEAD..${upstream}" 2>/dev/null || echo 0)
-    if [ "${behind:-0}" -gt 0 ]; then
-      _warn_push "[session-end] 'main' is ${behind} commit(s) behind $upstream — pull before starting new work: git pull --ff-only" "main-behind-${behind}"
+    ;;
+  develop)
+    # Integration base: push merges when ahead, pull when behind. Never suggest rebase.
+    upstream=$(git rev-parse --abbrev-ref "@{u}" 2>/dev/null || echo "")
+    if [ -z "$upstream" ]; then
+      _warn_push "[session-end] 'develop' has no remote upstream — push it: git push -u origin develop" "no-upstream"
+    else
+      ahead=$(git rev-list --count "${upstream}..HEAD" 2>/dev/null || echo 0)
+      behind=$(git rev-list --count "HEAD..${upstream}" 2>/dev/null || echo 0)
+      if [ "${ahead:-0}" -gt 0 ] && [ "${behind:-0}" -gt 0 ]; then
+        _warn_push "[session-end] WARNING: 'develop' has DIVERGED from $upstream ($ahead ahead, $behind behind). Do NOT rebase develop — investigate via human-checkpoint before pushing." "diverged-${ahead}-${behind}"
+      elif [ "${ahead:-0}" -gt 0 ]; then
+        _warn_push "[session-end] 'develop' is ${ahead} commit(s) ahead of $upstream — push the integrated work: git push origin develop" "ahead-${ahead}"
+      elif [ "${behind:-0}" -gt 0 ]; then
+        _warn_push "[session-end] 'develop' is ${behind} commit(s) behind $upstream — pull before new work: git pull --ff-only" "behind-${behind}"
+      fi
     fi
-  fi
-fi
+    ;;
+  *)
+    # Short-lived branch: full handling; divergence is fixed by rebasing onto develop.
+    upstream=$(git rev-parse --abbrev-ref "@{u}" 2>/dev/null || echo "")
+    if [ -z "$upstream" ]; then
+      _warn_push "[session-end] '$branch' has no remote upstream — push when ready: git push -u origin $branch" "no-upstream"
+    else
+      ahead=$(git rev-list --count "${upstream}..HEAD" 2>/dev/null || echo 0)
+      behind=$(git rev-list --count "HEAD..${upstream}" 2>/dev/null || echo 0)
+      if [ "${ahead:-0}" -gt 0 ] && [ "${behind:-0}" -gt 0 ]; then
+        _warn_push "[session-end] WARNING: '$branch' has DIVERGED from $upstream ($ahead ahead, $behind behind). Rebase before pushing: git rebase $upstream" "diverged-${ahead}-${behind}"
+      elif [ "${ahead:-0}" -gt 0 ]; then
+        _warn_push "[session-end] '$branch' is ${ahead} commit(s) ahead of $upstream — push when ready: git push" "ahead-${ahead}"
+      elif [ "${behind:-0}" -gt 0 ]; then
+        _warn_push "[session-end] '$branch' is ${behind} commit(s) behind $upstream — pull before resuming: git pull --ff-only" "behind-${behind}"
+      fi
+    fi
+    ;;
+esac
 
 exit 0

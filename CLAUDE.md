@@ -59,7 +59,8 @@ Navigation is via the directory tree and Obsidian's own graph — there is no ha
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `/project:init`        | Detect project state, scaffold `docs/wiki/`, fill base docs (requirements, architecture, git-conventions, commands), initialize git if needed                                                                            |
 | `/project:interview`   | Grill-me-relentlessly Q&A. Used both for initial requirements and for adding features. Writes a transcript to `docs/raw/interviews/`, then updates affected wiki pages                                                   |
-| `/project:work`        | Pick the top todo (or batch consecutive todos sharing context), open a `feat/*` branch, dispatch the `planner` (Opus) for complex/batched work, then the `developer` through red→green→refactor→wiki-update, then commit |
+| `/project:work`        | Pick the top todo (or batch consecutive todos sharing context), branch off `develop`, dispatch the `planner` (Opus) for complex/batched work, then the `developer` through red→green→refactor→wiki-update, commit, and merge into `develop` (human-approved)                |
+| `/project:release`     | Merge `develop → main` as a tagged `vX.Y.Z` release (human-approved). The only path by which `main` advances                                                                                                              |
 | `/project:review`      | Throughout review of code vs wiki. Runs the `reviewer` in a fresh worktree with isolated context                                                                                                                         |
 | `/project:wiki-lint`   | Health-check the wiki: contradictions, orphans, broken links, drift; compacts `gotchas.md`; archives `log.md` when it overflows                                                                                          |
 | `/project:wiki-ingest` | Ingest a file or research topic directly into the wiki. `/project:wiki-ingest spec.pdf` for documents, `/project:wiki-ingest search for ...` for research                                                                |
@@ -92,8 +93,11 @@ There is intentionally no domain-specialized agent (no "backend agent", no "data
 - `tdd-loop` — red/green/refactor procedure for this project
 - `plan-writing` — how the `planner` decomposes a `[complex]` or batched todo into a stepwise plan before testing
 - `wiki-update` — how agents touch wiki pages while working
-- `feature-branching` — how to start/finish a feature branch
-- `pr-create` — how to draft a PR body when the human asks to open one
+- `feature-branching` — how to start/finish a short-lived branch (cut from `develop`)
+- `branch-merge` — how to integrate a finished branch: `feat/* → develop` (`--no-ff`, human-approved), the `develop → main` release, and the hotfix dual-merge
+- `conflict-resolution` — how to resolve merge/rebase conflicts safely
+- `git-recovery` — stash, cherry-pick, bisect, reflog recovery, and other advanced git operations
+- `pr-create` — how to draft a PR body (base `develop`) when the human asks to open one instead of the local merge
 - `human-checkpoint` — when and how to pause for the human
 - `spec-writing` — how to write entity Behavior cases that produce good tests (and the canonical `[ ]`/`[~]`/`[x]` notation)
 - `decision-recording` — how to file an ADR
@@ -136,14 +140,15 @@ Wired in `.claude/settings.json`:
 3. **Never modify a test to make it pass.** Update the spec → regenerate the test → implement.
 4. **Always update wiki in the same change.** Touching `src/` requires touching the entity page.
 5. **Never modify `docs/raw/` content.** Append only.
-6. **Agents own `docs/wiki/`.** Humans browse; agents write.
-7. **Always branch before coding.** Never commit to main.
-8. **Conventional commits.** `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`.
+6. **Agents own `docs/wiki/` and git state.** Humans browse and approve merges/releases; agents write code, write the wiki, and run every git operation. The human does not hand-manage branches.
+7. **Always branch before coding.** Cut short-lived branches from `develop`; never commit directly to `main` or `develop` (both protected).
+8. **Conventional commits.** `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:` (merge and release commits keep git's default merge message).
 9. **Two-strike rule.** Two failed implementations on the same mechanism → tag a checkpoint (`git tag`), `git reset --hard` to a known-good commit, and retry from spec.
 10. **Reviewer is periodic.** `/project:review` every ~5 todos — not in `/project:work`. Reviewer runs in a fresh worktree.
 11. **Human-in-the-loop.** When you need a decision the wiki doesn't answer, stop and ask. Don't guess.
 12. **Skills are how-to.** When the project gains a new domain or pattern, add a skill via `update-skill` — don't bury knowledge in agent prompts.
 13. **Finalize with commit + push.** Every command or agent that mutates tracked files ends by committing and pushing to the working branch (`git push -u origin <branch>`) — an unpushed commit is lost when the container recycles. Only read-only commands are exempt.
+14. **LLM-owned, human-approved integration.** The agent runs the whole git lifecycle. It merges `feat/* → develop` (`--no-ff`) at the end of each cycle via the `branch-merge` skill, and `develop → main` via `/project:release` — each only after explicit human go-ahead in the conversation. Never force-push `main`/`develop`; never push a red protected branch.
 
 ## Where things live
 

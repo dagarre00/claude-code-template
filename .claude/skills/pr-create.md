@@ -6,15 +6,15 @@ type: skill
 
 # PR Creation
 
-Use this when wrapping up a `feat/*` or `fix/*` branch and the human has explicitly asked you to open a PR. PR creation is **human-driven** — do not run `gh pr create` (or the equivalent MCP tool) without an explicit go-ahead in the current conversation.
+Use this when wrapping up a short-lived branch and the human has asked for a PR **instead of** the default local `branch-merge` into `develop` (e.g. a shared remote that requires review). A PR targets **`develop`**; a release PR targets **`main`**. PR creation is **human-driven** — do not run `gh pr create` (or the equivalent MCP tool) without an explicit go-ahead in the current conversation.
 
 ## Read first
 
-- `docs/wiki/git-conventions.md` — the project's PR template and labeling conventions.
-- `docs/wiki/todos.md` — the open queue; the todo(s) this branch closed were removed from it (see the branch's commits / `git log main..HEAD` for what shipped).
+- `docs/wiki/git-conventions.md` — the branch model, PR targets (`develop` for features, `main` for releases), and labeling conventions.
+- `docs/wiki/todos.md` — the open queue; the todo(s) this branch closed were removed from it (see the branch's commits / `git log develop..HEAD` for what shipped).
 - `docs/wiki/log.md` — the `## [stamp] work — <slug>` entries for this cycle.
 - The entity page `docs/wiki/entities/<slug>.md` — the Behavior cases that were ticked.
-- `git log main..HEAD --oneline` — the commits on this branch.
+- `git log develop..HEAD --oneline` — the commits on this branch.
 
 ## Drafting the PR body
 
@@ -47,12 +47,12 @@ Compose the body from the artefacts above. Default skeleton (override with whate
 
 ## Steps
 
-1. **Confirm preconditions.** Branch is `feat/*` or `fix/*`. Working tree clean. All commits pushed (`git push -u origin <branch>`).
+1. **Confirm preconditions.** On a short-lived branch (`feat/*`, `fix/*`, `chore/*`, `docs/*`, …) with a clean tree and all commits pushed (`git push -u origin <branch>`). The PR base is `develop` (`main` only for a release PR).
 2. **Gather the inputs.** Read the files above.
 3. **Draft the body** following the skeleton.
 4. **Show the drafted body to the human.** Do not open the PR yet.
 5. **Wait for human confirmation.** If they edit the draft, integrate the edits.
-6. **Open the PR** only after explicit go-ahead. Use the GitHub MCP `mcp__github__create_pull_request` (or `gh pr create` if available) with the confirmed body and the title in conventional-commit form (matching the lead commit on the branch).
+6. **Open the PR** only after explicit go-ahead. Use the GitHub MCP `mcp__github__create_pull_request` (or `gh pr create` if available) with **base `develop`** (or `main` for a release PR), the confirmed body, and the title in conventional-commit form (matching the lead commit on the branch).
 7. **Log it.** Append to `docs/wiki/log.md`:
 
    ```markdown

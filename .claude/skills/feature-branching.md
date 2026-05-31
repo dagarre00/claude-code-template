@@ -1,12 +1,12 @@
 ---
 name: feature-branching
-description: Branching procedure for this project — when to branch, batching rules, finishing-up checklist. Commit-message format itself lives in CLAUDE.md golden rule 8 and docs/wiki/git-conventions.md. Trigger on "start branch", "feat/", "fix/", "batch todos", "finish feature".
+description: Branching procedure for this project — when to branch (off develop), batching rules, finishing-up checklist. Commit-message format lives in CLAUDE.md and docs/wiki/git-conventions.md; the merge itself lives in the branch-merge skill. Trigger on "start branch", "feat/", "fix/", "batch todos", "finish feature".
 type: skill
 ---
 
 # Branching
 
-Always branch before code. Never commit to `main`. Commit-message format and PR template live in [`docs/wiki/git-conventions.md`](../../docs/wiki/git-conventions.md) and are summarized by `CLAUDE.md` golden rule 8 — this skill won't repeat them.
+Always branch before code. **Never commit directly to `main` or `develop`** — both are protected. Short-lived branches are cut from `develop` and merged back into `develop`; `main` advances only by release. The full branch model, commit-message format, and PR template live in [`docs/wiki/git-conventions.md`](../../docs/wiki/git-conventions.md) — this skill won't repeat them. The merge back into `develop` is its own procedure: the [branch-merge skill](./branch-merge.md).
 
 ## Starting work
 
@@ -18,14 +18,14 @@ Always branch before code. Never commit to `main`. Commit-message format and PR 
 
    If dirty: stop and run `human-checkpoint`. See **Mid-task pause** below if you need to temporarily set aside in-progress work.
 
-2. Fetch and sync main. Using `fetch` + `merge --ff-only` (rather than bare `pull`) makes the two steps explicit and fails safely if main has diverged in a non-fast-forward way:
+2. Fetch and sync **develop** (the base branch). Using `fetch` + `merge --ff-only` (rather than bare `pull`) makes the two steps explicit and fails safely if develop has diverged in a non-fast-forward way:
 
    ```bash
-   git fetch origin main
-   git checkout main && git merge --ff-only origin/main
+   git fetch origin develop
+   git checkout develop && git merge --ff-only origin/develop
    ```
 
-   If `merge --ff-only` fails, main has diverged — use `human-checkpoint`. Do not force or rebase main.
+   If `merge --ff-only` fails, develop has diverged — use `human-checkpoint`. Do not force or rebase develop. (`hotfix/*` is the one exception — it cuts from `main`; see `git-conventions.md` → Hotfixes.)
 
 3. Branch as `<type>/<short-slug>` where `<type>` ∈ `feat`, `fix`, `chore`, `docs`, `refactor`, `test`. Examples: `feat/auth-login`, `fix/race-on-double-submit`, `chore/upgrade-pytest`, `feat/profile` (batched).
 
@@ -63,13 +63,13 @@ When interrupted mid-cycle (not at a green commit boundary), pick the lightest-w
 
    See the `git-recovery` skill for stash details. Never leave a stash across sessions.
 
-## Sync with main (long-running branches)
+## Sync with develop (long-running branches)
 
-When your branch has been open for several days and main has moved on, rebase early — the longer you wait, the larger the conflict surface:
+When your branch has been open for several days and develop has moved on, rebase early — the longer you wait, the larger the conflict surface:
 
 ```bash
-git fetch origin main
-git rebase origin/main
+git fetch origin develop
+git rebase origin/develop
 git push --force-with-lease origin <branch>   # safe: fails if remote has new commits you don't have
 ```
 
@@ -86,27 +86,20 @@ If conflicts arise, follow the `conflict-resolution` skill. `--force-with-lease`
 1. Final test run — full suite, not just the touched tests.
 2. Entity page reflects current state; Behavior cases ticked.
 3. TODO checked off / removed from `docs/wiki/todos.md` (shipped work lives in git history).
-4. Sync with main one last time before pushing (catches late changes to main):
+4. Sync with develop one last time before merging (catches late changes to develop):
 
    ```bash
-   git fetch origin main
-   git rebase origin/main   # follow conflict-resolution skill if needed
+   git fetch origin develop
+   git rebase origin/develop   # follow conflict-resolution skill if needed
    ```
 
 5. Push: `git push -u origin <branch>` (or `git push --force-with-lease` after a rebase).
-6. PR (only on explicit human go-ahead): follow `pr-create` skill.
-7. After merge — clean up both local and remote branch:
-
-   ```bash
-   git checkout main
-   git pull --ff-only
-   git branch -d feat/<slug>              # safe delete (errors if unmerged)
-   git push origin --delete feat/<slug>   # delete remote tracking branch
-   ```
+6. **Merge into `develop`** (the merge gate — human-approved, `--no-ff`, then branch cleanup): hand off to the [branch-merge skill](./branch-merge.md). In the normal flow `/project:work` drives this step; if you are finishing outside `/project:work`, follow `branch-merge` yourself. A PR to `develop` is the alternative only when the human asks for one (`pr-create` skill) — both stay human-approved.
 
 ## Anti-patterns
 
-- **Committing to `main`.** Branch first.
+- **Committing to `main` or `develop`.** Branch first; both are protected.
+- **Merging your own branch without the human's go-ahead.** The merge into `develop` is gated — propose, wait, then merge.
 - **`--no-verify`.** If a hook blocks, fix the underlying issue.
 - **`git commit -a`.** Stage explicitly.
-- **Squashing locally to hide Red→Green cycles.** History is the trace of the TDD loop.
+- **Squashing or fast-forwarding into `develop`.** Feature merges are `--no-ff`; history is the trace of the TDD loop.

@@ -11,15 +11,15 @@ You dispatch the `reviewer` agent in a worktree-isolated context. The reviewer a
 ## When to use
 
 - Roughly every 5 completed todos.
-- After a non-trivial set of merges to `main`.
-- Before any release.
+- After a non-trivial set of merges into `develop`.
+- Before any release (`/project:release`).
 - When you suspect drift between the wiki and the code.
 
 Do **not** use `/project:review` inside `/project:work`. They're different phases.
 
 ## Preconditions
 
-- On `main` (or any non-feat branch).
+- On `develop` (or `main`) — not a short-lived branch.
 - Working tree clean.
 - `docs/wiki/` exists and has at least one entity page.
 

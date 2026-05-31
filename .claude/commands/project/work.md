@@ -31,15 +31,15 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
    - If the next 1–3 todos share an entity and context, propose a batch. Confirm with the human via `human-checkpoint` if batching is non-obvious.
    - Identify the matching `docs/wiki/entities/<slug>.md`. If it doesn't exist, **stop** and recommend `/project:interview` to define the entity first.
 
-2. **Fetch and branch.** Follow `feature-branching` skill. Fetch first so the divergence check is against actual remote state, not a stale local mirror:
+2. **Fetch and branch from `develop`.** Follow `feature-branching` skill. `develop` is the base branch — never branch from or commit to `main`. Fetch first so the divergence check is against actual remote state, not a stale local mirror:
 
    ```bash
-   git fetch origin main
-   git checkout main && git merge --ff-only origin/main
+   git fetch origin develop
+   git checkout develop && git merge --ff-only origin/develop
    git checkout -b feat/<slug>
    ```
 
-   If `merge --ff-only` fails (main has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force main.
+   If `merge --ff-only` fails (develop has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force develop.
 
 3. **Verify Behavior cases exist.** Read the entity page's `## Behavior` section. If any case is `[ ]` and unimplemented, that's the test target. If the section is empty or vague, **stop** — `/project:interview` or the `spec-writing` skill must define them first.
 
@@ -87,9 +87,14 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 
    The `*-plan.md` scratch is gitignored, so it never enters the commit; delete it once the cycle is done. No tracked uncommitted files should remain after this step.
 
-10. **Report to human.** What was done, what's next. Suggest:
+10. **Merge into `develop` (human-approved).** The cycle isn't done until the work is integrated — the agent owns the merge; the human approves it. Propose the merge via `human-checkpoint` (cycle summary, Behavior cases ticked, suite green, develop fast-forward clean), and **wait for explicit go-ahead**. On approval, follow the `branch-merge` skill: sync `develop`, `git merge --no-ff feat/<slug>`, re-run the full suite on `develop`, push `develop`, then delete the feature branch (local + remote).
+
+    If the human says hold, stop here — the branch stays pushed and unmerged for later. Never merge into `develop` without approval, and never push a red `develop`. (A PR to `develop` via `pr-create` is the alternative only when the human explicitly asks for review instead of a direct merge.)
+
+11. **Report to human.** What was done (and whether it merged into `develop` or is held), what's next. Suggest:
     - More todos in the same entity → keep going.
     - Cross-cutting work piling up → `/project:review` may be due.
+    - `develop` has shippable work → `/project:release` to cut a tagged release to `main`.
     - Risky next change → tag a checkpoint first (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`).
 
 ## Failure modes
@@ -106,5 +111,6 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 
 - **No coding directly.** You dispatch the `planner` (when needed) and the `developer`. You can read files and run commands to verify; you don't write tests or production code in this command.
 - **No periodic review.** That's `/project:review`, dispatched separately in a worktree.
-- **No PR creation.** That's a separate step the human chooses when ready.
+- **No releasing.** Merging `develop → main` is `/project:release`, not this command. `/project:work` integrates into `develop` only.
+- **No unapproved merge.** The `develop` merge in step 10 requires explicit human go-ahead; never merge or push `develop` without it.
 - **No silent batching.** If you batch todos, name the batch in the commit message scope.

@@ -22,9 +22,11 @@ If dirty: run `human-checkpoint`.
 
 ## Steps
 
-1. **Branch for the maintenance pass:**
+1. **Branch for the maintenance pass** — cut from `develop`, the base branch:
 
    ```bash
+   git fetch origin develop
+   git checkout develop && git merge --ff-only origin/develop
    git checkout -b chore/wiki-lint-YYYY-MM-DD
    ```
 
@@ -67,7 +69,9 @@ If dirty: run `human-checkpoint`.
    git push -u origin chore/wiki-lint-YYYY-MM-DD
    ```
 
-7. **Report to the human.** What was processed, what remains. If the maintainer flagged contradictions or stale claims it couldn't auto-fix, list them explicitly — the human or `/project:interview` resolves which version is correct.
+7. **Merge into `develop` (human-approved).** Like a feature cycle, the maintenance branch is integrated by the agent after the human approves — follow the `branch-merge` skill (`--no-ff` into `develop`, then delete the branch). If the human holds, leave it pushed and unmerged.
+
+8. **Report to the human.** What was processed, what remains. If the maintainer flagged contradictions or stale claims it couldn't auto-fix, list them explicitly — the human or `/project:interview` resolves which version is correct.
 
 ## Failure modes
 
