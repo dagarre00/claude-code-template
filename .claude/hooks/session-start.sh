@@ -49,7 +49,7 @@ if [ -n "$branch" ]; then
   fi
 fi
 
-# 2. Python venv detection — only if this looks like a Python project.
+# 3. Python venv detection — only if this looks like a Python project.
 #    Delete this whole block if your project doesn't use Python.
 if [ -f "pyproject.toml" ] || [ -f "requirements.txt" ] || [ -f "setup.py" ]; then
   if [ -d ".venv" ]; then
@@ -72,7 +72,7 @@ else
   fi
 fi
 
-# 3. Uncommitted-changes warning. To stdout (into context) — this is also how
+# 4. Uncommitted-changes warning. To stdout (into context) — this is also how
 #    the previous session's leftover dirty tree reaches the model, since the
 #    Stop-phase session-end hook can only nag on stderr.
 if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
@@ -89,5 +89,11 @@ git rev-parse HEAD 2>/dev/null > .claude/tmp/session-start-sha || true
 # session-start SHA, but a resumed session re-runs this hook at the SAME HEAD,
 # so clearing them explicitly is what guarantees a fresh warning each session.
 rm -f .claude/tmp/test-first-warned .claude/tmp/drift-warned-* 2>/dev/null || true
+
+# Purge stale session-scoped markers (dirty-warned-*, push-warned-*) older than
+# 30 days. Each new session generates a fresh SHA-keyed marker; old ones are
+# never matched again but accumulate indefinitely without this cleanup.
+find .claude/tmp -maxdepth 1 -name 'dirty-warned-*' -o -name 'push-warned-*' 2>/dev/null \
+  | xargs -r find 2>/dev/null -mtime +30 -delete 2>/dev/null || true
 
 exit 0
