@@ -3,6 +3,12 @@
 # block) when production code is edited but no test file appears in this
 # session's changes yet. A soft nudge toward test-first — it always exits 0.
 #
+# CHANNEL: emits hookSpecificOutput.additionalContext on stdout so the nudge
+# reaches the MODEL mid-flow (when it can still act), not a transcript the
+# agent never reads. It NEVER blocks — no permissionDecision is set, so the
+# normal permission flow is untouched. Fires once per session (dedup marker
+# cleared by session-start), so it informs without spamming the context.
+#
 # This used to hard-block on a `red_confirmed` handoff JSON. That was invasive
 # (it blocked refactors, spikes, debugging, config fixes) and honor-system
 # anyway, so it was downgraded to a warning. Test-first is a discipline the
@@ -75,10 +81,20 @@ while IFS= read -r f; do
 done <<< "$changed"
 
 if [ -z "$has_test" ]; then
-  cat >&2 <<EOF
-[test-first-check] reminder: editing '$file' on '$branch' with no test in this session's changes yet.
-Test-first is the project default — write the failing test before the code if you haven't (see the tdd-loop skill).
-This is only a reminder; the edit is allowed.
-EOF
+  # Fire once per session — session-start clears this marker each session.
+  warned=".claude/tmp/test-first-warned"
+  if [ ! -f "$warned" ]; then
+    mkdir -p .claude/tmp
+    : > "$warned"
+    msg="TDD reminder (test-first-check): editing production code ('$file') on '$branch' with no test in this session's changes yet. Write the failing test first if you haven't — see the tdd-loop skill. Non-blocking; shown once per session."
+    # Emit JSON via python if available (robust escaping), else hand-rolled.
+    if command -v python3 >/dev/null 2>&1; then
+      python3 -c 'import json,sys; print(json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":sys.argv[1]}}))' "$msg"
+    elif command -v python >/dev/null 2>&1; then
+      python -c 'import json,sys; print(json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":sys.argv[1]}}))' "$msg"
+    else
+      printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"%s"}}\n' "$msg"
+    fi
+  fi
 fi
 exit 0

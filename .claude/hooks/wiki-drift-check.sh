@@ -1,7 +1,20 @@
 #!/usr/bin/env bash
-# Stop hook: warn (non-blocking) if code was touched this session but no
-# docs/wiki/ page was touched in the same change set.
+# PostToolUse hook (Write|Edit): warn (non-blocking) if source code was touched
+# this session but no docs/wiki/ page was touched in the same change set.
+#
+# WHY PostToolUse (moved off Stop): a Stop hook can only reach the model by
+# returning decision:block, which forces another turn and fights this project's
+# "warn, never block" rule. PostToolUse can inject context non-blocking via
+# hookSpecificOutput.additionalContext on stdout — reaching the agent right
+# after the edit, while it can still act in the same change.
+#
+# CHANNEL: additionalContext on stdout (model-facing). Dedup: once per
+# drift-state — the marker clears the moment a wiki page is touched, so a later
+# code-without-wiki edit re-warns. session-start also clears it each session.
 set -uo pipefail
+
+# Drain stdin: PostToolUse passes tool JSON we don't need here.
+cat >/dev/null 2>&1 || true
 
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 cd "$root"
@@ -52,21 +65,29 @@ while IFS= read -r f; do
   esac
 done <<< "$files"
 
-if $code_touched && ! $wiki_touched; then
-  # Warn once per session. Once the wiki is touched the condition above becomes
-  # false, so no marker write happens and a fresh drift will warn again.
-  session_id=$(cat .claude/tmp/session-start-sha 2>/dev/null | head -c 8 || echo "nosession")
-  drift_marker=".claude/tmp/drift-warned-${session_id}"
-  if [ ! -f "$drift_marker" ]; then
-    cat >&2 <<EOF
-[wiki-drift-check] WARNING: code modified this session, but no docs/wiki/ page touched.
+session_id=$(cat .claude/tmp/session-start-sha 2>/dev/null | head -c 8 || echo "nosession")
+drift_marker=".claude/tmp/drift-warned-${session_id}"
 
-The wiki must travel with the code. Before ending the session:
-  - Update the relevant docs/wiki/entities/<slug>.md (Behavior + Implementation).
-  - If a pattern emerged, file via the gotcha-recording or decision-recording skill.
-  - See the wiki-update skill for link format and frontmatter.
-EOF
+# Wiki was touched this session -> drift resolved. Clear the marker so a later
+# code-without-wiki edit re-warns, and stay quiet now.
+if $wiki_touched; then
+  rm -f "$drift_marker" 2>/dev/null || true
+  exit 0
+fi
+
+if $code_touched; then
+  # Warn once per drift-state.
+  if [ ! -f "$drift_marker" ]; then
+    mkdir -p .claude/tmp
     touch "$drift_marker"
+    msg="Wiki-drift reminder (wiki-drift-check): source code changed this session but no docs/wiki/ page has been touched. Per CLAUDE.md rule 4, update the relevant docs/wiki/entities/<slug>.md in the SAME change before committing (file gotchas/ADRs via the recording skills; see the wiki-update skill). Non-blocking; shown once until you touch the wiki."
+    if command -v python3 >/dev/null 2>&1; then
+      python3 -c 'import json,sys; print(json.dumps({"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":sys.argv[1]}}))' "$msg"
+    elif command -v python >/dev/null 2>&1; then
+      python -c 'import json,sys; print(json.dumps({"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":sys.argv[1]}}))' "$msg"
+    else
+      printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}\n' "$msg"
+    fi
   fi
 fi
 

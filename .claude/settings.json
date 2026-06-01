@@ -2,28 +2,11 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "",
+        "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/session-start.sh",
-            "timeout": 10000
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/wiki-drift-check.sh",
-            "timeout": 10000
-          },
-          {
-            "type": "command",
-            "command": "bash .claude/hooks/session-end.sh",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-start.sh",
             "timeout": 10000
           }
         ]
@@ -35,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/test-first-check.sh",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/test-first-check.sh",
             "timeout": 10000
           }
         ]
@@ -47,8 +30,25 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/auto-format.sh",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/auto-format.sh",
             "timeout": 30000
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/wiki-drift-check.sh",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/session-end.sh",
+            "timeout": 10000
           }
         ]
       }
