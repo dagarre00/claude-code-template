@@ -46,7 +46,7 @@ Use a skill or command instead when:
            "hooks": [
              {
                "type": "command",
-               "command": ".claude/hooks/<name>.sh"
+               "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/<name>.sh"
              }
            ]
          }
@@ -54,6 +54,7 @@ Use a skill or command instead when:
      }
    }
    ```
+   Always use `$CLAUDE_PROJECT_DIR/.claude/hooks/<name>.sh` — not a relative path. Hooks may fire from a working directory that is not the project root (CI, worktrees, sub-agents), so relative paths silently fail to find the script.
    Use `"matcher"` to narrow to relevant tools; an empty matcher fires on everything.
 
 4. **Test the hook.**

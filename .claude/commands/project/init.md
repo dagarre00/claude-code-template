@@ -68,7 +68,7 @@ Stop conditions:
 - All sections needed for wiki scaffolding have concrete answers (from pre-scan + interview combined).
 - You have enough to write Behavior cases for the first entity.
 
-### 4. Scaffold wiki
+### 5. Scaffold wiki
 
 Create directories that don't exist:
 
@@ -97,7 +97,7 @@ File ADRs under `docs/wiki/decisions/` for non-trivial choices made during the i
 
 Every page gets correct frontmatter per the frontmatter convention.
 
-### 5. Rewrite CLAUDE.md
+### 6. Rewrite CLAUDE.md
 
 Rewrite `CLAUDE.md` to be lean and project-specific. Drop the template framing — this is now a real project. The file must have exactly these sections:
 
@@ -197,7 +197,7 @@ You are an AI development agent working on <project name>. Before any code chang
 
 Trim the template's explanatory prose. The file should be under ~120 lines. Every section earns its place — if a section doesn't help an agent operate, cut it.
 
-### 6. Log it
+### 7. Log it
 
 Append to `docs/wiki/log.md`:
 
@@ -212,7 +212,7 @@ Append to `docs/wiki/log.md`:
 - Next: run `/project:work` to pick up the first todo.
 ```
 
-### 7. Commit
+### 8. Commit
 
 Stage and commit everything created or modified, then push:
 
@@ -224,7 +224,7 @@ git push -u origin main
 
 If the repo has no remote yet, skip the push and note it in the report.
 
-### 8. Report
+### 9. Report
 
 Print:
 

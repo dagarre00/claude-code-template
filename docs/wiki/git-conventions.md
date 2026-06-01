@@ -69,7 +69,7 @@ Conventional commits, present tense:
 
 ## Merge conflicts
 
-Follow the [[skills/conflict-resolution]] skill when `git merge` or `git rebase` produces `CONFLICT (content)` markers. Key steps: resolve markers, grep for leftovers, run full tests, then `git add + git commit` (merge) or `git add + git rebase --continue` (rebase).
+Follow the [conflict-resolution skill](../../.claude/skills/conflict-resolution.md) when `git merge` or `git rebase` produces `CONFLICT (content)` markers. Key steps: resolve markers, grep for leftovers, run full tests, then `git add + git commit` (merge) or `git add + git rebase --continue` (rebase).
 
 ## Branch cleanup (after merge)
 
@@ -82,7 +82,7 @@ git push origin --delete feat/<slug>
 
 ## Advanced git operations
 
-Stash, cherry-pick, bisect, blame, reflog recovery, and other edge-case operations are covered by the [[skills/git-recovery]] skill.
+Stash, cherry-pick, bisect, blame, reflog recovery, and other edge-case operations are covered by the [git-recovery skill](../../.claude/skills/git-recovery.md).
 
 ## Tags
 

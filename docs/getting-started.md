@@ -39,17 +39,17 @@ What this does:
 - Verifies the wiki layout in `docs/wiki/`.
 - Detects whether the repo has a stack already (language, package files) and seeds `architecture.md#Stack` and `commands.md` with the detection.
 - Initializes git if missing.
-- Leaves every other section (`Vision`, `Users`, `Personas`, requirements, …) as `<TBD via /project:interview>`.
+- **Interviews you inline** — if `requirements.md` and `architecture.md` are empty or missing, `/project:init` runs its own interview pass to fill them. It only asks about topics that are missing or partial; if both files are already fully populated it skips the interview entirely and goes straight to scaffolding.
 
-After `/project:init`, the wiki has the right shape but is mostly empty. That's expected.
+After `/project:init`, the wiki is fully scaffolded with real content. You do **not** need to run `/project:interview` separately after a fresh init — only use it later when adding a new feature or deepening the spec.
 
-## 2. `/project:interview` — define the project
+## 2. `/project:interview` — add a feature or deepen the spec
 
 ```
 /project:interview
 ```
 
-The agent grills you until the spec is sharp enough to write tests against. Expect to spend 30–60 minutes the first time. The agent asks for:
+Run this when requirements change or you're adding a major feature — not as a mandatory step after init. The agent grills you until the spec is sharp enough to write tests against. It asks for:
 
 - **Vision** (one paragraph: problem and audience)
 - **Users** (the roles the code knows about)
@@ -332,8 +332,8 @@ Check state at session start, after a long break, or before deciding whether to 
 
 | Command                | When                                                                          |
 | ---------------------- | ----------------------------------------------------------------------------- |
-| `/project:init`        | Once at project start                                                         |
-| `/project:interview`   | First time; whenever adding a new feature                                     |
+| `/project:init`        | Once at project start (includes its own interview pass for an empty wiki)     |
+| `/project:interview`   | When adding a new feature or deepening the spec after init                    |
 | `/project:agent-scout` | Once after init+interview; again after a major feature adds a new stack layer |
 | `/project:work`        | Main loop — most days you live in `/project:work`                             |
 | `/project:review`      | Periodic (every ~5 todos), before a release, after several merges             |

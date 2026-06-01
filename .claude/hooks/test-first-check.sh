@@ -87,13 +87,13 @@ if [ -z "$has_test" ]; then
     mkdir -p .claude/tmp
     : > "$warned"
     msg="TDD reminder (test-first-check): editing production code ('$file') on '$branch' with no test in this session's changes yet. Write the failing test first if you haven't — see the tdd-loop skill. Non-blocking; shown once per session."
-    # Emit JSON via python if available (robust escaping), else hand-rolled.
+    # Emit JSON via python if available (robust escaping), else stderr fallback.
     if command -v python3 >/dev/null 2>&1; then
       python3 -c 'import json,sys; print(json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":sys.argv[1]}}))' "$msg"
     elif command -v python >/dev/null 2>&1; then
       python -c 'import json,sys; print(json.dumps({"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":sys.argv[1]}}))' "$msg"
     else
-      printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","additionalContext":"%s"}}\n' "$msg"
+      echo "$msg" >&2
     fi
   fi
 fi

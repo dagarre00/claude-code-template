@@ -18,7 +18,7 @@ You read the initialized wiki and produce a prioritized list of agents and skill
 
 Check these before proceeding. If any fails, stop and run `human-checkpoint`:
 
-1. `docs/wiki/requirements.md` — `## Stack` and `## Vision` must have real content (not `<TBD>`).
+1. `docs/wiki/requirements.md` — `## Vision` must have real content (not `<TBD>`).
 2. `docs/wiki/architecture.md` — `## Stack` must name a real language and framework.
 3. `.claude/agents/` and `.claude/skills/` must exist.
 
