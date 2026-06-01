@@ -86,7 +86,7 @@ if $code_touched; then
     elif command -v python >/dev/null 2>&1; then
       python -c 'import json,sys; print(json.dumps({"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":sys.argv[1]}}))' "$msg"
     else
-      printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}\n' "$msg"
+      echo "$msg" >&2
     fi
   fi
 fi
