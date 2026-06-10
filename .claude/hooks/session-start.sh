@@ -49,7 +49,14 @@ if [ -n "$branch" ]; then
   fi
 fi
 
-# 3. Python venv detection — only if this looks like a Python project.
+# 3. Warn if on a feature/fix branch — the standard starting point is `develop`.
+#    This surfaces stale branch state early so the agent doesn't waste turns
+#    trying to figure out why `git checkout develop` is needed.
+if echo "$branch" | grep -qE '^(feat|fix|chore|docs|refactor|test|perf)/'; then
+  echo "[session-start] NOTE: on feature branch '$branch'. If starting fresh work, switch first: git checkout develop"
+fi
+
+# 4. Python venv detection — only if this looks like a Python project.
 #    Delete this whole block if your project doesn't use Python.
 if [ -f "pyproject.toml" ] || [ -f "requirements.txt" ] || [ -f "setup.py" ]; then
   if [ -d ".venv" ]; then
@@ -72,7 +79,7 @@ else
   fi
 fi
 
-# 4. Uncommitted-changes warning. To stdout (into context) — this is also how
+# 5. Uncommitted-changes warning. To stdout (into context) — this is also how
 #    the previous session's leftover dirty tree reaches the model, since the
 #    Stop-phase session-end hook can only nag on stderr.
 if [ -n "$(git status --porcelain 2>/dev/null)" ]; then

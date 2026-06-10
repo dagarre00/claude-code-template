@@ -1,22 +1,24 @@
 ---
 name: work
-description: Pick the top todo (or batch consecutive todos sharing context), open a feat/* branch, dispatch the planner (Opus) for complex/batched work, then the developer through red→green→refactor→wiki-update, then commit and push. The core development loop.
+description: Pick the top todo (or batch consecutive todos sharing context), open a feat/* branch from develop, dispatch the planner (Opus) for complex/batched work, then the developer through red→green→refactor→wiki-update, then commit, push, and (if the entity is fully done) open a PR to develop and return to develop. The core development loop.
 type: command
 ---
 
 # /project:work
 
-You orchestrate one TDD cycle (or a small batch). You do **not** write tests or production code directly — you dispatch the `planner` (only for complex or batched work) and then the `developer`, verify their output, then commit and push.
+You orchestrate one TDD cycle (or a small batch). You do **not** write tests or production code directly — you dispatch the `planner` (only for complex or batched work) and then the `developer`, verify their output, then commit, push, and — once the entity's Behavior cases are all complete — open a PR back to `develop`.
 
 ## Preconditions
 
-**Starting fresh (on `main`):**
+**Starting fresh (on `develop`):**
 
 - Clean working tree.
 - `docs/wiki/todos.md` has at least one item.
 - `docs/wiki/commands.md` has a working test command.
 
 If any precondition fails: stop and run `human-checkpoint`.
+
+**If you are on a `feat/*` branch when `/project:work` is invoked**, check whether there is in-progress work (uncommitted changes or commits not yet pushed). If yes, continue from where you left off (step 5). If the branch is clean and fully pushed, it is a leftover from a prior cycle — run `git checkout develop` to reset to the correct starting point, then proceed from step 1.
 
 ## Resuming an interrupted cycle
 
@@ -34,12 +36,12 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 2. **Fetch and branch.** Follow `feature-branching` skill. Fetch first so the divergence check is against actual remote state, not a stale local mirror:
 
    ```bash
-   git fetch origin main
-   git checkout main && git merge --ff-only origin/main
+   git fetch origin develop
+   git checkout develop && git merge --ff-only origin/develop
    git checkout -b feat/<slug>
    ```
 
-   If `merge --ff-only` fails (main has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force main.
+   If `merge --ff-only` fails (develop has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force develop.
 
 3. **Verify Behavior cases exist.** Read the entity page's `## Behavior` section. If any case is `[ ]` and unimplemented, that's the test target. If the section is empty or vague, **stop** — `/project:interview` or the `spec-writing` skill must define them first.
 
@@ -87,8 +89,22 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 
    The `*-plan.md` scratch is gitignored, so it never enters the commit; delete it once the cycle is done. No tracked uncommitted files should remain after this step.
 
-10. **Report to human.** What was done, what's next. Suggest:
-    - More todos in the same entity → keep going.
+10. **Check feature completion.** Re-read the entity page's `## Behavior` section.
+    - **All cases are `[x]`** → the feature is finished. Proceed to step 11.
+    - **Some cases remain `[ ]` or `[~]`** → skip to step 12 (no PR yet).
+
+11. **Create PR and return to develop.** Feature is done — open the PR immediately:
+    - Follow the `pr-create` skill to draft the body.
+    - Open the PR using `mcp__github__create_pull_request` targeting `develop`.
+    - Tell the human: "Feature `<slug>` is complete. I've opened PR #N targeting `develop` — please review and merge when ready."
+    - Switch back to develop:
+
+      ```bash
+      git checkout develop
+      ```
+
+12. **Report to human.** What was done, what's next. Suggest:
+    - More todos in the same entity → keep going (run `/project:work` again from `develop` or the existing branch if still open).
     - Cross-cutting work piling up → `/project:review` may be due.
     - Risky next change → tag a checkpoint first (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`).
 
@@ -97,7 +113,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 - **Planner can't produce a coherent plan.** The spec is too ambiguous. Stop and run `/project:interview` to refine the Behavior cases.
 - **Developer can't confirm Red.** Stop. The Behavior cases or the test environment is wrong. Use `human-checkpoint`.
 - **Developer fails twice on the same mechanism.** Two-strike rule (behavioral rule 5). Tag the state (`git tag checkpoint-<stamp>`), `git reset --hard` to a known-good commit, and re-spec via `/project:interview`. For complex/batched work, re-dispatch the `planner` to overwrite the plan with a fundamentally different approach before the next `developer` attempt.
-- **Test suite has pre-existing failures.** Stop. Don't add work on top of a broken main. Use `human-checkpoint`.
+- **Test suite has pre-existing failures.** Stop. Don't add work on top of a broken develop. Use `human-checkpoint`.
 - **Merge conflicts during branch sync.** Follow the `conflict-resolution` skill. If the conflicts are too broad or ambiguous, use `human-checkpoint` rather than guessing.
 - **Lost work after a container recycle.** Commits pushed to remote survive; only unpushed local state is gone. Check `git reflog` on the remote via `git ls-remote` — if the branch was pushed, `git fetch origin feat/<slug> && git checkout feat/<slug>` recovers it. If unpushed, re-run from the last open todo.
 - **Hooks block.** Read the block message and resolve the underlying issue. Never `--no-verify`.
@@ -106,5 +122,5 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 
 - **No coding directly.** You dispatch the `planner` (when needed) and the `developer`. You can read files and run commands to verify; you don't write tests or production code in this command.
 - **No periodic review.** That's `/project:review`, dispatched separately in a worktree.
-- **No PR creation.** That's a separate step the human chooses when ready.
+- **No merging.** PR creation is automated (step 11); merging is always the human's call.
 - **No silent batching.** If you batch todos, name the batch in the commit message scope.

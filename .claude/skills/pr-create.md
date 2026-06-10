@@ -6,7 +6,7 @@ type: skill
 
 # PR Creation
 
-Use this when wrapping up a `feat/*` or `fix/*` branch and the human has explicitly asked you to open a PR. PR creation is **human-driven** — do not run `gh pr create` (or the equivalent MCP tool) without an explicit go-ahead in the current conversation.
+Use this when wrapping up a `feat/*` or `fix/*` branch once the feature is complete. This skill is **automatically invoked by `/project:work`** at the end of a cycle where all Behavior cases are `[x]`. Do not wait for an explicit PR request from the human.
 
 ## Read first
 
@@ -14,7 +14,7 @@ Use this when wrapping up a `feat/*` or `fix/*` branch and the human has explici
 - `docs/wiki/todos.md` — the open queue; the todo(s) this branch closed were removed from it (see the branch's commits / `git log main..HEAD` for what shipped).
 - `docs/wiki/log.md` — the `## [stamp] work — <slug>` entries for this cycle.
 - The entity page `docs/wiki/entities/<slug>.md` — the Behavior cases that were ticked.
-- `git log main..HEAD --oneline` — the commits on this branch.
+- `git log develop..HEAD --oneline` — the commits on this branch.
 
 ## Drafting the PR body
 
@@ -50,10 +50,9 @@ Compose the body from the artefacts above. Default skeleton (override with whate
 1. **Confirm preconditions.** Branch is `feat/*` or `fix/*`. Working tree clean. All commits pushed (`git push -u origin <branch>`).
 2. **Gather the inputs.** Read the files above.
 3. **Draft the body** following the skeleton.
-4. **Show the drafted body to the human.** Do not open the PR yet.
-5. **Wait for human confirmation.** If they edit the draft, integrate the edits.
-6. **Open the PR** only after explicit go-ahead. Use the GitHub MCP `mcp__github__create_pull_request` (or `gh pr create` if available) with the confirmed body and the title in conventional-commit form (matching the lead commit on the branch).
-7. **Log it.** Append to `docs/wiki/log.md`:
+4. **Show the drafted PR body to the human** (a brief preview in the conversation), then open the PR immediately — no confirmation needed. Use `mcp__github__create_pull_request` targeting `develop` with the title in conventional-commit form (matching the lead commit on the branch).
+5. **Tell the human:** "Feature `<slug>` is complete. PR #N is open targeting `develop` — please review and merge when ready."
+6. **Log it.** Append to `docs/wiki/log.md`:
 
    ```markdown
    ## [YYYY-MM-DD HH:MM] pr — <slug>
@@ -62,11 +61,16 @@ Compose the body from the artefacts above. Default skeleton (override with whate
    - PR: <url>
    ```
 
+7. **Return to develop:**
+
+   ```bash
+   git checkout develop
+   ```
+
 ## What you do NOT do
 
-- **No auto-open.** PR creation needs explicit human go-ahead in this conversation. A prior session's approval does not carry over.
+- **No merging.** Merging is always the human's call.
 - **No force-push.** If you need to rebase or squash, ask first.
-- **No merging.** Merging is the human's call (and may need passing CI, reviewer approval, etc.).
 - **No editing the PR template** to fit the changes — fit the changes to the template, or update `docs/wiki/git-conventions.md` first (via a separate cycle) if the template is genuinely wrong.
 
 ## Anti-patterns
