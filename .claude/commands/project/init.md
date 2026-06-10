@@ -106,7 +106,7 @@ Rewrite `CLAUDE.md` to be lean and project-specific. Drop the template framing â
 
 <One-sentence vision from interview.>
 
-**Stack:** <language>, <framework> | **Test:** `<test command>` | **Branch:** `main`
+**Stack:** <language>, <framework> | **Test:** `<test command>` | **Branch:** `develop`
 
 ## Identity
 
@@ -223,6 +223,18 @@ git push -u origin main
 ```
 
 If the repo has no remote yet, skip the push and note it in the report.
+
+### 8a. Create the `develop` branch
+
+`/project:work` always starts and ends on `develop`. If it doesn't exist yet, create it from `main` and push:
+
+```bash
+git checkout -b develop
+git push -u origin develop
+git checkout develop
+```
+
+If `develop` already exists (locally or on the remote), check it out instead of recreating it.
 
 ### 9. Report
 

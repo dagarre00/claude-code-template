@@ -79,13 +79,13 @@ git cherry-pick --abort
 
 Then tag a checkpoint and use `human-checkpoint` to surface the situation.
 
-## Long-running branch drifting from main
+## Long-running branch drifting from develop
 
-When a feature branch is many commits behind main, conflict surface grows. Prefer rebasing onto main _early and often_ (after each push to main) rather than accumulating drift:
+When a feature branch is many commits behind develop, conflict surface grows. Prefer rebasing onto develop _early and often_ (after each push to develop) rather than accumulating drift:
 
 ```bash
-git fetch origin main
-git rebase origin/main    # conflict-resolve per commit if needed
+git fetch origin develop
+git rebase origin/develop    # conflict-resolve per commit if needed
 git push --force-with-lease origin <branch>   # safe force-push: fails if remote has diverged elsewhere
 ```
 

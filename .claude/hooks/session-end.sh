@@ -106,7 +106,7 @@ _warn_push() {
   fi
 }
 
-if [ "$branch" != "main" ] && [ "$branch" != "master" ] && [ "$branch" != "(unknown)" ] && [ -n "$branch" ]; then
+if [ "$branch" != "main" ] && [ "$branch" != "develop" ] && [ "$branch" != "master" ] && [ "$branch" != "(unknown)" ] && [ -n "$branch" ]; then
   upstream=$(git rev-parse --abbrev-ref "@{u}" 2>/dev/null || echo "")
   if [ -z "$upstream" ]; then
     _warn_push "[session-end] '$branch' has no remote upstream — push when ready: git push -u origin $branch" "no-upstream"
@@ -122,12 +122,12 @@ if [ "$branch" != "main" ] && [ "$branch" != "master" ] && [ "$branch" != "(unkn
     fi
   fi
 else
-  # On main: check if behind remote (common after a PR merge by someone else).
+  # On main/develop: check if behind remote (common after a PR merge by someone else).
   upstream=$(git rev-parse --abbrev-ref "@{u}" 2>/dev/null || echo "")
   if [ -n "$upstream" ]; then
     behind=$(git rev-list --count "HEAD..${upstream}" 2>/dev/null || echo 0)
     if [ "${behind:-0}" -gt 0 ]; then
-      _warn_push "[session-end] 'main' is ${behind} commit(s) behind $upstream — pull before starting new work: git pull --ff-only" "main-behind-${behind}"
+      _warn_push "[session-end] '$branch' is ${behind} commit(s) behind $upstream — pull before starting new work: git pull --ff-only" "${branch}-behind-${behind}"
     fi
   fi
 fi

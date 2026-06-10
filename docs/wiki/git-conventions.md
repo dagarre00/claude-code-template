@@ -2,7 +2,7 @@
 name: git-conventions
 description: Branching and commit conventions for this project. Mirrors the feature-branching skill.
 type: wiki-spec
-updated: 2026-05-11
+updated: 2026-06-10
 status: draft
 ---
 
@@ -12,7 +12,7 @@ status: draft
 
 ## Default branch
 
-`main` — protected. No direct commits.
+`develop` — protected, integration branch. No direct commits. `/project:work` always starts and ends on `develop`. `main` is the release branch, updated separately when `develop` is promoted.
 
 ## Branch naming
 
@@ -56,16 +56,18 @@ Conventional commits, present tense:
 
 ## PRs
 
-- Open from `<type>/<slug>` to `main`.
+- Open from `<type>/<slug>` to `develop`.
+- Opened automatically by `/project:work` (via the `pr-create` skill) once all Behavior cases for the cycle are `[x]`.
 - Title mirrors the lead commit.
 - Description references the entity page and the Behavior cases covered.
 - Squash on merge unless preserving the TDD trace adds value.
+- Merging is always the human's call.
 
 ## Force-push policy
 
-- `--force-with-lease` is the only acceptable force-push (used after a rebase onto main). It fails safely if the remote branch has been updated since your last fetch.
+- `--force-with-lease` is the only acceptable force-push (used after a rebase onto develop). It fails safely if the remote branch has been updated since your last fetch.
 - Bare `--force` is never used.
-- Never force-push `main`.
+- Never force-push `develop` or `main`.
 
 ## Merge conflicts
 
@@ -74,7 +76,7 @@ Follow the [conflict-resolution skill](../../.claude/skills/conflict-resolution.
 ## Branch cleanup (after merge)
 
 ```bash
-git checkout main
+git checkout develop
 git pull --ff-only
 git branch -d feat/<slug>              # -d is safe: errors if unmerged
 git push origin --delete feat/<slug>
