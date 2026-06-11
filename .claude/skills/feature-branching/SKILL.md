@@ -46,7 +46,7 @@ When interrupted mid-cycle (not at a green commit boundary), pick the lightest-w
 1. **Preferred — checkpoint tag.** Commit the in-progress state with a `wip:` prefix, tag it, then reset when resuming:
 
    ```bash
-   git add -p                               # stage only the coherent parts
+   git add <coherent-paths>                 # stage explicitly by path — never `git add -p` (interactive mode hangs with no human at the prompt)
    git commit -m "wip: <what's in flight>"
    git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)
    ```

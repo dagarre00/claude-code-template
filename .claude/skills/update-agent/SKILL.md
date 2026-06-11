@@ -28,6 +28,8 @@ If it's just "the developer needs to know more about databases," that's a **skil
    name: <kebab-case-name>
    description: <one line: what triggers it, what it does — used by Claude Code to decide when to dispatch>
    type: agent
+   model: sonnet # or opus (reasoning-heavy) / haiku (cheap mechanical work)
+   tools: <allowlist> # OR disallowedTools: <denylist> — grant only what the role needs; omit both for all tools
    ---
    ```
 

@@ -11,7 +11,7 @@ Use this when wrapping up a `feat/*` or `fix/*` branch once the feature is compl
 ## Read first
 
 - `docs/wiki/git-conventions.md` — the project's PR template and labeling conventions.
-- `docs/wiki/todos.md` — the open queue; the todo(s) this branch closed were removed from it (see the branch's commits / `git log main..HEAD` for what shipped).
+- `docs/wiki/todos.md` — the open queue; the todo(s) this branch closed were removed from it (see the branch's commits / `git log develop..HEAD` for what shipped).
 - `docs/wiki/log.md` — the `## [stamp] work — <slug>` entries for this cycle.
 - The entity page `docs/wiki/entities/<slug>.md` — the Behavior cases that were ticked.
 - `git log develop..HEAD --oneline` — the commits on this branch.

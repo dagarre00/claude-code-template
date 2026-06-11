@@ -87,8 +87,8 @@ Create or update these pages with **real content from the pre-scan and interview
 - `docs/wiki/git-conventions.md` — default branch, branch prefixes, commit format.
 - `docs/wiki/commands.md` — test command, build command, lint command (whatever was detected/confirmed).
 - `docs/wiki/todos.md` — seeded with first work items from the interview.
-- `docs/wiki/gotchas.md` — empty headings: `## Critical`, `## Runtime`, `## Testing`, `## Tooling`.
-- `docs/wiki/wiki-todos.md` — empty.
+- `docs/wiki/gotchas.md` — create with empty headings (`## Critical`, `## Runtime`, `## Testing`, `## Tooling`) **only if missing. Never clear existing entries** — the template ships with tooling gotchas (hook degradation, skill discovery) that apply to every project built on it.
+- `docs/wiki/wiki-todos.md` — create empty only if missing; keep any pending lines.
 - `docs/wiki/log.md` — init entry (see step 6).
 
 Create entity pages under `docs/wiki/entities/` for each feature/module identified in the interview, with Behavior cases (see `spec-writing` skill).

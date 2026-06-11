@@ -35,7 +35,7 @@ If the human will type `/foo`, it's a command. If the agent should *just know ho
    - **Wiki updates**: what gets touched.
    - **Human checkpoints**: where the command must pause for human confirmation.
 
-4. **Place the file** at `.claude/commands/<name>.md` (flat — sub-folders only when there are 10+ commands).
+4. **Place the file** at `.claude/commands/project/<name>.md`. The sub-folder is the **namespace**: `commands/project/work.md` is invoked as `/project:work`, while a flat `commands/<name>.md` would be invoked as `/<name>`. This project keeps all its commands under the `project:` namespace — don't place new ones flat unless you deliberately want an un-namespaced command.
 
 5. **Update `CLAUDE.md`** — add a row to the "Slash commands" table.
 

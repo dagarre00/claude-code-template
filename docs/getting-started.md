@@ -194,7 +194,7 @@ The reviewer is fresh eyes on the codebase. It catches drift the developer can't
 
 - Roughly every 5 completed todos.
 - Before a release.
-- After a non-trivial set of merges to `main`.
+- After a non-trivial set of merges to `develop`.
 - When you suspect the wiki and the code disagree.
 
 **What happens:**
