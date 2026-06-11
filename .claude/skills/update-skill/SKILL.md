@@ -38,9 +38,7 @@ If you'd describe it as "always do these steps when…", it's a skill. If it's "
    - **Wiki update**: which pages the agent must touch when done.
    - **Anti-patterns**: what _not_ to do — the project's specific footguns.
 
-4. **Place the file.**
-   - Meta skills → `.claude/skills/meta/<name>.md`.
-   - Everything else → `.claude/skills/<name>.md` (flat). Don't pre-organize folders until there are 8+ skills.
+4. **Place the file.** Every skill is a directory with a `SKILL.md` entrypoint: `.claude/skills/<name>/SKILL.md`. Claude Code only discovers this layout — a flat `.claude/skills/<name>.md` or a grouping subfolder (`.claude/skills/meta/<name>/SKILL.md`) is **silently ignored**, so the skill never auto-loads and nothing tells you why. Supporting files (templates, scripts) live next to `SKILL.md` inside the skill's directory.
 
 5. **Test the trigger.** Read the `description`. Could a session task reasonably contain those exact words? If not, rewrite.
 
@@ -58,7 +56,7 @@ If you'd describe it as "always do these steps when…", it's a skill. If it's "
 ## Procedure — retiring a skill
 
 1. Grep `.claude/` and `docs/wiki/` for references.
-2. Delete the file.
+2. Delete the skill directory (`.claude/skills/<name>/`).
 3. Append to `docs/wiki/log.md`.
 4. Commit `chore: retire <name> skill`.
 

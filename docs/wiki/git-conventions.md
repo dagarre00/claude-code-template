@@ -8,7 +8,7 @@ status: draft
 
 # Git Conventions
 
-> Project conventions. Updated when the team adopts a new flow; mirror changes into the [feature-branching skill](../../.claude/skills/feature-branching.md).
+> Project conventions. Updated when the team adopts a new flow; mirror changes into the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md).
 
 ## Default branch
 
@@ -71,7 +71,7 @@ Conventional commits, present tense:
 
 ## Merge conflicts
 
-Follow the [conflict-resolution skill](../../.claude/skills/conflict-resolution.md) when `git merge` or `git rebase` produces `CONFLICT (content)` markers. Key steps: resolve markers, grep for leftovers, run full tests, then `git add + git commit` (merge) or `git add + git rebase --continue` (rebase).
+Follow the [conflict-resolution skill](../../.claude/skills/conflict-resolution/SKILL.md) when `git merge` or `git rebase` produces `CONFLICT (content)` markers. Key steps: resolve markers, grep for leftovers, run full tests, then `git add + git commit` (merge) or `git add + git rebase --continue` (rebase).
 
 ## Branch cleanup (after merge)
 
@@ -84,7 +84,7 @@ git push origin --delete feat/<slug>
 
 ## Advanced git operations
 
-Stash, cherry-pick, bisect, blame, reflog recovery, and other edge-case operations are covered by the [git-recovery skill](../../.claude/skills/git-recovery.md).
+Stash, cherry-pick, bisect, blame, reflog recovery, and other edge-case operations are covered by the [git-recovery skill](../../.claude/skills/git-recovery/SKILL.md).
 
 ## Tags
 

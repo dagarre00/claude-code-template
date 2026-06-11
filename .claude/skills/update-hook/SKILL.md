@@ -46,7 +46,8 @@ Use a skill or command instead when:
            "hooks": [
              {
                "type": "command",
-               "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/<name>.sh"
+               "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/<name>.sh",
+               "timeout": 10
              }
            ]
          }
@@ -56,6 +57,7 @@ Use a skill or command instead when:
    ```
    Always use `$CLAUDE_PROJECT_DIR/.claude/hooks/<name>.sh` — not a relative path. Hooks may fire from a working directory that is not the project root (CI, worktrees, sub-agents), so relative paths silently fail to find the script.
    Use `"matcher"` to narrow to relevant tools; an empty matcher fires on everything.
+   `"timeout"` is in **seconds** (default 600). Keep hooks short — 10s for checks, 30s if the hook shells out to a formatter — so a wedged hook can't stall the session.
 
 4. **Test the hook.**
    - Run it directly with a sample stdin: `echo '{}' | bash .claude/hooks/<name>.sh; echo "exit=$?"`.

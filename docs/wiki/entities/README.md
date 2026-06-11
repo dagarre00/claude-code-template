@@ -12,7 +12,7 @@ One page per feature / module / component. Each page is the **spec** for that pi
 
 ## Page template
 
-See the `wiki-update` skill (`.claude/skills/wiki-update.md`) for the canonical entity-page structure: frontmatter, `## Purpose`, `## Behavior` (with `B<N>:` cases), `## Implementation`, `## Tests`, `## Notes`, `## Related`.
+See the `wiki-update` skill (`.claude/skills/wiki-update/SKILL.md`) for the canonical entity-page structure: frontmatter, `## Purpose`, `## Behavior` (with `B<N>:` cases), `## Implementation`, `## Tests`, `## Notes`, `## Related`.
 
 ## Creating an entity
 
