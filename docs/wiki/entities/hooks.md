@@ -2,7 +2,7 @@
 name: hooks
 description: Lifecycle hooks wired in settings.json — session-start, test-first-check, auto-format, wiki-drift-check, session-end. What each does, when it fires, the channel it speaks on, and why.
 type: wiki-entity
-updated: 2026-05-31
+updated: 2026-06-11
 status: shipped
 ---
 
@@ -39,4 +39,5 @@ The rationale for this per-actor routing — and the reversal of the original st
 - In `session-end.sh`, the dirty-tree check runs **before** the `log.md` append — otherwise the append would make the tree look dirty every time.
 - `wiki-drift-check` ignores `.sh` and other non-code extensions (it keys off `.py|.js|.ts|…`), so editing the hooks themselves does not trip a drift warning.
 - Hooks only fire when `.claude/settings.json` is loaded — a fresh clone with no settings has no hooks.
+- The `timeout` field in `settings.json` is in **seconds** (harness default 600), not milliseconds. The check hooks run with `timeout: 10`; `auto-format` gets `30`, backstopped by its internal `timeout 25` wrapper around each formatter. (Until 2026-06-11 these were written as `10000`/`30000` — ~2.8h/8.3h — see [[decisions/2026-06-11-conform-schema-to-harness-formats]].)
 - All paths use `$CLAUDE_PROJECT_DIR` (not `$PWD`) so hooks work regardless of the agent's working directory.

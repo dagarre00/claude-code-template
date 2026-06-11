@@ -50,7 +50,7 @@ The agent ships with a small set of skills, agents, commands, and hooks. As the 
 
 Examples:
 
-- "We need a skill for adding database migrations in this project." → agent creates `.claude/skills/database-migrations.md` via the `update-skill` meta skill.
+- "We need a skill for adding database migrations in this project." → agent creates `.claude/skills/database-migrations/SKILL.md` via the `update-skill` meta skill.
 - "After every commit, run shellcheck on any changed `.sh` files." → agent adds a PostToolUse hook via `update-hook`.
 
 ## Anti-patterns to avoid

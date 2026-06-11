@@ -100,7 +100,7 @@ rm -f .claude/tmp/test-first-warned .claude/tmp/drift-warned-* 2>/dev/null || tr
 # Purge stale session-scoped markers (dirty-warned-*, push-warned-*) older than
 # 30 days. Each new session generates a fresh SHA-keyed marker; old ones are
 # never matched again but accumulate indefinitely without this cleanup.
-find .claude/tmp -maxdepth 1 -name 'dirty-warned-*' -o -name 'push-warned-*' 2>/dev/null \
-  | xargs -r find 2>/dev/null -mtime +30 -delete 2>/dev/null || true
+find .claude/tmp -maxdepth 1 \( -name 'dirty-warned-*' -o -name 'push-warned-*' \) \
+  -mtime +30 -delete 2>/dev/null || true
 
 exit 0

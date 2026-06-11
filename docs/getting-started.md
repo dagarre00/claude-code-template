@@ -282,7 +282,7 @@ When the agent realises a procedural gap, it shouldn't bury that knowledge in an
 
 1. **The agent notices.** During `/project:work`, the developer hits a recurring task (e.g. "this is the third time I've had to author a Postgres migration; there's no skill for it"). It pauses via `human-checkpoint` and proposes creating one via the `update-skill` meta skill.
 2. **You approve.** Confirm the skill name and one-line description, or push back if the gap is really a wiki update.
-3. **The agent writes it.** `update-skill` produces `.claude/skills/database-migrations.md` with frontmatter (precise `description` so future tasks auto-load it) and a procedural body — _how_ to do migrations in this project, not _what_ migrations are.
+3. **The agent writes it.** `update-skill` produces `.claude/skills/database-migrations/SKILL.md` with frontmatter (precise `description` so future tasks auto-load it) and a procedural body — _how_ to do migrations in this project, not _what_ migrations are.
 4. **It auto-loads next time.** On the next task that matches the skill's `description` trigger, the developer loads the skill without you having to ask. This is the progressive-disclosure principle in action.
 
 The same pattern applies to `update-agent`, `update-command`, and `update-hook` when the gap is bigger than a procedure.
@@ -376,4 +376,4 @@ The wiki is the project's source of truth — code that disagrees with it is the
 - [`docs/wiki/commands.md`](wiki/commands.md) — working shell commands
 - [`.claude/agents/planner.md`](../.claude/agents/planner.md) — the planner agent definition (Opus)
 - [`.claude/agents/developer.md`](../.claude/agents/developer.md) — the developer agent definition
-- [`.claude/skills/plan-writing.md`](../.claude/skills/plan-writing.md) — how plans are structured
+- [`.claude/skills/plan-writing/SKILL.md`](../.claude/skills/plan-writing/SKILL.md) — how plans are structured

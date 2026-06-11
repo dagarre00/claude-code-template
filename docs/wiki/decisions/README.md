@@ -12,7 +12,7 @@ Architectural Decision Records — small, dated notes capturing **why** a non-tr
 
 ## When to file
 
-See the `decision-recording` skill (`.claude/skills/decision-recording.md`) for triggers. Short version: file an ADR when picking between reasonable alternatives that will shape future work.
+See the `decision-recording` skill (`.claude/skills/decision-recording/SKILL.md`) for triggers. Short version: file an ADR when picking between reasonable alternatives that will shape future work.
 
 ## Naming
 
