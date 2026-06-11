@@ -12,6 +12,7 @@ A Claude Code template for building software with an LLM agent as the developer.
 ```bash
 git clone <this-template> my-project
 cd my-project
+rm -rf .git    # drop the template's history — /project:init re-inits git for your project
 claude
 ```
 

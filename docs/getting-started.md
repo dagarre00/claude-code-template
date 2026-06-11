@@ -11,8 +11,12 @@ A worked walkthrough from a fresh fork of this template to a first shipped featu
 ```bash
 git clone <this-template> my-project
 cd my-project
-git remote set-url origin <your-new-repo>
+rm -rf .git                             # drop the template's history — your project starts fresh
+git init -b main                        # optional: /project:init does this for you if you skip it
+git remote add origin <your-new-repo>   # optional now; without a remote, pushes are skipped until you add one
 ```
+
+Erasing `.git` is the intended flow: the template's commit history is about building the template, not your project. Everything that matters carries over as files — the wiki (including the pre-seeded `gotchas.md`), the `.claude/` schema, and the docs all land in your project's own initial commit.
 
 Optional but recommended:
 

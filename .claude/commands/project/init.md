@@ -19,7 +19,11 @@ You are initializing this project. This command detects state, interviews the hu
 
 Run `git status`.
 
-- If not a git repo: `git init`, create a default `.gitignore` (Node, Python, OS, IDE entries), commit `chore: initial commit` on `main`.
+- If not a git repo — the **expected state** when starting from this template (the quick start erases the cloned `.git` so the project begins its own history):
+  1. `git init -b main` — always pass `-b main`; a bare `git init` may create `master` depending on the machine's `init.defaultBranch`.
+  2. **Keep the template's shipped `.gitignore`** — it carries entries the hooks and workflow rely on (`.claude/tmp/`, the plan scratch, `settings.local.json`, `docs/.obsidian/`). Append stack-specific entries (Node, Python, OS, IDE) to it; never replace it.
+  3. Stage everything including dotfiles (`git add -A`) and commit `chore: initial commit` on `main` — the template's `.claude/`, `CLAUDE.md`, and `docs/` (with the pre-seeded gotchas) must all land in that first commit.
+  4. If the human has a remote URL, `git remote add origin <url>`; otherwise continue without one — every later push step is skipped and noted in the report until a remote exists.
 - If on `main` with uncommitted changes: stop and run `human-checkpoint`. Ask whether to commit, stash, or discard.
 - If on a feature branch: warn; don't switch.
 
