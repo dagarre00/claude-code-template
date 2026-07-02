@@ -1,7 +1,7 @@
 ---
 name: decisions-readme
 description: Guide to the decisions directory — when to file an ADR, naming, and lifecycle.
-type: wiki-decision
+type: wiki-index
 updated: 2026-05-11
 status: approved
 ---

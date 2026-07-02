@@ -38,7 +38,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
    ```bash
    git fetch origin develop
    git checkout develop && git merge --ff-only origin/develop
-   git checkout -b feat/<slug>
+   git checkout -b feat/<slug>   # or fix/<slug> when the todo is a bug/regression on shipped behavior
    ```
 
    If `merge --ff-only` fails (develop has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force develop.

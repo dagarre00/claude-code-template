@@ -1,7 +1,7 @@
 ---
 name: concepts-readme
 description: Guide to the concepts directory — when and how to file a concept page.
-type: wiki-concept
+type: wiki-index
 updated: 2026-05-11
 status: approved
 ---

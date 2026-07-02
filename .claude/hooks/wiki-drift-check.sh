@@ -54,7 +54,7 @@ wiki_touched=false
 while IFS= read -r f; do
   case "$f" in
     # log.md / wiki-todos.md are bookkeeping, not substantive spec edits — and
-    # session-end.sh auto-commits log.md on this same Stop, which would otherwise
+    # session-end.sh (Stop hook) auto-commits log.md, which would otherwise
     # mask every real "code without wiki" drift. Don't let them count.
     docs/wiki/log.md|docs/wiki/wiki-todos.md) : ;;
     docs/wiki/*) wiki_touched=true ;;

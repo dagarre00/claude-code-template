@@ -77,7 +77,7 @@ Routine git operations — snapshotting before a risky change (`git tag checkpoi
 | Periodic wiki health, ingest, cross-link                     | `wiki-maintainer` — **manual only** via `/project:wiki-lint` or explicit human request |
 | Web research — search, fetch, synthesize                     | `researcher` — dispatched by `/project:wiki-ingest` or directly by the human           |
 
-There is intentionally no domain-specialized agent (no "backend agent", no "database agent"). Domain knowledge lives in skills the `developer` loads on demand. The `planner` runs on **Opus** (decomposition is reasoning-heavy); all other agents run on Sonnet.
+There is intentionally no domain-specialized agent (no "backend agent", no "database agent"). Domain knowledge lives in skills the `developer` loads on demand. The `planner` runs on **Opus** (decomposition is reasoning-heavy); the `researcher` runs on **Haiku** (cheap fetch-and-synthesize); all other agents run on Sonnet.
 
 **Wiki edits — inline only.** The `developer` and `reviewer` make wiki edits **inline** in the same commit as the code (entity-page Behavior tick, single ADR, single gotcha line, log entry). Larger or cross-page work (orphan cleanup, contradictions, mass cross-linking) is left for the human to run `/project:wiki-lint`, which dispatches the `wiki-maintainer`. **No agent auto-invokes the wiki-maintainer.** Raw-source ingest goes through the human via `/project:wiki-ingest`.
 
@@ -93,7 +93,7 @@ There is intentionally no domain-specialized agent (no "backend agent", no "data
 - `plan-writing` — how the `planner` decomposes a `[complex]` or batched todo into a stepwise plan before testing
 - `wiki-update` — how agents touch wiki pages while working
 - `feature-branching` — how to start/finish a feature branch
-- `pr-create` — how to draft a PR body when the human asks to open one
+- `pr-create` — how to draft and open the PR to `develop` when a feature completes (auto-invoked by `/project:work`; merging stays with the human)
 - `human-checkpoint` — when and how to pause for the human
 - `spec-writing` — how to write entity Behavior cases that produce good tests (and the canonical `[ ]`/`[~]`/`[x]` notation)
 - `decision-recording` — how to file an ADR

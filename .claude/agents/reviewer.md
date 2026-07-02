@@ -41,7 +41,7 @@ For each entity page, check:
 
 ## Output
 
-Write the report to `docs/wiki/decisions/review-<YYYY-MM-DD>.md` (a kind of ADR for the audit) with frontmatter `status: draft` and the following structure:
+Write the report to `docs/wiki/decisions/review-<YYYY-MM-DD>.md` (a kind of ADR for the audit) with full frontmatter per the CLAUDE.md convention (`name: review-<YYYY-MM-DD>`, one-line `description`, `type: wiki-decision`, `updated:`, `status: draft`) and the following structure:
 
 ```markdown
 # Review YYYY-MM-DD

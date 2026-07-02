@@ -12,7 +12,7 @@ status: draft
 
 ## Default branch
 
-`develop` — protected, integration branch. No direct commits. `/project:work` always starts and ends on `develop`. `main` is the release branch, updated separately when `develop` is promoted.
+`develop` — integration branch. No direct **code** commits — feature and fix work always goes through `<type>/<slug>` branches and PRs. Docs-only commits made by the orchestrating commands (`/project:interview` transcripts + wiki updates, `/project:review` reports, `/project:wiki-ingest` summaries, the `session-end.sh` log entry) may land directly on `develop`; if the remote branch-protects `develop`, run those commands from a `docs/*` or `chore/*` branch instead. `/project:work` always starts and ends on `develop`. `main` is the release branch, updated separately when `develop` is promoted.
 
 ## Branch naming
 

@@ -101,6 +101,7 @@ Re-run `/project:agent-scout` after a major `/project:interview` that adds a new
 4. **Refactor.** The developer cleans up while keeping tests green.
 5. **Wiki update.** The developer ticks the entity-page Behavior cases `[~]` → `[x]`, updates the Implementation/Tests sections, and appends to `log.md`. Larger cross-page cleanup it can't safely do inline is queued in `wiki-todos.md` for the wiki-maintainer.
 6. **Commit.** `/project:work` verifies the suite itself, then makes one bundled conventional commit (code + wiki + log) and pushes it (see [git-conventions.md](wiki/git-conventions.md)).
+7. **PR (when the feature completes).** If the entity's Behavior cases are now all `[x]`, `/project:work` opens a PR to `develop` automatically (via the `pr-create` skill) and returns to `develop`. Merging is always your call.
 
 If a step fails twice on the same approach, the **two-strike rule** fires — the developer stops, you tag a checkpoint and reset, and re-spec.
 
@@ -110,7 +111,7 @@ If a step fails twice on the same approach, the **two-strike rule** fires — th
 /project:review
 ```
 
-Runs the `reviewer` agent in a fresh git worktree with no developer context. It audits code against the wiki and flags drift, missing tests, security/perf concerns. Critical issues block; warnings get queued in `wiki-todos.md`.
+Runs the `reviewer` agent in a fresh git worktree with no developer context. It audits code against the wiki and flags drift, missing tests, security/perf concerns. Critical issues and warnings become prioritized todos in `todos.md`; drift items get queued in `wiki-todos.md`.
 
 This is **not** part of `/project:work` — it's periodic and isolated.
 
@@ -351,7 +352,7 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 | Symptom                                            | Look at                                                                                                                   |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Test-first reminder firing on every edit           | Expected on `feat/*`/`fix/*` if no test is in the session's changes yet — write the test first; it's a nudge, not a block |
-| Wiki-drift warning at session end                  | Update the entity page in the same commit as the code                                                                     |
+| Wiki-drift warning right after an edit             | Update the entity page in the same commit as the code                                                                     |
 | Developer won't start (no Behavior cases)          | Entity page missing or `## Behavior` empty — run `/project:interview` first                                               |
 | Reviewer claims it's in the wrong dir              | `/project:review` didn't `cd` into the worktree first — re-run, ensure worktree path is passed                            |
 | `wiki-todos.md` is huge                            | Run `/project:wiki-lint`                                                                                                  |

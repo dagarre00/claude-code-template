@@ -1,7 +1,7 @@
 ---
 name: entities-readme
 description: Guide to the entities directory — entity page template, naming, and creation.
-type: wiki-entity
+type: wiki-index
 updated: 2026-05-11
 status: approved
 ---

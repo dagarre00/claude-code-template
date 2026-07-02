@@ -21,9 +21,10 @@
 #   wiki-drift   — Enforces behavioral rule 1 ("wiki travels with code") on
 #                  the server. Mirrors the local .claude/hooks/wiki-drift-check.sh
 #                  logic, but computes the diff against the PR's merge-base
-#                  with origin/main (the local hook scopes to a session SHA
-#                  marker that doesn't exist on CI). Fails the job if a PR
-#                  modifies code without touching any docs/wiki/ page.
+#                  with its base branch (normally origin/develop — the local
+#                  hook scopes to a session SHA marker that doesn't exist on
+#                  CI). Fails the job if a PR modifies code without touching
+#                  any docs/wiki/ page.
 #
 #   Note: the local `test-first-check` hook is not mirrored here. It is a
 #   non-blocking reminder that fires during interactive Write/Edit on feat/*
@@ -36,7 +37,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
 
 jobs:
@@ -88,8 +89,9 @@ jobs:
   wiki-drift:
     # Enforces behavioral rule 1: code changes must be accompanied by a wiki
     # update. Mirrors .claude/hooks/wiki-drift-check.sh but computes the diff
-    # against the PR's merge-base with origin/main, since the local session-SHA
-    # marker (.claude/tmp/session-start-sha) does not exist on CI.
+    # against the PR's merge-base with its base branch (normally develop),
+    # since the local session-SHA marker (.claude/tmp/session-start-sha) does
+    # not exist on CI.
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:

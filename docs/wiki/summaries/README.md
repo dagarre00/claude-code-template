@@ -1,7 +1,7 @@
 ---
 name: summaries-readme
 description: Guide to the summaries directory — one digest page per ingested raw source.
-type: wiki-summary
+type: wiki-index
 updated: 2026-05-11
 status: approved
 ---

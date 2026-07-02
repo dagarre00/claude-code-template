@@ -19,7 +19,7 @@ Do **not** use `/project:review` inside `/project:work`. They're different phase
 
 ## Preconditions
 
-- On `main` (or any non-feat branch).
+- On `develop` (or any non-feat branch).
 - Working tree clean.
 - `docs/wiki/` exists and has at least one entity page.
 

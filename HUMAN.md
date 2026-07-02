@@ -38,7 +38,7 @@ Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the age
 
 ## What it does NOT do without you
 
-- Open or merge PRs.
+- Merge PRs. (It **opens** a PR automatically when a feature's Behavior cases are all complete — merging is always your call.)
 - Force-push or rewrite published history.
 - Decide between two reasonable design alternatives (it presents both with a recommendation and waits).
 - Run `/project:review` mid-`/project:work` — review is periodic, not in-loop.

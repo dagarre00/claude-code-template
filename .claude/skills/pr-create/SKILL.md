@@ -1,6 +1,6 @@
 ---
 name: pr-create
-description: How to draft a pull request body for this project. Loads when finishing a feature branch and the human asks to open a PR. Trigger on "open PR", "create pull request", "PR template", "PR body", "draft PR".
+description: How to draft and open a pull request for this project. Auto-invoked by /project:work when a feature's Behavior cases are all complete; also loads when the human asks. Trigger on "open PR", "create pull request", "PR template", "PR body", "draft PR".
 type: skill
 ---
 

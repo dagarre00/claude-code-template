@@ -28,10 +28,19 @@ fi
 # Each formatter is wrapped in `timeout 25` so a wedged formatter exits cleanly
 # inside the 30s hook timeout configured in .claude/settings.json — this inner
 # timeout backstops the outer one and lets the hook still exit 0 below.
+# `timeout` is GNU coreutils and absent on stock macOS: feature-detect it and
+# fall back to running the formatter bare (the outer settings.json timeout
+# still bounds the hook) rather than silently never formatting on Mac.
+if command -v timeout >/dev/null 2>&1; then
+  _run_bounded() { timeout 25 "$@"; }
+else
+  _run_bounded() { "$@"; }
+fi
+
 format_with() {
   command -v "$1" >/dev/null 2>&1 || return 1
   shift
-  timeout 25 "$@" 2>&1 | sed 's/^/  /' >&2 || true
+  _run_bounded "$@" 2>&1 | sed 's/^/  /' >&2 || true
   return 0
 }
 
