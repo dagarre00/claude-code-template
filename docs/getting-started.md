@@ -18,6 +18,8 @@ git remote add origin <your-new-repo>   # optional now; without a remote, pushes
 
 Erasing `.git` is the intended flow: the template's commit history is about building the template, not your project. Everything that matters carries over as files — the wiki (including the pre-seeded `gotchas.md`), the `.claude/` schema, and the docs all land in your project's own initial commit.
 
+**This is the only git you run by hand.** The `git init` and `git remote add` lines are optional — skip them and just give the remote URL to `/project:init`, which initializes git, makes the initial commit, and wires the remote for you. From here on, everything git-shaped (status, branches, checkpoints, resets, cleanup) is the agent's job — ask in plain language. The one step that stays yours is merging PRs on GitHub.
+
 Optional but recommended:
 
 - Replace `LICENSE` if MIT isn't right for you.
@@ -224,7 +226,7 @@ The reviewer is fresh eyes on the codebase. It catches drift the developer can't
 git worktree remove ../<repo>-review-YYYY-MM-DD
 ```
 
-`/project:review` does this for you at the end. If something goes wrong and the worktree is left over, run that command yourself.
+`/project:review` does this for you at the end. If something goes wrong and the worktree is left over, ask the agent to remove it.
 
 ## Scenario: Filing a hotfix on production code
 
@@ -268,7 +270,7 @@ Sometimes an approach just doesn't work. The two-strike rule keeps you from grin
    - **Reset and re-spec.** Tag the failed state for postmortem, reset to the last green commit, then `/project:interview` to sharpen the Behavior cases. This is the right call when the spec was too vague to test against.
    - **Authorize a different approach.** If the spec is fine but the implementation strategy was wrong, tell the agent which alternative to take. If the todo is `[complex]`, `/project:work` re-dispatches the `planner` to overwrite the prior plan with the new shape before retrying.
 
-4. **Checkpoint and reset mechanics** (plain git — there's no bespoke command):
+4. **Checkpoint and reset mechanics** (the agent runs these once you pick an option — shown so you know what happens under the hood):
 
    ```bash
    # Before retrying — preserve the failed branch state under a tag
@@ -279,7 +281,7 @@ Sometimes an approach just doesn't work. The two-strike rule keeps you from grin
    git reset --hard <checkpoint-tag>
    ```
 
-   `git reset --hard` is destructive. Confirm what you'll discard (`git status`, `git log`) before running it.
+   `git reset --hard` is destructive, so the agent shows you what will be discarded (`git status`, `git log`) and confirms before running it. You never need to type these commands yourself.
 
 ## Scenario: Adding a new skill mid-project
 
@@ -319,7 +321,7 @@ A new spec PDF, an article, or research output needs to enter the agent's knowle
 
 ## Scenario: Checking project state mid-session
 
-There's no bespoke status command — plain git tells you where you are:
+There's no bespoke status command — just ask the agent "where are we?" and it reports branch, uncommitted changes, recent commits, and available checkpoints. (Under the hood, plain git — run it yourself only if you prefer:)
 
 ```bash
 git status                 # branch + uncommitted changes
@@ -345,7 +347,7 @@ Check state at session start, after a long break, or before deciding whether to 
 | `/project:wiki-lint`   | When `wiki-todos.md` piles up or after heavy ingest                           |
 | `/project:wiki-ingest` | When you have a new external doc, or to commission web research               |
 
-Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `git reset --hard <tag>` to recover, `git status` / `git log` to see where you are — use plain git, not bespoke commands.
+Routine git operations — checkpoint tags before a risky change, resets to recover, status checks — are plain git **the agent runs for you**; ask in plain language ("tag a checkpoint", "reset to the last checkpoint", "where are we?"). The only git that stays with you: the one-time clone, and merging PRs on GitHub.
 
 ## Where to look when something's wrong
 

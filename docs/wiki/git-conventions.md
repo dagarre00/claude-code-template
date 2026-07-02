@@ -82,6 +82,8 @@ git branch -d feat/<slug>              # -d is safe: errors if unmerged
 git push origin --delete feat/<slug>
 ```
 
+The agent runs this at the start of the next cycle when it notices a merged branch. Tip: enable GitHub's **"Automatically delete head branches"** repo setting so the remote side happens on merge and only the local prune remains.
+
 ## Advanced git operations
 
 Stash, cherry-pick, bisect, blame, reflog recovery, and other edge-case operations are covered by the [git-recovery skill](../../.claude/skills/git-recovery/SKILL.md).

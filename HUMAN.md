@@ -21,9 +21,11 @@ Three layers, each owned by a different actor:
 | Audit the project                                 | `/project:review`                         |
 | Check the wiki is healthy                         | `/project:wiki-lint`                      |
 | Ingest a doc or research a topic                  | `/project:wiki-ingest`                    |
-| See where you are                                 | `git status` / `git log --oneline`        |
-| Tag before a risky change                         | `git tag checkpoint-<stamp>`              |
-| Recover from a bad attempt                        | `git reset --hard <checkpoint-tag>`       |
+| See where you are                                 | Ask: "where are we?" (agent runs `git status` / `git log`) |
+| Tag before a risky change                         | Ask: "tag a checkpoint" (agent runs `git tag checkpoint-<stamp>`) |
+| Recover from a bad attempt                        | Ask: "reset to the last checkpoint" (agent confirms what gets discarded, then resets) |
+
+**You barely touch git.** The only git that stays yours: cloning the template once, and merging PRs on GitHub. Everything else in this table — status, checkpoints, resets, branch cleanup — is plain language to the agent; it runs the git and stops for confirmation before anything destructive.
 
 Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the agent knows. Following the `[[wiki-links]]` and the graph view shows the structure.
 
