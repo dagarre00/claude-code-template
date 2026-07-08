@@ -40,3 +40,7 @@ The rationale for this per-actor routing — and the reversal of the original st
 - `wiki-drift-check` ignores `.sh` and other non-code extensions (it keys off `.py|.js|.ts|…`), so editing the hooks themselves does not trip a drift warning.
 - Hooks only fire when `.claude/settings.json` is loaded — a fresh clone with no settings has no hooks.
 - All paths use `$CLAUDE_PROJECT_DIR` (not `$PWD`) so hooks work regardless of the agent's working directory.
+
+## Related
+
+- [[summaries/agentic-ai-business-landscape]] — 2026 market research on agentic AI notes that coding agents are converging on exactly this shape (repository memory file + planner/implementer/reviewer/wiki-doc sub-agent roles + long-running loops), describing it as the "microservices moment" for agents.
