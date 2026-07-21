@@ -131,6 +131,16 @@ Behavior plays the role of Model (the spec is the mental model); Implementation 
 
 Operational ledgers (`log.md`, `todos.md`, `wiki-todos.md`, `gotchas.md`, `commands.md`) are `type: reference` and keep their own body formats — the disclosure spine doesn't apply to them, but the frontmatter hard rules do.
 
+## Folders — projection, not ontology
+
+A page's folder is a **one-level index derived from the frontmatter**, there so a human can browse — it never carries meaning the frontmatter doesn't. Classification lives in the facets (`domains`, `abstraction`, the relations); the directory is just a shelf.
+
+- **Shelving facet.** Shelve each page mechanically from a single facet: `domains[0]` by default, or an optional `shelf` property when a page needs to sit somewhere other than its first domain. Never pick a folder by feel.
+- **Frontmatter wins.** The path is downstream of the frontmatter, always. When the two disagree, change the file's location to match the facet — not the facet to match the location.
+- **Litmus test.** If you deleted every folder and re-shelved every page from its frontmatter, the identical tree must come back. If it wouldn't, some classification is hiding in the path as a second source of truth — fix the frontmatter so it's captured there.
+- **Manual moves are reclassification.** If a human moved a page into a different folder, read it as an edit to its shelving facet: update `shelf` (or `domains`) so the frontmatter matches the new location. If the move *contradicts* the classification (e.g. filed under a domain the page isn't about), don't apply it blind — flag it and ask the human. A hand-moved file should flow back into the source of truth, never sit in tension with it.
+- **Lint invariant.** Every page's folder must equal its shelving facet (`shelf` or `domains[0]`); a divergence is a lint finding `/project:wiki-lint` resolves by moving the file to match the frontmatter.
+
 ## Link ontology (fixed) — and the gap each type makes computable
 
 | Relation | Semantic direction | Expected link (gap rule) |

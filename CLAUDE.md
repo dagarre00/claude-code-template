@@ -53,7 +53,7 @@ docs/
 
 Navigation is via the directory tree and Obsidian's own graph — there is no hand-maintained `index.md`. Domain vocabulary lives inline on the page that needs it, not a separate `glossary.md`.
 
-Folders are **surface grouping only** — never encode semantics in the path. A page can belong to several `domains` and one `abstraction` at once; that lives in frontmatter facets, not in the directory it happens to sit in.
+Folders are a **projection, not an ontology** — never encode semantics in the path. A page can belong to several `domains` and one `abstraction` at once; that lives in frontmatter facets, not in the directory it happens to sit in. A folder is a one-level index *derived* from a single shelving facet (`domains[0]` by default, or an optional `shelf` property) so a human can browse — the frontmatter always wins over the path. Litmus test: if you deleted every folder and re-shelved from frontmatter, the same tree must come back; if it doesn't, classification is living in the path as a second source of truth. Moving a file by hand is therefore a *reclassification signal*, not a filing decision — the agent syncs the shelving facet to the new location (or asks, if the move contradicts the classification). The mechanics and the sync invariant live in the `wiki-update` skill.
 
 ## Slash commands
 
