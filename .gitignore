@@ -1,6 +1,9 @@
 # Claude Code
 .claude/settings.local.json
 
+# Transient session runtime state (per-container scratch, never a deliverable)
+.claude/tmp/
+
 # OS
 .DS_Store
 Thumbs.db
