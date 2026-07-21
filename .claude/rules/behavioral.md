@@ -42,7 +42,15 @@ Hard constraints from real failures. These override default agent inclinations; 
 
 17. **Use the existing workflow before improvising.** Slash commands and skills exist for a reason. If the workflow seems missing, add a command or skill via the meta skills — don't work around the gap silently.
 
-18. **Obsidian-format the wiki.** Inside `docs/wiki/`, all internal links use `[[wiki-style]]` syntax — e.g. `[[entities/auth]]`, `[[gotchas#login-flow]]`, or `[[concepts/retry-pattern|the retry pattern]]`. Tags use `#tag`. Embeds use `![[summaries/some-source]]`. The wiki is browsed in Obsidian; broken Obsidian links are a bug. External URLs and references to non-wiki files (`.claude/...`, `src/...`) keep standard markdown link syntax.
+18. **Obsidian LLM-wiki standard — hard rules.** These are not stylistic; violating them breaks rendering, the graph, or dedup. Inside `docs/wiki/`:
+    - Internal links use `[[wiki-style]]` syntax — e.g. `[[entities/auth]]`, `[[gotchas#login-flow]]`, `[[concepts/retry-pattern|the retry pattern]]`. Tags use `#tag`. Embeds use `![[summaries/some-source]]`. Broken Obsidian links are a bug. External URLs and non-wiki files (`.claude/...`, `src/...`) keep standard markdown link syntax.
+    - **A page's identity is its filename** — no `id` or `name` field. Alternative names go in `aliases` (the anti-duplicate mechanism). Filenames never contain `* " \ / < > : | ? # ^ [ ]` — variants with symbols go in `aliases`.
+    - **One page = one concept.** Merge/dedup only at whole-concept level. Before creating a page, compare its essence against existing filenames and `aliases`; if the concept exists → update, don't duplicate.
+    - **No nested objects in frontmatter.** Every relation is a top-level list property. Special keys in plural: `tags`, `aliases`, `cssclasses`.
+    - **Wikilinks in properties go quoted and solitary** — list properties, one `"[[page]]"` per element, never multiple wikilinks in one text value.
+    - **Closed vocabularies.** `type`, `abstraction`, and `status` values stay inside the vocabulary defined in CLAUDE.md → Frontmatter convention; properties are lowercase `snake_case`, designed to be Bases/Dataview columns and filters.
+    - **Provenance.** Every non-trivial claim traces to a file in `docs/raw/`. A claim with no traceable source goes to `## Boundaries` marked *unverified*, or becomes a question to the human.
+    - **Never invent content to fill a gap.** A gap you can't fill from `docs/raw/` is an `open_questions` entry or a question to the human — not prose.
 
 19. **Finalize with commit + push.** Any command or agent that mutates tracked files ends by committing the change and pushing it to the working branch (`git push -u origin <branch>`). A local commit is not enough: remote execution containers are recycled between sessions, so an unpushed commit is lost work. The orchestrating command (`/project:work`) owns the final bundled commit + push. Read-only commands and gitignored artifacts (the `*-plan.md` scratch) are the only exceptions. On network failure, retry the push with exponential backoff; never bypass hooks with `--no-verify`.
 

@@ -17,4 +17,7 @@ status: draft
 
 ## Pending
 
-*(Empty.)*
+- [ ] 2026-07-21 claude: migrate base pages (`requirements`, `architecture`, `git-conventions`, `commands`, `gotchas`, `todos`, `wiki-todos`, `log`) to the Obsidian standard — drop `name`/`description`, add facets (`type: reference` for ledgers), keep body formats; procedure in `wiki-update` skill step 5 of the maintainer contract
+- [ ] 2026-07-21 claude: migrate `entities/hooks` to the entity template (Essence callout, facets, relations as properties, Boundaries/Provenance sections) — move facts, don't rewrite them
+- [ ] 2026-07-21 claude: migrate the two 2026 ADRs and folder READMEs to the new decision/reference frontmatter (`supersedes`/`superseded_by` empty lists, `created`/`updated`)
+- [ ] 2026-07-21 claude: after migration, run the invariants lint wiki-wide (no nested frontmatter, quoted solitary property wikilinks, closed vocabularies, zero broken links)

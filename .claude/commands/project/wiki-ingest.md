@@ -28,40 +28,43 @@ Triggered when the argument is a path to an existing file (e.g., `/project:wiki-
 
 1. **Read the file.** If it's a PDF, read all pages. If it's markdown or plain text, read it fully.
 
-2. **Derive a slug** from the filename: `specification.pdf` → `specification`, `meeting-notes.md` → `meeting-notes`. If the slug collides with an existing summary, append a discriminator (`-2`, `-3`).
+2. **Placement check (dedup).** Compare the source's essence against existing pages — filenames and `aliases` (`grep -r "aliases:" -A3 docs/wiki/`). If an existing summary or concept page already covers this material, **update it** (merge new claims into the right section, extend `sources`, bump `updated`) instead of creating a duplicate. Only then derive a slug from the filename: `specification.pdf` → `specification`. If the slug collides but the concept is genuinely different, append a discriminator (`-2`, `-3`) and record the near-miss in `aliases`.
 
-3. **Write the summary page** at `docs/wiki/summaries/<slug>.md`:
+3. **Write the summary page** at `docs/wiki/summaries/<slug>.md` (frontmatter per the Obsidian standard — flat, no `name`/`description`, wikilinks in properties quoted and solitary; see `wiki-update` skill):
 
    ```markdown
    ---
-   name: <slug>
-   description: <one-line summary of what this source is>
-   type: wiki-summary
+   aliases: [<alternative names for this source/topic>]
+   type: summary
+   domains: [<domain>]
+   status: developing
+   sources:
+     - docs/raw/<path>
+   contradicts: []
+   open_questions:
+     - Things the source raises but doesn't answer.
+   created: YYYY-MM-DD
    updated: YYYY-MM-DD
-   status: draft
-   sources: [docs/raw/<path>]
-   tags: [...]
    ---
 
    # <Title>
 
-   **Source:** <path>
-   **Date:** <date from file or today if unknown>
+   > [!abstract] Essence
+   > One or two sentences: what this source is and why it matters to this project.
 
    ## Summary
 
-   2-3 paragraphs: what this source says, who it's from, why it matters to this project.
+   2-3 paragraphs: what this source says, who it's from, why it matters.
 
    ## Key claims
 
-   - Claim 1
-   - Claim 2
-   - ...
+   - Claim 1 ← `docs/raw/<path>` (every non-trivial claim keeps provenance)
+   - Claim 2 ← ...
 
-   ## Open questions
+   ## Boundaries
 
-   - Things the source raises but doesn't answer.
-   - Things that contradict existing wiki pages (link them with [[wiki-links]]).
+   - Claims that contradict existing wiki pages (link them with [[wiki-links]] and set `contradicts` on both pages).
+   - Unverified or unsourced claims.
 
    ## Updates to the wiki
 
@@ -70,7 +73,7 @@ Triggered when the argument is a path to an existing file (e.g., `/project:wiki-
 
    If the source is already in `docs/raw/`, great — use that path. If it's outside (e.g., a PDF the human just dropped in the repo root), note its current location and suggest moving it to `docs/raw/` in the report.
 
-4. **Cross-link.** Grep `docs/wiki/` for terms from the summary. If an entity or concept page overlaps with claims from the source, add a `[[summaries/<slug>]]` reference in that page's "Related" section. If the source contradicts an existing claim, flag it with `> [!contradiction]` in the summary and note it in both pages. Linking from the pages it informs is what makes the summary reachable — there is no central index.
+4. **Cross-link.** Grep `docs/wiki/` for terms from the summary. If an entity or concept page overlaps with claims from the source, add a `[[summaries/<slug>]]` reference where relevant in that page's body, and merge material new claims into the section where they belong. If the source contradicts an existing claim, add `"[[summaries/<slug>]]"` / `"[[<page>]]"` to the two pages' `contradicts` properties and note the conflict in both `## Boundaries` sections — unresolved `contradicts` is the reconciliation flag `/project:wiki-lint` picks up. Linking from the pages it informs is what makes the summary reachable — there is no central index.
 
 5. **Append to `docs/wiki/log.md`:**
 
@@ -129,8 +132,8 @@ If the argument could be either (e.g., `search.md` — it's both a valid file pa
 - **File not found / unreadable.** Report the exact error. Don't guess the format.
 - **PDF too large.** If a PDF has >20 pages, read it in chunks and synthesize progressively. If it's >100 pages, ask the human which sections matter.
 - **Researcher returns nothing.** Report and stop. Don't fabricate a summary from thin air.
-- **Slug collision.** Append `-2`, warn the human.
-- **Contradiction with existing wiki page.** Flag in the summary with `> [!contradiction]` and in the conflicting page. Don't silently resolve.
+- **Slug collision.** First check it isn't the **same concept** under another name (aliases) — if it is, update that page. Genuinely different: append `-2`, warn the human.
+- **Contradiction with existing wiki page.** Set `contradicts` on both pages and note it in both `## Boundaries` sections. Don't silently resolve.
 
 ## What you do NOT do
 

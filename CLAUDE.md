@@ -26,8 +26,8 @@ You are an AI development agent working on this project. At the top of every ses
 
 ## Three layers
 
-1. **Raw sources** — `docs/raw/` (immutable drop zone). Interview transcripts, meeting notes, articles, PDFs. Agents read but never edit; only append.
-2. **Wiki** — `docs/wiki/` (LLM-owned). All documentation: project basics (`requirements.md`, `architecture.md`, `git-conventions.md`), entities, concepts, decisions, summaries, log, todos. The agent writes; the human browses (e.g. with Obsidian).
+1. **Raw sources** — `docs/raw/` (immutable drop zone, append-only inbox). Interview transcripts, meeting notes, articles, PDFs. The human deposits; agents read but never edit; only append.
+2. **Wiki** — `docs/wiki/` (LLM-owned). The **compiled state**: durable, atomic, reconciled pages. Project basics (`requirements.md`, `architecture.md`, `git-conventions.md`), entities, concepts, decisions, summaries, log, todos. Agents compile `raw → wiki` and reconcile continuously; the human browses (e.g. with Obsidian) and **answers clarification questions**. The question flow is bidirectional: the human queries the wiki, the agent asks the human when it hits a gap it can't fill from `docs/raw/`. Never invent knowledge to plug a hole — record it in `open_questions` or ask.
 3. **Schema** — this file plus `.claude/rules/behavioral.md`, `.claude/agents/`, `.claude/skills/`, `.claude/commands/`, `.claude/hooks/`. Tells agents how to operate.
 
 ## Wiki layout
@@ -53,6 +53,8 @@ docs/
 
 Navigation is via the directory tree and Obsidian's own graph — there is no hand-maintained `index.md`. Domain vocabulary lives inline on the page that needs it, not a separate `glossary.md`.
 
+Folders are **surface grouping only** — never encode semantics in the path. A page can belong to several `domains` and one `abstraction` at once; that lives in frontmatter facets, not in the directory it happens to sit in.
+
 ## Slash commands
 
 | Command                | Purpose                                                                                                                                                                                                                  |
@@ -61,7 +63,7 @@ Navigation is via the directory tree and Obsidian's own graph — there is no ha
 | `/project:interview`   | Grill-me-relentlessly Q&A. Used both for initial requirements and for adding features. Writes a transcript to `docs/raw/interviews/`, then updates affected wiki pages                                                   |
 | `/project:work`        | Pick the top todo (or batch consecutive todos sharing context), open a `feat/*` branch from `develop`, dispatch the `planner` (Opus) for complex/batched work, then the `developer` through red→green→refactor→wiki-update, then commit, push, and — if the entity's Behavior cases are all done — open a PR to `develop` and return to `develop` |
 | `/project:review`      | Throughout review of code vs wiki. Runs the `reviewer` in a fresh worktree with isolated context                                                                                                                         |
-| `/project:wiki-lint`   | Health-check the wiki: contradictions, orphans, broken links, drift; compacts `gotchas.md`; archives `log.md` when it overflows                                                                                          |
+| `/project:wiki-lint`   | Health-check the wiki: computable reconciliation pass (schema gaps, asymmetric relations, unresolved `contradicts`), lint invariants, orphans, broken links, drift; compacts `gotchas.md`; archives `log.md` when it overflows |
 | `/project:wiki-ingest` | Ingest a file or research topic directly into the wiki. `/project:wiki-ingest spec.pdf` for documents, `/project:wiki-ingest search for ...` for research                                                                |
 | `/project:agent-scout` | Post-init survey: reads the wiki and recommends specific agents and skills tailored to this project's stack, domain, and external services. Re-run after major feature additions.                                        |
 
@@ -103,19 +105,33 @@ Stack-specific skills (e.g. `backend-impl`, `database-impl`, `frontend-impl`) ar
 
 ## Frontmatter convention
 
-Every `.md` in `.claude/` and `docs/wiki/` carries frontmatter so the harness can route correctly:
+Two regimes, one per layer:
+
+**Schema files (`.claude/`)** carry harness-routing frontmatter, unchanged:
 
 ```yaml
 ---
 name: <kebab-case-short-name>
 description: <one line, action-oriented — when/why to use; for skills, this is the trigger>
-type: agent | command | skill | rule | wiki-entity | wiki-concept | wiki-decision | wiki-summary | wiki-index | wiki-log | wiki-spec
+type: agent | command | skill | rule
 ---
 ```
 
-Wiki pages may add: `sources:` (list of raw paths), `updated: YYYY-MM-DD`, `status: draft | approved | stale | shipped | deprecated`.
-
 Skills in particular need a precise `description` because Claude Code uses it to decide whether to load the skill. State _exactly_ what triggers the skill — the keywords, the situations, the tool calls.
+
+**Wiki pages (`docs/wiki/`)** follow the **Obsidian LLM-wiki standard** (source: `docs/raw/llm-wiki-obsidian-standard.md`; adoption ADR: `docs/wiki/decisions/2026-07-21-adopt-obsidian-llm-wiki-standard.md`). Guiding principle: **a structural field is only justified if it makes an absence (gap) or a conflict (contradiction/duplicate) computable.** The essentials, always in force:
+
+- **Identity = filename.** No `name:` or `id:` field. Alternative names go in `aliases` — that is the anti-duplicate mechanism. Filenames avoid the illegal characters `* " \ / < > : | ? # ^ [ ]`.
+- **One page = one concept.** Before creating a page, compare its essence against existing filenames and `aliases`. If the concept exists under another name → update it, never duplicate. Merge/split only whole concepts.
+- **Flat frontmatter.** No nested YAML objects (Obsidian renders them as illegible blobs). Each relation is a top-level list property. Special keys plural: `tags`, `aliases`, `cssclasses`.
+- **Wikilinks in properties: quoted and solitary.** List properties, one `"[[page]]"` per element — never several wikilinks in one value. That's what makes them count in graph and backlinks.
+- **Closed facet vocabulary** (designed as Bases/Dataview columns and filters; lowercase, `snake_case`): `type: concept | procedure | reference | tutorial | entity | decision | summary`; `abstraction: principle | pattern | technique | instance`; `domains: [...]` (free but controlled); `status: stub | developing | stable` (decisions instead use `proposed | accepted | superseded | deprecated`).
+- **Fixed link ontology**, each a list property of quoted solitary wikilinks: `implements`, `specializes`, `contrasts_with`, `alternative_to`, `depends_on`, `contradicts` (+ `supersedes`/`superseded_by` on decisions). Each type has *expected* links — gaps are computed from them, not intuited.
+- **Body disclosure spine:** `> [!abstract] Essence` callout → `## Model` → `## Detail` → `## Boundaries` → `## Provenance`. Depth (disclosure sections) and semantic level (`abstraction` facet) are independent axes on the same page.
+- **Provenance.** Every non-trivial claim traces to a `docs/raw/` file. `sources:` lists the raw paths; the `## Provenance` section maps claim ← source.
+- **Dates:** `created` and `updated` (`YYYY-MM-DD`).
+
+Full templates, facet/ontology tables, and placement procedure live in the `wiki-update` skill. Gap and contradiction detection is computable (run by `/project:wiki-lint`), not intuition — a gap is a hole in the graph relative to this schema, never "what feels missing".
 
 ## Hooks
 
