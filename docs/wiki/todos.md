@@ -1,14 +1,19 @@
 ---
-name: todos
-description: Priority-ordered work queue. /project:work pulls from the top.
-type: wiki-spec
-updated: 2026-05-11
-status: draft
+aliases: [Work queue]
+type: reference
+domains: [software]
+status: stable
+sources: []
+contradicts: []
+open_questions: []
+created: 2026-04-15
+updated: 2026-07-21
 ---
 
 # Todos
 
-> Priority-ordered. `/project:work` takes the top item (or a batch sharing context). When complete, items are removed — git history is the record of shipped work. Lines tagged `[wiki]` are wiki-cleanup deferrals for `/project:wiki-lint`, not `/project:work`.
+> [!abstract] Essence
+> Priority-ordered work queue. `/project:work` takes the top item (or a batch sharing context). When complete, items are removed — git history is the record of shipped work. Lines tagged `[wiki]` are wiki-cleanup deferrals for `/project:wiki-lint`, not `/project:work`.
 
 ## Now (P0 — next)
 

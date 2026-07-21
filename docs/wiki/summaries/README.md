@@ -1,34 +1,27 @@
 ---
-name: summaries-readme
-description: Guide to the summaries directory — one digest page per ingested raw source.
-type: wiki-summary
-updated: 2026-05-11
-status: approved
+aliases: [Summaries guide]
+type: reference
+domains: [knowledge]
+status: stable
+sources: []
+contradicts: []
+open_questions: []
+created: 2026-04-15
+updated: 2026-07-21
 ---
 
 # Summaries
 
-One summary page per ingested raw source in `docs/raw/`. The summary is what the rest of the wiki cross-references — entities, concepts, and decisions link to the summary, not to the raw file.
+> [!abstract] Essence
+> One summary page per ingested raw source in `docs/raw/`. The summary is what the rest of the wiki cross-references — entities, concepts, and decisions link to the summary, not to the raw file.
 
 ## Filing
 
-The `wiki-maintainer` agent produces these during ingest. See `.claude/agents/wiki-maintainer.md` for the procedure.
+`/project:wiki-ingest` produces these for individual sources; the `wiki-maintainer` catches stragglers during `/project:wiki-lint`. Both run the placement check first — if the source's concept already has a page, they update it instead of duplicating.
 
 ## Page shape
 
-```yaml
----
-name: <slug>
-description: <one line>
-type: wiki-summary
-updated: YYYY-MM-DD
-status: draft | approved
-sources: [docs/raw/<file>]
-tags: [...]
----
-```
-
-Body: a tight summary of the source (what it says, who it's by, when, key claims), followed by `## Key claims`, `## Open questions`, and `## Updates to the wiki` listing which entity / concept / decision pages this source touched.
+Use the summary template in `/project:wiki-ingest` (`.claude/commands/project/wiki-ingest.md`): Obsidian-standard frontmatter (`type: summary`, `sources:` pointing at the raw path, `contradicts`, `open_questions`), then `> [!abstract] Essence`, `## Summary`, `## Key claims` (each claim ← its raw source), `## Boundaries`, `## Updates to the wiki`.
 
 ## Why these aren't the source
 

@@ -1,12 +1,21 @@
 ---
-name: 2026-06-11-conform-schema-to-harness-formats
-description: Restructure skills to the directory/SKILL.md layout Claude Code actually discovers.
-type: wiki-decision
-updated: 2026-06-11
-status: approved
+aliases: [Skills directory layout decision]
+type: decision
+domains: [software]
+status: accepted
+sources: []
+supersedes: []
+superseded_by: []
+contradicts: []
+open_questions: []
+created: 2026-06-11
+updated: 2026-07-21
 ---
 
 # Conform the schema to the harness's real formats
+
+> [!abstract] Essence
+> Skills must live as `.claude/skills/<name>/SKILL.md` first-level directories — the only layout Claude Code discovers; flat files and grouping subfolders fail silently.
 
 ## Context
 

@@ -1,14 +1,19 @@
 ---
-name: wiki-todos
-description: Cleanup queue for the wiki-maintainer. Other agents append; /project:wiki-lint processes.
-type: wiki-spec
-updated: 2026-05-11
-status: draft
+aliases: [Wiki cleanup queue, Maintainer queue]
+type: reference
+domains: [knowledge]
+status: stable
+sources: []
+contradicts: []
+open_questions: []
+created: 2026-05-11
+updated: 2026-07-21
 ---
 
 # Wiki Todos
 
-> Queue of cleanup tasks. Agents append a one-line entry whenever they discover something the maintainer should handle later (orphan, missing ADR, repeated concept, broken link). `/project:wiki-lint` processes this queue and removes resolved lines.
+> [!abstract] Essence
+> Queue of cleanup tasks for the wiki-maintainer. Agents append a one-line entry whenever they discover something the maintainer should handle later (orphan, missing ADR, repeated concept, broken link). `/project:wiki-lint` processes this queue and removes resolved lines.
 
 ## Format
 ```
@@ -17,7 +22,4 @@ status: draft
 
 ## Pending
 
-- [ ] 2026-07-21 claude: migrate base pages (`requirements`, `architecture`, `git-conventions`, `commands`, `gotchas`, `todos`, `wiki-todos`, `log`) to the Obsidian standard — drop `name`/`description`, add facets (`type: reference` for ledgers), keep body formats; procedure in `wiki-update` skill step 5 of the maintainer contract
-- [ ] 2026-07-21 claude: migrate `entities/hooks` to the entity template (Essence callout, facets, relations as properties, Boundaries/Provenance sections) — move facts, don't rewrite them
-- [ ] 2026-07-21 claude: migrate the two 2026 ADRs and folder READMEs to the new decision/reference frontmatter (`supersedes`/`superseded_by` empty lists, `created`/`updated`)
-- [ ] 2026-07-21 claude: after migration, run the invariants lint wiki-wide (no nested frontmatter, quoted solitary property wikilinks, closed vocabularies, zero broken links)
+*(Empty.)*

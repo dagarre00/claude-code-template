@@ -1,14 +1,19 @@
 ---
-name: git-conventions
-description: Branching and commit conventions for this project. Mirrors the feature-branching skill.
-type: wiki-spec
-updated: 2026-06-10
-status: draft
+aliases: [Branching conventions, Commit conventions]
+type: reference
+domains: [software, git]
+status: stable
+sources: []
+contradicts: []
+open_questions: []
+created: 2026-05-11
+updated: 2026-07-21
 ---
 
 # Git Conventions
 
-> Project conventions. Updated when the team adopts a new flow; mirror changes into the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md).
+> [!abstract] Essence
+> Branching and commit conventions for this project. Mirrors the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md) — updated when the team adopts a new flow; mirror changes into the skill.
 
 ## Default branch
 

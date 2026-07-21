@@ -1,14 +1,19 @@
 ---
-name: concepts-readme
-description: Guide to the concepts directory — when and how to file a concept page.
-type: wiki-concept
-updated: 2026-05-11
-status: approved
+aliases: [Concepts guide]
+type: reference
+domains: [knowledge]
+status: stable
+sources: []
+contradicts: []
+open_questions: []
+created: 2026-04-15
+updated: 2026-07-21
 ---
 
 # Concepts
 
-Patterns, conventions, and domain ideas that recur across the project. Concept pages exist so the same explanation does not get rewritten in three different entity pages.
+> [!abstract] Essence
+> Patterns, conventions, and domain ideas that recur across the project. Concept pages exist so the same explanation does not get rewritten in three different entity pages.
 
 ## When to file a concept page
 
@@ -20,19 +25,8 @@ For one-off explanations, keep it inside the entity page. Promote to a concept o
 
 ## Page shape
 
-```yaml
----
-name: <slug>
-description: <one line>
-type: wiki-concept
-updated: YYYY-MM-DD
-status: draft | approved
-tags: [...]
----
-```
-
-Body: 1–2 paragraphs explaining the pattern as it applies *in this project*, followed by `## When to use`, `## When NOT to use`, and `## Examples` linking to entities that use it.
+Use the canonical template in the `wiki-update` skill: Obsidian-standard frontmatter (`type: concept`, `abstraction`, `domains`, `status`, relation properties) and the disclosure spine — `> [!abstract] Essence`, `## Model`, `## Detail`, `## Boundaries`, `## Provenance`. Run the placement check before creating: the pattern may already exist under another name in `aliases`.
 
 ## Filing
 
-The `wiki-maintainer` promotes concepts from recurring text (see `wiki-todos.md` queue). Other agents may file a stub concept inline when they spot a clear pattern, but the maintainer normalizes it later.
+The `wiki-maintainer` promotes concepts from recurring text (see `wiki-todos.md` queue). Other agents may file a `status: stub` concept inline when they spot a clear pattern, but the maintainer normalizes it later.

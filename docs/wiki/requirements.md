@@ -1,14 +1,21 @@
 ---
-name: requirements
-description: Living spec — what the project must do. Code that disagrees with this file is the bug.
-type: wiki-spec
-updated: 2026-05-16
-status: draft
+aliases: [Living spec]
+type: reference
+domains: [software]
+status: stub
+sources: []
+contradicts: []
+open_questions: []
+created: 2026-04-15
+updated: 2026-07-21
 ---
 
 # Requirements
 
-> Living spec. Run `/project:interview` to fill the gaps below. Update as the project evolves; never let this file go stale relative to the code.
+> [!abstract] Essence
+> Living spec — what the project must do. Code that disagrees with this file is the bug.
+
+> Run `/project:interview` to fill the gaps below. Update as the project evolves; never let this file go stale relative to the code.
 
 ## Vision
 
