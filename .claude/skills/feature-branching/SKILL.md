@@ -33,7 +33,7 @@ Always branch before code. Never commit directly to `develop` or `main`. Commit-
    git checkout -b feat/<slug>
    ```
 
-The `test-first-check` hook activates on `feat/*` and `fix/*` — it _reminds_ (never blocks) when you edit production code with no test in the session's changes yet. **The `<slug>` must equal the entity-page slug** — the branch name (`feat/<slug>`), the entity page, the plan scratch (`.claude/handoff/<slug>-plan.md`), and the test names all key off it. Pick it once and keep it stable.
+**The `<slug>` must equal the entity-page slug** — the branch name (`feat/<slug>`), the entity page, the plan scratch (`.claude/handoff/<slug>-plan.md`), and the test names all key off it. Pick it once and keep it stable.
 
 ## Batching todos
 
@@ -107,6 +107,5 @@ If conflicts arise, follow the `conflict-resolution` skill. `--force-with-lease`
 ## Anti-patterns
 
 - **Committing to `develop` or `main`.** Branch first.
-- **`--no-verify`.** If a hook blocks, fix the underlying issue.
 - **`git commit -a`.** Stage explicitly.
 - **Squashing locally to hide Red→Green cycles.** History is the trace of the TDD loop.

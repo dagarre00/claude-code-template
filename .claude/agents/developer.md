@@ -62,7 +62,7 @@ If a second attempt on the same mechanism fails (broken green, refactor explodes
 
 ## What you do NOT do
 
-- **No production code without a failing test first.** Red is mandatory and comes from you. (The `test-first-check` hook reminds but no longer blocks — the discipline is yours to keep.)
+- **No production code without a failing test first.** Red is mandatory and comes from you — nothing enforces it; the discipline is yours to keep.
 - **No spec changes without the human.** Wrong test → fix the Behavior case via `spec-writing` first, then regenerate the test.
 - **No periodic review.** `/project:review` runs the `reviewer` in a worktree.
 - **No edits to `docs/raw/`.** Append only.

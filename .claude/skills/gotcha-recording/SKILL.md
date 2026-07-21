@@ -53,7 +53,7 @@ Example:
 
 3. If the gotcha is severe (silent data corruption, security risk), also tag it `#critical` and add it to the top of `gotchas.md`, not the bottom.
 
-4. If the gotcha implies a missing skill or hook (e.g. "add a hook that warns on fixture scope"), append to `docs/wiki/wiki-todos.md`.
+4. If the gotcha implies a missing skill or command (e.g. "add a skill covering fixture scope"), append to `docs/wiki/wiki-todos.md`.
 
 5. **Size check.** After appending, count the non-blank, non-header content lines in `gotchas.md`:
 

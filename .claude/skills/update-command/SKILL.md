@@ -6,7 +6,7 @@ type: skill
 
 # Updating a Slash Command
 
-Slash commands are repeatable, named entry points the human invokes (`/project:work`, `/project:review`, `/project:interview`). They orchestrate — pulling todos, dispatching agents, branching, running hooks. Commands themselves should be thin; the heavy lifting lives in agents and skills.
+Slash commands are repeatable, named entry points the human invokes (`/project:work`, `/project:review`, `/project:interview`). They orchestrate — pulling todos, dispatching agents, branching. Commands themselves should be thin; the heavy lifting lives in agents and skills.
 
 ## Decide first: command or skill?
 

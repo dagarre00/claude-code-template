@@ -6,11 +6,11 @@ type: rule
 
 # Behavioral Rules
 
-Hard constraints from real failures. These override default agent inclinations; harness hooks back several of them.
+Hard constraints from real failures. These override default agent inclinations.
 
-1. **Wiki-first, code-second.** Never change code behavior without also updating the relevant `docs/wiki/entities/<slug>.md`. If the spec is wrong, fix the spec first, then the code. The `wiki-drift-check` hook warns right after an edit (PostToolUse) if you touched code but no wiki page.
+1. **Wiki-first, code-second.** Never change code behavior without also updating the relevant `docs/wiki/entities/<slug>.md`. If the spec is wrong, fix the spec first, then the code — in the same commit.
 
-2. **Tests before implementation.** Never write production code without a failing test first. The Red phase is mandatory. The `test-first-check` hook _reminds_ you on `feat/*` and `fix/*` when code is edited with no test in the session's changes — it no longer blocks, so keeping the discipline is on you.
+2. **Tests before implementation.** Never write production code without a failing test first. The Red phase is mandatory. Nothing enforces this on `feat/*` and `fix/*` — keeping the discipline is on you.
 
 3. **Never modify tests to make them pass.** If a test seems wrong, update the entity Behavior spec → regenerate the test → implement. Changing a test to match broken code is not TDD.
 
@@ -52,7 +52,7 @@ Hard constraints from real failures. These override default agent inclinations; 
     - **Provenance.** Every non-trivial claim traces to a file in `docs/raw/`. A claim with no traceable source goes to `## Boundaries` marked *unverified*, or becomes a question to the human.
     - **Never invent content to fill a gap.** A gap you can't fill from `docs/raw/` is an `open_questions` entry or a question to the human — not prose.
 
-19. **Finalize with commit + push.** Any command or agent that mutates tracked files ends by committing the change and pushing it to the working branch (`git push -u origin <branch>`). A local commit is not enough: remote execution containers are recycled between sessions, so an unpushed commit is lost work. The orchestrating command (`/project:work`) owns the final bundled commit + push. Read-only commands and gitignored artifacts (the `*-plan.md` scratch) are the only exceptions. On network failure, retry the push with exponential backoff; never bypass hooks with `--no-verify`.
+19. **Finalize with commit + push.** Any command or agent that mutates tracked files ends by committing the change and pushing it to the working branch (`git push -u origin <branch>`). A local commit is not enough: remote execution containers are recycled between sessions, so an unpushed commit is lost work. The orchestrating command (`/project:work`) owns the final bundled commit + push. Read-only commands and gitignored artifacts (the `*-plan.md` scratch) are the only exceptions. On network failure, retry the push with exponential backoff.
 
 ## Adding rules
 

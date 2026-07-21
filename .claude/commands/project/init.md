@@ -21,7 +21,7 @@ Run `git status`.
 
 - If not a git repo — the **expected state** when starting from this template (the quick start erases the cloned `.git` so the project begins its own history):
   1. `git init -b main` — always pass `-b main`; a bare `git init` may create `master` depending on the machine's `init.defaultBranch`.
-  2. **Keep the template's shipped `.gitignore`** — it carries entries the hooks and workflow rely on (`.claude/tmp/`, the plan scratch, `settings.local.json`, `docs/.obsidian/`). Append stack-specific entries (Node, Python, OS, IDE) to it; never replace it.
+  2. **Keep the template's shipped `.gitignore`** — it carries entries the workflow relies on (the plan scratch, `settings.local.json`, `docs/.obsidian/`). Append stack-specific entries (Node, Python, OS, IDE) to it; never replace it.
   3. Stage everything including dotfiles (`git add -A`) and commit `chore: initial commit` on `main` — the template's `.claude/`, `CLAUDE.md`, and `docs/` (with the pre-seeded gotchas) must all land in that first commit.
   4. If the human has a remote URL, `git remote add origin <url>`; otherwise continue without one — every later push step is skipped and noted in the report until a remote exists.
 - If on `main` with uncommitted changes: stop and run `human-checkpoint`. Ask whether to commit, stash, or discard.
@@ -91,7 +91,7 @@ Create or update these pages with **real content from the pre-scan and interview
 - `docs/wiki/git-conventions.md` — default branch, branch prefixes, commit format.
 - `docs/wiki/commands.md` — test command, build command, lint command (whatever was detected/confirmed).
 - `docs/wiki/todos.md` — seeded with first work items from the interview.
-- `docs/wiki/gotchas.md` — create with empty headings (`## Critical`, `## Runtime`, `## Testing`, `## Tooling`) **only if missing. Never clear existing entries** — the template ships with tooling gotchas (hook degradation, skill discovery) that apply to every project built on it.
+- `docs/wiki/gotchas.md` — create with empty headings (`## Critical`, `## Runtime`, `## Testing`, `## Tooling`) **only if missing. Never clear existing entries** — the template ships with tooling gotchas (e.g. skill discovery) that apply to every project built on it.
 - `docs/wiki/wiki-todos.md` — create empty only if missing; keep any pending lines.
 - `docs/wiki/log.md` — init entry (see step 6).
 
@@ -134,7 +134,7 @@ You are an AI development agent working on <project name>. Before any code chang
 
 1. **Raw sources** — `docs/raw/` (immutable). Agents read, never edit; only append.
 2. **Wiki** — `docs/wiki/` (LLM-owned). Requirements, architecture, entities, decisions, todos, log.
-3. **Schema** — `.claude/` (agents, skills, commands, hooks, rules).
+3. **Schema** — `.claude/` (agents, skills, commands, rules).
 
 ## Wiki layout
 
@@ -171,16 +171,6 @@ You are an AI development agent working on <project name>. Before any code chang
 | Periodic audit             | `reviewer` (worktree-isolated)                               |
 | Wiki health                | `wiki-maintainer` (manual only via `/project:wiki-lint`)     |
 | Web research               | `researcher`                                                 |
-
-## Hooks
-
-| Hook                  | Phase                  | Purpose                                                                      |
-| --------------------- | ---------------------- | ---------------------------------------------------------------------------- |
-| `session-start.sh`    | SessionStart           | Warn on upstream divergence (no auto-pull), detect venv, warn on uncommitted |
-| `session-end.sh`      | Stop                   | Prompt to commit/push, append log                                            |
-| `test-first-check.sh` | PreToolUse Write/Edit  | Remind (not block) on code edits with no test on `feat/*`/`fix/*`            |
-| `auto-format.sh`      | PostToolUse Write/Edit | Run formatter by file extension                                              |
-| `wiki-drift-check.sh` | PostToolUse Write/Edit | Warn (model-facing, once/state) if code edited but no wiki touched           |
 
 ## Golden rules
 

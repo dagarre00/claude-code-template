@@ -19,17 +19,13 @@
 #                  the command from docs/wiki/commands.md).
 #
 #   wiki-drift   — Enforces behavioral rule 1 ("wiki travels with code") on
-#                  the server. Mirrors the local .claude/hooks/wiki-drift-check.sh
-#                  logic, but computes the diff against the PR's merge-base
-#                  with origin/main (the local hook scopes to a session SHA
-#                  marker that doesn't exist on CI). Fails the job if a PR
-#                  modifies code without touching any docs/wiki/ page.
+#                  the server. Computes the diff against the PR's merge-base
+#                  with origin/main and fails the job if a PR modifies code
+#                  without touching any docs/wiki/ page.
 #
-#   Note: the local `test-first-check` hook is not mirrored here. It is a
-#   non-blocking reminder that fires during interactive Write/Edit on feat/*
-#   and fix/* branches when production code is edited with no test in the
-#   session's changes yet — a discipline nudge, not a gate. There is nothing
-#   to enforce server-side, so test-first stays intentionally local-only.
+#   Note: test-first (behavioral rule 2) is intentionally not enforced here.
+#   It is a discipline the agent keeps during interactive work on feat/* and
+#   fix/* branches, not a gate that can be checked server-side.
 # ----------------------------------------------------------------------
 
 name: CI
@@ -87,9 +83,7 @@ jobs:
 
   wiki-drift:
     # Enforces behavioral rule 1: code changes must be accompanied by a wiki
-    # update. Mirrors .claude/hooks/wiki-drift-check.sh but computes the diff
-    # against the PR's merge-base with origin/main, since the local session-SHA
-    # marker (.claude/tmp/session-start-sha) does not exist on CI.
+    # update. Computes the diff against the PR's merge-base with origin/main.
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
@@ -119,8 +113,7 @@ jobs:
           wiki_touched=false
           while IFS= read -r f; do
             case "$f" in
-              # Bookkeeping files don't count as a substantive wiki update —
-              # mirror the local hook (.claude/hooks/wiki-drift-check.sh).
+              # Bookkeeping files don't count as a substantive wiki update.
               docs/wiki/log.md|docs/wiki/wiki-todos.md) : ;;
               docs/wiki/*) wiki_touched=true ;;
               src/*|app/*|lib/*|tests/*|test/*|cmd/*|internal/*|pkg/*) code_touched=true ;;
