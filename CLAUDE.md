@@ -119,7 +119,7 @@ type: agent | command | skill | rule
 
 Skills in particular need a precise `description` because Claude Code uses it to decide whether to load the skill. State _exactly_ what triggers the skill — the keywords, the situations, the tool calls.
 
-**Wiki pages (`docs/wiki/`)** follow the **Obsidian LLM-wiki standard** (source: `docs/raw/llm-wiki-obsidian-standard.md`; adoption ADR: `docs/wiki/decisions/2026-07-21-adopt-obsidian-llm-wiki-standard.md`). Guiding principle: **a structural field is only justified if it makes an absence (gap) or a conflict (contradiction/duplicate) computable.** The essentials, always in force:
+**Wiki pages (`docs/wiki/`)** follow the **Obsidian LLM-wiki standard**. Guiding principle: **a structural field is only justified if it makes an absence (gap) or a conflict (contradiction/duplicate) computable.** The essentials, always in force:
 
 - **Identity = filename.** No `name:` or `id:` field. Alternative names go in `aliases` — that is the anti-duplicate mechanism. Filenames avoid the illegal characters `* " \ / < > : | ? # ^ [ ]`.
 - **One page = one concept.** Before creating a page, compare its essence against existing filenames and `aliases`. If the concept exists under another name → update it, never duplicate. Merge/split only whole concepts.
