@@ -41,7 +41,7 @@ For each entity page, check:
 
 ## Output
 
-Write the report to `docs/wiki/decisions/review-<YYYY-MM-DD>.md` (a kind of ADR for the audit) with frontmatter `status: draft` and the following structure:
+Write the report to `docs/wiki/decisions/review-<YYYY-MM-DD>.md` (a kind of ADR for the audit) with Obsidian-standard frontmatter (`type: reference`, `status: developing`, `created`/`updated` — see the `wiki-update` skill) and the following structure:
 
 ```markdown
 # Review YYYY-MM-DD

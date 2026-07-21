@@ -116,7 +116,6 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 - **Test suite has pre-existing failures.** Stop. Don't add work on top of a broken develop. Use `human-checkpoint`.
 - **Merge conflicts during branch sync.** Follow the `conflict-resolution` skill. If the conflicts are too broad or ambiguous, use `human-checkpoint` rather than guessing.
 - **Lost work after a container recycle.** Commits pushed to remote survive; only unpushed local state is gone. Check `git reflog` on the remote via `git ls-remote` — if the branch was pushed, `git fetch origin feat/<slug> && git checkout feat/<slug>` recovers it. If unpushed, re-run from the last open todo.
-- **Hooks block.** Read the block message and resolve the underlying issue. Never `--no-verify`.
 
 ## What you do NOT do
 

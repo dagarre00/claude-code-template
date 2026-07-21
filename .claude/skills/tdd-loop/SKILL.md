@@ -6,7 +6,7 @@ type: skill
 
 # TDD Loop
 
-Use this every time you implement code on a `feat/*` or `fix/*` branch. The `test-first-check` hook _reminds_ (no longer blocks) when production code is edited with no test in the session's changes — keeping the discipline is on you.
+Use this every time you implement code on a `feat/*` or `fix/*` branch. Nothing enforces test-first automatically — keeping the discipline is on you.
 
 ## Read first
 

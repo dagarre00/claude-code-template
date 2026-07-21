@@ -1,9 +1,13 @@
 ---
-name: log
-description: Chronological ops log — ingests, work cycles, reviews, lints, checkpoints.
-type: wiki-log
-updated: 2026-05-11
-status: draft
+aliases: [Ops log, Timeline]
+type: reference
+domains: [software]
+status: stable
+sources: []
+contradicts: []
+open_questions: []
+created: 2026-04-15
+updated: 2026-07-21
 ---
 
 # Log

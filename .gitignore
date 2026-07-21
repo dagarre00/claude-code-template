@@ -11,6 +11,3 @@ Thumbs.db
 
 # Obsidian per-user vault config (users open the vault themselves)
 docs/.obsidian/
-
-# Runtime state (log stamps, test-run timestamps — regenerated each session)
-.claude/tmp/

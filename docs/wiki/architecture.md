@@ -1,14 +1,23 @@
 ---
-name: architecture
-description: Stack, patterns, layout, testing strategy. The how-built companion to requirements.md.
-type: wiki-spec
-updated: 2026-05-16
-status: draft
+aliases: []
+type: reference
+domains: [software]
+status: stub
+sources: []
+depends_on:
+  - "[[requirements]]"
+contradicts: []
+open_questions: []
+created: 2026-04-08
+updated: 2026-07-21
 ---
 
 # Architecture
 
-> How the project is built. `/project:init` fills the stack-detection sections; `/project:interview` fills the rest.
+> [!abstract] Essence
+> Stack, patterns, layout, testing strategy — the how-built companion to [[requirements]].
+
+> `/project:init` fills the stack-detection sections; `/project:interview` fills the rest.
 
 ## Stack
 

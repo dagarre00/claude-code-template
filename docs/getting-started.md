@@ -97,7 +97,7 @@ Re-run `/project:agent-scout` after a major `/project:interview` that adds a new
 
 1. **Plan (conditional).** If the todo is flagged `[complex]` or a batch of 2+ todos was proposed, `/project:work` dispatches the `planner` agent (on Opus) first; it writes a stepwise plan to `.claude/handoff/<slug>-plan.md` (gitignored scratch) that the developer then follows. A single simple todo skips planning.
 2. **Red.** The developer reads the matching `entities/<slug>.md#Behavior` cases, writes one failing test per case, runs the suite, and confirms the tests fail for the right reason (missing implementation — not a typo or import error). It marks each case `[ ]` → `[~]`.
-3. **Green.** The developer writes the minimal code to make the tests pass. The `test-first-check` hook reminds (it no longer blocks) if production code is edited on a `feat/*` branch with no test in the session's changes yet.
+3. **Green.** The developer writes the minimal code to make the tests pass.
 4. **Refactor.** The developer cleans up while keeping tests green.
 5. **Wiki update.** The developer ticks the entity-page Behavior cases `[~]` → `[x]`, updates the Implementation/Tests sections, and appends to `log.md`. Larger cross-page cleanup it can't safely do inline is queued in `wiki-todos.md` for the wiki-maintainer.
 6. **Commit.** `/project:work` verifies the suite itself, then makes one bundled conventional commit (code + wiki + log) and pushes it (see [git-conventions.md](wiki/git-conventions.md)).
@@ -144,7 +144,7 @@ A new user story landed. You want it specified, tested, and shipped.
 
 3. **Run `/project:work`.** It picks the top todo, opens `feat/auth-login`, and dispatches the `developer`. The developer reads `entities/auth-login.md#Behavior`, writes failing tests, and confirms Red.
 4. **The same agent implements.** It writes the minimum code to turn Red into Green, then refactors. There's no handoff to another agent — one developer owns the whole cycle.
-5. **Wiki updates land in the same commit.** The developer ticks the Behavior cases on the entity page, checks the todo off in `docs/wiki/todos.md` (shipped work lives in git history — there's no `completed.md`), and appends a one-line log entry. The `wiki-drift-check` hook will warn (right after an edit, in your context) if code changed but no wiki page did — that's your safety net.
+5. **Wiki updates land in the same commit.** The developer ticks the Behavior cases on the entity page, checks the todo off in `docs/wiki/todos.md` (shipped work lives in git history — there's no `completed.md`), and appends a one-line log entry. Code changed but no wiki page touched is drift — the same-commit rule is the safety net.
 6. **Commit.** `/project:work` makes the bundled conventional commit, e.g. `feat(auth-login): reject unknown user`, and pushes it. See [git-conventions.md](wiki/git-conventions.md).
 
 The developer plans **first** if the todo is tagged `[complex]` or a batch of 2+ todos is being run together. For a single simple todo, planning is skipped — straight to Red.
@@ -229,7 +229,7 @@ git worktree remove ../<repo>-review-YYYY-MM-DD
 
 A bug in shipped behavior needs a fix. Same TDD discipline as a feature — just a `fix/` prefix.
 
-1. **Branch.** `/project:work` opens `fix/<slug>` (not `feat/<slug>`) because the matching entity already exists; you're correcting a regression. The `test-first-check` hook reminds the same way on `fix/*`.
+1. **Branch.** `/project:work` opens `fix/<slug>` (not `feat/<slug>`) because the matching entity already exists; you're correcting a regression. The same test-first discipline applies on `fix/*`.
 2. **Regression test first.** The developer writes a test that **reproduces the bug** — assertion fails on the current code. This becomes a new Behavior case on the entity page, e.g.:
 
    ```markdown
@@ -289,7 +289,7 @@ When the agent realises a procedural gap, it shouldn't bury that knowledge in an
 3. **The agent writes it.** `update-skill` produces `.claude/skills/database-migrations/SKILL.md` with frontmatter (precise `description` so future tasks auto-load it) and a procedural body — _how_ to do migrations in this project, not _what_ migrations are.
 4. **It auto-loads next time.** On the next task that matches the skill's `description` trigger, the developer loads the skill without you having to ask. This is the progressive-disclosure principle in action.
 
-The same pattern applies to `update-agent`, `update-command`, and `update-hook` when the gap is bigger than a procedure.
+The same pattern applies to `update-agent` and `update-command` when the gap is bigger than a procedure.
 
 ## Scenario: Ingesting external documents into the wiki
 
@@ -360,7 +360,7 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 
 # The mental model in one paragraph
 
-The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD; the `developer` agent runs the cycle (with the `planner` on Opus decomposing `[complex]` or batched todos first), and the wiki is updated in the same commit as the code. When in doubt, the agent stops and asks rather than guessing. Hooks back the discipline (test-first reminder, format-on-save, wiki-drift warning). Periodic `/project:review` and `/project:wiki-lint` keep both layers honest.
+The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD; the `developer` agent runs the cycle (with the `planner` on Opus decomposing `[complex]` or batched todos first), and the wiki is updated in the same commit as the code. When in doubt, the agent stops and asks rather than guessing. Periodic `/project:review` and `/project:wiki-lint` keep both layers honest.
 
 # Anti-patterns
 

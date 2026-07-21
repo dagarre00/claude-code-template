@@ -37,8 +37,7 @@ For a worked walkthrough — `/project:init` → `/project:interview` → `/proj
 ├── agents/          # planner (opus), developer, reviewer, wiki-maintainer, researcher
 ├── skills/          # process skills (TDD, branching, plan-writing, wiki-update, …) + meta skills
 ├── commands/        # /project:init, /project:interview, /project:work, /project:review, /project:wiki-lint, /project:wiki-ingest, /project:agent-scout
-├── hooks/           # session-start, session-end, test-first-check, auto-format, wiki-drift-check
-├── settings.json    # hook wiring
+├── settings.json    # harness settings
 └── rules/           # behavioral constraints
 docs/
 ├── raw/             # immutable source documents (interviews, articles, transcripts)
@@ -50,10 +49,10 @@ HUMAN.md             # the human's-eye view of how this works
 ## Philosophy
 
 - **Skills are how-to, not what-is.** No skill explains "what TDD is" — they explain "how this project does TDD."
-- **Spec → Test → Code.** Entity Behavior cases → failing tests → minimal implementation. The test-first hook reminds (doesn't block) on `feat/*`/`fix/*` branches.
-- **Wiki ships with code.** Code edits and wiki edits happen in the same commit. Wiki-drift hook warns otherwise.
+- **Spec → Test → Code.** Entity Behavior cases → failing tests → minimal implementation.
+- **Wiki ships with code.** Code edits and wiki edits happen in the same commit.
 - **Human in the loop.** When the agent can't decide from the wiki, it stops and asks — never silently improvises.
-- **Dynamic config.** Meta skills (`update-skill`, `update-agent`, `update-command`, `update-hook`) let the agent evolve its own toolkit as the project grows.
+- **Dynamic config.** Meta skills (`update-skill`, `update-agent`, `update-command`) let the agent evolve its own toolkit as the project grows.
 
 ## License
 

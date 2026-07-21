@@ -1,6 +1,6 @@
 ---
 name: wiki-lint
-description: Periodic wiki health check. Dispatches the wiki-maintainer to process the wiki-todos.md queue, find orphans, broken [[links]], stale claims, contradictions, and missing ADRs. Run every few work cycles or when wiki-todos.md is piling up.
+description: Periodic wiki health check. Dispatches the wiki-maintainer to process the wiki-todos.md queue, run the computable reconciliation pass (schema gaps, asymmetric relations, unresolved contradicts), check lint invariants, find orphans, broken [[links]], stale claims, and missing ADRs. Run every few work cycles or when wiki-todos.md is piling up.
 type: command
 ---
 
@@ -45,12 +45,14 @@ If dirty: run `human-checkpoint`.
    - The current `docs/wiki/wiki-todos.md` content.
    - The list of raw files added since the last summary in `docs/wiki/summaries/`.
    - The overflow check results from step 2 (so the maintainer knows which archival tasks apply).
-   - Explicit instructions: process the queue, ingest, lint, archive overflow, and produce a summary at the end.
+   - Explicit instructions: process the queue, ingest, run the **reconciliation pass** (computable gaps: techniques without `implements`, instances without `specializes`, broken `depends_on` targets, ≥3-reference terms without a page, orphans, asymmetric `contrasts_with`/`alternative_to`, unresolved `contradicts`), check the **lint invariants** (illegal filename characters, broken wikilinks, nested frontmatter objects, unquoted/multiple wikilinks in properties, out-of-vocabulary `type`/`abstraction`/`status`, singular `tag`/`alias` keys, claims without provenance), migrate any queued legacy pages, archive overflow, and end with a summary plus a **single batched lot of clarification questions** for the human.
 
 4. **Maintainer writes:**
    - Resolved `wiki-todos` lines (removed).
    - New `summaries/` pages for any ingested raw sources.
    - Updates to entity/concept/decision pages, including cross-links so new pages are reachable (no central index).
+   - `status: stub` pages for missing prerequisites / heavily-referenced terms (never invented content).
+   - Legacy pages migrated to the Obsidian standard (frontmatter mapped, body moved into the disclosure spine — facts moved, not rewritten).
    - Archival files under `docs/wiki/summaries/` if overflow thresholds were hit.
    - A log entry to `log.md`.
 
@@ -67,7 +69,7 @@ If dirty: run `human-checkpoint`.
    git push -u origin chore/wiki-lint-YYYY-MM-DD
    ```
 
-7. **Report to the human.** What was processed, what remains. If the maintainer flagged contradictions or stale claims it couldn't auto-fix, list them explicitly — the human or `/project:interview` resolves which version is correct.
+7. **Report to the human.** What was processed, what remains, gaps and contradictions detected — and the maintainer's **batched clarification questions in one lot** (contradictions, gaps needing knowledge outside `docs/raw/`, ambiguous merges). The human or `/project:interview` resolves which version is correct; unresolved `contradicts` entries stay flagged until then.
 
 ## Failure modes
 

@@ -34,7 +34,6 @@ Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the age
 - **Writes failing tests first** (Red), confirms they fail for the right reason, then implements (Green), then refactors — all in one `developer` agent (which follows the planner's plan when there is one).
 - **Updates the wiki in the same commit** as the code — entity pages, requirements, log.
 - **Asks you when it's stuck.** Two-strike rule: two failed attempts on the same approach → stop and ask. On retry, it overwrites the plan with a fundamentally different approach rather than tweaking.
-- **Hooks back the discipline.** Test-first _reminder_ on `feat/*`/`fix/*` branches (it nudges, doesn't block); format-on-save; session-start divergence warning; session-end commit prompt; wiki-drift warning if code shipped without a wiki touch.
 
 ## What it does NOT do without you
 
@@ -46,12 +45,12 @@ Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the age
 
 ## How to evolve the template
 
-The agent ships with a small set of skills, agents, commands, and hooks. As the project grows, add more — the agent uses the meta skills (`update-skill`, `update-agent`, `update-command`, `update-hook`) to extend its own toolkit. You don't need to know the file formats — tell the agent what behavior you want, and it'll create the right artefact in the right place.
+The agent ships with a small set of skills, agents, and commands. As the project grows, add more — the agent uses the meta skills (`update-skill`, `update-agent`, `update-command`) to extend its own toolkit. You don't need to know the file formats — tell the agent what behavior you want, and it'll create the right artefact in the right place.
 
 Examples:
 
 - "We need a skill for adding database migrations in this project." → agent creates `.claude/skills/database-migrations/SKILL.md` via the `update-skill` meta skill.
-- "After every commit, run shellcheck on any changed `.sh` files." → agent adds a PostToolUse hook via `update-hook`.
+- "We need a repeatable entry point for release prep." → agent adds a `/project:release` command via `update-command`.
 
 ## Anti-patterns to avoid
 

@@ -27,19 +27,28 @@ Do **not** file an ADR for:
 
 1. Pick a slug. Format: `YYYY-MM-DD-<short-kebab-name>` — e.g. `2026-05-11-pick-postgres-over-sqlite`.
 
-2. Create `docs/wiki/decisions/<slug>.md` with this structure:
+2. Create `docs/wiki/decisions/<slug>.md` with this structure (frontmatter per the Obsidian standard — flat, identity = filename, wikilinks in properties quoted and solitary):
 
 ```markdown
 ---
-name: <slug>
-description: <one line — what was decided>
-type: wiki-decision
+aliases: []
+type: decision
+domains: [<domain>]
+status: proposed          # proposed | accepted | superseded | deprecated
+sources:
+  - docs/raw/<file>       # if applicable
+supersedes: []            # e.g. - "[[decisions/<previous-slug>]]"
+superseded_by: []
+contradicts: []
+open_questions: []
+created: YYYY-MM-DD
 updated: YYYY-MM-DD
-status: proposed | accepted | superseded | deprecated
-tags: [decision, <domain>]
 ---
 
 # <Title — one line>
+
+> [!abstract] Essence
+> One or two sentences: what was decided and why it matters.
 
 ## Status
 
@@ -67,11 +76,9 @@ Accepted as of YYYY-MM-DD.
 ## References
 
 - Relates to: [[entities/<slug>]], [[concepts/<pattern>]]
-- Supersedes: [[decisions/<previous-slug>]] (if applicable)
-- Sources: [docs/raw/<file>](../../raw/<file>) (if applicable)
 ```
 
-3. Backlink from affected entity pages: under their `## Related`, add `[[decisions/<slug>]]` — that's what makes the ADR reachable (there is no central index).
+3. Backlink from affected entity pages: add `"[[decisions/<slug>]]"` to the relevant frontmatter relation (or reference it in the body) — that's what makes the ADR reachable (there is no central index). If the ADR resolves a `contradicts` pair, clear the property on both pages and state the resolution here.
 
 4. If the decision created new work, file todos in `docs/wiki/todos.md`.
 
@@ -81,10 +88,9 @@ Accepted as of YYYY-MM-DD.
 
 Never edit an accepted ADR's body. To change direction:
 
-1. Create a new ADR explaining the new decision.
-2. In the new ADR's `## References`, add `Supersedes: [[decisions/<old-slug>]]`.
-3. Update the old ADR's frontmatter `status: superseded` and add at the top: `**Superseded by [[decisions/<new-slug>]] on YYYY-MM-DD.**`
-4. Update entity backlinks from old to new.
+1. Create a new ADR explaining the new decision, with `supersedes: ["[[decisions/<old-slug>]]"]` in its frontmatter.
+2. Update the old ADR's frontmatter: `status: superseded`, `superseded_by: ["[[decisions/<new-slug>]]"]`, and add at the top of the body: `**Superseded by [[decisions/<new-slug>]] on YYYY-MM-DD.**`
+3. Update entity backlinks from old to new. (A `status: superseded` ADR without a `superseded_by` link is a lint gap.)
 
 ## Anti-patterns
 

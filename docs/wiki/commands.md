@@ -1,14 +1,19 @@
 ---
-name: commands
-description: Working shell commands for this project — install, run, test, lint, build. Single source of truth.
-type: wiki-spec
-updated: 2026-05-11
-status: draft
+aliases: [Shell commands, Test command]
+type: reference
+domains: [software]
+status: stub
+sources: []
+contradicts: []
+open_questions: []
+created: 2026-04-15
+updated: 2026-07-21
 ---
 
 # Commands
 
-> The exact commands that work in this repo. The `developer` agent reads this file (specifically the `## Test` section) to know how to run the suite. Keep entries copy-pasteable.
+> [!abstract] Essence
+> The exact shell commands that work in this repo — install, run, test, lint, build. The `developer` agent reads this file (specifically the `## Test` section) to know how to run the suite. Keep entries copy-pasteable.
 
 ## Install
 

@@ -1,18 +1,23 @@
 ---
-name: decisions-readme
-description: Guide to the decisions directory — when to file an ADR, naming, and lifecycle.
-type: wiki-decision
-updated: 2026-05-11
-status: approved
+aliases: [ADR guide, Decisions guide]
+type: reference
+domains: [knowledge]
+status: stable
+sources: []
+contradicts: []
+open_questions: []
+created: 2026-04-15
+updated: 2026-07-21
 ---
 
 # Decisions (ADRs)
 
-Architectural Decision Records — small, dated notes capturing **why** a non-trivial choice was made. They live here because future readers (including future you) will second-guess otherwise.
+> [!abstract] Essence
+> Architectural Decision Records — small, dated notes capturing **why** a non-trivial choice was made. They live here because future readers (including future you) will second-guess otherwise.
 
 ## When to file
 
-See the `decision-recording` skill (`.claude/skills/decision-recording/SKILL.md`) for triggers. Short version: file an ADR when picking between reasonable alternatives that will shape future work.
+See the `decision-recording` skill (`.claude/skills/decision-recording/SKILL.md`) for triggers and the page template. Short version: file an ADR when picking between reasonable alternatives that will shape future work, or when resolving a `contradicts` pair.
 
 ## Naming
 
@@ -20,6 +25,6 @@ See the `decision-recording` skill (`.claude/skills/decision-recording/SKILL.md`
 
 ## Lifecycle
 
-- Status: `proposed` → `accepted` → `superseded` / `deprecated`.
-- ADRs are **immutable once accepted**. To change direction, file a new ADR and mark the old one `superseded`. Do not edit the body of an accepted ADR.
-- Review reports also live here (`review-YYYY-MM-DD.md`) — they are a kind of ADR.
+- Status: `proposed` → `accepted` → `superseded` / `deprecated` (the decision-specific `status` vocabulary).
+- ADRs are **immutable once accepted**. To change direction, file a new ADR with `supersedes: ["[[decisions/<old-slug>]]"]` and mark the old one `status: superseded` + `superseded_by`. Do not edit the body of an accepted ADR.
+- Review reports also live here (`review-YYYY-MM-DD.md`) — `type: reference`, a kind of ADR.
