@@ -6,7 +6,7 @@ type: skill
 
 # Wiki Update — Standard, Templates, Routing
 
-The wiki follows the **Obsidian LLM-wiki standard** (hard rules: behavioral rule 18; essentials: `CLAUDE.md` → Frontmatter convention). Routine ticks (`[ ]` → `[~]` → `[x]`, checking off a todo, appending a log line) are documented in `tdd-loop`. This skill covers: **placement**, the **templates**, the **facet/ontology tables**, and **inline-vs-maintainer routing**.
+The wiki follows the **Obsidian LLM-wiki standard**. This skill is the **single source of truth** for that standard; the non-negotiable invariants are also stated as behavioral rule 18. Routine ticks (`[ ]` → `[~]` → `[x]`, checking off a todo, appending a log line) are documented in `tdd-loop`. This skill covers: **placement**, the **templates**, the **facet/ontology tables**, and **inline-vs-maintainer routing**.
 
 ## Placement — before creating any page
 

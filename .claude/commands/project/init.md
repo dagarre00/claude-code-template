@@ -99,97 +99,13 @@ Create entity pages under `docs/wiki/entities/` for each feature/module identifi
 
 File ADRs under `docs/wiki/decisions/` for non-trivial choices made during the interview (see `decision-recording` skill).
 
-Every page gets correct frontmatter per the frontmatter convention.
+Every page gets correct frontmatter per the Obsidian LLM-wiki standard (see the `wiki-update` skill).
 
 ### 6. Rewrite CLAUDE.md
 
-Rewrite `CLAUDE.md` to be lean and project-specific. Drop the template framing — this is now a real project. The file must have exactly these sections:
+Rewrite `CLAUDE.md` to be lean and project-specific. Drop the template framing — this is now a real project. **Use [`.claude/templates/CLAUDE.md.tmpl`](../../templates/CLAUDE.md.tmpl) as the exact skeleton:** copy it to `CLAUDE.md` and fill every `<placeholder>` (project name, vision, stack, test command) from the interview answers. Do not re-derive the section list — the template already carries it (Identity, Operating principles, Three layers, Wiki layout, Commands, Agent routing, North star).
 
-```markdown
-# <Project Name>
-
-<One-sentence vision from interview.>
-
-**Stack:** <language>, <framework> | **Test:** `<test command>` | **Branch:** `develop`
-
-## Identity
-
-You are an AI development agent working on <project name>. Before any code change:
-
-1. Read `docs/wiki/gotchas.md` for known failure points.
-2. Read `docs/wiki/todos.md` to know what's next.
-3. If the task touches a feature, read the matching entity page and the relevant section of `docs/wiki/requirements.md`.
-4. Grep `docs/wiki/` for terms from the task.
-5. Let matching skills auto-load.
-
-## Operating principles
-
-- **Wiki is spec.** `docs/wiki/` is truth. Code that disagrees is the bug.
-- **Progressive disclosure.** Agents start minimal; skills load on demand.
-- **Spec → Test → Code.** Entity Behavior → failing test → implementation.
-- **Wiki always current.** Code and wiki edits ship together.
-- **Human in the loop.** When the wiki doesn't answer, stop and ask.
-
-## Three layers
-
-1. **Raw sources** — `docs/raw/` (immutable). Agents read, never edit; only append.
-2. **Wiki** — `docs/wiki/` (LLM-owned). Requirements, architecture, entities, decisions, todos, log.
-3. **Schema** — `.claude/` (agents, skills, commands, rules).
-
-## Wiki layout
-
-| Page                        | Purpose                           |
-| --------------------------- | --------------------------------- |
-| `docs/wiki/requirements.md` | Living spec                       |
-| `docs/wiki/architecture.md` | Stack, patterns, test strategy    |
-| `docs/wiki/entities/*`      | One page per feature/module       |
-| `docs/wiki/decisions/*`     | ADRs                              |
-| `docs/wiki/todos.md`        | Priority-ordered work queue       |
-| `docs/wiki/gotchas.md`      | Known failure points              |
-| `docs/wiki/commands.md`     | Working shell commands            |
-| `docs/wiki/log.md`          | Timeline                          |
-| `docs/wiki/wiki-todos.md`   | Cleanup queue for wiki-maintainer |
-
-## Commands
-
-| Command                | Purpose                                           |
-| ---------------------- | ------------------------------------------------- |
-| `/project:init`        | (Re)initialize project wiki and schema            |
-| `/project:interview`   | Q&A to define requirements or features            |
-| `/project:work`        | Top todo → spec → red → green → refactor → commit |
-| `/project:review`      | Full audit in isolated worktree                   |
-| `/project:wiki-lint`   | Wiki health check                                 |
-| `/project:wiki-ingest` | Ingest file or research into wiki                 |
-| `/project:agent-scout` | Recommend project-specific agents and skills      |
-
-## Agent routing
-
-| Task                       | Agent                                                        |
-| -------------------------- | ------------------------------------------------------------ |
-| Plan complex/batched todos | `planner` (Opus) — before the developer, via `/project:work` |
-| TDD cycle                  | `developer` (red → green → refactor; loads skills on demand) |
-| Periodic audit             | `reviewer` (worktree-isolated)                               |
-| Wiki health                | `wiki-maintainer` (manual only via `/project:wiki-lint`)     |
-| Web research               | `researcher`                                                 |
-
-## Golden rules
-
-1. **Wiki is truth.** Code that disagrees with the wiki is the bug.
-2. **No code without a failing test.**
-3. **Never modify a test to make it pass.** Update spec → regenerate test → implement.
-4. **Always update wiki in the same change.** Touching `src/` requires touching the entity page.
-5. **Never modify `docs/raw/`.** Append only.
-6. **Agents own `docs/wiki/`.** Humans browse; agents write.
-7. **Always branch before coding.** Never commit to main.
-8. **Conventional commits.** `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`.
-9. **Two-strike rule.** Two failures on the same mechanism → `git tag checkpoint-<stamp>`, `git reset --hard` to a known-good commit, and re-spec.
-10. **Reviewer is periodic.** `/project:review` every ~5 todos, not in `/project:work`.
-11. **Human-in-the-loop.** When wiki doesn't answer, stop and ask.
-12. **Skills are how-to, not what-is.** Add skills via `update-skill`; don't bury knowledge in agent prompts.
-13. **Finalize with commit + push.** Every mutating command/agent ends by committing and pushing to the working branch (`git push -u origin <branch>`); read-only commands are exempt.
-```
-
-Trim the template's explanatory prose. The file should be under ~120 lines. Every section earns its place — if a section doesn't help an agent operate, cut it.
+The template deliberately points at `.claude/rules/behavioral.md` for the binding rule list instead of duplicating it — keep that pointer; do not paste a "Golden rules" block back in. The result should be under ~120 lines. Every section earns its place — if a section doesn't help an agent operate, cut it.
 
 ### 7. Log it
 

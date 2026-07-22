@@ -61,7 +61,7 @@ If dirty: run `human-checkpoint`.
    - No raw files were modified.
    - No mass rewrites of entity pages (the maintainer is conservative; a 500-line entity diff is a red flag).
 
-6. **Commit and push.** Push immediately — an unpushed commit is lost when the container recycles (see `.claude/rules/behavioral.md` #19):
+6. **Commit and push.** Push immediately (behavioral rule 19):
 
    ```bash
    git add docs/wiki/

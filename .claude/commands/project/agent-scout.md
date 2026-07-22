@@ -145,8 +145,8 @@ Number the recommendations in the order that will unblock the most /project:work
 
 After presenting the report, ask the human which recommendations to act on. For each approved item:
 
-- **Skill:** invoke the `update-skill` meta skill with the name, trigger description, and procedure outline from the report.
-- **Agent:** invoke the `update-agent` meta skill with the name, model, tools list (derive from mandate — be conservative; only grant tools the agent genuinely needs), and mandate.
+- **Skill:** invoke the `update-toolkit` skill (Skills section) with the name, trigger description, and procedure outline from the report.
+- **Agent:** invoke the `update-toolkit` skill (Agents section) with the name, model, tools list (derive from mandate — be conservative; only grant tools the agent genuinely needs), and mandate.
 
 Do not create anything that the human has not explicitly approved.
 
@@ -165,7 +165,7 @@ Append to `docs/wiki/log.md`:
 
 ### 7. Commit and push
 
-Stage every skill/agent file created this session plus the log entry, then push immediately — an unpushed commit is lost when the container recycles (see `.claude/rules/behavioral.md` #19):
+Stage every skill/agent file created this session plus the log entry, then push immediately (behavioral rule 19):
 
 ```bash
 git add .claude/ docs/wiki/log.md

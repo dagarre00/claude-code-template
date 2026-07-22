@@ -45,12 +45,12 @@ Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the age
 
 ## How to evolve the template
 
-The agent ships with a small set of skills, agents, and commands. As the project grows, add more — the agent uses the meta skills (`update-skill`, `update-agent`, `update-command`) to extend its own toolkit. You don't need to know the file formats — tell the agent what behavior you want, and it'll create the right artefact in the right place.
+The agent ships with a small set of skills, agents, and commands. As the project grows, add more — the agent uses the `update-toolkit` meta skill (one skill covering all three artifact kinds) to extend its own toolkit. You don't need to know the file formats — tell the agent what behavior you want, and it'll create the right artefact in the right place.
 
 Examples:
 
-- "We need a skill for adding database migrations in this project." → agent creates `.claude/skills/database-migrations/SKILL.md` via the `update-skill` meta skill.
-- "We need a repeatable entry point for release prep." → agent adds a `/project:release` command via `update-command`.
+- "We need a skill for adding database migrations in this project." → agent creates `.claude/skills/database-migrations/SKILL.md` via `update-toolkit`.
+- "We need a repeatable entry point for release prep." → agent adds a `/project:release` command via `update-toolkit`.
 
 ## Anti-patterns to avoid
 

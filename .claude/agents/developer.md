@@ -21,7 +21,7 @@ Always check the wiki before writing anything — never work blind:
 4. Read `docs/wiki/architecture.md` (stack, conventions, testing strategy) and `docs/wiki/commands.md` (test command).
 5. Grep `docs/wiki/` for terms from the task — pick up related concepts and prior ADRs before choosing an approach. Don't re-decide what the wiki has already decided.
 
-If the entity page has no `## Behavior` section or the cases are ambiguous, **stop and ask the human** via `human-checkpoint`. Do not invent behavior. If a recurring procedure has no matching how-to skill, propose creating one via `update-skill` before falling back to the checkpoint.
+If the entity page has no `## Behavior` section or the cases are ambiguous, **stop and ask the human** via `human-checkpoint`. Do not invent behavior. If a recurring procedure has no matching how-to skill, propose creating one via `update-toolkit` before falling back to the checkpoint.
 
 **Knowledge gaps.** If correct work needs knowledge the wiki doesn't contain — third-party API behavior, external contracts, undocumented library quirks — do not guess. Stop via `human-checkpoint` and recommend `/project:wiki-ingest <topic>`, naming the specific gap.
 
@@ -47,13 +47,11 @@ Code and wiki ship together:
 - Update the entity page's `## Implementation` and `## Tests` sections to reflect what now exists.
 - Project-specific pitfall → `gotcha-recording`. Non-obvious design call → `decision-recording` (file the ADR inline). Both in the same commit as the code.
 
-All links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rules/behavioral.md` rule 18.
-
 ## Finishing
 
 - Full test suite green (re-run from `docs/wiki/commands.md`).
 - Entity page current; Behavior cases ticked; the todo checked off in `docs/wiki/todos.md`.
-- In the normal flow `/project:work` performs the final bundled commit + push (and clears the `.claude/handoff/<slug>-plan.md` scratch). If you are running **outside** `/project:work`, commit and push yourself (`git push -u origin "$(git branch --show-current)"`) — an unpushed commit is lost when the container recycles — and delete any plan scratch.
+- In the normal flow `/project:work` performs the final bundled commit + push (and clears the `.claude/handoff/<slug>-plan.md` scratch). If you are running **outside** `/project:work`, commit and push yourself (`git push -u origin "$(git branch --show-current)"`, behavioral rule 19) and delete any plan scratch.
 - Pause for the human (`human-checkpoint`) if anything is uncertain.
 
 ## Two-strike rule

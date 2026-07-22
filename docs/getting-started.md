@@ -22,7 +22,6 @@ Optional but recommended:
 
 - Replace `LICENSE` if MIT isn't right for you.
 - Open `docs/wiki/` in [Obsidian](https://obsidian.md/) as a vault — that's your read-only-ish view of the agent's memory.
-- If you'll deploy via GitHub Actions, rename `.github/workflows/ci.yml.example` to `ci.yml` and customize it for your stack (instructions inside the file).
 
 Then start Claude Code:
 
@@ -83,7 +82,7 @@ What it does:
 - Reads `requirements.md`, `architecture.md`, all entity pages, and `todos.md`.
 - Applies a signal table: backend API → `backend-impl` skill, named external services → service-specific skills, security-critical requirements → possible `security-reviewer` agent, and so on.
 - Produces a prioritized report with trigger descriptions, wiki citations, and procedure outlines for each recommendation.
-- **Does not create anything automatically.** It presents the list; you approve what to build. Approved items are created via the `update-skill` / `update-agent` meta skills.
+- **Does not create anything automatically.** It presents the list; you approve what to build. Approved items are created via the `update-toolkit` skill.
 
 Re-run `/project:agent-scout` after a major `/project:interview` that adds a new stack layer or external service.
 
@@ -284,12 +283,12 @@ Sometimes an approach just doesn't work. The two-strike rule keeps you from grin
 
 When the agent realises a procedural gap, it shouldn't bury that knowledge in an agent prompt — it should ship a new skill.
 
-1. **The agent notices.** During `/project:work`, the developer hits a recurring task (e.g. "this is the third time I've had to author a Postgres migration; there's no skill for it"). It pauses via `human-checkpoint` and proposes creating one via the `update-skill` meta skill.
+1. **The agent notices.** During `/project:work`, the developer hits a recurring task (e.g. "this is the third time I've had to author a Postgres migration; there's no skill for it"). It pauses via `human-checkpoint` and proposes creating one via the `update-toolkit` skill.
 2. **You approve.** Confirm the skill name and one-line description, or push back if the gap is really a wiki update.
-3. **The agent writes it.** `update-skill` produces `.claude/skills/database-migrations/SKILL.md` with frontmatter (precise `description` so future tasks auto-load it) and a procedural body — _how_ to do migrations in this project, not _what_ migrations are.
+3. **The agent writes it.** `update-toolkit` produces `.claude/skills/database-migrations/SKILL.md` with frontmatter (precise `description` so future tasks auto-load it) and a procedural body — _how_ to do migrations in this project, not _what_ migrations are.
 4. **It auto-loads next time.** On the next task that matches the skill's `description` trigger, the developer loads the skill without you having to ask. This is the progressive-disclosure principle in action.
 
-The same pattern applies to `update-agent` and `update-command` when the gap is bigger than a procedure.
+`update-toolkit` is the one meta skill for all three artifact kinds — it has a section for skills, one for commands, and one for agents (used when the gap is a genuinely distinct role, not just a procedure).
 
 ## Scenario: Ingesting external documents into the wiki
 
@@ -350,8 +349,6 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 
 | Symptom                                            | Look at                                                                                                                   |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Test-first reminder firing on every edit           | Expected on `feat/*`/`fix/*` if no test is in the session's changes yet — write the test first; it's a nudge, not a block |
-| Wiki-drift warning at session end                  | Update the entity page in the same commit as the code                                                                     |
 | Developer won't start (no Behavior cases)          | Entity page missing or `## Behavior` empty — run `/project:interview` first                                               |
 | Reviewer claims it's in the wrong dir              | `/project:review` didn't `cd` into the worktree first — re-run, ensure worktree path is passed                            |
 | `wiki-todos.md` is huge                            | Run `/project:wiki-lint`                                                                                                  |
