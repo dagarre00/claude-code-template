@@ -1,12 +1,12 @@
 ---
 name: feature-branching
-description: Branching procedure for this project — when to branch, batching rules, finishing-up checklist. Commit-message format itself lives in CLAUDE.md golden rule 8 and docs/wiki/git-conventions.md. Trigger on "start branch", "feat/", "fix/", "batch todos", "finish feature".
+description: Branching procedure for this project — when to branch, batching rules, finishing-up checklist. Commit-message format itself lives in docs/wiki/git-conventions.md. Trigger on "start branch", "feat/", "fix/", "batch todos", "finish feature".
 type: skill
 ---
 
 # Branching
 
-Always branch before code. Never commit directly to `develop` or `main`. Commit-message format and PR template live in [`docs/wiki/git-conventions.md`](../../docs/wiki/git-conventions.md) and are summarized by `CLAUDE.md` golden rule 8 — this skill won't repeat them.
+Always branch before code. Never commit directly to `develop` or `main`. Commit-message format and PR template live in [`docs/wiki/git-conventions.md`](../../docs/wiki/git-conventions.md) — this skill won't repeat them.
 
 ## Starting work
 
@@ -73,7 +73,7 @@ git rebase origin/develop
 git push --force-with-lease origin <branch>   # safe: fails if remote has new commits you don't have
 ```
 
-If conflicts arise, follow the `conflict-resolution` skill. `--force-with-lease` is the only acceptable force-push form; never bare `--force`.
+If conflicts arise, follow the `git-recovery` skill (Resolve merge / rebase / cherry-pick conflicts). `--force-with-lease` is the only acceptable force-push form; never bare `--force`.
 
 ## Commit cadence
 
@@ -90,7 +90,7 @@ If conflicts arise, follow the `conflict-resolution` skill. `--force-with-lease`
 
    ```bash
    git fetch origin develop
-   git rebase origin/develop   # follow conflict-resolution skill if needed
+   git rebase origin/develop   # follow git-recovery skill (conflicts) if needed
    ```
 
 5. Push: `git push -u origin <branch>` (or `git push --force-with-lease` after a rebase).

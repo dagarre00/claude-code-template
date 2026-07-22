@@ -1,6 +1,6 @@
 ---
 name: git-recovery
-description: Emergency and advanced git operations — stash, cherry-pick, bisect, blame, undo a commit, recover lost work, clean up a branch. Trigger on "stash", "cherry-pick", "bisect", "git blame", "lost commit", "undo commit", "recover", "clean up branch", "drop commit", "reflog".
+description: Emergency and advanced git operations, and merge/rebase conflict resolution. Stash, cherry-pick, bisect, blame, undo a commit, recover lost work, clean up a branch, resolve conflicts. Trigger on "stash", "cherry-pick", "bisect", "git blame", "lost commit", "undo commit", "recover", "clean up branch", "drop commit", "reflog", "merge conflict", "rebase conflict", "CONFLICT (content)", "<<<<<<", "resolve conflict", "git merge failed", "git rebase failed".
 type: skill
 ---
 
@@ -41,7 +41,7 @@ git log --oneline <source-branch> | head -20
 # Apply it to the current branch
 git cherry-pick <sha>
 
-# If conflicts arise, follow conflict-resolution skill, then:
+# If conflicts arise, resolve them (see "Resolve merge / rebase / cherry-pick conflicts" below), then:
 git cherry-pick --continue   # or --abort
 ```
 
@@ -155,3 +155,52 @@ git fetch origin
 git log HEAD..origin/develop --oneline   # commits on develop not in your branch
 git log origin/develop..HEAD --oneline   # your commits not yet on develop
 ```
+
+## Resolve merge / rebase / cherry-pick conflicts
+
+Fires when git reports `CONFLICT (content)` and the tree has `<<<<<<<`, `=======`, `>>>>>>>` markers.
+
+### 1 — Understand the full state
+
+```bash
+git status                     # every conflicted file
+git diff --diff-filter=U       # all conflict markers at once
+git log --oneline -10 HEAD     # what's being merged in
+```
+
+### 2 — Resolve each conflicted file
+
+For every marker block: read **ours** (above `=======`) and **theirs** (below), decide keep-ours / keep-theirs / synthesis, delete the three marker lines, and verify the file is syntactically correct. If the correct resolution is ambiguous, stop and use `human-checkpoint` — do not guess.
+
+### 3 — Verify nothing is left
+
+```bash
+grep -rn "<<<<<<\|=======\|>>>>>>>" src/ tests/ 2>/dev/null
+```
+
+Any output = unresolved markers; do not continue.
+
+### 4 — Run the full test suite
+
+Use the command from `docs/wiki/commands.md`. All tests must pass before marking resolution complete. If tests fail after a correct-looking resolution, the merge itself may be wrong — use `human-checkpoint`.
+
+### 5 — Complete the operation
+
+```bash
+git add <resolved-files>
+git commit                 # after merge — keep the auto-generated message
+git rebase --continue      # after rebase — do NOT commit manually
+git cherry-pick --continue # after cherry-pick
+```
+
+### 6 — Abort if in doubt
+
+Rather than commit a guess when the human is unavailable:
+
+```bash
+git merge --abort   # or git rebase --abort / git cherry-pick --abort
+```
+
+Then tag a checkpoint and use `human-checkpoint`.
+
+**Conflict anti-patterns:** committing conflict markers (always grep first); accepting "theirs" blindly (each side may hold correct logic); rebasing a shared branch someone else has pulled (merge instead). Rebase feature branches onto develop early and often — `git fetch origin develop && git rebase origin/develop && git push --force-with-lease origin <branch>` — to keep the conflict surface small. `--force-with-lease` is the only acceptable force-push; never bare `--force`.

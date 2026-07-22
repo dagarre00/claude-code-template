@@ -76,7 +76,7 @@ Conventional commits, present tense:
 
 ## Merge conflicts
 
-Follow the [conflict-resolution skill](../../.claude/skills/conflict-resolution/SKILL.md) when `git merge` or `git rebase` produces `CONFLICT (content)` markers. Key steps: resolve markers, grep for leftovers, run full tests, then `git add + git commit` (merge) or `git add + git rebase --continue` (rebase).
+Follow the [git-recovery skill](../../.claude/skills/git-recovery/SKILL.md) (Resolve merge / rebase / cherry-pick conflicts) when `git merge` or `git rebase` produces `CONFLICT (content)` markers. Key steps: resolve markers, grep for leftovers, run full tests, then `git add + git commit` (merge) or `git add + git rebase --continue` (rebase).
 
 ## Branch cleanup (after merge)
 

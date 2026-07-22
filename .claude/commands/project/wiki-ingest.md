@@ -84,7 +84,7 @@ Triggered when the argument is a path to an existing file (e.g., `/project:wiki-
    - Cross-links added: <list>
    ```
 
-6. **Commit and push** (push immediately — an unpushed commit is lost on container recycle; see `.claude/rules/behavioral.md` #19):
+6. **Commit and push** (push immediately — behavioral rule 19):
 
    ```bash
    git add docs/wiki/
@@ -113,7 +113,7 @@ Triggered when the argument is a research query (starts with "search for", "rese
 
 6. **Append to `docs/wiki/log.md`** (same as file mode step 5).
 
-7. **Commit and push** (push immediately — an unpushed commit is lost on container recycle; see `.claude/rules/behavioral.md` #19):
+7. **Commit and push** (push immediately — behavioral rule 19):
 
    ```bash
    git add docs/raw/research/ docs/wiki/

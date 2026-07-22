@@ -32,7 +32,7 @@ Hard constraints from real failures. These override default agent inclinations.
 
 12. **Reviewer is periodic and isolated.** `/project:review` runs in a fresh worktree with no `developer` context. Not part of the work loop.
 
-13. **Progressive disclosure.** Don't preload domain knowledge. Skills auto-load when their `description` matches the task. If a needed skill doesn't exist, create one via `update-skill` rather than stuffing it into an agent prompt.
+13. **Progressive disclosure.** Don't preload domain knowledge. Skills auto-load when their `description` matches the task. If a needed skill doesn't exist, create one via the `update-toolkit` skill rather than stuffing it into an agent prompt.
 
 14. **Skills are how-to, not what-is.** When writing or editing a skill, the body must be a procedure: read these wiki pages, follow these steps, update these pages. Never explain a concept the LLM already knows.
 
@@ -40,17 +40,15 @@ Hard constraints from real failures. These override default agent inclinations.
 
 16. **Append, don't bury.** When agents discover something the maintainer should clean up later (orphan page, missing ADR, repeated concept), append a one-line entry to `docs/wiki/wiki-todos.md`. Don't wait for `/project:wiki-lint`.
 
-17. **Use the existing workflow before improvising.** Slash commands and skills exist for a reason. If the workflow seems missing, add a command or skill via the meta skills — don't work around the gap silently.
+17. **Use the existing workflow before improvising.** Slash commands and skills exist for a reason. If the workflow seems missing, add a command or skill via the `update-toolkit` skill — don't work around the gap silently.
 
-18. **Obsidian LLM-wiki standard — hard rules.** These are not stylistic; violating them breaks rendering, the graph, or dedup. Inside `docs/wiki/`:
-    - Internal links use `[[wiki-style]]` syntax — e.g. `[[entities/auth]]`, `[[gotchas#login-flow]]`, `[[concepts/retry-pattern|the retry pattern]]`. Tags use `#tag`. Embeds use `![[summaries/some-source]]`. Broken Obsidian links are a bug. External URLs and non-wiki files (`.claude/...`, `src/...`) keep standard markdown link syntax.
-    - **A page's identity is its filename** — no `id` or `name` field. Alternative names go in `aliases` (the anti-duplicate mechanism). Filenames never contain `* " \ / < > : | ? # ^ [ ]` — variants with symbols go in `aliases`.
-    - **One page = one concept.** Merge/dedup only at whole-concept level. Before creating a page, compare its essence against existing filenames and `aliases`; if the concept exists → update, don't duplicate.
-    - **No nested objects in frontmatter.** Every relation is a top-level list property. Special keys in plural: `tags`, `aliases`, `cssclasses`.
-    - **Wikilinks in properties go quoted and solitary** — list properties, one `"[[page]]"` per element, never multiple wikilinks in one text value.
-    - **Closed vocabularies.** `type`, `abstraction`, and `status` values stay inside the vocabulary defined in CLAUDE.md → Frontmatter convention; properties are lowercase `snake_case`, designed to be Bases/Dataview columns and filters.
-    - **Provenance.** Every non-trivial claim traces to a file in `docs/raw/`. A claim with no traceable source goes to `## Boundaries` marked *unverified*, or becomes a question to the human.
-    - **Never invent content to fill a gap.** A gap you can't fill from `docs/raw/` is an `open_questions` entry or a question to the human — not prose.
+18. **Obsidian LLM-wiki standard — hard rules.** Violating these breaks rendering, the graph, or dedup — they are not stylistic. The full standard (facet vocabulary, link ontology, page templates) lives in the `wiki-update` skill; it is the single source of truth. The non-negotiable invariants, inside `docs/wiki/`:
+    - **Wikilink syntax.** Internal links are `[[wiki-style]]` (`[[entities/auth]]`, `[[gotchas#login-flow]]`, `[[concepts/retry-pattern|alias]]`), tags `#tag`, embeds `![[summaries/x]]`. External URLs and non-wiki files (`.claude/...`, `src/...`) keep standard markdown links. A broken wikilink is a bug.
+    - **Identity = filename.** No `id`/`name` field; alternative names go in `aliases`. Filenames never contain `* " \ / < > : | ? # ^ [ ]`.
+    - **One page = one concept.** Before creating a page, check existing filenames and `aliases`; if the concept exists → update, don't duplicate.
+    - **Flat frontmatter, quoted-solitary wikilinks.** No nested objects; plural special keys (`tags`, `aliases`, `cssclasses`); one `"[[page]]"` per list element.
+    - **Closed vocabularies** for `type`/`abstraction`/`status` (defined in `wiki-update`); properties lowercase `snake_case`.
+    - **Provenance, never invent.** Every non-trivial claim traces to a `docs/raw/` file; an unfillable gap is an `open_questions` entry or a question to the human, never invented prose.
 
 19. **Finalize with commit + push.** Any command or agent that mutates tracked files ends by committing the change and pushing it to the working branch (`git push -u origin <branch>`). A local commit is not enough: remote execution containers are recycled between sessions, so an unpushed commit is lost work. The orchestrating command (`/project:work`) owns the final bundled commit + push. Read-only commands and gitignored artifacts (the `*-plan.md` scratch) are the only exceptions. On network failure, retry the push with exponential backoff.
 

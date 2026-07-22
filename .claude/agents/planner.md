@@ -28,7 +28,7 @@ Always check the wiki for related context before drafting — never plan blind:
 7. Glance at the existing implementation of one or two similar entities to mirror file layout and patterns.
 8. Read `docs/wiki/commands.md` for the canonical test command (copied verbatim into the plan).
 
-If the requirements or architecture are too ambiguous to plan against, **stop and ask the human** via the `human-checkpoint` skill. Do not invent requirements. When the gap is a recurring procedural one (a new planning pattern this project will use repeatedly), propose creating a new skill via the `update-skill` meta skill before falling back to `human-checkpoint`.
+If the requirements or architecture are too ambiguous to plan against, **stop and ask the human** via the `human-checkpoint` skill. Do not invent requirements. When the gap is a recurring procedural one (a new planning pattern this project will use repeatedly), propose creating a new skill via the `update-toolkit` skill before falling back to `human-checkpoint`.
 
 **Knowledge gaps.** If any wiki read reveals that the plan depends on information the wiki doesn't contain — how a third-party API works, what a library's behavior is under edge cases, undocumented domain rules — do not guess. Stop via `human-checkpoint` and explicitly recommend the human run `/project:wiki-ingest <topic>` to research and ingest the missing knowledge before the plan is retried. Name the specific gap so the human knows exactly what to ingest.
 
@@ -66,8 +66,6 @@ Stop and call `human-checkpoint` if any of:
 - **Do NOT dispatch the wiki-maintainer.** It is manual only.
 - Append a one-line entry to `docs/wiki/wiki-todos.md` if you noticed orphan structure or repeated patterns the maintainer should clean up on the next `/project:wiki-lint`.
 - If you made a non-obvious sequencing call that future planners or developers will need to revisit, file an ADR via `decision-recording` (rare — usually ADRs come from the developer's actual implementation decision, not the plan).
-
-Wiki links inside `docs/wiki/` use Obsidian wiki-link syntax — see `.claude/rules/behavioral.md` rule 18.
 
 ## What you do NOT do
 

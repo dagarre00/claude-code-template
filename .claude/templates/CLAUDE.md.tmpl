@@ -1,0 +1,73 @@
+# <Project Name>
+
+<One-sentence vision from interview.>
+
+**Stack:** <language>, <framework> | **Test:** `<test command>` | **Branch:** `develop`
+
+The hard behavioral constraints live in [`.claude/rules/behavioral.md`](.claude/rules/behavioral.md) — they override default inclinations. This file is the map; that file is the law.
+
+## Identity
+
+You are an AI development agent working on <project name>. Before any code change:
+
+1. Read `docs/wiki/gotchas.md` for known failure points.
+2. Read `docs/wiki/todos.md` to know what's next.
+3. If the task touches a feature, read the matching entity page and the relevant section of `docs/wiki/requirements.md`.
+4. Grep `docs/wiki/` for terms from the task.
+5. Let matching skills auto-load.
+
+## Operating principles
+
+- **Wiki is spec.** `docs/wiki/` is truth. Code that disagrees is the bug.
+- **Progressive disclosure.** Agents start minimal; skills load on demand via the `update-toolkit` skill when a gap appears.
+- **Spec → Test → Code.** Entity Behavior → failing test → implementation.
+- **Wiki always current.** Code and wiki edits ship together, same commit.
+- **Human in the loop.** When the wiki doesn't answer, stop and ask.
+
+## Three layers
+
+1. **Raw sources** — `docs/raw/` (immutable). Agents read, never edit; only append.
+2. **Wiki** — `docs/wiki/` (LLM-owned). Requirements, architecture, entities, decisions, todos, log.
+3. **Schema** — `.claude/` (agents, skills, commands, rules).
+
+The wiki follows the Obsidian LLM-wiki standard — full standard in the [`wiki-update` skill](.claude/skills/wiki-update/SKILL.md), invariants in behavioral rule 18.
+
+## Wiki layout
+
+| Page                        | Purpose                           |
+| --------------------------- | --------------------------------- |
+| `docs/wiki/requirements.md` | Living spec                       |
+| `docs/wiki/architecture.md` | Stack, patterns, test strategy    |
+| `docs/wiki/entities/*`      | One page per feature/module       |
+| `docs/wiki/decisions/*`     | ADRs                              |
+| `docs/wiki/todos.md`        | Priority-ordered work queue       |
+| `docs/wiki/gotchas.md`      | Known failure points              |
+| `docs/wiki/commands.md`     | Working shell commands            |
+| `docs/wiki/log.md`          | Timeline                          |
+| `docs/wiki/wiki-todos.md`   | Cleanup queue for wiki-maintainer |
+
+## Commands
+
+| Command                | Purpose                                           |
+| ---------------------- | ------------------------------------------------- |
+| `/project:init`        | (Re)initialize project wiki and schema            |
+| `/project:interview`   | Q&A to define requirements or features            |
+| `/project:work`        | Top todo → spec → red → green → refactor → commit |
+| `/project:review`      | Full audit in isolated worktree                   |
+| `/project:wiki-lint`   | Wiki health check                                 |
+| `/project:wiki-ingest` | Ingest file or research into wiki                 |
+| `/project:agent-scout` | Recommend project-specific agents and skills      |
+
+## Agent routing
+
+| Task                       | Agent                                                        |
+| -------------------------- | ------------------------------------------------------------ |
+| Plan complex/batched todos | `planner` (Opus) — before the developer, via `/project:work` |
+| TDD cycle                  | `developer` (red → green → refactor; loads skills on demand) |
+| Periodic audit             | `reviewer` (worktree-isolated)                               |
+| Wiki health                | `wiki-maintainer` (manual only via `/project:wiki-lint`)     |
+| Web research               | `researcher`                                                 |
+
+## North star
+
+The wiki is truth; code that disagrees is the bug. No code without a failing test. Never modify a test to make it pass — fix the spec, regenerate the test, implement. Wiki travels with code in the same commit. Always branch before coding; conventional commits; push after every commit. Two failures on the same mechanism → checkpoint, reset, re-spec. When the wiki doesn't answer, stop and ask. The full, binding list is [`.claude/rules/behavioral.md`](.claude/rules/behavioral.md).

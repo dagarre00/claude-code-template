@@ -18,7 +18,7 @@ Stop and ask when the wiki doesn't have an answer. Don't guess. Don't silently i
 | Uncommitted changes from a prior session                          | Stop. Ask whether to commit, stash, or discard.                                                     |
 | Branch state unclear (off develop, prior PR merged?)              | Stop. Run `git status` and `git log --oneline -10` and show output.                                 |
 | About to delete files, force-push, drop tables, hit a third party | Stop. Confirm scope and authorization.                                                              |
-| A skill or wiki page you need doesn't exist                       | Stop. Ask before improvising; offer to create it via `update-skill`.                                |
+| A skill or wiki page you need doesn't exist                       | Stop. Ask before improvising; offer to create it via `update-toolkit`.                              |
 | Test command runs but produces ambiguous output                   | Stop. Show the output, ask what to interpret it as.                                                 |
 
 ## How to ask

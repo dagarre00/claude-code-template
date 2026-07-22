@@ -35,7 +35,7 @@ For a worked walkthrough — `/project:init` → `/project:interview` → `/proj
 ```
 .claude/
 ├── agents/          # planner (opus), developer, reviewer, wiki-maintainer, researcher
-├── skills/          # process skills (TDD, branching, plan-writing, wiki-update, …) + meta skills
+├── skills/          # process skills (TDD, branching, plan-writing, wiki-update, …) + update-toolkit meta skill
 ├── commands/        # /project:init, /project:interview, /project:work, /project:review, /project:wiki-lint, /project:wiki-ingest, /project:agent-scout
 ├── settings.json    # harness settings
 └── rules/           # behavioral constraints
@@ -52,7 +52,7 @@ HUMAN.md             # the human's-eye view of how this works
 - **Spec → Test → Code.** Entity Behavior cases → failing tests → minimal implementation.
 - **Wiki ships with code.** Code edits and wiki edits happen in the same commit.
 - **Human in the loop.** When the agent can't decide from the wiki, it stops and asks — never silently improvises.
-- **Dynamic config.** Meta skills (`update-skill`, `update-agent`, `update-command`) let the agent evolve its own toolkit as the project grows.
+- **Dynamic config.** The `update-toolkit` meta skill lets the agent evolve its own agents, skills, and commands as the project grows.
 
 ## License
 

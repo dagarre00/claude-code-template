@@ -78,7 +78,7 @@ If any fails: run `human-checkpoint`.
    - New todos: <list>
    ```
 
-9. **Commit and push.** Stage the report, the new todos, the queued wiki-todos, and the log entry in one commit, then push immediately — an unpushed commit is lost when the container recycles (see `.claude/rules/behavioral.md` #19):
+9. **Commit and push.** Stage the report, the new todos, the queued wiki-todos, and the log entry in one commit, then push immediately (behavioral rule 19):
 
    ```bash
    git add docs/wiki/
