@@ -68,7 +68,7 @@ _(Unit vs integration vs e2e. Test framework. Fixture conventions. Coverage targ
 
 ## Conventions
 
-_(Naming, error handling, logging, config — patterns enforced project-wide. Promote each to [[concepts/<pattern>]] when a pattern recurs three times.)_
+_(Naming, error handling, logging, config — patterns enforced project-wide. Promote each to a `docs/wiki/concepts/<pattern>.md` page, linked from here, when a pattern recurs three times.)_
 
 - Naming: `<TBD>`
 - Errors: `<TBD>`
@@ -77,7 +77,7 @@ _(Naming, error handling, logging, config — patterns enforced project-wide. Pr
 
 ## Observability
 
-_(How we see what's happening in production. Logging destinations, metrics, tracing, error reporting. Distinct from the logging \_format_ in Conventions — this section is about pipeline and tooling.)\_
+_(How we see what's happening in production. Logging destinations, metrics, tracing, error reporting. Distinct from the logging **format** in Conventions — this section is about pipeline and tooling.)_
 
 - **Logging pipeline:** `<TBD>` (where logs go, retention, search)
 - **Metrics:** `<TBD>` (what we measure, what tool, what thresholds alert)

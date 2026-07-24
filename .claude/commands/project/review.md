@@ -19,7 +19,7 @@ Do **not** use `/project:review` inside `/project:work`. They're different phase
 
 ## Preconditions
 
-- On `main` (or any non-feat branch).
+- On `develop` (or any non-`feat`/`fix` branch). `develop` is this project's integration branch — `main` is the release branch and is not where audits start.
 - Working tree clean.
 - `docs/wiki/` exists and has at least one entity page.
 
@@ -28,6 +28,12 @@ If any fails: run `human-checkpoint`.
 ## Steps
 
 1. **Optionally pin the scope.** If the human gave a specific area to review, write it down in one line. Otherwise the review is whole-repo.
+
+1a. **Branch for the report.** The report is a tracked file, and `develop`/`main` take no direct commits (`feature-branching`, `git-conventions.md`). Branch before the reviewer writes anything:
+
+   ```bash
+   git checkout -b chore/review-$(date -u +%Y-%m-%d)
+   ```
 
 2. **Create the worktree.** Outside the main checkout:
 
@@ -83,8 +89,10 @@ If any fails: run `human-checkpoint`.
    ```bash
    git add docs/wiki/
    git commit -m "docs(review): audit YYYY-MM-DD — <N critical, M warnings, K drift>"
-   git push -u origin "$(git branch --show-current)"
+   git push -u origin "$(git branch --show-current)"   # the chore/review-* branch from step 1a
    ```
+
+   Then open a PR to `develop` via `pr-create` (the branch is `chore/*`, so the body is the report summary rather than Behavior cases) and return to `develop` with `git checkout develop`. Merging stays the human's call.
 
 10. **Report to the human.** Highlight critical items only. Recommend whether the next step is `/project:work` (fix critical), `/project:interview` (spec gap), or `/project:wiki-lint` (heavy drift).
 

@@ -72,7 +72,7 @@ _(Bridge between users and functional requirements. Each story names the user, t
 
 _(What the system must do. Each item is an observable capability, not an implementation choice. Link to the entity page that owns it.)_
 
-- `<TBD via /project:interview>` — see [[entities/<slug>]]
+- `<TBD via /project:interview>` — each item links to the entity page that owns it, e.g. `[[entities/auth-login]]`
 
 ## Non-functional requirements
 

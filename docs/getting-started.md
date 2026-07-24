@@ -43,8 +43,9 @@ What this does:
 - Detects whether the repo has a stack already (language, package files) and seeds `architecture.md#Stack` and `commands.md` with the detection.
 - Initializes git if missing.
 - **Interviews you inline** — if `requirements.md` and `architecture.md` are empty or missing, `/project:init` runs its own interview pass to fill them. It only asks about topics that are missing or partial; if both files are already fully populated it skips the interview entirely and goes straight to scaffolding.
+- **Bootstraps a runnable test command** — on a greenfield repo the test command you named in the interview doesn't run yet: nothing is installed and there's no test directory. `/project:init` asks permission, then creates the bare minimum (dependency manifest, empty `tests/`, empty source dir), installs, and runs the command to confirm it exits cleanly on an empty suite. No application code, no example test. This matters because `/project:work` cannot produce a genuine Red phase against a command that errors out — a test that fails because `pytest` isn't installed is not a failing test.
 
-After `/project:init`, the wiki is fully scaffolded with real content. You do **not** need to run `/project:interview` separately after a fresh init — only use it later when adding a new feature or deepening the spec.
+After `/project:init`, the wiki is fully scaffolded with real content and the TDD loop is executable. You do **not** need to run `/project:interview` separately after a fresh init — only use it later when adding a new feature or deepening the spec.
 
 ## 2. `/project:interview` — add a feature or deepen the spec
 
@@ -109,7 +110,7 @@ If a step fails twice on the same approach, the **two-strike rule** fires — th
 /project:review
 ```
 
-Runs the `reviewer` agent in a fresh git worktree with no developer context. It audits code against the wiki and flags drift, missing tests, security/perf concerns. Critical issues block; warnings get queued in `wiki-todos.md`.
+Runs the `reviewer` agent in a fresh git worktree with no developer context. It audits code against the wiki and flags drift, missing tests, security/perf concerns. Critical and Warning findings become prioritized items in `todos.md` (they turn into the next `/project:work` cycles); Drift findings go to `wiki-todos.md` for the maintainer. The report itself lands on a `chore/review-*` branch and is PR'd to `develop` like any other tracked change.
 
 This is **not** part of `/project:work` — it's periodic and isolated.
 
@@ -202,7 +203,7 @@ The reviewer is fresh eyes on the codebase. It catches drift the developer can't
 
 **What happens:**
 
-1. `/project:review` creates a fresh git worktree at `../<repo>-review-YYYY-MM-DD` (sibling directory, not inside the repo).
+1. `/project:review` opens a `chore/review-YYYY-MM-DD` branch (the report is a tracked file, and `develop` takes no direct commits), then creates a fresh git worktree at `../<repo>-review-YYYY-MM-DD` (sibling directory, not inside the repo).
 2. Dispatches the reviewer agent **inside the worktree** — no prior developer context, fresh read of every entity page and the code that implements it.
 3. Reviewer runs the test suite itself. Trusts nothing.
 4. Findings land in `docs/wiki/decisions/review-YYYY-MM-DD.md` — structured by severity (Critical / Warning / Drift / Missing ADR).
@@ -234,10 +235,12 @@ A bug in shipped behavior needs a fix. Same TDD discipline as a feature — just
    ```markdown
    ## Behavior
 
-   - [x] rejects unknown user
-   - [x] issues token on success
-   - [ ] [regression] does not leak password hash in error response ← new
+   - [x] B1: When credentials are unknown, the server responds 401 and sets no session cookie.
+   - [x] B2: When credentials are valid, the server responds 200 and sets the session cookie.
+   - [ ] B3: When authentication fails, the error response body contains no `password_hash` field. ← new
    ```
+
+   New cases always append at the next free `B<N>` — never renumber, never edit a shipped `[x]` case in place (see the `spec-writing` skill).
 
    Adding the case to the entity page is part of the same commit as the test.
 
@@ -312,7 +315,7 @@ A new spec PDF, an article, or research output needs to enter the agent's knowle
 
      `/project:wiki-ingest` dispatches the `researcher` agent, which searches and fetches, then writes `docs/raw/research/<slug>.md`. The ingest command then produces the matching `summaries/<slug>.md`.
 
-3. **Cross-linking.** The ingest greps the wiki for related terms and adds `[[summaries/<slug>]]` references on overlapping entity and concept pages — that's what makes the summary reachable, since there's no central index. Contradictions get flagged with `> [!contradiction]` in both pages — never silently resolved.
+3. **Cross-linking.** The ingest greps the wiki for related terms and adds `[[summaries/<slug>]]` references on overlapping entity and concept pages — that's what makes the summary reachable, since there's no central index. Contradictions get flagged by setting the `contradicts:` frontmatter property on **both** pages and describing the conflict in each page's `## Boundaries` section — never silently resolved. An unresolved `contradicts` is exactly what the next `/project:wiki-lint` reconciliation pass picks up.
 4. **`/project:wiki-lint` afterwards.** Heavy ingest tends to create new cross-references and the occasional orphan. Run `/project:wiki-lint` when several summaries have landed.
 
 ## Scenario: Checking project state mid-session
@@ -349,6 +352,7 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 
 | Symptom                                            | Look at                                                                                                                   |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `/project:work` refuses to start (test command)    | `commands.md ## Test` is `<TBD>` or errors out — re-run `/project:init` step 5a to bootstrap a runnable command            |
 | Developer won't start (no Behavior cases)          | Entity page missing or `## Behavior` empty — run `/project:interview` first                                               |
 | Reviewer claims it's in the wrong dir              | `/project:review` didn't `cd` into the worktree first — re-run, ensure worktree path is passed                            |
 | `wiki-todos.md` is huge                            | Run `/project:wiki-lint`                                                                                                  |

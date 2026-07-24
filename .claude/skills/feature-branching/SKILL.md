@@ -6,7 +6,7 @@ type: skill
 
 # Branching
 
-Always branch before code. Never commit directly to `develop` or `main`. Commit-message format and PR template live in [`docs/wiki/git-conventions.md`](../../docs/wiki/git-conventions.md) — this skill won't repeat them.
+Always branch before code. Never commit directly to `develop` or `main`. Commit-message format and PR template live in [`docs/wiki/git-conventions.md`](../../../docs/wiki/git-conventions.md) — this skill won't repeat them.
 
 ## Starting work
 

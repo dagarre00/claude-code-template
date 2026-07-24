@@ -58,8 +58,10 @@ Example:
 5. **Size check.** After appending, count the non-blank, non-header content lines in `gotchas.md`:
 
    ```bash
-   grep -c "^\*\*\(When\|Symptom\|Cause\|Fix\|Related\)\*\*" docs/wiki/gotchas.md
+   grep -c "^\*\*\(When\|Symptom\|Cause\|Fix\|Related\):\*\*" docs/wiki/gotchas.md
    ```
+
+   (The colon is inside the bold markers — `**When:**`. Omitting it from the pattern makes the count silently return 0 and the size check never fires.)
 
    If the result is **≥ 20** (roughly 4+ entries per field × 5 fields), append a wiki-todo:
 

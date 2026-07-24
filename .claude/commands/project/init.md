@@ -101,6 +101,25 @@ File ADRs under `docs/wiki/decisions/` for non-trivial choices made during the i
 
 Every page gets correct frontmatter per the Obsidian LLM-wiki standard (see the `wiki-update` skill).
 
+### 5a. Bootstrap a runnable test command
+
+`/project:work` cannot start a Red phase until the test command actually executes. On a greenfield repo the interview answer (`pytest -q`, `npm test`, …) names a command that does not yet run: no dependency manifest, no test directory, nothing installed. Close that gap here — it is the one precondition every later cycle depends on.
+
+1. **Check whether it already runs.** Execute the test command from `docs/wiki/commands.md`. If it exits with "no tests collected" / "0 passing" (or any clean zero-test result), the loop is already runnable — record that and skip to step 6.
+
+2. **If it doesn't run, propose the minimum skeleton.** Present the exact file list and install command to the human via `human-checkpoint` before creating anything. The minimum is only what makes an empty suite executable:
+   - the dependency manifest for the detected stack (`pyproject.toml`, `package.json`, `Cargo.toml`, …) declaring the test framework chosen in the interview,
+   - the test directory the framework expects (`tests/`, `__tests__/`, …) with nothing in it,
+   - the source directory named in `architecture.md ## Layout`, empty.
+
+   No application code, no example module, no placeholder test. The first real test comes from the first `/project:work` Red phase.
+
+3. **Install and verify.** Run the install command, then the test command. Confirm it exits cleanly on an empty suite. If installation fails (no network, missing toolchain), stop and run `human-checkpoint` — do not paper over it by writing a fake test command.
+
+4. **Record the verified commands** in `docs/wiki/commands.md`: `## Install`, `## Test`, and whatever else you confirmed. Only commands you have actually run go in this file.
+
+If the human declines the bootstrap, leave `commands.md ## Test` as `<TBD>` and say plainly in the report that `/project:work` will refuse to start until a test command runs.
+
 ### 6. Rewrite CLAUDE.md
 
 Rewrite `CLAUDE.md` to be lean and project-specific. Drop the template framing — this is now a real project. **Use [`.claude/templates/CLAUDE.md.tmpl`](../../templates/CLAUDE.md.tmpl) as the exact skeleton:** copy it to `CLAUDE.md` and fill every `<placeholder>` (project name, vision, stack, test command) from the interview answers. Do not re-derive the section list — the template already carries it (Identity, Operating principles, Three layers, Wiki layout, Commands, Agent routing, North star).
@@ -127,8 +146,9 @@ Append to `docs/wiki/log.md`:
 Stage and commit everything created or modified, then push:
 
 ```bash
-git add docs/ CLAUDE.md
-git commit -m "chore(init): scaffold wiki and CLAUDE.md"
+# Include any skeleton files created in step 5a (manifest, lockfile, empty test dir).
+git add docs/ CLAUDE.md <manifest-and-skeleton-paths>
+git commit -m "chore(init): scaffold wiki, CLAUDE.md, and runnable test command"
 git push -u origin main
 ```
 
@@ -150,7 +170,7 @@ If `develop` already exists (locally or on the remote), check it out instead of 
 
 Print:
 
-- Stack and test command.
+- Stack and test command — and whether the test command was **verified to run** (step 5a) or is still `<TBD>`.
 - Pages created vs already present.
 - Key decisions from the interview.
 - Recommended next step: `/project:work` to start on the first todo.
@@ -164,6 +184,6 @@ Print:
 
 ## What you do NOT do
 
-- **No code creation.** This command sets up wiki and schema. It does not generate `src/`, dependency manifests, or boilerplate. That comes from `/project:work`.
+- **No application code.** This command sets up wiki and schema, plus the empty skeleton step 5a needs to make the test command runnable (manifest, empty `tests/`, empty source dir). It does not generate modules, example tests, or boilerplate — the first real test comes from `/project:work`'s Red phase.
 - **No assumptions about the stack.** Detect or ask.
 - **No second-guessing existing wiki.** If a page exists, leave it. Append to `wiki-todos.md` if it needs cleanup.

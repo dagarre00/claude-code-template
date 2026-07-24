@@ -1,12 +1,15 @@
 ---
 name: wiki-ingest
 description: Direct ingest of a file or research topic into the wiki. Use /project:wiki-ingest specification.pdf to ingest a document, or /project:wiki-ingest search for exchange rates APIs to research and ingest. Focused — no lint pass, just ingest.
+argument-hint: <path/to/file> | search for <topic>
 type: command
 ---
 
 # /project:wiki-ingest
 
-Ingest a file or research topic directly into the wiki. Two modes:
+**Argument:** `$ARGUMENTS`
+
+Ingest a file or research topic directly into the wiki. Two modes, selected by what the argument above turns out to be — resolve it first (does that path exist on disk?), then follow the matching section. If the argument is empty, ask the human what to ingest rather than guessing.
 
 - **File mode:** `/project:wiki-ingest path/to/file.pdf` — read a local file and produce a `summaries/` page.
 - **Research mode:** `/project:wiki-ingest search for exchange rates APIs` — search the web, produce raw research, then ingest it.

@@ -28,8 +28,8 @@ Write the plan to `.claude/handoff/<slug>-plan.md` using this exact template:
 <one paragraph — what shipping this todo (or batch) means in observable terms>
 
 ## Behavior cases covered
-- <slug>#<case-anchor>
-- <slug>#<case-anchor>
+- <slug> B1: <case text, copied from the entity page>
+- <slug> B2: <case text, copied from the entity page>
 
 ## Approach
 <2-4 sentences — the chosen approach, with one-line justification vs alternatives. On retry, name the prior failed approach and why this one is fundamentally different.>

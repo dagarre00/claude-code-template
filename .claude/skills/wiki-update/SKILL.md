@@ -131,6 +131,8 @@ Behavior plays the role of Model (the spec is the mental model); Implementation 
 
 Operational ledgers (`log.md`, `todos.md`, `wiki-todos.md`, `gotchas.md`, `commands.md`) are `type: reference` and keep their own body formats — the disclosure spine doesn't apply to them, but the frontmatter hard rules do.
 
+**Navigational pages are exempt from the orphan rule.** The operational ledgers above, the two root spec pages (`requirements.md`, `architecture.md`, `git-conventions.md`), and the folder guides (`entities/README.md`, `concepts/README.md`, `decisions/README.md`, `summaries/README.md`) are reached through the directory tree and the agent workflow, not through the graph. They are expected to have zero inbound wikilinks. Never flag them as orphans and never delete them to satisfy the rule — the orphan check applies to **content** pages only (entities, concepts, decisions, summaries).
+
 ## Link ontology (fixed) — and the gap each type makes computable
 
 | Relation | Semantic direction | Expected link (gap rule) |
