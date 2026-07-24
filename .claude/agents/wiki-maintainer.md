@@ -43,7 +43,7 @@ You are the **compiler + librarian** of `docs/wiki/`: you compile `docs/raw/` in
    - **Misclassified instances:** `abstraction: instance` with empty `specializes`.
    - **Nonexistent prerequisites:** a `depends_on` value whose page doesn't exist (broken wikilink) → suggest a `stub`.
    - **Terms referenced without a page:** a name linked from ≥3 pages with no page of its own → suggest a `stub`.
-   - **Orphans:** pages with no inbound links → connect or queue for deletion.
+   - **Orphans:** **content** pages (entities, concepts, decisions, summaries) with no inbound links → connect or queue for deletion. Operational ledgers, the root spec pages, and folder `README.md` guides are navigational and expected to have none — see `wiki-update` → "Navigational pages are exempt from the orphan rule". Reporting those as orphans on a fresh project is noise that buries the real findings.
    - **Asymmetries:** A `contrasts_with`/`alternative_to` B but B doesn't link back.
    - **Contradictions:** any unresolved `contradicts`, or two Essences asserting opposites about the same concept → decision queue (human batch).
 

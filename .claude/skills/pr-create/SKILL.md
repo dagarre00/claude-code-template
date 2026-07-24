@@ -27,8 +27,9 @@ Compose the body from the artefacts above. Default skeleton (override with whate
 
 ## Behavior cases closed
 
-- [[entities/<slug>#B1]]
-- [[entities/<slug>#B2]]
+[[entities/<slug>]] — B1, B2
+
+(Link the **page**, list the case IDs as text. Behavior cases are list items, not headings, so `[[entities/<slug>#B1]]` resolves to nothing in Obsidian — it is a broken wikilink, which behavioral rule 18 forbids.)
 
 ## Related TODOs
 
@@ -52,7 +53,7 @@ Compose the body from the artefacts above. Default skeleton (override with whate
 3. **Draft the body** following the skeleton.
 4. **Show the drafted PR body to the human** (a brief preview in the conversation), then open the PR immediately — no confirmation needed. Use `mcp__github__create_pull_request` targeting `develop` with the title in conventional-commit form (matching the lead commit on the branch).
 5. **Tell the human:** "Feature `<slug>` is complete. PR #N is open targeting `develop` — please review and merge when ready."
-6. **Log it.** Append to `docs/wiki/log.md`:
+6. **Log it — and commit the entry.** `/project:work` already made and pushed the cycle's bundled commit before the PR existed, so this entry has nothing to ride along with. Append it, then commit and push it on its own; otherwise the entry is lost and step 7 runs against a dirty tree.
 
    ```markdown
    ## [YYYY-MM-DD HH:MM] pr — <slug>
@@ -61,7 +62,13 @@ Compose the body from the artefacts above. Default skeleton (override with whate
    - PR: <url>
    ```
 
-7. **Return to develop:**
+   ```bash
+   git add docs/wiki/log.md
+   git commit -m "docs(<slug>): log PR #N"
+   git push
+   ```
+
+7. **Return to develop** once `git status --porcelain` is empty:
 
    ```bash
    git checkout develop

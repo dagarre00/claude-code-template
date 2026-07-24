@@ -14,7 +14,7 @@ You orchestrate one TDD cycle (or a small batch). You do **not** write tests or 
 
 - Clean working tree.
 - `docs/wiki/todos.md` has at least one item.
-- `docs/wiki/commands.md` has a working test command.
+- `docs/wiki/commands.md ## Test` is not `<TBD>`, **and the command actually runs.** Execute it once before dispatching anything. A command that errors out (framework not installed, no manifest, no test dir) is not a test command — Red would fail for the wrong reason and the whole cycle thrashes. If it doesn't run, stop and run `human-checkpoint`: the fix is `/project:init` step 5a (bootstrap a runnable test command), not improvising a skeleton mid-cycle.
 
 If any precondition fails: stop and run `human-checkpoint`.
 
@@ -42,6 +42,8 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
    ```
 
    If `merge --ff-only` fails (develop has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force develop.
+
+   **No remote yet?** `/project:init` supports finishing without one. Check with `git remote` — if it prints nothing, skip the fetch/merge and branch straight off local `develop`. Every push step in this command is then skipped and noted in the report until the human adds a remote.
 
 3. **Verify Behavior cases exist.** Read the entity page's `## Behavior` section. If any case is `[ ]` and unimplemented, that's the test target. If the section is empty or vague, **stop** — `/project:interview` or the `spec-writing` skill must define them first.
 
@@ -96,8 +98,16 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 11. **Create PR and return to develop.** Feature is done — open the PR immediately:
     - Follow the `pr-create` skill to draft the body.
     - Open the PR using `mcp__github__create_pull_request` targeting `develop`.
+    - Append the `pr — <slug>` entry to `docs/wiki/log.md` (the PR number only exists now, so it could not ship in step 9's commit), then commit and push it. Skipping this leaves the tree dirty and the next `git checkout` either drags the change along or fails:
+
+      ```bash
+      git add docs/wiki/log.md
+      git commit -m "docs(<slug>): log PR #N"
+      git push
+      ```
+
     - Tell the human: "Feature `<slug>` is complete. I've opened PR #N targeting `develop` — please review and merge when ready."
-    - Switch back to develop:
+    - Confirm the tree is clean (`git status --porcelain` prints nothing), then switch back to develop:
 
       ```bash
       git checkout develop

@@ -32,25 +32,26 @@ You are an AI development agent working on this project. At the top of every ses
 2. **Wiki** — `docs/wiki/` (LLM-owned). The compiled state: durable, atomic, reconciled pages. Agents compile `raw → wiki` and reconcile continuously; the human browses (e.g. in Obsidian) and answers clarification questions. Never invent knowledge to plug a hole — record it in `open_questions` or ask.
 3. **Schema** — this file plus `.claude/rules/behavioral.md`, `.claude/agents/`, `.claude/skills/`, `.claude/commands/`. Tells agents how to operate.
 
-## Wiki layout
+## Where things live
 
-```
-docs/
-├── raw/                    # immutable sources (interviews/, research/)
-└── wiki/                   # LLM-owned knowledge base
-    ├── log.md              # chronological ops log
-    ├── requirements.md     # living spec — code must match
-    ├── architecture.md     # stack, patterns, testing strategy
-    ├── git-conventions.md  # branch/commit conventions
-    ├── todos.md            # priority-ordered work queue (completed items removed; git history is the record)
-    ├── wiki-todos.md       # deferred wiki-cleanup queue — /project:wiki-lint processes
-    ├── gotchas.md          # known failure points
-    ├── commands.md         # working shell commands (incl. test command)
-    ├── entities/           # one page per feature/module/component
-    ├── concepts/           # patterns, conventions, domain ideas
-    ├── decisions/          # ADRs
-    └── summaries/          # one page per ingested raw source
-```
+| Question you have                    | File                                                                         |
+| ------------------------------------ | ---------------------------------------------------------------------------- |
+| What should this project do?         | `docs/wiki/requirements.md` — living spec; code that disagrees is the bug    |
+| How is it built?                     | `docs/wiki/architecture.md` (stack, patterns, testing strategy)              |
+| What does this feature do, exactly?  | `docs/wiki/entities/<slug>.md` — one page per feature/module; Behavior cases |
+| Why did we choose X?                 | `docs/wiki/decisions/` — ADRs                                                |
+| What pattern do we use for X?        | `docs/wiki/concepts/` — patterns, conventions, domain ideas                  |
+| What can go wrong?                   | `docs/wiki/gotchas.md` — known failure points                                |
+| What's next?                         | `docs/wiki/todos.md` — priority-ordered queue; `[wiki]` lines are lint work  |
+| What's shipped?                      | git history — closed todos are **removed** from `todos.md`                   |
+| How do I run the tests?              | `docs/wiki/commands.md` — working shell commands                             |
+| Branch / commit rules?               | `docs/wiki/git-conventions.md`                                               |
+| What happened, and when?             | `docs/wiki/log.md` — chronological ops log                                   |
+| What wiki cleanup is deferred?       | `docs/wiki/wiki-todos.md` — `/project:wiki-lint` processes it                |
+| What did source X say?               | `docs/wiki/summaries/` — one page per ingested source in `docs/raw/`         |
+| Where are the immutable sources?     | `docs/raw/` — `interviews/`, `research/`; append-only                        |
+| What are the binding rules?          | `.claude/rules/behavioral.md`                                                |
+| How do I structure a wiki page?      | `.claude/skills/wiki-update/SKILL.md` — standard + templates                 |
 
 Navigation is via the directory tree and Obsidian's graph — there is no hand-maintained `index.md`, no separate `glossary.md`. Folders are **surface grouping only**; a page's `domains`/`abstraction` facets live in frontmatter, not in the path.
 
@@ -91,20 +92,3 @@ There is intentionally no domain-specialized agent (no "backend agent"). Domain 
 **Core process skills:** `tdd-loop`, `plan-writing`, `wiki-update`, `feature-branching`, `pr-create`, `human-checkpoint`, `spec-writing`, `decision-recording`, `gotcha-recording`, `git-recovery` (git edge cases + conflict resolution).
 
 Stack-specific skills (`backend-impl`, `database-impl`, …) are not shipped by default. `/project:interview` and `/project:agent-scout` add them once the stack is known.
-
-## Where things live
-
-| Concern                        | Location                                             |
-| ------------------------------ | ---------------------------------------------------- |
-| What the project should do     | `docs/wiki/requirements.md`                          |
-| How it's built                 | `docs/wiki/architecture.md` + `docs/wiki/entities/*` |
-| Why we chose X                 | `docs/wiki/decisions/*`                              |
-| What can go wrong              | `docs/wiki/gotchas.md`                               |
-| What's next                    | `docs/wiki/todos.md`                                 |
-| What's shipped                 | git history (closed todos are removed from todos.md) |
-| Working shell + test commands  | `docs/wiki/commands.md`                              |
-| Branch / commit rules          | `docs/wiki/git-conventions.md`                       |
-| Timeline                       | `docs/wiki/log.md`                                   |
-| Raw sources (immutable)        | `docs/raw/`                                          |
-| Hard behavioral constraints    | `.claude/rules/behavioral.md`                        |
-| Wiki page standard + templates | `.claude/skills/wiki-update/SKILL.md`                |

@@ -13,13 +13,15 @@ You take one todo (or a small batch) from failing test (Red) → minimal code (G
 
 ## Entry checklist
 
-Always check the wiki before writing anything — never work blind:
+Always check the wiki before writing anything — never work blind. Read **narrowly**: these files grow with the project, and pulling whole pages in when you need one section is what starves the context you need for the actual code.
 
-1. Read `docs/wiki/gotchas.md` — known failure points.
-2. Read the matching `docs/wiki/entities/<slug>.md` — its `## Behavior` section is your contract.
-3. Read the relevant section of `docs/wiki/requirements.md`.
-4. Read `docs/wiki/architecture.md` (stack, conventions, testing strategy) and `docs/wiki/commands.md` (test command).
-5. Grep `docs/wiki/` for terms from the task — pick up related concepts and prior ADRs before choosing an approach. Don't re-decide what the wiki has already decided.
+1. Read `docs/wiki/gotchas.md` in full — it is short by design and every entry is a live trap.
+2. Read the matching `docs/wiki/entities/<slug>.md` in full — its `## Behavior` section is your contract.
+3. Read `docs/wiki/commands.md ## Test` — the exact command you will run.
+4. Read only the sections you need of `docs/wiki/architecture.md` (`## Stack`, `## Testing strategy`, `## Conventions`, plus `## Layout` if you are adding files) and only the matching section of `docs/wiki/requirements.md`.
+5. Grep `docs/wiki/` for terms from the task and read only what hits — related concepts and prior ADRs. Don't re-decide what the wiki has already decided.
+
+**If a plan was provided**, it already names the constraints, the files, and the test command. Read the plan first, then use it to narrow steps 4–5 to what the plan doesn't answer — don't re-derive the whole context from scratch.
 
 If the entity page has no `## Behavior` section or the cases are ambiguous, **stop and ask the human** via `human-checkpoint`. Do not invent behavior. If a recurring procedure has no matching how-to skill, propose creating one via `update-toolkit` before falling back to the checkpoint.
 

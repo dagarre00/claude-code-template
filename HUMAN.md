@@ -35,9 +35,11 @@ Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the age
 - **Updates the wiki in the same commit** as the code — entity pages, requirements, log.
 - **Asks you when it's stuck.** Two-strike rule: two failed attempts on the same approach → stop and ask. On retry, it overwrites the plan with a fundamentally different approach rather than tweaking.
 
+- **Opens the PR when the feature is done.** Once every Behavior case on the entity page is `[x]`, `/project:work` opens a PR to `develop` on its own and hands it to you. It never merges.
+
 ## What it does NOT do without you
 
-- Open or merge PRs.
+- Merge PRs, or push to `develop` / `main` directly.
 - Force-push or rewrite published history.
 - Decide between two reasonable design alternatives (it presents both with a recommendation and waits).
 - Run `/project:review` mid-`/project:work` — review is periodic, not in-loop.
