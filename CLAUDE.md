@@ -3,7 +3,7 @@
 This repository is a **template for agentic software development**. Two ideas govern everything:
 
 1. **The wiki is the spec.** `docs/wiki/` is the source of truth for what the project is and how it works. Code that disagrees with the wiki is the bug.
-2. **Progressive disclosure beats specialized agents.** A single `developer` agent runs the whole TDD cycle, loading task-specific skills on demand. The one deliberate split is the `planner` (on Opus), which decomposes `[complex]` or batched work before the developer executes it. Skills are short, procedural how-to for _this project_ — never abstract explanations of _what something is_.
+2. **Progressive disclosure beats specialized agents.** A single `developer` agent runs the whole TDD cycle, loading task-specific skills on demand. The two deliberate splits are both on Opus and both sit outside the loop: the `planner`, which decomposes `[complex]` or batched work before the developer executes it, and the `adversary`, which reads the resulting diff afterwards with none of the developer's context and raises findings it is not allowed to fix. Skills are short, procedural how-to for _this project_ — never abstract explanations of _what something is_.
 
 The hard behavioral constraints live in [`.claude/rules/behavioral.md`](.claude/rules/behavioral.md) — read them; they override default inclinations. This file is the map; that file is the law.
 
@@ -64,6 +64,7 @@ The wiki follows the **Obsidian LLM-wiki standard**. The full standard — templ
 | `/project:init`        | Detect project state, scaffold `docs/wiki/`, fill base docs, initialize git if needed                                                |
 | `/project:interview`   | Grill-me-relentlessly Q&A for requirements or a new feature. Streams a transcript to `docs/raw/interviews/`, then updates the wiki   |
 | `/project:work`        | Pick the top todo (or batch), branch from `develop`, dispatch the `planner` (complex/batched) then the `developer`, commit, push, PR |
+| `/project:adversary`   | Point a read-only second model (Opus, fresh context) at the current diff. Findings only — you triage each one. Per-change            |
 | `/project:review`      | Thorough review of code vs wiki. Runs the `reviewer` in a fresh worktree with isolated context                                       |
 | `/project:wiki-lint`   | Wiki health check: reconciliation, lint invariants, orphans, broken links, drift; archives `log.md` when it overflows                |
 | `/project:wiki-ingest` | Ingest a file or research topic into the wiki (`spec.pdf`, or `search for ...`)                                                      |
@@ -77,11 +78,12 @@ Routine git operations (checkpoint tag, reset, status/log) use plain git, not be
 | ----------------------------------------------- | ---------------------------------------------------------------------- |
 | Decompose a `[complex]` or batched todo         | `planner` (Opus) — dispatched by `/project:work` before the developer  |
 | TDD cycle — red → green → refactor → wiki        | `developer` — dispatched by `/project:work`; loads skills on demand    |
+| Adversarial diff review before commit           | `adversary` (Opus, fresh context) — `/project:work` step 7a, or `/project:adversary` |
 | Periodic full audit (≈every 5 todos)            | `reviewer` (worktree-isolated) — via `/project:review`                 |
 | Periodic wiki health, ingest, cross-link        | `wiki-maintainer` — **manual only** via `/project:wiki-lint`           |
 | Web research — search, fetch, synthesize        | `researcher` — via `/project:wiki-ingest` or directly by the human     |
 
-There is intentionally no domain-specialized agent (no "backend agent"). Domain knowledge lives in skills the `developer` loads on demand. The `planner` runs on **Opus**; all other agents on Sonnet (researcher on Haiku).
+There is intentionally no domain-specialized agent (no "backend agent"). Domain knowledge lives in skills the `developer` loads on demand. The `planner` and the `adversary` run on **Opus** — the adversary deliberately on a different tier from the `developer` it reviews, so the second reader is a second *model*, not just a second context. All other agents run on Sonnet (researcher on Haiku).
 
 **Wiki edits — inline only.** The `developer` and `reviewer` make small wiki edits **inline** in the same commit as the code (Behavior tick, single ADR, single gotcha line, log entry). Larger cross-page work is queued in `wiki-todos.md` for the human to run `/project:wiki-lint`. **No agent auto-invokes the wiki-maintainer.**
 
@@ -89,6 +91,6 @@ There is intentionally no domain-specialized agent (no "backend agent"). Domain 
 
 **Meta skill** — evolves the agent's own toolkit: `update-toolkit` (agents, skills, commands).
 
-**Core process skills:** `tdd-loop`, `plan-writing`, `wiki-update`, `feature-branching`, `pr-create`, `human-checkpoint`, `spec-writing`, `decision-recording`, `gotcha-recording`, `git-recovery` (git edge cases + conflict resolution).
+**Core process skills:** `tdd-loop`, `plan-writing`, `adversarial-review`, `wiki-update`, `feature-branching`, `pr-create`, `human-checkpoint`, `spec-writing`, `decision-recording`, `gotcha-recording`, `git-recovery` (git edge cases + conflict resolution).
 
 Stack-specific skills (`backend-impl`, `database-impl`, …) are not shipped by default. `/project:interview` and `/project:agent-scout` add them once the stack is known.

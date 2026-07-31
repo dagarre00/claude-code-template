@@ -69,6 +69,12 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
    - Implementation and Tests sections reflect the current files.
    - The todo is checked off / removed from `docs/wiki/todos.md` (shipped work lives in git history, not a separate file).
 
+7a. **Adversarial review — `[complex]` and batched cycles only.** If you dispatched the `planner` in step 4, the change is risky enough to need a second reader before it is called done. Dispatch the `adversary` (Opus, fresh context) and follow the `adversarial-review` skill. Pass it **only** the diff scope (`git diff` + `git diff --staged`), the entity slug(s) and Behavior case IDs, the mailbox path `.claude/handoff/<slug>-findings.md`, and the test command. **Never pass the plan file or your own reasoning** — the independence is the product.
+
+   Then triage every finding to Fixed / Rejected-with-reason / Deferred-with-todo in the mailbox (behavioral rule 20), re-dispatch the adversary once to confirm, and re-run the full test suite after any fix. Two rounds maximum: surviving `critical`/`major` findings go to `human-checkpoint`, not to a third round. Fixes ride along in step 9's bundled commit — no separate review commit.
+
+   For a single simple todo, **skip this step**; the human can run `/project:adversary` on demand.
+
 8. **Append to log.** `docs/wiki/log.md` (do this before committing so the entry ships in the same commit):
 
    ```markdown
@@ -77,6 +83,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
    - TODO(s): <list>
    - Cases: B1, B2
    - Branch: feat/<slug>
+   - Adversary: <N> findings — <F> fixed, <R> rejected, <D> deferred   # omit if step 7a was skipped
    ```
 
 9. **Commit and push.** Stage everything — implementation, wiki updates, and the log entry — in one conventional commit. Then push immediately — remote execution containers can be recycled between sessions, and an unpushed commit is effectively lost work:
@@ -89,7 +96,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
    git push -u origin feat/<slug>
    ```
 
-   The `*-plan.md` scratch is gitignored, so it never enters the commit; delete it once the cycle is done. No tracked uncommitted files should remain after this step.
+   The `*-plan.md` and `*-findings.md` scratch files are gitignored, so they never enter the commit; delete them once the cycle is done. No tracked uncommitted files should remain after this step.
 
 10. **Check feature completion.** Re-read the entity page's `## Behavior` section.
     - **All cases are `[x]`** → the feature is finished. Proceed to step 11.
@@ -121,6 +128,8 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 ## Failure modes
 
 - **Planner can't produce a coherent plan.** The spec is too ambiguous. Stop and run `/project:interview` to refine the Behavior cases.
+- **Adversary finding survives two rounds.** Don't open a third. `human-checkpoint` with both positions stated — the author's and the reviewer's.
+- **Adversary edits, commits, or pushes.** The read-only invariant is broken and the round is void. Report it, `git diff` to see what it touched, and re-dispatch after restoring the tree.
 - **Developer can't confirm Red.** Stop. The Behavior cases or the test environment is wrong. Use `human-checkpoint`.
 - **Developer fails twice on the same mechanism.** Two-strike rule (behavioral rule 5). Tag the state (`git tag checkpoint-<stamp>`), `git reset --hard` to a known-good commit, and re-spec via `/project:interview`. For complex/batched work, re-dispatch the `planner` to overwrite the plan with a fundamentally different approach before the next `developer` attempt.
 - **Test suite has pre-existing failures.** Stop. Don't add work on top of a broken develop. Use `human-checkpoint`.
@@ -129,7 +138,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 
 ## What you do NOT do
 
-- **No coding directly.** You dispatch the `planner` (when needed) and the `developer`. You can read files and run commands to verify; you don't write tests or production code in this command.
-- **No periodic review.** That's `/project:review`, dispatched separately in a worktree.
+- **No coding directly.** You dispatch the `planner` (when needed), the `developer`, and the `adversary` (when gated). You can read files and run commands to verify; you don't write tests or production code in this command. Fixes for adversary findings are the exception you hand back to the `developer` if they are more than a line or two.
+- **No periodic review.** That's `/project:review`, dispatched separately in a worktree. The `reviewer` never runs here — the in-loop second reader is the `adversary`, which is diff-scoped and read-only (behavioral rule 12).
 - **No merging.** PR creation is automated (step 11); merging is always the human's call.
 - **No silent batching.** If you batch todos, name the batch in the commit message scope.

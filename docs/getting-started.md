@@ -100,7 +100,8 @@ Re-run `/project:agent-scout` after a major `/project:interview` that adds a new
 3. **Green.** The developer writes the minimal code to make the tests pass.
 4. **Refactor.** The developer cleans up while keeping tests green.
 5. **Wiki update.** The developer ticks the entity-page Behavior cases `[~]` → `[x]`, updates the Implementation/Tests sections, and appends to `log.md`. Larger cross-page cleanup it can't safely do inline is queued in `wiki-todos.md` for the wiki-maintainer.
-6. **Commit.** `/project:work` verifies the suite itself, then makes one bundled conventional commit (code + wiki + log) and pushes it (see [git-conventions.md](wiki/git-conventions.md)).
+6. **Adversarial review (conditional).** Same trigger as the plan — `[complex]` or a 2+ batch. `/project:work` dispatches the `adversary` agent (Opus, none of the developer's context) at the diff and tells it to find what's wrong. It writes numbered findings to `.claude/handoff/<slug>-findings.md` and may not touch the code. The developer answers each one — fixed, rejected with a reason, or deferred as a todo — and the adversary re-reads once. Two rounds maximum, then it asks you. A simple single todo skips this; you can run `/project:adversary` yourself instead.
+7. **Commit.** `/project:work` verifies the suite itself, then makes one bundled conventional commit (code + wiki + log, including any fixes the review drove) and pushes it (see [git-conventions.md](wiki/git-conventions.md)).
 
 If a step fails twice on the same approach, the **two-strike rule** fires — the developer stops, you tag a checkpoint and reset, and re-spec.
 
@@ -113,6 +114,8 @@ If a step fails twice on the same approach, the **two-strike rule** fires — th
 Runs the `reviewer` agent in a fresh git worktree with no developer context. It audits code against the wiki and flags drift, missing tests, security/perf concerns. Critical and Warning findings become prioritized items in `todos.md` (they turn into the next `/project:work` cycles); Drift findings go to `wiki-todos.md` for the maintainer. The report itself lands on a `chore/review-*` branch and is PR'd to `develop` like any other tracked change.
 
 This is **not** part of `/project:work` — it's periodic and isolated.
+
+Don't confuse it with `/project:adversary`. Both are read-only and both run without the author's context, but they answer different questions: the `adversary` reads **one diff before it ships** and hunts for defects in it; the `reviewer` reads **the whole repo after things have shipped** and hunts for drift between the wiki and the code. Diff-scoped review never sees a problem in code it didn't touch, and a whole-repo audit arrives too late to stop the commit.
 
 ## 6. `/project:wiki-lint` — every few cycles
 
@@ -342,6 +345,7 @@ Check state at session start, after a long break, or before deciding whether to 
 | `/project:interview`   | When adding a new feature or deepening the spec after init                    |
 | `/project:agent-scout` | Once after init+interview; again after a major feature adds a new stack layer |
 | `/project:work`        | Main loop — most days you live in `/project:work`                             |
+| `/project:adversary`   | Any change you're about to call done that `/project:work` didn't gate         |
 | `/project:review`      | Periodic (every ~5 todos), before a release, after several merges             |
 | `/project:wiki-lint`   | When `wiki-todos.md` piles up or after heavy ingest                           |
 | `/project:wiki-ingest` | When you have a new external doc, or to commission web research               |
@@ -358,10 +362,12 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 | `wiki-todos.md` is huge                            | Run `/project:wiki-lint`                                                                                                  |
 | Developer keeps retrying the same failing approach | Two-strike rule should fire — it stops after the second failure and asks you                                              |
 | Plan looks wrong                                   | Edit `.claude/handoff/<slug>-plan.md`, or just tell the developer the approach to take                                    |
+| Adversary found nothing and said only "looks good" | An unexplained pass is a failed review — it owes you a `**Checked:**` line per category. Re-dispatch demanding it          |
+| Adversary and developer keep going back and forth  | Two rounds is the cap — it should stop and ask you with both positions stated                                             |
 
 # The mental model in one paragraph
 
-The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD; the `developer` agent runs the cycle (with the `planner` on Opus decomposing `[complex]` or batched todos first), and the wiki is updated in the same commit as the code. When in doubt, the agent stops and asks rather than guessing. Periodic `/project:review` and `/project:wiki-lint` keep both layers honest.
+The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD; the `developer` agent runs the cycle (with the `planner` on Opus decomposing `[complex]` or batched todos first), and the wiki is updated in the same commit as the code. On risky cycles a read-only `adversary` (also Opus, with none of the developer's context) attacks the diff before it's committed, and every finding it raises is answered in writing. When in doubt, the agent stops and asks rather than guessing. Periodic `/project:review` and `/project:wiki-lint` keep both layers honest.
 
 # Anti-patterns
 
@@ -371,6 +377,7 @@ The wiki is the project's source of truth — code that disagrees with it is the
 - **Committing on `main`.** Always branch first (`/project:work` handles this).
 - **Letting `wiki-todos.md` pile up.** When it's long, run `/project:wiki-lint`.
 - **Running the same failed approach a third time.** The two-strike rule exists for a reason — pivot or re-spec.
+- **Letting findings pass unanswered.** Fixing three findings and quietly ignoring two turns review into theatre. Each one gets a disposition in writing — fixed, rejected with a reason, or deferred as a todo.
 - **Treating a plan as a spec.** Plans live in `.claude/handoff/` and are transient scratch. The wiki holds the spec. If the plan needs to change, edit the plan; if the contract needs to change, run `/project:interview`.
 
 # Related
@@ -381,4 +388,7 @@ The wiki is the project's source of truth — code that disagrees with it is the
 - [`docs/wiki/commands.md`](wiki/commands.md) — working shell commands
 - [`.claude/agents/planner.md`](../.claude/agents/planner.md) — the planner agent definition (Opus)
 - [`.claude/agents/developer.md`](../.claude/agents/developer.md) — the developer agent definition
+- [`.claude/agents/adversary.md`](../.claude/agents/adversary.md) — the read-only diff reviewer (Opus)
 - [`.claude/skills/plan-writing/SKILL.md`](../.claude/skills/plan-writing/SKILL.md) — how plans are structured
+- [`.claude/skills/adversarial-review/SKILL.md`](../.claude/skills/adversarial-review/SKILL.md) — sweep order, severity vocabulary, triage protocol
+- [`docs/wiki/concepts/adversarial-review.md`](wiki/concepts/adversarial-review.md) — why the pattern works and where it doesn't apply

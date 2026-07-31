@@ -18,6 +18,7 @@ Three layers, each owned by a different actor:
 | Configure agents/skills for your stack after init | `/project:agent-scout`                    |
 | Add a new feature                                 | `/project:interview`                      |
 | Move forward on todos                             | `/project:work`                           |
+| Get a second model to attack the current diff     | `/project:adversary`                      |
 | Audit the project                                 | `/project:review`                         |
 | Check the wiki is healthy                         | `/project:wiki-lint`                      |
 | Ingest a doc or research a topic                  | `/project:wiki-ingest`                    |
@@ -32,6 +33,7 @@ Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the age
 - **Reads the wiki** before any code change.
 - **Plans complex work.** When a todo is tagged `[complex]` or batched (2+ todos), `/project:work` dispatches the `planner` agent (on Opus) to write a stepwise plan before testing. Plans live transiently at `.claude/handoff/<slug>-plan.md` (gitignored scratch).
 - **Writes failing tests first** (Red), confirms they fail for the right reason, then implements (Green), then refactors — all in one `developer` agent (which follows the planner's plan when there is one).
+- **Gets a second opinion on risky work.** On `[complex]` or batched cycles, `/project:work` points an `adversary` agent (Opus, none of the developer's context) at the diff and tells it to find what's wrong. It writes numbered findings to a scratch file and is forbidden from touching the code; the developer then answers each finding in writing — fixed, rejected with a reason, or deferred as a todo. Two rounds maximum, then it asks you. Simple one-todo cycles skip this; run `/project:adversary` yourself when you want it anyway.
 - **Updates the wiki in the same commit** as the code — entity pages, requirements, log.
 - **Asks you when it's stuck.** Two-strike rule: two failed attempts on the same approach → stop and ask. On retry, it overwrites the plan with a fundamentally different approach rather than tweaking.
 
@@ -42,7 +44,8 @@ Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the age
 - Merge PRs, or push to `develop` / `main` directly.
 - Force-push or rewrite published history.
 - Decide between two reasonable design alternatives (it presents both with a recommendation and waits).
-- Run `/project:review` mid-`/project:work` — review is periodic, not in-loop.
+- Run `/project:review` mid-`/project:work` — the *periodic* audit is never in-loop. (The per-change `adversary` is a different, read-only role and does run there — see above.)
+- Let a reviewing agent of either kind edit your code. Both raise findings only.
 - Auto-invoke the wiki-maintainer. Wiki health passes (`/project:wiki-lint`) are explicitly triggered by you.
 
 ## How to evolve the template
