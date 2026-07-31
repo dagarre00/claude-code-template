@@ -32,13 +32,12 @@ The rule-12 prohibition also needed resolving rather than ignoring: it was writt
 
 ## Decision
 
-We will gate the adversarial pass on the `[complex]` tag or a 2+ todo batch — the trigger that already marks a cycle as risky enough to plan — and run it as a distinct `adversary` agent on Opus with a fresh context, while the `developer` runs Sonnet. Behavioral rule 12 is left **unchanged** — it binds the periodic `reviewer`, which still never runs in the work loop. The distinction between the two review roles, and the requirement that every finding gets an explicit written disposition, are carried by new rule 20.
+We will gate the adversarial pass on the `[complex]` tag or a 2+ todo batch — the trigger that already marks a cycle as risky enough to plan — and run it as a distinct `adversary` agent on Opus with a fresh context, while the `developer` runs Sonnet. Behavioral rule 12 is **amended** to define both review roles in one place rather than to forbid review in the loop: the periodic `reviewer` still never runs there, the per-change `adversary` does, and both are read-only and context-free. New rule 20 adds the requirement that every finding gets an explicit written disposition.
 
 ## Consequences
 
 - **Positive:** the highest-risk cycles get a second reader automatically, with no reliance on human memory. The reviewer is both a different model tier and a different context, satisfying the source's independence requirement with no external dependency.
-- **Positive:** rule 12 survives intact rather than being rewritten — a developer still never audits its own work, the periodic `reviewer` stays out of the loop, and both review roles remain strictly read-only.
-- **Negative:** the two review roles are now defined across two rules (12 and 20) instead of one. An agent reading rule 12 alone could mistake the `adversary` for a violation, which is why `/project:work`'s "What you do NOT do" names the distinction explicitly.
+- **Positive:** rule 12's intent is preserved and sharpened rather than diluted — a developer still never audits its own work, the periodic `reviewer` stays out of the loop, and the read-only invariant now binds both roles explicitly. An agent reading rule 12 alone gets the whole boundary, with no second rule to cross-reference.
 - **Negative:** simple single todos ship unreviewed by default. The 4-in-5 defect rate presumably applies to them too, just over smaller diffs; `/project:adversary` exists to close that gap manually.
 - **Negative:** an Opus pass per complex cycle is a real cost line, and the two-round cap means some disagreements land on the human instead of resolving themselves.
 - **Follow-ups:** none blocking. If the gate proves too narrow in practice, supersede this ADR rather than quietly widening the trigger.
