@@ -1,10 +1,20 @@
 ---
 name: adversary
 description: Point a read-only second model at the current change. Dispatches the adversary agent (Opus, fresh context) over the diff, collects numbered findings in a mailbox file, triages each one, and re-reviews once. Diff-scoped and per-change — unlike /project:review, which is periodic and whole-repo.
+argument-hint: [base ref or lens — e.g. "develop" | "against main" | "concurrency only"]
 type: command
 ---
 
 # /project:adversary
+
+**Argument:** `$ARGUMENTS`
+
+The argument **sets what gets reviewed**, resolved in step 1:
+
+- **A base ref** (`develop`, `against main`, `HEAD~3`) → diff against it (`git diff <ref>...HEAD`) instead of the working tree. This is the "or you were given a base ref" case in the preconditions — with a ref, a clean tree is reviewable rather than a stop condition.
+- **A lens** (`concurrency only`, `error handling`) → pass it to the adversary as an emphasis on top of the six-category sweep. It **narrows nothing**: the full sweep still runs, because a sweep the author gets to shrink is one the author gets to steer. Say in the report that a lens was applied.
+
+A lens never reaches the adversary as intent, rationale, or a summary of what the change is meant to do — that would leak exactly the context step 2 exists to withhold. If you cannot phrase it as a category to weight, drop it and say so. Empty argument means the working-tree diff and the standard sweep.
 
 You run one adversarial review of the change in the working directory. Findings only — the adversary never edits. You triage, fix, and re-dispatch once. Follow the `adversarial-review` skill for the mailbox format, sweep order, severity vocabulary, and triage protocol.
 
@@ -25,9 +35,9 @@ Clean tree and no base ref: stop and say there is nothing to review. Do not disp
 
 ## Steps
 
-1. **Scope it.** Uncommitted work → `git diff` + `git diff --staged`. A pushed branch → `git diff develop...HEAD`. Note the entity slug(s) the diff touches.
+1. **Scope it.** If the argument named a base ref, use `git diff <ref>...HEAD`. Otherwise: uncommitted work → `git diff` + `git diff --staged`; a pushed branch → `git diff develop...HEAD`. Note the entity slug(s) the diff touches.
 
-2. **Dispatch the `adversary`** with the diff scope, the entity slug(s) and Behavior case IDs, the mailbox path `.claude/handoff/<slug>-findings.md`, and the test command from `docs/wiki/commands.md`. Pass **nothing else** — no plan file, no rationale, no summary of intent. That independence is the whole product.
+2. **Dispatch the `adversary`** with the diff scope, the entity slug(s) and Behavior case IDs, the mailbox path `.claude/handoff/<slug>-findings.md`, the test command from `docs/wiki/commands.md`, and the lens from the argument if there was one. Pass **nothing else** — no plan file, no rationale, no summary of intent. That independence is the whole product.
 
 3. **Read the mailbox and triage** every finding to Fixed / Rejected-with-reason / Deferred-with-todo, annotating each in place (behavioral rule 20). Fixes follow the normal loop: failing test first for any behavior change; spec first if a finding contradicts the entity page.
 

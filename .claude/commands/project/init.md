@@ -1,12 +1,23 @@
 ---
 name: init
 description: Detect project state, interview for requirements, scaffold docs/wiki, update CLAUDE.md with project parameters. Run once at project start, or to recover from a broken wiki layout.
+argument-hint: [context — e.g. "review the legacy files" | "stack is Django + Postgres"]
 type: command
 ---
 
 # /project:init
 
+**Argument:** `$ARGUMENTS`
+
 You are initializing this project. This command detects state, interviews the human for requirements, scaffolds the wiki with real answers (not placeholders), and rewrites `CLAUDE.md` to be lean and project-specific.
+
+If the argument is non-empty, treat it as **context that steers the init**, not as a separate task. Resolve it before step 3 and fold it into the pre-interview scan:
+
+- **Points at existing material** (`review the legacy files`, `read src/ and the old README`, `the spec is in docs/spec.pdf`) → read those paths first, extract every answer you can, and mark those interview topics **covered** so you don't ask what the human already wrote down. Cite the file in the wiki page you fill from it.
+- **States a fact** (`stack is Django + Postgres`, `no CI yet`) → record it as a given, skip the matching question, and confirm it in the report rather than the interview.
+- **Narrows the scope** (`wiki only, skip the test bootstrap`) → honour it and say in the report which steps you skipped.
+
+If the argument is empty, run the full procedure below. If it names a path that doesn't exist, say so and ask — don't silently proceed as if it were empty.
 
 ## Preconditions
 
@@ -38,6 +49,8 @@ Note the project directory layout: `src/`, `tests/`, `lib/`, `app/`, etc.
 ### 3. Pre-interview wiki scan
 
 Before asking anything, check whether `docs/wiki/requirements.md` and `docs/wiki/architecture.md` already exist and contain real content (not just placeholder headings).
+
+**Read anything the argument pointed you at first** — legacy source, an old README, a spec file, existing docs. Those are sources for the same extraction pass, and answers derived from them count as covered exactly like answers from the wiki.
 
 If they do, read them and extract answers for every interview topic below. Mark each topic as either:
 - **covered** — the doc has a concrete, non-placeholder answer; no question needed.

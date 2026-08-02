@@ -1,10 +1,15 @@
 ---
 name: wiki-lint
 description: Periodic wiki health check. Dispatches the wiki-maintainer to process the wiki-todos.md queue, run the computable reconciliation pass (schema gaps, asymmetric relations, unresolved contradicts), check lint invariants, find orphans, broken [[links]], stale claims, and missing ADRs. Run every few work cycles or when wiki-todos.md is piling up.
+argument-hint: [focus — e.g. "entities/ only" | "broken links" | "archive the log"]
 type: command
 ---
 
 # /project:wiki-lint
+
+**Argument:** `$ARGUMENTS`
+
+The argument **narrows the pass** — a subtree (`entities/ only`, `summaries/`), a specific check (`broken links`, `orphans`, `archive the log`), or a queue slice (`just the wiki-todos backlog`). Pass it to the maintainer in step 3 and have it skip the checks outside that focus, so a targeted pass stays cheap. Empty argument means the full health pass described below.
 
 You dispatch the `wiki-maintainer` agent for a full health pass. This is **periodic**, not every-cycle. Heuristics:
 
@@ -42,6 +47,7 @@ If dirty: run `human-checkpoint`.
    `log.md` grows unboundedly; models loading it lose signal in the noise. The archive is reference-only — agents never load it by default. (Shipped work isn't tracked in a `completed.md` — git history is the record.)
 
 3. **Dispatch `wiki-maintainer`** with:
+   - The focus from the argument, if any — and an explicit instruction to skip checks outside it.
    - The current `docs/wiki/wiki-todos.md` content.
    - The list of raw files added since the last summary in `docs/wiki/summaries/`.
    - The overflow check results from step 2 (so the maintainer knows which archival tasks apply).

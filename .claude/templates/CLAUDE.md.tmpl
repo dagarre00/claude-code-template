@@ -62,6 +62,8 @@ The wiki follows the Obsidian LLM-wiki standard — full standard in the [`wiki-
 | `/project:wiki-ingest` | Ingest file or research into wiki                 |
 | `/project:agent-scout` | Recommend project-specific agents and skills      |
 
+Each takes free-text context that scopes it — `/project:work the login endpoint`, `/project:review security only`. Omit it for the default behavior above; the argument never bypasses preconditions or the Red phase. See each command's `argument-hint`.
+
 ## Agent routing
 
 | Task                       | Agent                                                        |

@@ -59,16 +59,18 @@ The wiki follows the **Obsidian LLM-wiki standard**. The full standard — templ
 
 ## Slash commands
 
-| Command                | Purpose                                                                                                                              |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `/project:init`        | Detect project state, scaffold `docs/wiki/`, fill base docs, initialize git if needed                                                |
-| `/project:interview`   | Grill-me-relentlessly Q&A for requirements or a new feature. Streams a transcript to `docs/raw/interviews/`, then updates the wiki   |
-| `/project:work`        | Pick the top todo (or batch), branch from `develop`, dispatch the `planner` (complex/batched) then the `developer`, commit, push, PR |
-| `/project:adversary`   | Point a read-only second model (Opus, fresh context) at the current diff. Findings only — you triage each one. Per-change            |
-| `/project:review`      | Thorough review of code vs wiki. Runs the `reviewer` in a fresh worktree with isolated context                                       |
-| `/project:wiki-lint`   | Wiki health check: reconciliation, lint invariants, orphans, broken links, drift; archives `log.md` when it overflows                |
-| `/project:wiki-ingest` | Ingest a file or research topic into the wiki (`spec.pdf`, or `search for ...`)                                                      |
-| `/project:agent-scout` | Post-init survey: recommends agents and skills tailored to this project's stack, domain, and services                                |
+**Every command takes free-text context as its argument** — `/project:init review the legacy files`, `/project:work the login endpoint`, `/project:review security only`. The argument scopes or steers that command; it never bypasses preconditions, the Red phase, or a human checkpoint. Omit it to get the default behavior in the Purpose column.
+
+| Command                | Purpose                                                                                                                              | Argument                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| `/project:init`        | Detect project state, scaffold `docs/wiki/`, fill base docs, initialize git if needed                                                | Context to read first, or a stated fact             |
+| `/project:interview`   | Grill-me-relentlessly Q&A for requirements or a new feature. Streams a transcript to `docs/raw/interviews/`, then updates the wiki   | The topic to grill on                               |
+| `/project:work`        | Pick the top todo (or batch), branch from `develop`, dispatch the `planner` (complex/batched) then the `developer`, commit, push, PR | Which todo/entity to work, or a batch               |
+| `/project:adversary`   | Point a read-only second model (Opus, fresh context) at the current diff. Findings only — you triage each one. Per-change            | Base ref to diff against, or a lens                 |
+| `/project:review`      | Thorough review of code vs wiki. Runs the `reviewer` in a fresh worktree with isolated context                                       | Area or lens to pin the review to                   |
+| `/project:wiki-lint`   | Wiki health check: reconciliation, lint invariants, orphans, broken links, drift; archives `log.md` when it overflows                | Subtree or single check to focus on                 |
+| `/project:wiki-ingest` | Ingest a file or research topic into the wiki (`spec.pdf`, or `search for ...`)                                                      | The file path or research query (**required**)      |
+| `/project:agent-scout` | Post-init survey: recommends agents and skills tailored to this project's stack, domain, and services                                | Signal category, feature, or output filter          |
 
 Routine git operations (checkpoint tag, reset, status/log) use plain git, not bespoke commands.
 
