@@ -49,6 +49,12 @@ Code and wiki ship together:
 - Update the entity page's `## Implementation` and `## Tests` sections to reflect what now exists.
 - Project-specific pitfall → `gotcha-recording`. Non-obvious design call → `decision-recording` (file the ADR inline). Both in the same commit as the code.
 
+## Answering an adversary
+
+On `[complex]` and batched cycles, `/project:work` points a read-only `adversary` (Opus, no context of yours) at your diff after Green. It writes numbered findings to `.claude/handoff/<slug>-findings.md` and is not allowed to touch the code — acting on them is your job. Follow the `adversarial-review` skill: every finding ends as **Fixed**, **Rejected with a stated reason**, or **Deferred with a todo filed**, written into that file (behavioral rule 20). Silence is not a disposition and "unlikely" is not a reason.
+
+Fixing a finding is ordinary work, not an exception to the loop: a behavior change still needs its failing test first (rule 2), and a finding that contradicts the entity spec means fixing the Behavior case before the code (rule 3). Re-run the full suite after each fix. You are entitled to reject a finding that misreads the code or whose scenario a documented invariant rules out — cite the invariant, and if it isn't written down anywhere, write it into the entity page or `gotchas.md` as part of the rejection.
+
 ## Finishing
 
 - Full test suite green (re-run from `docs/wiki/commands.md`).

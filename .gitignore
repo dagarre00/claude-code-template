@@ -6,9 +6,11 @@
 .DS_Store
 Thumbs.db
 
-# Plan scratch files (transient — the developer overwrites each cycle and
-# deletes when done; not needed after the bundled commit, never pushed).
+# Plan and findings scratch (transient — overwritten each cycle and deleted
+# when done; not needed after the bundled commit, never pushed). The record
+# that survives is the commits they drove plus the log.md entry.
 .claude/handoff/*-plan.md
+.claude/handoff/*-findings.md
 
 # Obsidian per-user vault config (users open the vault themselves)
 docs/.obsidian/

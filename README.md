@@ -22,6 +22,7 @@ Inside Claude Code:
 /project:init        # detect state, scaffold docs/wiki, base docs
 /project:interview   # grill yourself on requirements; populate the wiki
 /project:work        # pick the top todo, branch, run TDD (Red → Green → Refactor → wiki)
+/project:adversary   # point a read-only second model at the diff; findings only
 /project:review      # periodic audit in a fresh worktree
 /project:wiki-lint   # periodic wiki health check
 ```
@@ -34,9 +35,9 @@ For a worked walkthrough — `/project:init` → `/project:interview` → `/proj
 
 ```
 .claude/
-├── agents/          # planner (opus), developer, reviewer, wiki-maintainer, researcher
-├── skills/          # process skills (TDD, branching, plan-writing, wiki-update, …) + update-toolkit meta skill
-├── commands/        # /project:init, /project:interview, /project:work, /project:review, /project:wiki-lint, /project:wiki-ingest, /project:agent-scout
+├── agents/          # planner (opus), developer, adversary (opus), reviewer, wiki-maintainer, researcher
+├── skills/          # process skills (TDD, branching, plan-writing, adversarial-review, wiki-update, …) + update-toolkit meta skill
+├── commands/        # /project:init, /project:interview, /project:work, /project:adversary, /project:review, /project:wiki-lint, /project:wiki-ingest, /project:agent-scout
 ├── settings.json    # harness settings
 └── rules/           # behavioral constraints
 docs/
@@ -51,6 +52,7 @@ HUMAN.md             # the human's-eye view of how this works
 - **Skills are how-to, not what-is.** No skill explains "what TDD is" — they explain "how this project does TDD."
 - **Spec → Test → Code.** Entity Behavior cases → failing tests → minimal implementation.
 - **Wiki ships with code.** Code edits and wiki edits happen in the same commit.
+- **A second model reads the diff.** Risky cycles get an `adversary` on Opus with none of the author's context, told to find what's wrong. It raises findings; it never fixes them. Every finding gets a written disposition.
 - **Human in the loop.** When the agent can't decide from the wiki, it stops and asks — never silently improvises.
 - **Dynamic config.** The `update-toolkit` meta skill lets the agent evolve its own agents, skills, and commands as the project grows.
 

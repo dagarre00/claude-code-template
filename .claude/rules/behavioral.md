@@ -30,7 +30,7 @@ Hard constraints from real failures. These override default agent inclinations.
 
 11. **Raw sources are immutable.** Never edit files under `docs/raw/`. Only append new ones.
 
-12. **Reviewer is periodic and isolated.** `/project:review` runs in a fresh worktree with no `developer` context. Not part of the work loop.
+12. **Two review roles — never merged, both read-only.** The `reviewer` is periodic and whole-repo: it runs in a fresh worktree via `/project:review`, with no `developer` context, and is never part of the work loop. The `adversary` is the opposite shape — diff-scoped and per-change, dispatched inside `/project:work` (step 7a) for `[complex]`/batched cycles and by `/project:adversary` on demand. What they share is what makes either worth running: both read without the author's context, and both raise **findings only** — no edits, no commits, no pushes, no resets. A developer never audits its own work, and a reviewer of either kind never fixes what it finds.
 
 13. **Progressive disclosure.** Don't preload domain knowledge. Skills auto-load when their `description` matches the task. If a needed skill doesn't exist, create one via the `update-toolkit` skill rather than stuffing it into an agent prompt.
 
@@ -51,6 +51,8 @@ Hard constraints from real failures. These override default agent inclinations.
     - **Provenance, never invent.** Every non-trivial claim traces to a `docs/raw/` file; an unfillable gap is an `open_questions` entry or a question to the human, never invented prose.
 
 19. **Finalize with commit + push.** Any command or agent that mutates tracked files ends by committing the change and pushing it to the working branch (`git push -u origin <branch>`). A local commit is not enough: remote execution containers are recycled between sessions, so an unpushed commit is lost work. The orchestrating command (`/project:work`) owns the final bundled commit + push. Read-only commands and gitignored artifacts (the `*-plan.md` scratch) are the only exceptions. On network failure, retry the push with exponential backoff.
+
+20. **Every finding gets a written disposition.** An adversarial review (rule 12) is answered, not absorbed. Each numbered finding ends as **Fixed** (name what changed), **Rejected** (state the reason in one sentence), or **Deferred** (file a real todo) — written into the mailbox file. Silence is not a disposition, "unlikely" is not a reason, and a `critical` finding is never deferred. If you reject a finding by citing an invariant that isn't written down anywhere, write it down as part of the rejection — an undocumented invariant is not one.
 
 ## Adding rules
 

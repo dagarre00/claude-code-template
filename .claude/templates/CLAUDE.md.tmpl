@@ -56,6 +56,7 @@ The wiki follows the Obsidian LLM-wiki standard — full standard in the [`wiki-
 | `/project:init`        | (Re)initialize project wiki and schema            |
 | `/project:interview`   | Q&A to define requirements or features            |
 | `/project:work`        | Top todo → spec → red → green → refactor → commit |
+| `/project:adversary`   | Read-only second model over the diff; findings only |
 | `/project:review`      | Full audit in isolated worktree                   |
 | `/project:wiki-lint`   | Wiki health check                                 |
 | `/project:wiki-ingest` | Ingest file or research into wiki                 |
@@ -67,10 +68,11 @@ The wiki follows the Obsidian LLM-wiki standard — full standard in the [`wiki-
 | -------------------------- | ------------------------------------------------------------ |
 | Plan complex/batched todos | `planner` (Opus) — before the developer, via `/project:work` |
 | TDD cycle                  | `developer` (red → green → refactor; loads skills on demand) |
+| Adversarial diff review    | `adversary` (Opus, fresh context) — `/project:work` step 7a  |
 | Periodic audit             | `reviewer` (worktree-isolated)                               |
 | Wiki health                | `wiki-maintainer` (manual only via `/project:wiki-lint`)     |
 | Web research               | `researcher`                                                 |
 
 ## North star
 
-The wiki is truth; code that disagrees is the bug. No code without a failing test. Never modify a test to make it pass — fix the spec, regenerate the test, implement. Wiki travels with code in the same commit. Always branch before coding; conventional commits; push after every commit. Two failures on the same mechanism → checkpoint, reset, re-spec. When the wiki doesn't answer, stop and ask. The full, binding list is [`.claude/rules/behavioral.md`](.claude/rules/behavioral.md).
+The wiki is truth; code that disagrees is the bug. No code without a failing test. Never modify a test to make it pass — fix the spec, regenerate the test, implement. Wiki travels with code in the same commit. Always branch before coding; conventional commits; push after every commit. Two failures on the same mechanism → checkpoint, reset, re-spec. Risky cycles get a read-only second model over the diff, and every finding it raises is answered in writing. When the wiki doesn't answer, stop and ask. The full, binding list is [`.claude/rules/behavioral.md`](.claude/rules/behavioral.md).
