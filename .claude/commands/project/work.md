@@ -1,10 +1,21 @@
 ---
 name: work
 description: Pick the top todo (or batch consecutive todos sharing context), open a feat/* branch from develop, dispatch the planner (Opus) for complex/batched work, then the developer through red→green→refactor→wiki-update, then commit, push, and (if the entity is fully done) open a PR to develop and return to develop. The core development loop.
+argument-hint: [todo, entity, or scope — e.g. "the login endpoint" | "batch the auth todos"]
 type: command
 ---
 
 # /project:work
+
+**Argument:** `$ARGUMENTS`
+
+The argument **selects the work** and overrides the default "take the top todo" in step 1:
+
+- **Names a todo or entity** (`the login endpoint`, `entities/auth`) → work that instead of the top item. Match it against `docs/wiki/todos.md` lines and entity slugs; if nothing matches, say what you looked for and stop rather than picking something adjacent.
+- **Asks for a batch** (`batch the auth todos`, `next 3`) → batch those todos under one branch, subject to the same shared-entity/shared-context rule.
+- **Adds a constraint** (`skip the planner`, `tests only`) → honour it and note the deviation in the report.
+
+An argument never bypasses the preconditions, the Red phase, or the entity-page check — it only chooses *what* the cycle covers. If it's empty, take the top todo as usual.
 
 You orchestrate one TDD cycle (or a small batch). You do **not** write tests or production code directly — you dispatch the `planner` (only for complex or batched work) and then the `developer`, verify their output, then commit, push, and — once the entity's Behavior cases are all complete — open a PR back to `develop`.
 
@@ -29,7 +40,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 ## Steps
 
 1. **Pick the work.**
-   - Read `docs/wiki/todos.md`. Take the top item. Skip any line tagged `[wiki]` — those belong to `/project:wiki-lint`, not here.
+   - Read `docs/wiki/todos.md`. Take the top item — or, if the argument named a todo/entity/batch, take that instead. Skip any line tagged `[wiki]` — those belong to `/project:wiki-lint`, not here.
    - If the next 1–3 todos share an entity and context, propose a batch. Confirm with the human via `human-checkpoint` if batching is non-obvious.
    - Identify the matching `docs/wiki/entities/<slug>.md`. If it doesn't exist, **stop** and recommend `/project:interview` to define the entity first.
 

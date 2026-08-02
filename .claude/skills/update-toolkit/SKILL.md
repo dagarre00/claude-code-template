@@ -45,16 +45,17 @@ If a paragraph could appear in a textbook chapter on the topic, **delete it**. A
 
 ### Add a command
 
-1. **Frontmatter.** `name` (kebab-case), `type: command`, one-line `description` (shown in listings).
-2. **Body = the procedure the orchestrator follows:** **Preconditions** (check first) → **Steps** (numbered; one action each — pick todo, branch, dispatch agent) → **Failure modes** → **Wiki updates** → **Human checkpoints** (where it pauses).
-3. **Placement.** `.claude/commands/project/<name>.md`. The sub-folder is the namespace: `commands/project/work.md` → `/project:work`; a flat `commands/<name>.md` → `/<name>`. Keep new ones under `project:` unless you deliberately want un-namespaced.
-4. **Update `CLAUDE.md`** — add a row to the Slash commands table.
-5. **Update `docs/wiki/commands.md`** if the human can run shell pieces of it.
-6. **Commit** `feat: add /<name> command — <reason>`.
+1. **Frontmatter.** `name` (kebab-case), `type: command`, one-line `description` (shown in listings), and `argument-hint` — a bracketed sketch of the free-text context the command accepts (`[scope — e.g. "the auth module" | "security only"]`). **Every command takes an argument.** A command that ignores what the human typed after its name silently drops their instruction.
+2. **Bind the argument in the body.** Directly under the H1, write `**Argument:** \`$ARGUMENTS\`` followed by a short block saying what the argument does to this command: which step it overrides, the two or three shapes it can take (scope / fact / constraint), what happens when it's empty, and what it can never bypass (preconditions, Red phase, human checkpoints). Then wire it into the step it actually changes — a `$ARGUMENTS` echo with no step consuming it is decoration. Commands that dispatch an agent pass the argument through verbatim, so the sub-agent inherits the same scope.
+3. **Body = the procedure the orchestrator follows:** **Preconditions** (check first) → **Steps** (numbered; one action each — pick todo, branch, dispatch agent) → **Failure modes** → **Wiki updates** → **Human checkpoints** (where it pauses).
+4. **Placement.** `.claude/commands/project/<name>.md`. The sub-folder is the namespace: `commands/project/work.md` → `/project:work`; a flat `commands/<name>.md` → `/<name>`. Keep new ones under `project:` unless you deliberately want un-namespaced.
+5. **Update `CLAUDE.md`** — add a row to the Slash commands table, including the argument the command accepts.
+6. **Update `docs/wiki/commands.md`** if the human can run shell pieces of it.
+7. **Commit** `feat: add /<name> command — <reason>`.
 
 ### Modify / retire a command
 
-- **Modify:** re-read the file; if preconditions/output contract change, update `description` and the CLAUDE.md row. Commit `refactor: /<name> — <reason>`.
+- **Modify:** re-read the file; if preconditions/output contract change, update `description` and the CLAUDE.md row. If the argument's meaning changes, update `argument-hint`, the `**Argument:**` block, and the step that consumes it together — a hint that no longer matches the behaviour is worse than none. Commit `refactor: /<name> — <reason>`.
 - **Retire:** grep `.claude/` for references, delete the file, remove the CLAUDE.md row, append to `docs/wiki/log.md`, commit `chore: retire /<name>`.
 
 ---

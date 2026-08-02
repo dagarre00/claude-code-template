@@ -1,10 +1,15 @@
 ---
 name: agent-scout
 description: Post-init survey that reads the wiki and recommends specific agents and skills tailored to this project's stack, domain, and external services. Run once after /project:init fills requirements and architecture. Re-run after /project:interview adds a major feature.
+argument-hint: [focus — e.g. "testing skills only" | "the payments feature" | "skills, no agents"]
 type: command
 ---
 
 # /project:agent-scout
+
+**Argument:** `$ARGUMENTS`
+
+The argument **narrows the survey** — a signal category (`testing skills only`, `external services`), a feature (`the payments feature`), or an output filter (`skills, no agents`). Restrict step 3's analysis to the matching categories and say in the `### Not recommended` section that the rest were **out of scope this run**, not analysed and rejected — the two are different, and conflating them makes a partial survey look complete. Empty argument means the full survey.
 
 You read the initialized wiki and produce a prioritized list of agents and skills this project needs — ones not already present in `.claude/`. You do **not** create anything automatically; you present recommendations and let the human decide what to build.
 
@@ -46,6 +51,8 @@ ls .claude/skills/
 Only recommend what is genuinely missing. Do not re-recommend agents or skills that already exist, even under a different name that covers the same ground.
 
 ### 3. Analyze signals
+
+If the argument named a focus, analyse only the categories it covers. Otherwise work through all of them.
 
 For each category below, check whether the wiki provides a positive signal. A positive signal means: "the developer will encounter this repeatedly and needs a project-specific procedure."
 
@@ -132,7 +139,7 @@ For each agent (only if a genuine role gap exists):
 
 ### Not recommended
 
-List signal categories from Step 3 that do NOT apply to this project, with one-line reasons. This shows the analysis was complete, not partial.
+List signal categories from Step 3 that do NOT apply to this project, with one-line reasons. Categories skipped because the argument narrowed the survey are listed separately as "out of scope this run" — never mixed in with analysed-and-rejected. This shows exactly how complete the analysis was.
 
 ---
 

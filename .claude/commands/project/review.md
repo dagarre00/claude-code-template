@@ -1,10 +1,15 @@
 ---
 name: review
 description: Throughout review of the codebase against the wiki. Runs the reviewer agent in a fresh git worktree with no developer context. Flags critical issues, warnings, drift, missing tests, security/perf concerns. Use periodically (~every 5 todos), never inside /project:work.
+argument-hint: [scope — e.g. "the auth module" | "security only" | "src/api/"]
 type: command
 ---
 
 # /project:review
+
+**Argument:** `$ARGUMENTS`
+
+The argument **pins the review scope** — an area (`the auth module`, `src/api/`), a lens (`security only`, `test coverage`), or both. Pass it verbatim to the reviewer in step 3 so the isolated agent inherits the same scope you were given. Empty argument means whole-repo review.
 
 You dispatch the `reviewer` agent in a worktree-isolated context. The reviewer audits code vs wiki with no developer baggage.
 
@@ -27,7 +32,7 @@ If any fails: run `human-checkpoint`.
 
 ## Steps
 
-1. **Optionally pin the scope.** If the human gave a specific area to review, write it down in one line. Otherwise the review is whole-repo.
+1. **Pin the scope.** If the argument named an area or lens, write it down in one line — that line is what you hand the reviewer in step 3. Otherwise the review is whole-repo.
 
 1a. **Branch for the report.** The report is a tracked file, and `develop`/`main` take no direct commits (`feature-branching`, `git-conventions.md`). Branch before the reviewer writes anything:
 

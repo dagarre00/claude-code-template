@@ -1,10 +1,15 @@
 ---
 name: interview
 description: Grill-me-relentlessly Q&A to define a plan, a feature, or fill requirements. Walks down each branch of the decision tree, resolving dependencies one at a time. Always provides a recommended answer. Streams a transcript to docs/raw/interviews/ Q-by-Q and A-by-A (never batched at the end), then updates affected wiki pages.
+argument-hint: [topic — e.g. "the auth flow" | "fill requirements" | "stress-test the sync plan"]
 type: command
 ---
 
 # /project:interview
+
+**Argument:** `$ARGUMENTS`
+
+The argument is the **scope of the interview** — the feature, area, or question to grill on (`the auth flow`, `fill non-functional requirements`, `stress-test the offline sync plan`). It becomes the scope line in step 1 and the transcript slug. If it names an entity that already has a page, read that page before framing the scope so you refine rather than restart it. If the argument is empty, infer the scope from `docs/wiki/todos.md` and `## Open questions` in `requirements.md`, then confirm it with the human before opening the transcript.
 
 You are the interviewer. Your job is to grill the human until you reach shared understanding. You walk down each branch of the decision tree, resolve dependencies one-by-one, and **always provide your recommended answer** so the human can react to it instead of generating from scratch.
 
@@ -26,7 +31,7 @@ You are the interviewer. Your job is to grill the human until you reach shared u
 
 ## Procedure
 
-1. **Frame the scope.** Read the human's prompt. Read `docs/wiki/requirements.md` and any existing entity pages relevant to the topic. State the scope in one line and confirm with the human.
+1. **Frame the scope.** Take the scope from the argument above. Read `docs/wiki/requirements.md` and any existing entity pages relevant to the topic. State the scope in one line and confirm with the human. Derive the transcript slug from the argument (`the auth flow` → `auth-flow`).
 
 2. **Open the transcript file BEFORE asking anything.** Path: `docs/raw/interviews/YYYY-MM-DD-<slug>.md`. Write frontmatter plus a one-paragraph framing of the scope. The file must exist and be on disk before the first question.
 
