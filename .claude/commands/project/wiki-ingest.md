@@ -25,6 +25,18 @@ This is **focused ingest only** — no orphan scan, no link audit, no lint pass.
 
 If dirty outside `docs/`: run `human-checkpoint`.
 
+## Branch first (both modes)
+
+The summary page, the cross-links, and (research mode) the raw research file are all tracked, and `develop`/`main` take no direct commits (`feature-branching`, `git-conventions.md`). Before step 1 of either mode:
+
+```bash
+git fetch origin develop
+git checkout develop && git merge --ff-only origin/develop
+git checkout -b docs/ingest-<slug>
+```
+
+No remote yet (`git remote` prints nothing)? Skip the fetch/merge and branch off local `develop`. **Already on a `feat/*` or `fix/*` branch?** Stay there — an ingest that feeds the feature you're mid-cycle on belongs in that branch's history. Only branch when standing on `develop` or `main`; in that case the command ends with a PR to `develop` (`pr-create`, body = the ingest report) and `git checkout develop`.
+
 ## Steps — file mode
 
 Triggered when the argument is a path to an existing file (e.g., `/project:wiki-ingest docs/spec.pdf`, `/project:wiki-ingest meeting-notes.md`).
