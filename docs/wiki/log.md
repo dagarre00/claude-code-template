@@ -23,3 +23,12 @@ updated: 2026-07-21
 - Rules: amended rule 12 (two review roles, both read-only, one periodic and one per-change); added rule 20 (every finding gets a written disposition)
 - Wiki: [[concepts/adversarial-review]], [[decisions/2026-07-31-adversarial-review-for-complex-work]], [[summaries/adversarial-review-croovies]]
 - Branch: claude/reddit-implementation-jl5w3k
+
+## [2026-08-02 00:00] pr — branch-before-first-write
+
+- Defect: `/project:interview`, `/project:wiki-ingest`, `/project:agent-scout` committed onto the current branch (in practice `develop`) — no branch step. Reported from field use on another project.
+- Fixed: each branches before its first tracked write (`docs/interview-<slug>`, `docs/ingest-<slug>`, `chore/agent-scout-<date>`); stays put if already on `feat/*`/`fix/*`.
+- Rules: widened rule 19 to own the branch, not just the commit + push.
+- Wiki: [[git-conventions]]; command→branch table added to the `feature-branching` skill.
+- Branch: docs/branch-before-first-write
+- PR: https://github.com/dagarre00/claude-code-template/pull/30
