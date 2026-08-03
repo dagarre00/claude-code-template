@@ -19,6 +19,8 @@ updated: 2026-07-21
 
 `develop` — protected, integration branch. No direct commits. `/project:work` always starts and ends on `develop`. `main` is the release branch, updated separately when `develop` is promoted.
 
+"No direct commits" binds **every** command that writes tracked files, not just `/project:work` — wiki edits, interview transcripts and `.claude/` config are as tracked as code. Each such command opens its own branch before its first write; the per-command branch names are tabulated in the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md).
+
 ## Branch naming
 
 `<type>/<short-slug>`, where `<type>` ∈:
