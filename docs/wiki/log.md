@@ -32,3 +32,9 @@ updated: 2026-07-21
 - Wiki: [[git-conventions]]; command→branch table added to the `feature-branching` skill.
 - Branch: docs/branch-before-first-write
 - PR: https://github.com/dagarre00/claude-code-template/pull/30
+
+## [2026-08-02 00:10] work — pr-merge-convention
+
+- Drift: [[git-conventions]] specified "squash on merge"; all 27 merged PRs on `develop` are merge commits. Doc followed practice, not the reverse.
+- Fixed: merge commit is now the stated default, with the rationale (the Red→Green trace is the evidence the loop ran) and squash named as the exception.
+- Branch: docs/pr-merge-convention

@@ -7,7 +7,7 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-05-11
-updated: 2026-07-21
+updated: 2026-08-02
 ---
 
 # Git Conventions
@@ -67,7 +67,8 @@ Conventional commits, present tense:
 - Opened automatically by `/project:work` (via the `pr-create` skill) once all Behavior cases for the cycle are `[x]`.
 - Title mirrors the lead commit.
 - Description references the entity page and the Behavior cases covered.
-- Squash on merge unless preserving the TDD trace adds value.
+- **Merge commit on merge** (`gh pr merge --merge --delete-branch`), not squash. The Red→Green→Refactor commit sequence is the evidence that the loop was actually run — squashing erases it, and this schema already forbids squashing locally for the same reason ([feature-branching](../../.claude/skills/feature-branching/SKILL.md), Anti-patterns). Squash only a branch with no TDD trace to preserve: a typo fix, a revert, a branch whose history is all `wip:` noise.
+- Delete the branch on merge, local and remote.
 - Merging is always the human's call.
 
 ## Force-push policy
