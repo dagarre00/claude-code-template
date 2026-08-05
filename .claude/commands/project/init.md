@@ -33,7 +33,7 @@ Run `git status`.
 - If not a git repo — the **expected state** when starting from this template (the quick start erases the cloned `.git` so the project begins its own history):
   1. `git init -b main` — always pass `-b main`; a bare `git init` may create `master` depending on the machine's `init.defaultBranch`.
   2. **Keep the template's shipped `.gitignore`** — it carries entries the workflow relies on (the plan scratch, `settings.local.json`, `docs/.obsidian/`). Append stack-specific entries (Node, Python, OS, IDE) to it; never replace it.
-  3. Stage everything including dotfiles (`git add -A`) and commit `chore: initial commit` on `main` — the template's `.claude/`, `CLAUDE.md`, and `docs/` (with the pre-seeded gotchas) must all land in that first commit.
+  3. Stage everything including dotfiles (`git add -A`) and commit `chore: initial commit` on `main` — the template's `.claude/`, `CLAUDE.md`, and `docs/` must all land in that first commit.
   4. If the human has a remote URL, `git remote add origin <url>`; otherwise continue without one — every later push step is skipped and noted in the report until a remote exists.
 - If on `main` with uncommitted changes: stop and run `human-checkpoint`. Ask whether to commit, stash, or discard.
 - If on a feature branch: warn; don't switch.
@@ -104,7 +104,7 @@ Create or update these pages with **real content from the pre-scan and interview
 - `docs/wiki/git-conventions.md` — default branch, branch prefixes, commit format.
 - `docs/wiki/commands.md` — test command, build command, lint command (whatever was detected/confirmed).
 - `docs/wiki/todos.md` — seeded with first work items from the interview.
-- `docs/wiki/gotchas.md` — create with empty headings (`## Critical`, `## Runtime`, `## Testing`, `## Tooling`) **only if missing. Never clear existing entries** — the template ships with tooling gotchas (e.g. skill discovery) that apply to every project built on it.
+- `docs/wiki/gotchas.md` — create with empty headings (`## Critical`, `## Runtime`, `## Testing`, `## Tooling`) **only if missing. Never clear existing entries** — the template ships this file empty, but a re-run of `/project:init` on an established project must not wipe the traps that project has accumulated.
 - `docs/wiki/wiki-todos.md` — create empty only if missing; keep any pending lines.
 - `docs/wiki/log.md` — init entry (see step 6).
 

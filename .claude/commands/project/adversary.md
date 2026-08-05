@@ -35,13 +35,13 @@ Clean tree and no base ref: stop and say there is nothing to review. Do not disp
 
 ## Steps
 
-1. **Scope it.** If the argument named a base ref, use `git diff <ref>...HEAD`. Otherwise: uncommitted work → `git diff` + `git diff --staged`; a pushed branch → `git diff develop...HEAD`. Note the entity slug(s) the diff touches.
+1. **Scope it, and keep it small.** If the argument named a base ref, use `git diff <ref>...HEAD`. Otherwise review the commits for one Behavior case, or a few closely-related ones — `git diff <sha-before-them>...HEAD`. Note the entity slug(s) touched. A whole-branch range is the usual reason a review runs past two rounds; prefer several small reviews to one large one.
 
 2. **Dispatch the `adversary`** with the diff scope, the entity slug(s) and Behavior case IDs, the mailbox path `.claude/handoff/<slug>-findings.md`, the test command from `docs/wiki/commands.md`, and the lens from the argument if there was one. Pass **nothing else** — no plan file, no rationale, no summary of intent. That independence is the whole product.
 
-3. **Read the mailbox and triage** every finding to Fixed / Rejected-with-reason / Deferred-with-todo, annotating each in place (behavioral rule 20). Fixes follow the normal loop: failing test first for any behavior change; spec first if a finding contradicts the entity page.
+3. **Read the mailbox and triage** every finding to Filed / Fixed / Rejected-with-reason (behavioral rule 20). **Filed is the default** — a line in `docs/wiki/todos.md` at the priority its severity maps to, not a fix. For every `critical` and `major`, run one `human-checkpoint` with the failure scenarios and your recommendation, and let the human choose fix-now or queue; only an approved finding gets fixed, and then by the normal loop (failing test first; spec first if the finding contradicts the entity page).
 
-4. **Re-dispatch once** with the new diff and the annotated mailbox. The adversary confirms fixes and contests rejections once. **Two rounds maximum** — surviving `critical`/`major` findings go to `human-checkpoint`, not to round three.
+4. **Re-dispatch only if a fix landed** — and then over the fix commits only (`git diff <sha-before-fixes>...HEAD`), never the original range: re-reading the whole thing is what makes each round surface new findings instead of converging. If everything was filed or rejected, no code changed and the review is already done. **Two rounds maximum** — findings surviving round two mean the unit was too big, so split it and review the pieces.
 
 5. **Log it.** Append to `docs/wiki/log.md`:
 
@@ -50,29 +50,32 @@ Clean tree and no base ref: stop and say there is nothing to review. Do not disp
 
    - Commit reviewed: <sha>
    - Findings: <N> (<C> critical, <M> major, <m> minor)
-   - Disposition: <F> fixed, <R> rejected, <D> deferred
+   - Disposition: <Fi> filed, <Fx> fixed, <R> rejected
    ```
 
-6. **Commit and push.** Stage the fixes, any inline gotcha/ADR, the deferred todos, and the log entry in one commit, then push (behavioral rule 19):
+   The counts are an index. The per-finding reasons are in the commits — `git log --grep="adversary round"`.
+
+6. **Commit the dispositions and push.** Each fix is its own commit naming the finding it closes; one commit then closes the round with every finding's disposition in its body (behavioral rule 19, and rule 20's record):
 
    ```bash
-   git add <fix-paths> docs/wiki/
-   git commit -m "fix(<slug>): address adversary findings — <N> fixed"
+   git commit -m "fix(<slug>): <what changed> — adversary F1"   # approved criticals/majors only
+   git add docs/wiki/todos.md docs/wiki/log.md
+   git commit -m "docs(<slug>): adversary round 1 — <N> findings, …"   # body: one line per finding
    git push -u origin "$(git branch --show-current)"
    ```
 
-   Nothing to fix (all rejected or nits only) → commit just the log entry and any recorded invariant.
+   Most rounds have no `fix` commit at all — that is the expected shape, not a failed review. If a round produced neither a fix nor a todo (everything rejected), make the round-closing commit `--allow-empty`: its written rejections are the only thing that has to survive.
 
-7. **Clean up.** Delete `.claude/handoff/<slug>-findings.md` — gitignored scratch; the commits and the log entry are the record.
+7. **Clean up.** Delete `.claude/handoff/<slug>-findings.md` — gitignored scratch, and the dispositions are already in the commits.
 
-8. **Report.** Findings by severity, what you fixed, what you rejected and why. Name any rejection the human might disagree with.
+8. **Report.** Findings by severity, what you filed and where it sits in the queue, what you fixed under approval, and what you rejected and why. Lead with any `critical`/`major` that was filed rather than fixed. Name any rejection the human might disagree with.
 
 ## Failure modes
 
 - **Adversary reports no findings without saying what it checked.** Re-dispatch once demanding the `**Checked:**` line. An unexplained pass is a failed review.
 - **Adversary tries to edit, commit, or push.** Stop and report it — the read-only invariant is broken and the round is void.
 - **Findings contradict the entity spec.** The spec wins until the human changes it. Rejected — out of scope, with the Behavior case cited; or `/project:interview` if the spec is genuinely wrong.
-- **Same finding survives two rounds.** `human-checkpoint` with both positions. Do not let two agents negotiate.
+- **Findings keep coming, round after round.** The scope is too large — each round's fixes add surface the next round reads as new. Stop, split the range into single cases, and review those. Do not raise the round cap.
 - **Diff too large to review meaningfully.** The cycle batched too much. Review per entity, one dispatch each.
 
 ## What you do NOT do

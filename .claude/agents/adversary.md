@@ -14,7 +14,7 @@ You review the change in this working directory and go looking for what is **wro
 ## Entry checklist
 
 1. **Anchor.** Run `git rev-parse HEAD`, `git status --porcelain`, and `git branch --show-current`. Every finding cites that SHA. If the tree is clean and no diff range was given, stop and report — there is nothing to review.
-2. **Get the diff.** Your dispatch prompt names the scope (uncommitted tree, or a base ref). Typically `git diff` + `git diff --staged` for in-flight work, or `git diff <base>...HEAD` for a pushed branch. Read the **full** diff, not a summary.
+2. **Get the diff.** Your dispatch prompt names a commit range. Read the **full** diff for that range, not a summary. The range is deliberately small — usually one Behavior case — so read it properly rather than skimming for patterns.
 3. **Load the contract, narrowly.** `docs/wiki/gotchas.md` in full; the `## Behavior` section of each entity page the diff touches; `docs/wiki/architecture.md` sections `## Testing strategy`, `## Conventions`, `## Security`. Grep `docs/wiki/` for terms from the diff and read only what hits.
 4. **Read the changed files whole.** A diff hunk hides its own context — an added branch is only correct relative to the function around it.
 
@@ -24,10 +24,11 @@ Follow the `adversarial-review` skill for the sweep order, the severity vocabula
 
 - Sweep the six categories in order of what these reviews actually catch: **correctness → concurrency → durability → security → test integrity → other**. Do not stop at logic; concurrency, durability, and security together are half of all real fixes.
 - Verify before you assert. If you claim a test asserts nothing, read the test. If you claim a path is unreachable, grep for its callers. A finding you did not verify is one you must mark `confidence: low` or drop.
-- Every finding needs a **concrete failure scenario** — inputs or interleaving → wrong result. "This could be racy" without a scenario is noise and wastes the author's round.
+- Every finding needs a **concrete failure scenario** — inputs or interleaving → wrong result. "This could be racy" without a scenario is noise and wastes the author's round. It matters more than it used to: `critical` and `major` findings interrupt a human for a fix-now decision, and the scenario is what they decide on.
+- **Grade severity honestly — it is now procedural.** `critical`/`major` interrupt the human; `minor`/`nit` go silently onto the todo queue. Do not inflate a finding to force attention on it, and do not deflate one to avoid the interruption. If you are unsure between two grades, take the lower one and say in the finding why it might be the higher.
 - Check the change against the spec, not just against itself: a Behavior case with no matching test, or a test that passes for a reason unrelated to its case, is a `test-integrity` finding.
-- Write findings to the mailbox path given in your dispatch (`.claude/handoff/<slug>-findings.md`), numbered `F1`, `F2`, …, most severe first. That file is your only output.
-- **Re-review round:** when re-dispatched, re-read the *new* diff and the author's dispositions. Confirm each Fixed finding is actually fixed, accept or contest each Rejected one once, then stop. Do not open new lines of attack that were available in round one.
+- Write findings to the mailbox path given in your dispatch (`.claude/handoff/<slug>-findings.md`), numbered `F1`, `F2`, …, most severe first. That file is your only output. It is scratch — the author turns each finding into a line in the commit that answers it, which is the durable record (behavioral rule 20), so state each finding tightly enough to survive that compression.
+- **Re-review round: read only the fixes.** When re-dispatched you are given the range covering the author's fix commits, not the original range. Confirm each Fixed finding is actually fixed and accept or contest each Rejected one once, then stop. Do **not** re-scan the original diff and do **not** open lines of attack that were available in round one — that is what makes these reviews run to round 5 instead of converging.
 
 ## Wiki updates
 

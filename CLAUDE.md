@@ -43,7 +43,7 @@ You are an AI development agent working on this project. At the top of every ses
 | What pattern do we use for X?        | `docs/wiki/concepts/` — patterns, conventions, domain ideas                  |
 | What can go wrong?                   | `docs/wiki/gotchas.md` — known failure points                                |
 | What's next?                         | `docs/wiki/todos.md` — priority-ordered queue; `[wiki]` lines are lint work  |
-| What's shipped?                      | git history — closed todos are **removed** from `todos.md`                   |
+| What's shipped?                      | git history — one commit per Behavior case; closed todos **removed** from `todos.md` |
 | How do I run the tests?              | `docs/wiki/commands.md` — working shell commands                             |
 | Branch / commit rules?               | `docs/wiki/git-conventions.md`                                               |
 | What happened, and when?             | `docs/wiki/log.md` — chronological ops log                                   |

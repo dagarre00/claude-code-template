@@ -15,11 +15,15 @@ Use this every time you implement code on a `feat/*` or `fix/*` branch. Nothing 
 - `docs/wiki/gotchas.md` — known test pitfalls.
 - The relevant `docs/wiki/entities/<slug>.md` — its `## Behavior` section is the contract.
 
+## One case at a time
+
+You own the whole cycle — write the test, then implement, then commit. There is no separate tester and no handoff JSON.
+
+Run Red → Green → Refactor → Commit for **one** Behavior case, then start the next. Don't batch: five tests then five implementations then one commit produces a diff that can't be bisected, can't be reverted case-by-case, and is too large for the `adversary` to review without manufacturing new findings every round.
+
 ## Red
 
-You own the whole cycle — write the tests, then implement. There is no separate tester and no handoff JSON.
-
-1. For each Behavior case in scope, write **one** focused test, named after the behavior so it maps back to the case ID.
+1. For the Behavior case in hand, write **one** focused test, named after the behavior so it maps back to the case ID.
 2. Run the canonical `test command` from `docs/wiki/commands.md`. Confirm the new tests actually fail.
 3. Confirm the failure reason matches "missing implementation" — not a typo, import error, or fixture issue. If it's the wrong reason, fix the test and re-run until the failure is genuine.
 4. Mark each covered case `[ ]` → `[~]` on the entity page once its test is confirmed failing.
@@ -37,6 +41,18 @@ Only after green. Goal: improve structure without changing behavior.
 1. Make one structural change at a time (extract method, rename, collapse duplication).
 2. Re-run the test command after each change. Stay green.
 3. Stop when the code is "good enough for this entity's current scope." Don't refactor neighboring code.
+
+## Commit
+
+Close each case before starting the next — this is the cadence `docs/wiki/git-conventions.md` specifies, and you own it, not `/project:work`.
+
+1. Tick the case `[~]` → `[x]` on the entity page (see "Wiki update" below).
+2. Stage that case's test, its implementation, and the entity-page edit — explicitly by path, never `git add -A`.
+3. Commit: `feat(<slug>): <behavior in present tense>`, one case per commit.
+4. Push (`git push -u origin "$(git branch --show-current)"`). An unpushed commit dies with the container — behavioral rule 19.
+5. Refactor commits are separate (`refactor(<slug>): …`). Never commit half-green code.
+
+Then start the next case at Red.
 
 ## When to stop and ask
 
@@ -63,5 +79,6 @@ If your second attempt on the same mechanism fails (broken green, refactor explo
 
 - **Modifying tests to make them pass.** Forbidden. Spec → test → code, in that order.
 - **Bulk green.** Don't try to make 5 failing tests pass with one change. One test, one change.
+- **Batching commits.** One commit at the end of the cycle instead of one per case. It breaks `git bisect`, makes a single case unrevertable, and inflates the review diff until the `adversary` can't converge on it.
 - **Refactor before green.** Doesn't compile? Doesn't run? You're not at refactor yet.
 - **Skipping the failure-reason check.** A "failing test" that fails on import is not Red — it's a broken test.
