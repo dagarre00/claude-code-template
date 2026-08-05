@@ -61,7 +61,7 @@ Each step should be small enough that **a single test can drive it**. If a step 
 
 ## Where it lives
 
-`.claude/handoff/<slug>-plan.md`. One plan per branch. `*-plan.md` is `.gitignore`'d, so plans are transient scratch and never reach the remote. Overwrite on retry rather than versioning; `/project:work` clears it when the cycle is done. **Because the plan is not committed, it does not survive a container recycle** — but neither does the rest of the cycle (the bundled commit happens only at the end of `/project:work`), so a recycle just restarts the todo, re-dispatches the planner, and the plan is regenerated from the entity page's Behavior cases, which are the authoritative contract.
+`.claude/handoff/<slug>-plan.md`. One plan per branch. `*-plan.md` is `.gitignore`'d, so plans are transient scratch and never reach the remote. Overwrite on retry rather than versioning; `/project:work` clears it when the cycle is done. **Because the plan is not committed, it does not survive a container recycle** — but the work does: the developer commits and pushes per Behavior case, so a recycle loses at most the case in flight. Re-dispatching the planner regenerates the plan from the entity page's Behavior cases, which are the authoritative contract, and the remaining unticked cases are the resume point.
 
 ## Handoff to the developer
 

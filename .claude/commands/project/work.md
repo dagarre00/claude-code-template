@@ -17,7 +17,7 @@ The argument **selects the work** and overrides the default "take the top todo" 
 
 An argument never bypasses the preconditions, the Red phase, or the entity-page check — it only chooses *what* the cycle covers. If it's empty, take the top todo as usual.
 
-You orchestrate one TDD cycle (or a small batch). You do **not** write tests or production code directly — you dispatch the `planner` (only for complex or batched work) and then the `developer`, verify their output, then commit, push, and — once the entity's Behavior cases are all complete — open a PR back to `develop`.
+You orchestrate one TDD cycle (or a small batch). You do **not** write tests or production code directly — you dispatch the `planner` (only for complex or batched work) and then the `developer`, which commits each Behavior case as it lands. You verify their output, add the log entry, and — once the entity's Behavior cases are all complete — open a PR back to `develop`.
 
 ## Preconditions
 
@@ -33,7 +33,7 @@ If any precondition fails: stop and run `human-checkpoint`.
 
 ## Resuming an interrupted cycle
 
-The `developer` does not commit mid-cycle — `/project:work` makes one bundled commit at the end (step 9). So a container recycle mid-cycle loses the uncommitted tree, and the branch (created locally, pushed only at the end) is gone too. There is no handoff file to scan: the todo is still open in `docs/wiki/todos.md`, so simply re-running `/project:work` picks it up cleanly from the top.
+The `developer` commits and pushes after each green case, so a container recycle loses at most the case in flight. Re-run `/project:work`: `git fetch origin feat/<slug>` recovers everything already pushed, and the remaining Behavior cases are still `[ ]`/`[~]` on the entity page, which is the resume point.
 
 If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-limit pause within the same container, tree intact), don't restart — re-dispatch the `developer` with the same scope; it reads the working tree and continues from where it stopped.
 
@@ -41,6 +41,13 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 
 1. **Pick the work.**
    - Read `docs/wiki/todos.md`. Take the top item — or, if the argument named a todo/entity/batch, take that instead. Skip any line tagged `[wiki]` — those belong to `/project:wiki-lint`, not here.
+   - **If the argument steers you off P0, check saturation first.** Taking the top item already drains P0, so no check is needed on the default path. But when an argument selects work outside `## Now (P0 — next)`, count the open P0 items:
+
+     ```bash
+     awk '/^## Now \(P0/{f=1;next} /^## /{f=0} f && /^- \[ \]/' docs/wiki/todos.md | wc -l
+     ```
+
+     At or above `P0_MAX` (10 — `docs/wiki/todos.md § P0 saturation threshold`), stop and run `human-checkpoint` before starting: name the count, the oldest P0 entries, and the work the argument asked for, and let the human confirm they want to skip a saturated P0. They may well say yes — the point is that it is their call, not a silent bypass.
    - If the next 1–3 todos share an entity and context, propose a batch. Confirm with the human via `human-checkpoint` if batching is non-obvious.
    - Identify the matching `docs/wiki/entities/<slug>.md`. If it doesn't exist, **stop** and recommend `/project:interview` to define the entity first.
 
@@ -71,22 +78,28 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
    - The test command from `docs/wiki/commands.md`.
    - The path to the plan at `.claude/handoff/<slug>-plan.md` **if one was written** in step 4 — the developer follows its step order unless reality forces a noted deviation.
 
-   The developer runs the loop: Red (writes failing tests, confirms they fail for the right reason) → Green (minimum code) → refactor → wiki update. It does **not** commit — you do that in step 9.
+   The developer runs the loop **once per Behavior case**: Red (failing test, confirmed failing for the right reason) → Green (minimum code) → refactor → tick the case → commit → push, then the next case. It owns committing; you do not bundle its work afterwards (`docs/wiki/git-conventions.md`, Cadence).
 
-6. **Verify Red and Green yourself.** Run the full test command. Confirm the new tests exist and the whole suite is green with no regression. If the developer's output doesn't hold up, send it back with notes (one redo; a second failure on the same mechanism is the two-strike rule — see Failure modes).
+6. **Verify Red, Green, and granularity yourself.** Run the full test command: the new tests exist and the whole suite is green with no regression. Then run `git log --oneline develop..HEAD` and confirm the commits are per-case, not one lump — a single commit covering several Behavior cases is a defect to send back, because it breaks bisect and inflates the review diff. If the developer's output doesn't hold up, send it back with notes (one redo; a second failure on the same mechanism is the two-strike rule — see Failure modes).
 
 7. **Wiki update check.** The developer should have updated the entity page. Confirm:
    - Behavior cases ticked (`[~]` → `[x]`).
    - Implementation and Tests sections reflect the current files.
    - The todo is checked off / removed from `docs/wiki/todos.md` (shipped work lives in git history, not a separate file).
 
-7a. **Adversarial review — `[complex]` and batched cycles only.** If you dispatched the `planner` in step 4, the change is risky enough to need a second reader before it is called done. Dispatch the `adversary` (Opus, fresh context) and follow the `adversarial-review` skill. Pass it **only** the diff scope (`git diff` + `git diff --staged`), the entity slug(s) and Behavior case IDs, the mailbox path `.claude/handoff/<slug>-findings.md`, and the test command. **Never pass the plan file or your own reasoning** — the independence is the product.
+7a. **Adversarial review — `[complex]` and batched cycles only.** If you dispatched the `planner` in step 4, the change is risky enough to need a second reader. Dispatch the `adversary` (Opus, fresh context) and follow the `adversarial-review` skill. Pass it **only** a commit range, the entity slug(s) and Behavior case IDs it covers, the mailbox path `.claude/handoff/<slug>-findings.md`, and the test command. **Never pass the plan file or your own reasoning** — the independence is the product.
 
-   Then triage every finding to Fixed / Rejected-with-reason / Deferred-with-todo in the mailbox (behavioral rule 20), re-dispatch the adversary once to confirm, and re-run the full test suite after any fix. Two rounds maximum: surviving `critical`/`major` findings go to `human-checkpoint`, not to a third round. Fixes ride along in step 9's bundled commit — no separate review commit.
+   **Scope it small — one case, or a few closely-related ones.** Reviewing a whole multi-case cycle at once is what makes these reviews run to round 5: a large diff yields many findings, the fixes enlarge it, and the next round finds more. Several small reviews beat one large one.
+
+   **Findings become todos; they are not fixed here.** Triage every finding to Filed / Fixed / Rejected-with-reason and **record each disposition in the commit that answers it** (behavioral rule 20). The default is Filed: a line in `docs/wiki/todos.md` at the priority its severity maps to. The review does not gate the cycle — a cycle with open findings still completes, because the queue owns them now.
+
+   **`critical` and `major` are the exception.** Do not fix them and do not silently file them: run one `human-checkpoint` covering all of them, with each finding's failure scenario and your recommendation, and let the human choose fix-now or queue. Approved → fix in its own commit, failing test first, then re-run the full suite. Declined or unreachable → file at P0/P1 and flag it prominently in your step 12 report.
+
+   Close the round with a `docs(<slug>): adversary round N` commit listing every finding and its disposition. Re-dispatch the adversary only if a fix actually landed, and then **over the fix commits only** — with nothing fixed there is nothing to re-review. Two rounds maximum; findings surviving round two mean the unit was too big, so split it and review the pieces.
 
    For a single simple todo, **skip this step**; the human can run `/project:adversary` on demand.
 
-8. **Append to log.** `docs/wiki/log.md` (do this before committing so the entry ships in the same commit):
+8. **Append to log.** `docs/wiki/log.md` — this is the one commit `/project:work` makes itself:
 
    ```markdown
    ## [YYYY-MM-DD HH:MM] work — <slug>
@@ -94,20 +107,20 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
    - TODO(s): <list>
    - Cases: B1, B2
    - Branch: feat/<slug>
-   - Adversary: <N> findings — <F> fixed, <R> rejected, <D> deferred   # omit if step 7a was skipped
+   - Adversary: <N> findings — <Fi> filed, <Fx> fixed, <R> rejected   # omit if step 7a was skipped
    ```
 
-9. **Commit and push.** Stage everything — implementation, wiki updates, and the log entry — in one conventional commit. Then push immediately — remote execution containers can be recycled between sessions, and an unpushed commit is effectively lost work:
+   The counts are an index, not the record. The per-finding claims and rejection reasons are in the commits themselves — `git log --grep="adversary round"`.
+
+9. **Commit the log entry and push.** The implementation is already committed and pushed, case by case, by the `developer`; the adversary dispositions likewise. All that is left is the log:
 
    ```bash
-   # Stage explicitly by path — never `git add -A` blindly, and never
-   # `git add -p` (interactive patch mode hangs with no human at the prompt).
-   git add <impl-paths> docs/wiki/
-   git commit -m "feat(<slug>): <summary>"
+   git add docs/wiki/log.md
+   git commit -m "docs(<slug>): log cycle"
    git push -u origin feat/<slug>
    ```
 
-   The `*-plan.md` and `*-findings.md` scratch files are gitignored, so they never enter the commit; delete them once the cycle is done. No tracked uncommitted files should remain after this step.
+   Then delete the `.claude/handoff/<slug>-*.md` scratch — both files are gitignored and nothing needs saving from them. Confirm `git status --porcelain` prints nothing, and that `git log --oneline develop..HEAD` reads as a per-case sequence rather than one lump.
 
 10. **Check feature completion.** Re-read the entity page's `## Behavior` section.
     - **All cases are `[x]`** → the feature is finished. Proceed to step 11.
@@ -131,7 +144,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
       git checkout develop
       ```
 
-12. **Report to human.** What was done, what's next. Suggest:
+12. **Report to human.** What was done, what's next. If step 7a ran, lead with any `critical`/`major` that was filed rather than fixed — that is the one outcome the human most needs to see, and it is easy to lose among the cycle's other notes. Suggest:
     - More todos in the same entity → keep going (run `/project:work` again from `develop` or the existing branch if still open).
     - Cross-cutting work piling up → `/project:review` may be due.
     - Risky next change → tag a checkpoint first (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`).
