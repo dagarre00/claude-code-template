@@ -38,6 +38,9 @@ Follow the `tdd-loop` skill. In short:
 - **Red.** For each Behavior case, write **one** focused test, named after the behavior so it maps back to the case ID. Run the full test command. Confirm the new tests fail, fail for the **right reason** (missing implementation — not a typo, import, or fixture error), and that no previously-passing test broke. If a test fails for the wrong reason, fix it and re-run until the failure is genuine. Mark each covered case `[ ]` → `[~]` once its test is confirmed failing.
 - **Green.** Write the **minimum** code to pass. No future-proofing, no abstractions the tests don't force. Re-run; the new tests pass and nothing else breaks.
 - **Refactor.** Only while green. One structural change at a time, re-running tests after each. Stop when the code is good enough for this entity's current scope; don't refactor neighbours.
+- **Commit.** One commit per green case — its test, its minimal implementation, and its entity-page tick together — then push. This is the cadence `docs/wiki/git-conventions.md` specifies; you own it, not `/project:work`. Refactor commits are separate. Never commit half-green code.
+
+**One case at a time, all the way through.** Do not write five tests, then five implementations, then one commit. Take case B1 red → green → refactor → commit → push, then start B2. A commit that spans several cases cannot be bisected or reverted alone, and it hands the `adversary` a diff too large to review convergently.
 
 **Never modify a test to make it pass.** If a test encodes wrong behavior, fix the spec first (entity Behavior case via `spec-writing`), then the test, then the code.
 
@@ -51,15 +54,20 @@ Code and wiki ship together:
 
 ## Answering an adversary
 
-On `[complex]` and batched cycles, `/project:work` points a read-only `adversary` (Opus, no context of yours) at your diff after Green. It writes numbered findings to `.claude/handoff/<slug>-findings.md` and is not allowed to touch the code — acting on them is your job. Follow the `adversarial-review` skill: every finding ends as **Fixed**, **Rejected with a stated reason**, or **Deferred with a todo filed**, written into that file (behavioral rule 20). Silence is not a disposition and "unlikely" is not a reason.
+On `[complex]` and batched cycles, `/project:work` points a read-only `adversary` (Opus, no context of yours) at the commits you just landed. It writes numbered findings to `.claude/handoff/<slug>-findings.md` and is not allowed to touch the code — acting on them is your job. Follow the `adversarial-review` skill: every finding ends as **Filed as a todo**, **Fixed** (approved only), or **Rejected with a stated reason**. Silence is not a disposition and "unlikely" is not a reason.
 
-Fixing a finding is ordinary work, not an exception to the loop: a behavior change still needs its failing test first (rule 2), and a finding that contradicts the entity spec means fixing the Behavior case before the code (rule 3). Re-run the full suite after each fix. You are entitled to reject a finding that misreads the code or whose scenario a documented invariant rules out — cite the invariant, and if it isn't written down anywhere, write it into the entity page or `gotchas.md` as part of the rejection.
+**File, don't fix.** The default disposition is a todo line in `docs/wiki/todos.md` at the priority the severity maps to — you do not fix findings in the cycle that surfaced them, however small they look. For every `critical` and `major`, run one `human-checkpoint` with the failure scenarios and a recommendation and let the human choose fix-now or queue; fix only what they approve, and only by the normal loop (failing test first).
+
+Triage in the mailbox, but **the record is the commit** (behavioral rule 20). An approved fix is its own commit naming the finding it closes (`fix(<slug>): reject empty token — adversary F1`), and the round ends with one `docs(<slug>): adversary round N` commit whose body lists every finding and its disposition, filed ones included. The mailbox is gitignored scratch and is deleted afterwards.
+
+An approved fix is ordinary work, not an exception to the loop: a behavior change still needs its failing test first (rule 2), and a finding that contradicts the entity spec means fixing the Behavior case before the code (rule 3). Re-run the full suite after each fix. You are entitled to reject a finding that misreads the code or whose scenario a documented invariant rules out — cite the invariant, and if it isn't written down anywhere, write it into the entity page or `gotchas.md` as part of the rejection.
 
 ## Finishing
 
 - Full test suite green (re-run from `docs/wiki/commands.md`).
 - Entity page current; Behavior cases ticked; the todo checked off in `docs/wiki/todos.md`.
-- In the normal flow `/project:work` performs the final bundled commit + push (and clears the `.claude/handoff/<slug>-plan.md` scratch). If you are running **outside** `/project:work`, commit and push yourself (`git push -u origin "$(git branch --show-current)"`, behavioral rule 19) and delete any plan scratch.
+- Every case committed and pushed as you went (behavioral rule 19) — nothing left uncommitted for someone else to bundle. `/project:work` adds only the `docs(<slug>)` log entry at the end.
+- Delete the `.claude/handoff/<slug>-*.md` scratch. Both files are gitignored and nothing needs saving from them — the dispositions are already in the commits.
 - Pause for the human (`human-checkpoint`) if anything is uncertain.
 
 ## Two-strike rule

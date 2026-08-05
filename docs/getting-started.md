@@ -16,7 +16,7 @@ git init -b main                        # optional: /project:init does this for 
 git remote add origin <your-new-repo>   # optional now; without a remote, pushes are skipped until you add one
 ```
 
-Erasing `.git` is the intended flow: the template's commit history is about building the template, not your project. Everything that matters carries over as files — the wiki (including the pre-seeded `gotchas.md`), the `.claude/` schema, and the docs all land in your project's own initial commit.
+Erasing `.git` is the intended flow: the template's commit history is about building the template, not your project. Everything that matters carries over as files — the blank wiki skeletons, the `.claude/` schema, and the docs all land in your project's own initial commit.
 
 Optional but recommended:
 
@@ -100,8 +100,8 @@ Re-run `/project:agent-scout` after a major `/project:interview` that adds a new
 3. **Green.** The developer writes the minimal code to make the tests pass.
 4. **Refactor.** The developer cleans up while keeping tests green.
 5. **Wiki update.** The developer ticks the entity-page Behavior cases `[~]` → `[x]`, updates the Implementation/Tests sections, and appends to `log.md`. Larger cross-page cleanup it can't safely do inline is queued in `wiki-todos.md` for the wiki-maintainer.
-6. **Adversarial review (conditional).** Same trigger as the plan — `[complex]` or a 2+ batch. `/project:work` dispatches the `adversary` agent (Opus, none of the developer's context) at the diff and tells it to find what's wrong. It writes numbered findings to `.claude/handoff/<slug>-findings.md` and may not touch the code. The developer answers each one — fixed, rejected with a reason, or deferred as a todo — and the adversary re-reads once. Two rounds maximum, then it asks you. A simple single todo skips this; you can run `/project:adversary` yourself instead.
-7. **Commit.** `/project:work` verifies the suite itself, then makes one bundled conventional commit (code + wiki + log, including any fixes the review drove) and pushes it (see [git-conventions.md](wiki/git-conventions.md)).
+6. **Adversarial review (conditional).** Same trigger as the plan — `[complex]` or a 2+ batch. `/project:work` dispatches the `adversary` agent (Opus, none of the developer's context) at the diff and tells it to find what's wrong. It writes numbered findings to `.claude/handoff/<slug>-findings.md` and may not touch the code. The developer answers each one — **filed as a todo** (the default), fixed, or rejected with a reason. Findings are not fixed in the cycle that surfaced them; they go into `docs/wiki/todos.md` at a priority set by severity. A `critical` or `major` is the exception: it goes to you via a human checkpoint, and you decide fix-now or queue. Because most rounds fix nothing, there is usually nothing to re-review and the review is one pass. Each disposition is written into the commit that answers it, which is the durable record (behavioral rule 20) — `git log --grep="adversary round"` reads it back. A simple single todo skips this; you can run `/project:adversary` yourself instead.
+7. **Commit.** Already done — the `developer` commits and pushes each Behavior case as it goes (test + implementation + wiki tick), and review fixes are their own commits. `/project:work` verifies the suite and the commit granularity, then adds just the log entry (see [git-conventions.md](wiki/git-conventions.md)).
 
 If a step fails twice on the same approach, the **two-strike rule** fires — the developer stops, you tag a checkpoint and reset, and re-spec.
 
@@ -377,7 +377,7 @@ The wiki is the project's source of truth — code that disagrees with it is the
 - **Committing on `main`.** Always branch first (`/project:work` handles this).
 - **Letting `wiki-todos.md` pile up.** When it's long, run `/project:wiki-lint`.
 - **Running the same failed approach a third time.** The two-strike rule exists for a reason — pivot or re-spec.
-- **Letting findings pass unanswered.** Fixing three findings and quietly ignoring two turns review into theatre. Each one gets a disposition in writing — fixed, rejected with a reason, or deferred as a todo.
+- **Letting findings pass unanswered.** Filing three findings and quietly ignoring two turns review into theatre. Each one gets a disposition in writing — filed as a todo, fixed under your approval, or rejected with a reason.
 - **Treating a plan as a spec.** Plans live in `.claude/handoff/` and are transient scratch. The wiki holds the spec. If the plan needs to change, edit the plan; if the contract needs to change, run `/project:interview`.
 
 # Related
@@ -391,4 +391,3 @@ The wiki is the project's source of truth — code that disagrees with it is the
 - [`.claude/agents/adversary.md`](../.claude/agents/adversary.md) — the read-only diff reviewer (Opus)
 - [`.claude/skills/plan-writing/SKILL.md`](../.claude/skills/plan-writing/SKILL.md) — how plans are structured
 - [`.claude/skills/adversarial-review/SKILL.md`](../.claude/skills/adversarial-review/SKILL.md) — sweep order, severity vocabulary, triage protocol
-- [`docs/wiki/concepts/adversarial-review.md`](wiki/concepts/adversarial-review.md) — why the pattern works and where it doesn't apply

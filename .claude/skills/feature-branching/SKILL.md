@@ -35,6 +35,22 @@ Always branch before code. Never commit directly to `develop` or `main`. Commit-
 
 **The `<slug>` must equal the entity-page slug** — the branch name (`feat/<slug>`), the entity page, the plan scratch (`.claude/handoff/<slug>-plan.md`), and the test names all key off it. Pick it once and keep it stable.
 
+## Which command branches, and when
+
+Every command that writes tracked files branches **before its first write** (behavioral rule 19) — not before its commit. A command whose output is written turn-by-turn (an interview transcript) has already landed on the wrong branch by the time you check at commit time.
+
+| Command                | Branch                             | Created before          |
+| ---------------------- | ---------------------------------- | ----------------------- |
+| `/project:work`        | `feat/<slug>`                      | the failing test        |
+| `/project:interview`   | `docs/interview-<slug>`            | the transcript file     |
+| `/project:wiki-ingest` | `docs/ingest-<slug>`               | the summary page        |
+| `/project:agent-scout` | `chore/agent-scout-<date>`         | the first skill/agent   |
+| `/project:wiki-lint`   | `chore/wiki-lint-<date>`           | the maintainer dispatch |
+| `/project:review`      | `chore/review-<date>`              | the reviewer dispatch   |
+| `/project:adversary`   | none — runs on the existing branch | —                       |
+
+In every case the rule is the same: **branch only if you're on `develop` or `main`.** Already on a `feat/*`/`fix/*` branch whose work this belongs to → stay there and let that branch's PR carry the change.
+
 ## Batching todos
 
 Two todos share a branch when **all** are true: same entity page, second depends on first, splitting produces a meaningless intermediate commit. Otherwise — separate branches. Batches of 2+ also trigger the `planner` — it writes a plan (via `plan-writing`) that the `developer` follows (see `/project:work` step 4).
