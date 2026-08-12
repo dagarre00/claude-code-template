@@ -94,6 +94,6 @@ There is intentionally no domain-specialized agent (no "backend agent"). Domain 
 
 **Meta skill** — evolves the agent's own toolkit: `update-toolkit` (agents, skills, commands).
 
-**Core process skills:** `tdd-loop`, `plan-writing`, `adversarial-review`, `wiki-update`, `feature-branching`, `pr-create`, `human-checkpoint`, `spec-writing`, `decision-recording`, `gotcha-recording`, `git-recovery` (git edge cases + conflict resolution).
+**Core process skills:** `tdd-loop`, `plan-writing`, `adversarial-review`, `wiki-update`, `feature-branching`, `pr-create`, `human-checkpoint`, `spec-writing`, `decision-recording`, `gotcha-recording`, `design-system-check` (UI changes vs `design-system.md`), `git-recovery` (git edge cases + conflict resolution).
 
-Stack-specific skills (`backend-impl`, `database-impl`, …) are not shipped by default. `/project:interview` and `/project:agent-scout` add them once the stack is known.
+Stack-specific skills (`backend-impl`, `database-impl`, `frontend-impl`, …) are not shipped by default. `/project:interview` and `/project:agent-scout` add them once the stack is known. `design-system-check` is not one of them — it is stack-agnostic project procedure, and says nothing about any framework.

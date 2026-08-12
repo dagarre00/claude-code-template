@@ -291,7 +291,7 @@ Like `requirements.md` and `architecture.md`, this page keeps its own body forma
 |---|---|---|
 | `type` | `concept`, `procedure`, `reference`, `tutorial`, `entity`, `decision`, `summary` | Page role (what its reader needs). `entity`/`decision`/`summary` are project roles. |
 | `abstraction` | `principle`, `pattern`, `technique`, `instance` | Rung on the generality ladder. |
-| `domains` | free but controlled list (`agents`, `software`, …) | Application domains; a page can have several. |
+| `domains` | free but controlled list (`agents`, `software`, `design`, …) | Application domains; a page can have several. |
 | `status` | `stub`, `developing`, `stable` — decisions instead: `proposed`, `accepted`, `superseded`, `deprecated` | Maturity. `stub` = known gap pending compilation. |
 
 Operational ledgers (`log.md`, `todos.md`, `wiki-todos.md`, `gotchas.md`, `commands.md`) are `type: reference` and keep their own body formats — the disclosure spine doesn't apply to them, but the frontmatter hard rules do.

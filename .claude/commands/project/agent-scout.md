@@ -72,6 +72,8 @@ For each category below, check whether the wiki provides a positive signal. A po
 
 If any UI row above fires (frontend, mobile, or a TUI/desktop surface), check whether `docs/wiki/design-system.md` exists. If it does not, that is a wiki gap, not a skill gap — `/project:init` skips the page for headless projects, and a UI arriving later leaves nothing holding the token roles, the contrast assertions, or the a11y contract. Recommend creating it from the design-system template in the `wiki-update` skill. This is the only wiki page this command recommends; every other gap belongs to `/project:wiki-lint`.
 
+**Scope the skill against `design-system-check`, which already ships.** That skill owns the stack-agnostic half — reading token roles before writing, referencing roles instead of raw values, the raw-value sweep, verifying contrast and a11y assertions before commit. A recommended `frontend-impl` covers only what is genuinely stack-specific: this project's component file layout, its styling mechanism and how tokens are consumed through it, state management, routing, and how UI is rendered under test. Recommending a `frontend-impl` that restates the check procedure is the duplicate the "only recommend what is genuinely missing" rule forbids.
+
 **Domain signals → targeted skills**
 
 | Signal in wiki                                | Skill to recommend   |
