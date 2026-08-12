@@ -39,6 +39,7 @@ You are an AI development agent working on this project. At the top of every ses
 | What should this project do?         | `docs/wiki/requirements.md` — living spec; code that disagrees is the bug    |
 | How is it built?                     | `docs/wiki/architecture.md` (stack, patterns, testing strategy)              |
 | What does this feature do, exactly?  | `docs/wiki/entities/<slug>.md` — one page per feature/module; Behavior cases |
+| What should the UI look and feel like? | `docs/wiki/design-system.md` — token roles, contrast/a11y assertions, design intention. **UI projects only** — the page asserts, the code holds the values |
 | Why did we choose X?                 | `docs/wiki/decisions/` — ADRs                                                |
 | What pattern do we use for X?        | `docs/wiki/concepts/` — patterns, conventions, domain ideas                  |
 | What can go wrong?                   | `docs/wiki/gotchas.md` — known failure points                                |
@@ -93,6 +94,6 @@ There is intentionally no domain-specialized agent (no "backend agent"). Domain 
 
 **Meta skill** — evolves the agent's own toolkit: `update-toolkit` (agents, skills, commands).
 
-**Core process skills:** `tdd-loop`, `plan-writing`, `adversarial-review`, `wiki-update`, `feature-branching`, `pr-create`, `human-checkpoint`, `spec-writing`, `decision-recording`, `gotcha-recording`, `git-recovery` (git edge cases + conflict resolution).
+**Core process skills:** `tdd-loop`, `plan-writing`, `adversarial-review`, `wiki-update`, `feature-branching`, `pr-create`, `human-checkpoint`, `spec-writing`, `decision-recording`, `gotcha-recording`, `design-system-check` (UI changes vs `design-system.md`), `git-recovery` (git edge cases + conflict resolution).
 
-Stack-specific skills (`backend-impl`, `database-impl`, …) are not shipped by default. `/project:interview` and `/project:agent-scout` add them once the stack is known.
+Stack-specific skills (`backend-impl`, `database-impl`, `frontend-impl`, …) are not shipped by default. `/project:interview` and `/project:agent-scout` add them once the stack is known. `design-system-check` is not one of them — it is stack-agnostic project procedure, and says nothing about any framework.
