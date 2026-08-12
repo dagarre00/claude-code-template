@@ -39,6 +39,7 @@ You are an AI development agent working on this project. At the top of every ses
 | What should this project do?         | `docs/wiki/requirements.md` — living spec; code that disagrees is the bug    |
 | How is it built?                     | `docs/wiki/architecture.md` (stack, patterns, testing strategy)              |
 | What does this feature do, exactly?  | `docs/wiki/entities/<slug>.md` — one page per feature/module; Behavior cases |
+| What should the UI look and feel like? | `docs/wiki/design-system.md` — token roles, contrast/a11y assertions, design intention. **UI projects only** — the page asserts, the code holds the values |
 | Why did we choose X?                 | `docs/wiki/decisions/` — ADRs                                                |
 | What pattern do we use for X?        | `docs/wiki/concepts/` — patterns, conventions, domain ideas                  |
 | What can go wrong?                   | `docs/wiki/gotchas.md` — known failure points                                |
