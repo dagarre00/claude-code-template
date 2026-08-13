@@ -6,7 +6,7 @@ type: skill
 
 # Wiki Update — Standard, Templates, Routing
 
-The wiki follows the **Obsidian LLM-wiki standard**. This skill is the **single source of truth** for that standard; the non-negotiable invariants are also stated as behavioral rule 18. Routine ticks (`[ ]` → `[~]` → `[x]`, checking off a todo, appending a log line) are documented in `tdd-loop`. This skill covers: **placement**, the **templates**, the **facet/ontology tables**, and **inline-vs-maintainer routing**.
+The wiki follows the **Obsidian LLM-wiki standard**. This skill is the **single source of truth** for that standard; the non-negotiable invariants are also stated as behavioral rule 18. Routine ticks (`[ ]` → `[~]` → `[x]`, recording a demonstration, checking off a todo, appending a log line) are documented in `build-loop`. This skill covers: **placement**, the **templates**, the **facet/ontology tables**, and **inline-vs-maintainer routing**.
 
 ## Placement — before creating any page
 
@@ -68,9 +68,9 @@ The two axes coexist: *depth* (progressive disclosure) is the body sections (Ess
 
 ## Entity page template (`docs/wiki/entities/<slug>.md`) — project extension
 
-Entities are this project's spec pages; they keep the Behavior/TDD machinery, mapped onto the disclosure spine:
+Entities are this prototype's spec pages. They carry the slice machinery, mapped onto the disclosure spine:
 
-```markdown
+~~~markdown
 ---
 aliases: []
 type: entity
@@ -89,25 +89,36 @@ updated: YYYY-MM-DD
 # <Entity Name>
 
 > [!abstract] Essence
-> One or two sentences: what this entity exists to do, in user-facing terms.
+> One or two sentences: what this entity exists to do, in operator-facing terms.
 
-## Behavior
+## Slices
 
-- [ ] B1: <observable behavior, no implementation detail>
-- [ ] B2: ...
+- [ ] S1: <observable outcome> — demo: `<command>`
+- [ ] S2: ...
 
-(States `[ ]` / `[~]` / `[x]` defined in `spec-writing` skill → "Behavior case states".)
+(States `[ ]` / `[~]` / `[x]` defined in the `slice-writing` skill → "Slice states".)
+
+## Demonstrations
+
+### S1 — YYYY-MM-DD
+
+```
+$ <the exact command>
+<the real output, trimmed — never paraphrased, never invented>
+```
+
+## Shortcuts
+
+_(Every deliberate fake. Behavioral rule 12: hardcode freely, declare all of it. This section is what `/project:graduate` exports as the debt ledger.)_
+
+- Auth is skipped entirely — any caller is treated as the operator. Real version needs a token check at the entry point.
+- CSV delimiter hardcoded to `,`. Real version sniffs it.
 
 ## Implementation
 
 - Files: [src/foo.py](../../src/foo.py)
-- Key functions: `do_thing()`, `parse_x()`
+- Entry point: `do_thing()`
 - Used by: [[consumer-entity]]
-
-## Tests
-
-- Files: [tests/test_foo.py](../../tests/test_foo.py)
-- Mapping: B1 → `test_does_thing`, B2 → `test_parses_x`
 
 ## Boundaries
 
@@ -116,9 +127,11 @@ updated: YYYY-MM-DD
 ## Provenance
 
 - Requirement / claim ← `docs/raw/...` (or [[decision-slug]] / requirements section).
-```
+~~~
 
-Behavior plays the role of Model (the spec is the mental model); Implementation + Tests are the Detail. Related concepts/decisions link via the frontmatter relations (`depends_on`, `implements`, …) — that's what the graph and the gap queries read.
+Slices play the role of Model (the spec is the mental model); Demonstrations, Shortcuts, and Implementation are the Detail. There is no `## Tests` section — this template has no suite, and `## Demonstrations` is what stands in its place. Related concepts/decisions link via the frontmatter relations (`depends_on`, `implements`, …) — that's what the graph and the gap queries read.
+
+**An entity page with `[x]` slices and an empty `## Demonstrations` is a lint failure**, not a formatting nit: it is the page claiming something was shown working with no evidence attached.
 
 ## Facet vocabulary (closed)
 
@@ -149,9 +162,9 @@ A gap is a hole in the graph relative to this schema — computable by `/project
 
 ## Inline vs maintainer routing
 
-You — the `developer` or `reviewer` — own **small, in-scope** wiki edits and make them in the same commit as the code. The wiki-maintainer is **manual only** and handles large or cross-page work.
+You — the `builder`, or whoever is running the command — own **small, in-scope** wiki edits and make them in the same commit as the code. The wiki-maintainer is **manual only** and handles large or cross-page work.
 
-**Inline** (same commit, no dispatch): single ADR via `decision-recording`; single gotcha via `gotcha-recording`; entity-page edit on the entity you're working on; fixing a single broken `[[link]]` you happened to notice; stubbing a missing link target.
+**Inline** (same commit, no dispatch): slice tick plus its demonstration; a `## Shortcuts` line; single ADR via `decision-recording`; single gotcha via `gotcha-recording`; entity-page edit on the entity you're working on; fixing a single broken `[[link]]` you happened to notice; stubbing a missing link target.
 
 **Defer to maintainer** (append a line to `docs/wiki/wiki-todos.md`):
 

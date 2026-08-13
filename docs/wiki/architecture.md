@@ -9,98 +9,76 @@ depends_on:
 contradicts: []
 open_questions: []
 created: 2026-04-08
-updated: 2026-07-21
+updated: 2026-08-13
 ---
 
 # Architecture
 
 > [!abstract] Essence
-> Stack, patterns, layout, testing strategy — the how-built companion to [[requirements]].
+> Stack, layout, and the constraints every technical choice is measured against — the how-built companion to [[requirements]].
 
-> `/project:init` fills the stack-detection sections; `/project:interview` fills the rest.
+> `/project:init` fills Stack, Prototype constraints, Layout, and Data by **choosing them**, not by asking. The human is never interviewed about this page (behavioral rule 6); they are told what was assumed and may overrule it.
+
+## Prototype constraints
+
+_(The envelope. Every choice on this page is measured against it first — see the `stack-assumption` skill.)_
+
+- **Target:** one modest, always-on consumer machine — low-power CPU (possibly ARM), a few GB of RAM, no GPU, ordinary home network, a single operator.
+- **Process model:** one long-lived process unless a slice genuinely needs a second.
+- **Not in the critical path:** container orchestration, managed cloud services, message brokers, separate database servers, frontend build pipelines, GPU or large model weights, anything that stops working when a paid key lapses.
+- **Networking:** the prototype binds a local port and stops there. Remote access, tunnels, TLS, and hostnames are the operator's concern, not a dependency of the code.
+- **Consequence:** a feature that cannot fit this envelope is a `human-checkpoint` (behavioral rule 20), not a quiet exception.
 
 ## Stack
 
-_(Languages, frameworks, key libraries, runtime.)_
+_(What was chosen, and in one clause why it fits the envelope.)_
 
 - Language: `<TBD>`
 - Framework: `<TBD>`
+- Storage: `<TBD>`
 - Key libraries: `<TBD>`
-- Runtime: `<TBD>`
+- Runtime / how it starts: `<TBD>` — see [[commands#run]]
 
 ## Layout
 
-_(Top-level directories and what lives where. Add as the project grows.)_
+_(Top-level directories and what lives where. Add as the prototype grows.)_
 
 `<TBD>`
 
 ## Data
 
-_(Where state lives — DB, files, cache, queues. Persistence requirements.)_
+_(Where state lives, and what survives a restart. A product answer as much as a technical one — the human is asked what must persist, never what stores it.)_
 
 `<TBD>`
 
 ## External services
 
-_(Third parties, APIs, infra dependencies.)_
+_(Third parties and infra dependencies. In this template the honest default is "none" — anything here needs a reason and should appear in the entity's `## Shortcuts` if the prototype leans on it to look finished.)_
 
 `<TBD>`
 
-## Security
+## Assumed defaults
 
-_(Threat model and trust boundaries. What we're protecting, who from, and how. If the project has no security surface — offline CLI, throwaway script — say so explicitly rather than leaving `<TBD>`.)_
+_(The things a rigorous project would specify and a prototype simply assumes. Each holds until a slice proves it can't — change the line, don't add a section.)_
 
-- **Threat model:** `<TBD>` (who could attack, what they'd want)
-- **Trust boundaries:** `<TBD>` (where unvalidated input becomes validated)
-- **Authentication / authorization:** `<TBD>`
-- **Secrets handling:** `<TBD>` (where they live, how they're loaded, never-committed list)
-- **Data classification:** `<TBD>` (public / internal / sensitive / regulated — and how each tier is treated)
-- **Dependencies policy:** `<TBD>` (allowed licenses, vuln-scanning, update cadence)
+- **Testing:** none. No suite exists; the evidence is the recorded demonstration on each entity page. Wanting a suite is the signal to run `/project:graduate`.
+- **Security:** single trusted operator on a private network. No authentication, no authorization, no threat model. Secrets live in an uncommitted config file and nowhere else.
+- **Observability:** log lines to stdout. No metrics, no tracing, no error reporting.
+- **Environments:** one. The machine it runs on is dev, staging, and prod.
+- **Deployment:** start the process on the box. No CI, no build artefacts, no release process.
+- **Scale:** one operator, small data, no concurrency beyond what the runtime gives for free.
+- **Reliability:** best effort. A crash is fixed by restarting it; data loss on crash is acceptable unless a slice says otherwise.
 
-## Testing strategy
-
-_(Unit vs integration vs e2e. Test framework. Fixture conventions. Coverage targets.)_
-
-- Test framework: `<TBD>`
-- Test command: see [[commands#test]]
-- Fixtures: `<TBD>`
-- Coverage target: `<TBD>`
+If any of these stops being true, it stops being an assumption — write the real answer here and note the change in [[log]].
 
 ## Conventions
 
-_(Naming, error handling, logging, config — patterns enforced project-wide. Promote each to a `docs/wiki/concepts/<pattern>.md` page, linked from here, when a pattern recurs three times.)_
+_(Naming, error handling, logging, config — only what recurs. A prototype earns few of these; don't invent them up front.)_
 
 - Naming: `<TBD>`
-- Errors: `<TBD>`
-- Logging: `<TBD>` (format only — see Observability for what we log and where it goes)
+- Errors: `<TBD>` — the prototype default is to let them crash loudly rather than swallow them
+- Logging: `<TBD>`
 - Config: `<TBD>`
-
-## Observability
-
-_(How we see what's happening in production. Logging destinations, metrics, tracing, error reporting. Distinct from the logging **format** in Conventions — this section is about pipeline and tooling.)_
-
-- **Logging pipeline:** `<TBD>` (where logs go, retention, search)
-- **Metrics:** `<TBD>` (what we measure, what tool, what thresholds alert)
-- **Tracing:** `<TBD>` (distributed tracing tool, sampling rate, span conventions)
-- **Error reporting:** `<TBD>` (Sentry / Bugsnag / etc., grouping rules, on-call routing)
-- **Dashboards:** `<TBD>` (links to the panes that matter)
-
-## Deployment
-
-_(How code reaches users. CI, build artefacts, release process.)_
-
-`<TBD>`
-
-## Environments
-
-_(Dev / staging / prod parity. Where each runs, how config differs, how code is promoted between them. If single-environment, say so explicitly.)_
-
-- **Dev:** `<TBD>` (local setup, mock services, seed data)
-- **Staging:** `<TBD>` (closest to prod possible, used for pre-release verification)
-- **Prod:** `<TBD>` (the live system)
-- **Config-by-environment:** `<TBD>` (env vars, config files, secret stores per env)
-- **Promotion process:** `<TBD>` (how a green build moves dev → staging → prod)
-- **Data flow between envs:** `<TBD>` (e.g. prod → staging anonymization, never the reverse)
 
 ## Related
 

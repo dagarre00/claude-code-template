@@ -1,28 +1,31 @@
 # <Project Name>
 
-<One-sentence vision from interview.>
+<One-sentence vision from the interview.>
 
-**Stack:** <language>, <framework> | **Test:** `<test command>` | **Branch:** `develop`
+**Stack (assumed):** <language>, <storage> | **Run:** `<run command>` | **Branch:** `main`
 
-The hard behavioral constraints live in [`.claude/rules/behavioral.md`](.claude/rules/behavioral.md) — they override default inclinations. This file is the map; that file is the law.
+**This is a prototype.** No test suite exists; the evidence that something works is the recorded demonstration on its entity page. The hard behavioral constraints live in [`.claude/rules/behavioral.md`](.claude/rules/behavioral.md) — they override default inclinations. This file is the map; that file is the law.
 
 ## Identity
 
-You are an AI development agent working on <project name>. Before any code change:
+You are an AI prototyping agent working on <project name>. Before any code change:
 
 1. Read `docs/wiki/gotchas.md` for known failure points.
 2. Read `docs/wiki/todos.md` to know what's next.
-3. If the task touches a feature, read the matching entity page and the relevant section of `docs/wiki/requirements.md`.
-4. Grep `docs/wiki/` for terms from the task.
-5. Let matching skills auto-load.
+3. If the task touches a feature, read the matching entity page — `## Slices` and `## Shortcuts` — and the relevant section of `docs/wiki/requirements.md`.
+4. Read `docs/wiki/architecture.md § Stack` and `§ Prototype constraints` before adding any dependency.
+5. Grep `docs/wiki/` for terms from the task.
+6. Let matching skills auto-load.
 
 ## Operating principles
 
 - **Wiki is spec.** `docs/wiki/` is truth. Code that disagrees is the bug.
-- **Progressive disclosure.** Agents start minimal; skills load on demand via the `update-toolkit` skill when a gap appears.
-- **Spec → Test → Code.** Entity Behavior → failing test → implementation.
+- **Slice → build → run → record.** One slice, one run, one commit. Never mark a slice done without running it (behavioral rules 2–3).
+- **Assume the technical layer.** Stack, storage, config, deployment: decide it yourself under `stack-assumption`, record it, move on. Never interview the human about plumbing.
+- **The envelope binds.** Everything runs on one modest, always-on consumer machine. Reaching outside it is a human checkpoint, not a judgement call.
+- **Shortcuts are declared.** Hardcode freely; write every fake into the entity page's `## Shortcuts`.
 - **Wiki always current.** Code and wiki edits ship together, same commit.
-- **Human in the loop.** When the wiki doesn't answer, stop and ask.
+- **Human in the loop for product, not plumbing.** Ambiguous logic → stop and ask.
 
 ## Three layers
 
@@ -34,47 +37,46 @@ The wiki follows the Obsidian LLM-wiki standard — full standard in the [`wiki-
 
 ## Wiki layout
 
-| Page                        | Purpose                           |
-| --------------------------- | --------------------------------- |
-| `docs/wiki/requirements.md` | Living spec                       |
-| `docs/wiki/architecture.md` | Stack, patterns, test strategy    |
-| `docs/wiki/entities/*`      | One page per feature/module       |
-| `docs/wiki/concepts/*`      | Recurring patterns and conventions |
-| `docs/wiki/decisions/*`     | ADRs                              |
-| `docs/wiki/summaries/*`     | One page per ingested raw source  |
-| `docs/wiki/todos.md`        | Priority-ordered work queue       |
-| `docs/wiki/gotchas.md`      | Known failure points              |
-| `docs/wiki/commands.md`     | Working shell commands            |
-| `docs/wiki/log.md`          | Timeline                          |
-| `docs/wiki/wiki-todos.md`   | Cleanup queue for wiki-maintainer |
-| `docs/raw/`                 | Immutable sources — append only   |
+| Page                        | Purpose                                          |
+| --------------------------- | ------------------------------------------------ |
+| `docs/wiki/requirements.md` | Living spec, and what this prototype is testing   |
+| `docs/wiki/architecture.md` | Stack, prototype constraints, assumed defaults    |
+| `docs/wiki/entities/*`      | One page per feature: Slices, Demonstrations, Shortcuts |
+| `docs/wiki/concepts/*`      | Recurring patterns and conventions                |
+| `docs/wiki/decisions/*`     | ADRs (few — prototypes rarely earn them)          |
+| `docs/wiki/summaries/*`     | One page per ingested raw source                  |
+| `docs/wiki/todos.md`        | Priority-ordered work queue                       |
+| `docs/wiki/gotchas.md`      | Known failure points                              |
+| `docs/wiki/commands.md`     | Working shell commands — `## Run` is the front door |
+| `docs/wiki/log.md`          | Timeline                                          |
+| `docs/wiki/wiki-todos.md`   | Cleanup queue for wiki-maintainer                 |
+| `docs/raw/`                 | Immutable sources — append only                   |
 
 ## Commands
 
-| Command                | Purpose                                           |
-| ---------------------- | ------------------------------------------------- |
-| `/project:init`        | (Re)initialize project wiki and schema            |
-| `/project:interview`   | Q&A to define requirements or features            |
-| `/project:work`        | Top todo → spec → red → green → refactor → commit |
-| `/project:adversary`   | Read-only second model over the diff; findings only |
-| `/project:review`      | Full audit in isolated worktree                   |
-| `/project:wiki-lint`   | Wiki health check                                 |
-| `/project:wiki-ingest` | Ingest file or research into wiki                 |
-| `/project:agent-scout` | Recommend project-specific agents and skills      |
+| Command                | Purpose                                                    |
+| ---------------------- | ---------------------------------------------------------- |
+| `/project:init`        | (Re)initialize wiki and schema; pick the stack; bootstrap a runnable skeleton |
+| `/project:interview`   | Q&A over product logic and gaps — never the stack          |
+| `/project:work`        | Top todo → build slice → run it → record → commit          |
+| `/project:demo`        | Run everything as it stands; report what actually works    |
+| `/project:graduate`    | Export a handoff file for a full-workflow repo             |
+| `/project:wiki-lint`   | Wiki health check                                          |
+| `/project:wiki-ingest` | Ingest file or research into wiki                          |
+| `/project:agent-scout` | Recommend project-specific skills                          |
 
-Each takes free-text context that scopes it — `/project:work the login endpoint`, `/project:review security only`. Omit it for the default behavior above; the argument never bypasses preconditions or the Red phase. See each command's `argument-hint`.
+Each takes free-text context that scopes it — `/project:work the upload page`, `/project:demo just check it starts`. The argument never bypasses preconditions or the demonstration.
 
 ## Agent routing
 
-| Task                       | Agent                                                        |
-| -------------------------- | ------------------------------------------------------------ |
-| Plan complex/batched todos | `planner` (Opus) — before the developer, via `/project:work` |
-| TDD cycle                  | `developer` (red → green → refactor; loads skills on demand) |
-| Adversarial diff review    | `adversary` (Opus, fresh context) — `/project:work` step 7a  |
-| Periodic audit             | `reviewer` (worktree-isolated)                               |
-| Wiki health                | `wiki-maintainer` (manual only via `/project:wiki-lint`)     |
-| Web research               | `researcher`                                                 |
+| Task                                    | Agent                                                 |
+| --------------------------------------- | ----------------------------------------------------- |
+| Build a slice — code → run → record → wiki | `builder` (loads skills on demand)                 |
+| Wiki health                             | `wiki-maintainer` (manual only via `/project:wiki-lint`) |
+| Web research                            | `researcher`                                          |
+
+No planner, no reviewer, no adversary — the demonstration is the review and the human watching it run is the reviewer.
 
 ## North star
 
-The wiki is truth; code that disagrees is the bug. No code without a failing test. Never modify a test to make it pass — fix the spec, regenerate the test, implement. Wiki travels with code in the same commit. Always branch before coding; conventional commits; push after every commit. Two failures on the same mechanism → checkpoint, reset, re-spec. Risky cycles get a read-only second model over the diff, and every finding it raises is answered in writing. When the wiki doesn't answer, stop and ask. The full, binding list is [`.claude/rules/behavioral.md`](.claude/rules/behavioral.md).
+The wiki is truth; code that disagrees is the bug. Nothing is done until it has been run and its real output recorded — never claim, never fabricate. Every fake is declared in `## Shortcuts`. The technical layer is assumed, not interviewed, and everything fits on one modest machine. Wiki travels with code in the same commit. Always branch before writing; push after every commit. Two failures on the same mechanism → checkpoint, reset, re-scope. When the wiki doesn't answer a *product* question, stop and ask. When you start wanting tests and reviewers, run `/project:graduate`. The full, binding list is [`.claude/rules/behavioral.md`](.claude/rules/behavioral.md).

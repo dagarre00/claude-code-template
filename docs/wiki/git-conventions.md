@@ -7,35 +7,32 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-05-11
-updated: 2026-08-05
+updated: 2026-08-13
 ---
 
 # Git Conventions
 
 > [!abstract] Essence
-> Branching and commit conventions for this project. Mirrors the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md) — updated when the team adopts a new flow; mirror changes into the skill.
+> Branching and commit conventions for this prototype. Mirrors the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md) — mirror changes into the skill when this page changes.
 
 ## Default branch
 
-`develop` — protected, integration branch. No direct commits. `/project:work` always starts and ends on `develop`. `main` is the release branch, updated separately when `develop` is promoted.
+`main` — the trunk. No direct commits. There is **no `develop` branch** in this template: a prototype has one line of history, and the ceremony of an integration branch buys nothing when the review gate is a human watching the thing run.
 
-"No direct commits" binds **every** command that writes tracked files, not just `/project:work` — wiki edits, interview transcripts and `.claude/` config are as tracked as code. Each such command opens its own branch before its first write; the per-command branch names are tabulated in the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md).
+"No direct commits" binds **every** command that writes tracked files — wiki edits, interview transcripts and `.claude/` config are as tracked as code. Each such command opens its own branch before its first write; the per-command branch names are tabulated in the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md).
 
 ## Branch naming
 
 `<type>/<short-slug>`, where `<type>` ∈:
 
-- `feat` — new capability
-- `fix` — bug fix
-- `chore` — tooling, deps, CI, non-functional housekeeping
-- `docs` — documentation only
-- `refactor` — code restructuring with no behavior change
-- `test` — test-only additions
-- `perf` — performance work
+- `proto` — a prototype entity and its slices (the common case)
+- `fix` — repairing something that was demonstrated and then broke
+- `chore` — tooling, deps, housekeeping
+- `docs` — wiki, interviews, handoff exports
 
 Slug: kebab-case, ≤ 4 words, matches the entity slug when applicable.
 
-Examples: `feat/auth-login`, `fix/race-on-double-submit`, `chore/upgrade-pytest`.
+Examples: `proto/csv-ingest`, `fix/upload-500s-on-empty-file`, `docs/interview-sync-logic`.
 
 ## Commit format
 
@@ -45,57 +42,55 @@ Conventional commits, present tense:
 <type>(<scope>): <one-line summary>
 
 <optional body — what and why, not how>
-
-<optional footer — refs to wiki pages, breaking changes>
 ```
 
-- `type` matches the branch type vocabulary.
-- `scope` is the entity slug or affected area.
+- `type` matches the branch type vocabulary (plus `feat` for a slice landing on a `proto/*` branch).
+- `scope` is the entity slug.
 - Subject ≤ 72 characters, no trailing period.
-- Body wraps at 72.
+- Name the slice when one lands: `feat(csv-ingest): S2 — store uploaded rows`.
 
 ## Cadence
 
-- **One commit per Behavior case** — its test, its minimal implementation, and its entity-page tick, committed and pushed before the next case starts. The `developer` owns this; `/project:work` does not bundle a cycle's cases into one commit, and a commit spanning several cases is a defect (it breaks `git bisect`, makes a single case unrevertable, and inflates the adversarial-review diff past the point where it converges).
-- Refactor commits are separate from feat commits.
-- Adversary findings: most are **filed as todos, not fixed**, so a review round usually produces a single `docs(<slug>): adversary round N` commit whose body carries every finding's disposition and which stages the new `todos.md` lines. A `fix(<slug>): … — adversary F1` commit appears only for a `critical`/`major` the human approved fixing immediately. That round-commit body is the record behavioral rule 20 requires — `git log --grep="adversary round"` reads it back.
-- Don't commit half-green code.
-- **Always push after committing** (`git push -u origin <branch>`). An unpushed commit is lost when the execution container recycles — see `.claude/rules/behavioral.md` #19. Read-only commands (those that don't mutate tracked files) are the only exception.
+- **One commit per demonstrated slice** — code, entity-page tick, the recorded demonstration, and any `## Shortcuts` lines, together. The `builder` owns this; `/project:work` does not bundle a cycle's slices into one commit.
+- **Never commit a slice you haven't run.** A commit is the claim that the demonstration under it is real (behavioral rules 2–3).
+- Work in flight at a session boundary → `wip:` commit, tagged and pushed (see the skill's Mid-task pause).
+- **Always push after committing** (`git push -u origin <branch>`). An unpushed commit is lost when the execution container recycles — behavioral rule 19.
 
-## PRs
+## Merging
 
-- Open from `<type>/<slug>` to `develop`.
-- Opened automatically by `/project:work` (via the `pr-create` skill) once all Behavior cases for the cycle are `[x]`.
-- Title mirrors the lead commit.
-- Description references the entity page and the Behavior cases covered.
-- **Merge commit on merge** (`gh pr merge --merge --delete-branch`), not squash. The Red→Green→Refactor commit sequence is the evidence that the loop was actually run — squashing erases it, and this schema already forbids squashing locally for the same reason ([feature-branching](../../.claude/skills/feature-branching/SKILL.md), Anti-patterns). Squash only a branch with no TDD trace to preserve: a typo fix, a revert, a branch whose history is all `wip:` noise.
-- Delete the branch on merge, local and remote.
-- Merging is always the human's call.
+A `proto/*` branch merges to `main` when its slices are demonstrated **and the human has confirmed the demo does what they wanted**. That confirmation is the only review gate this template has.
+
+```bash
+git checkout main
+git merge --no-ff proto/<slug> -m "merge: <slug> — <what now works>"
+git push -u origin main
+```
+
+`--no-ff` keeps each prototype's slices legible as a group.
+
+## Pull requests
+
+Optional. Open one against `main` if the human wants the diff view; body is plain prose — what now works, which slices, which shortcuts. No template, no review gate, no auto-creation. Merging is always the human's call.
 
 ## Force-push policy
 
-- `--force-with-lease` is the only acceptable force-push (used after a rebase onto develop). It fails safely if the remote branch has been updated since your last fetch.
-- Bare `--force` is never used.
-- Never force-push `develop` or `main`.
+- `--force-with-lease` only, and only after a rebase onto `main`. Bare `--force` is never used.
+- Never force-push `main`.
 
 ## Merge conflicts
 
-Follow the [git-recovery skill](../../.claude/skills/git-recovery/SKILL.md) (Resolve merge / rebase / cherry-pick conflicts) when `git merge` or `git rebase` produces `CONFLICT (content)` markers. Key steps: resolve markers, grep for leftovers, run full tests, then `git add + git commit` (merge) or `git add + git rebase --continue` (rebase).
+Follow the [git-recovery skill](../../.claude/skills/git-recovery/SKILL.md). Key steps: resolve markers, grep for leftovers, **re-run the demo commands for any slice the conflict touched**, then commit.
 
 ## Branch cleanup (after merge)
 
 ```bash
-git checkout develop
+git checkout main
 git pull --ff-only
-git branch -d feat/<slug>              # -d is safe: errors if unmerged
-git push origin --delete feat/<slug>
+git branch -d proto/<slug>              # -d is safe: errors if unmerged
+git push origin --delete proto/<slug>
 ```
-
-## Advanced git operations
-
-Stash, cherry-pick, bisect, blame, reflog recovery, and other edge-case operations are covered by the [git-recovery skill](../../.claude/skills/git-recovery/SKILL.md).
 
 ## Tags
 
-- `checkpoint-<UTC-timestamp>` — tag HEAD with plain git (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`) before risky operations, so you can `git reset --hard` back if needed.
-- Other tags reserved for releases (format defined later).
+- `checkpoint-<UTC-timestamp>` — tag HEAD with plain git (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`) before a risky change or a two-strike reset.
+- Other tags reserved for milestones worth returning to ("the version that demoed well on the 12th").

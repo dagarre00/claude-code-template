@@ -1,6 +1,6 @@
 ---
 name: agent-scout
-description: Post-init survey that reads the wiki and recommends specific agents and skills tailored to this project's stack, domain, and external services. Run once after /project:init fills requirements and architecture. Re-run after /project:interview adds a major feature.
+description: Post-init survey that reads the wiki and recommends skills tailored to this prototype's stack and domain. Run once the stack has settled and a few slices are demonstrated. Re-run after /project:interview adds a major feature.
 argument-hint: [focus — e.g. "testing skills only" | "the payments feature" | "skills, no agents"]
 type: command
 ---
@@ -11,20 +11,22 @@ type: command
 
 The argument **narrows the survey** — a signal category (`testing skills only`, `external services`), a feature (`the payments feature`), or an output filter (`skills, no agents`). Restrict step 3's analysis to the matching categories and say in the `### Not recommended` section that the rest were **out of scope this run**, not analysed and rejected — the two are different, and conflating them makes a partial survey look complete. Empty argument means the full survey.
 
-You read the initialized wiki and produce a prioritized list of agents and skills this project needs — ones not already present in `.claude/`. You do **not** create anything automatically; you present recommendations and let the human decide what to build.
+You read the initialized wiki and produce a prioritized list of skills this prototype needs — ones not already present in `.claude/`. You do **not** create anything automatically; you present recommendations and let the human decide what to build.
+
+**Skills, essentially never agents.** This template ships one working agent (`builder`) on purpose: a prototype that needs a second role usually needs to graduate, not to grow an org chart. Recommend an agent only if you can name the invariant that makes it impossible to express as a skill the `builder` loads.
 
 ## When to use
 
 - Right after `/project:init` fills in real requirements and architecture (not `<TBD>`).
 - After `/project:interview` adds a major feature that changes the stack or domain.
-- When the developer is repeatedly improvising the same procedure that should be a skill.
+- When the `builder` is repeatedly improvising the same procedure that should be a skill.
 
 ## Preconditions
 
 Check these before proceeding. If any fails, stop and run `human-checkpoint`:
 
 1. `docs/wiki/requirements.md` — `## Vision` must have real content (not `<TBD>`).
-2. `docs/wiki/architecture.md` — `## Stack` must name a real language and framework.
+2. `docs/wiki/architecture.md` — `## Stack` must name the language and storage actually chosen.
 3. `.claude/agents/` and `.claude/skills/` must exist.
 
 If the project hasn't been initialized yet, tell the human to run `/project:init` first.
@@ -36,9 +38,9 @@ If the project hasn't been initialized yet, tell the human to run `/project:init
 Read all of these — do not skip any:
 
 - `docs/wiki/requirements.md` — users, stories, functional requirements, non-functionals, out of scope
-- `docs/wiki/architecture.md` — stack, layout, data, external services, testing strategy, deployment
+- `docs/wiki/architecture.md` — stack, prototype constraints, layout, data, external services
 - `docs/wiki/todos.md` — upcoming work (signals what patterns will recur)
-- All files under `docs/wiki/entities/` — entity behavior cases reveal domain complexity
+- All files under `docs/wiki/entities/` — slices reveal domain complexity, and `## Shortcuts` reveals where the same fake keeps recurring (a strong skill signal)
 - `docs/wiki/gotchas.md` — known failure points that suggest where skills would prevent regressions
 
 ### 2. Inventory what already exists
@@ -54,9 +56,9 @@ Only recommend what is genuinely missing. Do not re-recommend agents or skills t
 
 If the argument named a focus, analyse only the categories it covers. Otherwise work through all of them.
 
-For each category below, check whether the wiki provides a positive signal. A positive signal means: "the developer will encounter this repeatedly and needs a project-specific procedure."
+For each category below, check whether the wiki provides a positive signal. A positive signal means: "the `builder` will encounter this repeatedly and needs a project-specific procedure."
 
-**Stack signals → developer skills**
+**Stack signals → builder skills**
 
 | Signal in wiki                                  | Skill to recommend |
 | ----------------------------------------------- | ------------------ |
@@ -81,14 +83,16 @@ For each category below, check whether the wiki provides a positive signal. A po
 | Real-time / websockets / SSE                  | `realtime-impl`      |
 | Multi-tenancy / org isolation                 | `tenancy-impl`       |
 
-**Testing signals → test framework skills**
+**Demonstration signals → skills that make slices showable**
 
-| Signal in wiki                                     | Skill to recommend           |
-| -------------------------------------------------- | ---------------------------- |
-| Named test framework (pytest, Jest, RSpec, JUnit…) | `<framework>-fixtures` skill |
-| E2E testing (Playwright, Cypress, Selenium)        | `e2e-impl`                   |
-| Contract / API testing                             | `contract-testing`           |
-| Snapshot testing                                   | `snapshot-testing`           |
+| Signal in wiki                                          | Skill to recommend    |
+| ------------------------------------------------------- | --------------------- |
+| Browser UI where the demo means "open a page and look"  | `browser-demo`        |
+| Long-running or scheduled work with no obvious surface  | `observable-progress` |
+| Slices that need fixture data before they can be shown  | `sample-data`         |
+| Repeated "reset it and start clean" before each demo    | `clean-slate`         |
+
+Do **not** recommend test-framework skills. This template has no suite; a wish for one is a `/project:graduate` signal and belongs in the report as such.
 
 **External service signals → integration skills**
 
@@ -96,14 +100,12 @@ For each named external service in `architecture.md → ## External services`, c
 
 **Agent signals** (high bar — only recommend a new agent when a role is genuinely distinct from all existing agents)
 
-| Signal                                                     | Agent to recommend                                                                              |
-| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Security-critical project (fintech, health, auth provider) | `security-reviewer` — runs SAST and checks trust boundaries; separate from the general reviewer |
-| Microservices / multi-repo with API contracts              | `contract-reviewer` — checks API surface drift across services                                  |
-| Data pipeline / ML — requires evaluating model outputs     | `eval-agent` — runs evals and writes findings to `docs/raw/evals/`                              |
-| Heavy migration work (DB schema, API versioning)           | `migration-planner` — plans and validates migrations before developer touches schema            |
+| Signal                                                  | Agent to recommend                                                        |
+| -------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Data pipeline / ML where output quality can't be eyeballed | `eval-agent` — runs evals and writes findings to `docs/raw/evals/`         |
+| Research-heavy domain the `builder` keeps stalling on    | already covered — that's the shipped `researcher`; recommend nothing        |
 
-Default: if no agent signal is strong, do **not** recommend a new agent. Skills are almost always the right answer.
+Default: **recommend no agent.** Reviewing, planning, and auditing roles are deliberately absent from this template — proposing them back is a graduation signal, so write it in the report as "this prototype has outgrown the template" rather than as an agent recommendation.
 
 ### 4. Draft recommendations
 
@@ -113,15 +115,15 @@ Write a structured report with these sections:
 ## Agent Scout Report — <Project Name>
 **Date:** YYYY-MM-DD
 
-### New skills recommended (for the developer to auto-load)
+### New skills recommended (for the `builder` to auto-load)
 
 For each skill, in priority order:
 
 **Priority:** High | Medium | Low
 **Skill:** `<skill-name>`
-**Trigger:** <one sentence — what situation causes the developer to load this skill>
+**Trigger:** <one sentence — what situation causes the `builder` to load this skill>
 **Why this project:** <cite the specific requirement, entity, or architecture detail that drives the need>
-**Procedure outline:** <3-5 bullet points of what the skill body should tell the developer to do>
+**Procedure outline:** <3-5 bullet points of what the skill body should tell the `builder` to do>
 
 ---
 
@@ -130,7 +132,7 @@ For each skill, in priority order:
 For each agent (only if a genuine role gap exists):
 
 **Agent:** `<agent-name>`
-**Model:** sonnet | opus | haiku  (choose based on task complexity; prefer haiku for cheap tasks, opus only for planning)
+**Model:** sonnet | opus | haiku  (prefer haiku for cheap mechanical work; opus is rarely justified in a prototype)
 **Role gap:** <why no existing agent covers this>
 **Why this project:** <cite the wiki evidence>
 **Mandate:** <what it does and what it does NOT do>
@@ -146,19 +148,23 @@ List signal categories from Step 3 that do NOT apply to this project, with one-l
 ### Suggested creation order
 
 Number the recommendations in the order that will unblock the most /project:work cycles first.
+
+### Graduation signals seen
+
+Anything in this survey that pointed at tests, review, audit, or planning roles — listed plainly. Two or more of these means the honest recommendation is `/project:graduate`, not more toolkit.
 ```
 
 ### 4a. Branch before creating anything
 
-Steps 1–4 are read-only, so branch here — right before the first tracked write. The skill/agent files and the log entry are tracked, and `develop`/`main` take no direct commits (`feature-branching`, `git-conventions.md`):
+Steps 1–4 are read-only, so branch here — right before the first tracked write. The skill/agent files and the log entry are tracked, and `main` takes no direct commits (`feature-branching`, `git-conventions.md`):
 
 ```bash
-git fetch origin develop
-git checkout develop && git merge --ff-only origin/develop
+git fetch origin main
+git checkout main && git merge --ff-only origin/main
 git checkout -b chore/agent-scout-$(date -u +%Y-%m-%d)
 ```
 
-No remote yet (`git remote` prints nothing)? Skip the fetch/merge and branch off local `develop`. **Already on a `feat/*` or `fix/*` branch?** Stay there. Branch only when standing on `develop` or `main`; in that case step 7 ends with a PR to `develop` (`pr-create`, body = the survey report) and `git checkout develop`.
+No remote yet (`git remote` prints nothing)? Skip the fetch/merge and branch off local `main`. **Already on a `proto/*` branch?** Stay there. Branch only when standing on `main`; in that case step 7 ends by offering the merge back to `main` (`feature-branching`).
 
 ### 5. Offer to create
 
@@ -198,6 +204,7 @@ If the human approved no new skills or agents, the log entry alone is still comm
 
 - **No auto-creation.** Present findings; wait for approval.
 - **No speculative recommendations.** Every recommendation must be backed by a concrete wiki signal. No "you might need this someday."
-- **No domain-specialized agents for things skills can handle.** The template's design principle: domain knowledge lives in skills, not agents.
+- **No domain-specialized agents for things skills can handle.** The template's design principle: domain knowledge lives in skills, not agents — and this template's second principle is that a prototype needs almost no toolkit at all.
 - **No running before init.** If requirements and architecture are still `<TBD>`, refuse and explain why.
+- **No test-framework skills.** There is no suite here (`architecture.md § Assumed defaults`).
 - **No re-recommending existing coverage.** If `backend-impl` already exists, do not suggest creating it again.

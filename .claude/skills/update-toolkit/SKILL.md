@@ -10,9 +10,9 @@ This project's agents, skills, and commands are not fixed — the agent evolves 
 
 ## Decide first: which artifact?
 
-- **Skill** = a procedure the agent runs, auto-loaded by task content. "Always do these steps when…". Lives in `.claude/skills/<name>/SKILL.md`. This is almost always the right answer for new domain knowledge (progressive disclosure — domain knowledge belongs in skills the developer loads, not in new agents).
+- **Skill** = a procedure the agent runs, auto-loaded by task content. "Always do these steps when…". Lives in `.claude/skills/<name>/SKILL.md`. This is almost always the right answer for new domain knowledge (progressive disclosure — domain knowledge belongs in skills the `builder` loads, not in new agents).
 - **Command** = a human-invoked, named entry point that orchestrates work (branch, dispatch agents, touch the wiki). "The human types `/foo`". Lives in `.claude/commands/project/<name>.md`. Commands stay thin — heavy lifting lives in agents and skills.
-- **Agent** = a distinct role with its own context scope or conflicting invariants. **Default to no.** Only create one when the task needs a genuinely different scope of context (e.g. fresh-context audit vs in-loop implementation) or strict invariants that conflict with an existing agent ("never write code" + "always write code"). "The developer needs to know more about databases" is a **skill**, not an agent.
+- **Agent** = a distinct role with its own context scope or conflicting invariants. **Default to no.** Only create one when the task needs a genuinely different scope of context (e.g. fresh-context audit vs in-loop implementation) or strict invariants that conflict with an existing agent ("never write code" + "always write code"). "The `builder` needs to know more about databases" is a **skill**, not an agent. In this prototyping template the bar is higher still: the shipped roster is `builder`, `researcher`, `wiki-maintainer`, and wanting a fourth is usually a `/project:graduate` signal.
 - **Wiki page** (not this skill) = knowledge the agent reads, not a procedure it runs. "Facts about the system" → a `docs/wiki/concepts/` page.
 
 Read 2–3 existing files of the target kind before writing, to mirror tone, length, and structure.
@@ -32,7 +32,7 @@ Read 2–3 existing files of the target kind before writing, to mirror tone, len
 
 ### The "how-to not what-is" rule
 
-If a paragraph could appear in a textbook chapter on the topic, **delete it**. Assume the LLM knows the topic; tell it how *this project* handles it. Bad: "TDD means writing a test first, seeing it fail…". Good: "Write one failing test per Behavior case, run `<test-command>`, confirm it fails for the right reason, then write the smallest code to pass."
+If a paragraph could appear in a textbook chapter on the topic, **delete it**. Assume the LLM knows the topic; tell it how *this project* handles it. Bad: "A smoke test means exercising the main path to see it works…". Good: "Build the smallest thing that makes the slice's demo command produce the right output, run that command, paste the real output into `## Demonstrations`."
 
 ### Modify / retire a skill
 
@@ -50,7 +50,7 @@ If a paragraph could appear in a textbook chapter on the topic, **delete it**. A
 3. **Body = the procedure the orchestrator follows:** **Preconditions** (check first) → **Steps** (numbered; one action each — pick todo, branch, dispatch agent) → **Failure modes** → **Wiki updates** → **Human checkpoints** (where it pauses).
 4. **Placement.** `.claude/commands/project/<name>.md`. The sub-folder is the namespace: `commands/project/work.md` → `/project:work`; a flat `commands/<name>.md` → `/<name>`. Keep new ones under `project:` unless you deliberately want un-namespaced.
 5. **Update `CLAUDE.md`** — add a row to the Slash commands table, including the argument the command accepts.
-6. **Update `docs/wiki/commands.md`** if the human can run shell pieces of it.
+6. **Update `docs/wiki/commands.md`** if the human can run shell pieces of it — and only commands you have executed.
 7. **Commit** `feat: add /<name> command — <reason>`.
 
 ### Modify / retire a command
@@ -83,4 +83,4 @@ If a paragraph could appear in a textbook chapter on the topic, **delete it**. A
 - **What-is content.** Never explain what testing/refactoring/migrations *are*. Tell the agent the procedure for this project.
 - **Long bodies.** Agents are read every dispatch; commands longer than ~40 lines are hiding skill content — lift it into a skill. Every paragraph costs context.
 - **Generic descriptions.** "Helps with code" loads/routes on everything — useless. Be specific about the trigger.
-- **Duplicate procedures / invariants.** Two skills with the same steps → merge. A new agent that also writes tests or production code splits a cycle meant to live in the `developer` — reconsider whether it should be a skill.
+- **Duplicate procedures / invariants.** Two skills with the same steps → merge. A new agent that also writes or runs code splits a loop meant to live in the `builder` — reconsider whether it should be a skill.

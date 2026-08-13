@@ -27,15 +27,15 @@ If dirty outside `docs/`: run `human-checkpoint`.
 
 ## Branch first (both modes)
 
-The summary page, the cross-links, and (research mode) the raw research file are all tracked, and `develop`/`main` take no direct commits (`feature-branching`, `git-conventions.md`). Before step 1 of either mode:
+The summary page, the cross-links, and (research mode) the raw research file are all tracked, and `main` takes no direct commits (`feature-branching`, `git-conventions.md`). Before step 1 of either mode:
 
 ```bash
-git fetch origin develop
-git checkout develop && git merge --ff-only origin/develop
+git fetch origin main
+git checkout main && git merge --ff-only origin/main
 git checkout -b docs/ingest-<slug>
 ```
 
-No remote yet (`git remote` prints nothing)? Skip the fetch/merge and branch off local `develop`. **Already on a `feat/*` or `fix/*` branch?** Stay there — an ingest that feeds the feature you're mid-cycle on belongs in that branch's history. Only branch when standing on `develop` or `main`; in that case the command ends with a PR to `develop` (`pr-create`, body = the ingest report) and `git checkout develop`.
+No remote yet (`git remote` prints nothing)? Skip the fetch/merge and branch off local `main`. **Already on a `proto/*` branch?** Stay there — an ingest that feeds the slice you're mid-cycle on belongs in that branch's history. Only branch when standing on `main`; in that case the command ends by offering the merge back to `main` (`feature-branching`).
 
 ## Steps — file mode
 

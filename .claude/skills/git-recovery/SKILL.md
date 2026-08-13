@@ -120,11 +120,11 @@ git filter-repo --path <sensitive-file> --invert-paths
 ## Clean up a feature branch before PR
 
 ```bash
-# Fetch latest develop
-git fetch origin develop
+# Fetch latest main
+git fetch origin main
 
-# Rebase onto current develop (resolves conflicts per commit)
-git rebase origin/develop
+# Rebase onto current main (resolves conflicts per commit)
+git rebase origin/main
 
 # Safe force-push (fails if remote has diverged beyond your rebase)
 git push --force-with-lease origin <branch>
@@ -136,11 +136,11 @@ Only `--force-with-lease`, never bare `--force`.
 
 ```bash
 # After merge — delete local
-git branch -d feat/<slug>      # safe: refuses if unmerged
-git branch -D feat/<slug>      # force delete (use only when sure)
+git branch -d proto/<slug>     # safe: refuses if unmerged
+git branch -D proto/<slug>     # force delete (use only when sure)
 
 # Delete remote
-git push origin --delete feat/<slug>
+git push origin --delete proto/<slug>
 ```
 
 The `feature-branching` skill's "Finishing the feature" checklist includes branch deletion as the last step after merge.
@@ -152,8 +152,8 @@ The `feature-branching` skill's "Finishing the feature" checklist includes branc
 git fetch origin
 
 # See what came in
-git log HEAD..origin/develop --oneline   # commits on develop not in your branch
-git log origin/develop..HEAD --oneline   # your commits not yet on develop
+git log HEAD..origin/main --oneline   # commits on main not in your branch
+git log origin/main..HEAD --oneline   # your commits not yet on main
 ```
 
 ## Resolve merge / rebase / cherry-pick conflicts
@@ -203,4 +203,4 @@ git merge --abort   # or git rebase --abort / git cherry-pick --abort
 
 Then tag a checkpoint and use `human-checkpoint`.
 
-**Conflict anti-patterns:** committing conflict markers (always grep first); accepting "theirs" blindly (each side may hold correct logic); rebasing a shared branch someone else has pulled (merge instead). Rebase feature branches onto develop early and often — `git fetch origin develop && git rebase origin/develop && git push --force-with-lease origin <branch>` — to keep the conflict surface small. `--force-with-lease` is the only acceptable force-push; never bare `--force`.
+**Conflict anti-patterns:** committing conflict markers (always grep first); accepting "theirs" blindly (each side may hold correct logic); rebasing a shared branch someone else has pulled (merge instead). Rebase prototype branches onto main early and often — `git fetch origin main && git rebase origin/main && git push --force-with-lease origin <branch>` — to keep the conflict surface small. `--force-with-lease` is the only acceptable force-push; never bare `--force`.

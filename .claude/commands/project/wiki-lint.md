@@ -15,7 +15,7 @@ You dispatch the `wiki-maintainer` agent for a full health pass. This is **perio
 
 - `docs/wiki/wiki-todos.md` has > 10 unticked entries.
 - Last `/project:wiki-lint` was > 5 work cycles ago.
-- `/project:review` flagged drift.
+- `/project:demo` flagged drift between the wiki and what actually runs.
 - A new batch of raw sources landed in `docs/raw/`.
 
 ## Preconditions
@@ -30,7 +30,9 @@ If dirty: run `human-checkpoint`.
 1. **Branch for the maintenance pass:**
 
    ```bash
-   git checkout -b chore/wiki-lint-YYYY-MM-DD
+   git fetch origin main
+   git checkout main && git merge --ff-only origin/main
+   git checkout -b chore/wiki-lint-$(date -u +%Y-%m-%d)
    ```
 
    Keeps maintenance commits separate from feature work.
@@ -51,7 +53,7 @@ If dirty: run `human-checkpoint`.
    - The current `docs/wiki/wiki-todos.md` content.
    - The list of raw files added since the last summary in `docs/wiki/summaries/`.
    - The overflow check results from step 2 (so the maintainer knows which archival tasks apply).
-   - Explicit instructions: process the queue, ingest, run the **reconciliation pass** (computable gaps: techniques without `implements`, instances without `specializes`, broken `depends_on` targets, ≥3-reference terms without a page, orphaned **content** pages only — ledgers, root spec pages and folder READMEs are navigational and exempt — asymmetric `contrasts_with`/`alternative_to`, unresolved `contradicts`), check the **lint invariants** (illegal filename characters, broken wikilinks, nested frontmatter objects, unquoted/multiple wikilinks in properties, out-of-vocabulary `type`/`abstraction`/`status`, singular `tag`/`alias` keys, claims without provenance), migrate any queued legacy pages, archive overflow, and end with a summary plus a **single batched lot of clarification questions** for the human.
+   - Explicit instructions: process the queue, ingest, run the **reconciliation pass** (computable gaps: techniques without `implements`, instances without `specializes`, broken `depends_on` targets, ≥3-reference terms without a page, orphaned **content** pages only — ledgers, root spec pages and folder READMEs are navigational and exempt — asymmetric `contrasts_with`/`alternative_to`, unresolved `contradicts`), check the **lint invariants** (illegal filename characters, broken wikilinks, nested frontmatter objects, unquoted/multiple wikilinks in properties, out-of-vocabulary `type`/`abstraction`/`status`, singular `tag`/`alias` keys, claims without provenance, and the prototype invariant: **no `[x]` slice without a matching entry under `## Demonstrations`**), migrate any queued legacy pages, archive overflow, and end with a summary plus a **single batched lot of clarification questions** for the human.
 
 4. **Maintainer writes:**
    - Resolved `wiki-todos` lines (removed).

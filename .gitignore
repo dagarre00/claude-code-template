@@ -6,19 +6,17 @@
 .DS_Store
 Thumbs.db
 
-# Handoff scratch — the cycle's working surface, deleted when the cycle ends.
-#
-# Both files are transient, but only one leaves a record. The plan is simply
-# discarded. The findings mailbox is **promoted** at commit time into
-# `docs/wiki/reviews/<date>-<slug>.md`, which is the tracked, date-keyed home
-# of the dispositions behavioral rule 20 requires. Never delete a mailbox
-# without promoting it first — see the `adversarial-review` skill, step 8.
-#
-# Note these globs match only names ending exactly in `-plan.md` / `-findings.md`;
-# a suffixed variant (`auth-plan-v2.md`) is NOT ignored and will surface as
-# untracked. See docs/wiki/gotchas.md § Tooling. One file per slug, no suffixes.
-.claude/handoff/*-plan.md
-.claude/handoff/*-findings.md
+# Scratch — this template has no handoff files (no planner, no adversary),
+# but a builder may leave transient working files here. Nothing under
+# .claude/scratch/ is a record; the record is the wiki and the commit.
+.claude/scratch/
+
+# Local prototype state — the data a demo produced. Regenerate it, don't
+# commit it: a demonstration is reproducible or it isn't a demonstration.
+*.db
+*.sqlite
+*.sqlite3
+.env
 
 # Obsidian per-user vault config (users open the vault themselves)
 docs/.obsidian/

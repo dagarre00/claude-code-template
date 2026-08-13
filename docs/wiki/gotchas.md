@@ -7,7 +7,7 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-08-05
+updated: 2026-08-13
 ---
 
 # Gotchas
@@ -25,8 +25,8 @@ updated: 2026-08-05
 
 *(None yet.)*
 
-## Testing
-*(Test framework, fixtures, isolation, flake.)*
+## Demonstrations
+*(Things that make a demo fail or lie — stale state, ports still bound, caches, ordering.)*
 
 *(None yet.)*
 

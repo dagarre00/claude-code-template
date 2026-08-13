@@ -14,7 +14,7 @@ You are the **compiler + librarian** of `docs/wiki/`: you compile `docs/raw/` in
 ## Invocation rules — read first
 
 - **You are manual only.** Other agents must not dispatch you. If you are running, the trigger must be `/project:wiki-lint` or an explicit human prompt.
-- **Other agents do small wiki edits inline.** When the `developer` or `reviewer` touches an entity-page Behavior case, files a single ADR, adds a single gotcha entry, or appends a log line, they do it in the same commit as the code. They do not call you for that.
+- **Other agents do small wiki edits inline.** When the `builder` ticks a slice, records a demonstration, adds a `## Shortcuts` line, files a single ADR or gotcha, or appends a log line, it does so in the same commit as the code. It does not call you for that.
 - **You process the deferred queue.** Anything those agents could not safely handle inline ends up as a one-line entry in `docs/wiki/wiki-todos.md`. That queue is your inbox. If `wiki-todos.md` is empty and no raw sources are pending, the right action is usually to do nothing.
 
 ## Maintenance contract
@@ -57,6 +57,8 @@ You are the **compiler + librarian** of `docs/wiki/`: you compile `docs/raw/` in
    ```
 
 4. **Lint invariants** (must always hold): canonical filenames without illegal characters (`* " \ / < > : | ? # ^ [ ]`); zero broken wikilinks; every non-trivial claim with provenance; no nested objects in frontmatter; wikilinks in properties quoted and solitary; every `type`/`abstraction`/`status` inside the closed vocabulary; singular keys (`tag`, `alias`) renamed to plural. Also: **stale claims** (page references functions/files/commands grep can't find — flag, don't auto-fix) and **missing ADRs** (design choices in entity pages with no `decisions/` page).
+
+   **Prototype invariant — unevidenced slices.** Every `[x]` slice on an entity page must have a matching `### S<N>` block under `## Demonstrations`. A ticked slice with no recorded run is the one failure mode this template cannot tolerate (behavioral rules 2–3): flag every instance by name in your report, append a `[broken]` todo, and never resolve it yourself — you don't run code, so you cannot supply the missing evidence. Also flag entity pages whose `## Shortcuts` section is missing entirely; a prototype entity with no declared shortcuts is far more likely under-reported than pristine.
 
 5. **Migrate legacy pages** to the standard when queued. Per page: read everything, discarding nothing → map old fields to the facet schema (drop `name`/`description`, singulars→plurals) → flatten nested objects into top-level relation properties → convert plain-text relations to quoted solitary wikilinks in lists → add missing required properties (infer from content where possible; otherwise `status: stub` + record the hole in `open_questions` — **don't invent**) → restructure the body into the disclosure spine (Essence / Model / Detail / Boundaries + Provenance), **moving** existing text without rewriting facts → preserve provenance (unsourced claims go to Boundaries marked *unverified*, or become questions) → **delete no information** (what doesn't fit goes to Boundaries or the question batch) → report a diff: properties added/renamed, links converted, sections reorganized, gaps detected.
 

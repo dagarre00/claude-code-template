@@ -7,12 +7,12 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-08-05
+updated: 2026-08-13
 ---
 
 # Log
 
-> Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd — `init`, `interview`, `work`, `pr`, `review`, `agent-scout`, `wiki-maintenance`.
+> Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd — `init`, `interview`, `work`, `demo`, `graduate`, `agent-scout`, `wiki-maintenance`.
 > Entries are written by the command that did the work, in the same commit as the work. `/project:wiki-lint` archives this file once it passes ~100 entries.
 
 *(No entries yet.)*
