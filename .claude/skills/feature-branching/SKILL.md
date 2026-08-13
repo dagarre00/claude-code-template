@@ -1,12 +1,12 @@
 ---
 name: feature-branching
-description: Branching procedure for this project — when to branch, batching rules, finishing-up checklist. Commit-message format itself lives in docs/wiki/git-conventions.md. Trigger on "start branch", "feat/", "fix/", "batch todos", "finish feature".
+description: Branching procedure for this prototype — when to branch, when to merge back to main, mid-task pause, finishing checklist. Commit-message format lives in docs/wiki/git-conventions.md. Trigger on "start branch", "proto/", "new branch", "merge back", "finish feature", "wrap up".
 type: skill
 ---
 
 # Branching
 
-Always branch before code. Never commit directly to `develop` or `main`. Commit-message format and PR template live in [`docs/wiki/git-conventions.md`](../../../docs/wiki/git-conventions.md) — this skill won't repeat them.
+Always branch before the first tracked write. Never commit directly to `main`. There is no `develop` branch in this template and no PR ceremony — commit-message format lives in [`docs/wiki/git-conventions.md`](../../../docs/wiki/git-conventions.md).
 
 ## Starting work
 
@@ -16,24 +16,24 @@ Always branch before code. Never commit directly to `develop` or `main`. Commit-
    git status --porcelain
    ```
 
-   If dirty: stop and run `human-checkpoint`. See **Mid-task pause** below if you need to temporarily set aside in-progress work.
+   If dirty: stop and run `human-checkpoint`. See **Mid-task pause** below.
 
-2. Fetch and sync develop. Using `fetch` + `merge --ff-only` (rather than bare `pull`) makes the two steps explicit and fails safely if develop has diverged in a non-fast-forward way:
-
-   ```bash
-   git fetch origin develop
-   git checkout develop && git merge --ff-only origin/develop
-   ```
-
-   If `merge --ff-only` fails, develop has diverged — use `human-checkpoint`. Do not force or rebase develop.
-
-3. Branch as `<type>/<short-slug>` where `<type>` ∈ `feat`, `fix`, `chore`, `docs`, `refactor`, `test`. Examples: `feat/auth-login`, `fix/race-on-double-submit`, `chore/upgrade-pytest`, `feat/profile` (batched).
+2. Sync main. `fetch` + `merge --ff-only` fails safely if main has diverged:
 
    ```bash
-   git checkout -b feat/<slug>
+   git fetch origin main
+   git checkout main && git merge --ff-only origin/main
    ```
 
-**The `<slug>` must equal the entity-page slug** — the branch name (`feat/<slug>`), the entity page, the plan scratch (`.claude/handoff/<slug>-plan.md`), and the test names all key off it. Pick it once and keep it stable.
+   No remote (`git remote` prints nothing)? Skip the fetch and work locally; every push step below is skipped and noted in the report until a remote exists.
+
+3. Branch as `proto/<slug>` — one branch per entity, carrying however many slices that entity needs:
+
+   ```bash
+   git checkout -b proto/<slug>
+   ```
+
+**The `<slug>` equals the entity-page slug.** Branch name, entity page, and commit scope all key off it. Pick it once, keep it stable.
 
 ## Which command branches, and when
 
@@ -41,87 +41,80 @@ Every command that writes tracked files branches **before its first write** (beh
 
 | Command                | Branch                             | Created before          |
 | ---------------------- | ---------------------------------- | ----------------------- |
-| `/project:work`        | `feat/<slug>`                      | the failing test        |
+| `/project:work`        | `proto/<slug>`                     | the first code file     |
 | `/project:interview`   | `docs/interview-<slug>`            | the transcript file     |
+| `/project:graduate`    | `docs/graduate-<date>`             | the handoff file        |
 | `/project:wiki-ingest` | `docs/ingest-<slug>`               | the summary page        |
-| `/project:agent-scout` | `chore/agent-scout-<date>`         | the first skill/agent   |
+| `/project:agent-scout` | `chore/agent-scout-<date>`         | the first skill file    |
 | `/project:wiki-lint`   | `chore/wiki-lint-<date>`           | the maintainer dispatch |
-| `/project:review`      | `chore/review-<date>`              | the reviewer dispatch   |
-| `/project:adversary`   | none — runs on the existing branch | —                       |
+| `/project:demo`        | none — read-only                   | —                       |
 
-In every case the rule is the same: **branch only if you're on `develop` or `main`.** Already on a `feat/*`/`fix/*` branch whose work this belongs to → stay there and let that branch's PR carry the change.
+In every case the rule is the same: **branch only if you're on `main`.** Already on a `proto/*` branch whose work this belongs to → stay there.
 
-## Batching todos
+## Merging back to main
 
-Two todos share a branch when **all** are true: same entity page, second depends on first, splitting produces a meaningless intermediate commit. Otherwise — separate branches. Batches of 2+ also trigger the `planner` — it writes a plan (via `plan-writing`) that the `developer` follows (see `/project:work` step 4).
+A prototype branch merges when its slices are demonstrated and **the human has seen it run** — that confirmation is the only gate this template has, so don't skip it:
+
+1. Show the human the demonstrations (or run `/project:demo`) and ask whether it does what they wanted.
+2. On confirmation:
+
+   ```bash
+   git checkout main
+   git merge --no-ff proto/<slug> -m "merge: <slug> — <what now works>"
+   git push -u origin main
+   git branch -d proto/<slug>
+   git push origin --delete proto/<slug>   # if it was pushed
+   ```
+
+   `--no-ff` keeps each prototype's slices visible as a group in history.
+
+3. If they want changes instead, stay on the branch and keep slicing.
+
+**Pull requests are optional here.** If the human wants one (they're hosting on GitHub and want the diff view), open it against `main` with a plain body: what now works, which slices, which shortcuts. No template, no review gate, and merging is still their call.
 
 ## Mid-task pause
 
-When interrupted mid-cycle (not at a green commit boundary), pick the lightest-weight option:
+When interrupted mid-slice (not at a demonstrated boundary), pick the lightest option:
 
-1. **Preferred — checkpoint tag.** Commit the in-progress state with a `wip:` prefix, tag it, then reset when resuming:
+1. **Preferred — checkpoint tag.** Commit the in-progress state with a `wip:` prefix, tag it, reset when resuming:
 
    ```bash
    git add <coherent-paths>                 # stage explicitly by path — never `git add -p` (interactive mode hangs with no human at the prompt)
    git commit -m "wip: <what's in flight>"
    git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)
+   git push                                  # an unpushed wip dies with the container
    ```
 
    On resume, `git reset HEAD~1` (soft) to un-commit the wip, then continue.
 
-2. **Fallback — stash.** Only when the interrupted change is genuinely tiny and you'll resume within the same session:
+2. **Fallback — stash.** Only for a genuinely tiny change you'll resume in the same session. See `git-recovery`. Never leave a stash across sessions.
 
-   ```bash
-   git stash push -m "wip: <what you were doing>"
-   # ... handle interruption ...
-   git stash pop
-   ```
-
-   See the `git-recovery` skill for stash details. Never leave a stash across sessions.
-
-## Sync with develop (long-running branches)
-
-When your branch has been open for several days and develop has moved on, rebase early — the longer you wait, the larger the conflict surface:
+## Sync with main (long-running branches)
 
 ```bash
-git fetch origin develop
-git rebase origin/develop
-git push --force-with-lease origin <branch>   # safe: fails if remote has new commits you don't have
+git fetch origin main
+git rebase origin/main
+git push --force-with-lease origin <branch>   # safe: fails if remote has commits you don't have
 ```
 
-If conflicts arise, follow the `git-recovery` skill (Resolve merge / rebase / cherry-pick conflicts). `--force-with-lease` is the only acceptable force-push form; never bare `--force`.
+Conflicts → `git-recovery` skill. `--force-with-lease` is the only acceptable force-push; never bare `--force`.
 
 ## Commit cadence
 
-- One commit per green TDD cycle (test + impl + entity-page update bundled).
-- Refactor commits are separate from feat commits.
-- Don't commit half-green code. Mid-cycle stop → tag a checkpoint (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`) and leave the tree.
+- One commit per demonstrated slice — code, entity-page tick, demonstration, shortcut lines, together.
+- Push after every commit. An unpushed commit dies with the container.
+- Don't commit a slice you haven't run.
 
-## Finishing the feature
+## Finishing the entity
 
-1. Final test run — full suite, not just the touched tests.
-2. Entity page reflects current state; Behavior cases ticked.
-3. TODO checked off / removed from `docs/wiki/todos.md` (shipped work lives in git history).
-4. Sync with develop one last time before pushing (catches late changes to develop):
-
-   ```bash
-   git fetch origin develop
-   git rebase origin/develop   # follow git-recovery skill (conflicts) if needed
-   ```
-
-5. Push: `git push -u origin <branch>` (or `git push --force-with-lease` after a rebase).
-6. **Auto-PR (invoked by `/project:work`):** follow `pr-create` skill to draft and open the PR targeting `develop`, then `git checkout develop`.
-7. After the human merges the PR — clean up both local and remote branch:
-
-   ```bash
-   git checkout develop
-   git pull --ff-only
-   git branch -d feat/<slug>              # safe delete (errors if unmerged)
-   git push origin --delete feat/<slug>   # delete remote tracking branch
-   ```
+1. Re-run the `## Run` command — the prototype still starts.
+2. Entity page current: slices ticked, demonstrations recorded, shortcuts declared.
+3. Todo removed from `docs/wiki/todos.md` (shipped work lives in git history).
+4. Push, then show the human and offer the merge (above).
 
 ## Anti-patterns
 
-- **Committing to `develop` or `main`.** Branch first.
+- **Committing to `main` directly.** Branch first.
 - **`git commit -a`.** Stage explicitly.
-- **Squashing locally to hide Red→Green cycles.** History is the trace of the TDD loop.
+- **Long-lived prototype branches.** If a branch has more than a handful of slices on it, you're building too much before showing it.
+- **Merging without the human seeing it run.** The demonstration is this template's entire review process.

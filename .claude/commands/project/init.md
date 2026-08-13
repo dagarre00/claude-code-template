@@ -1,7 +1,7 @@
 ---
 name: init
-description: Detect project state, interview for requirements, scaffold docs/wiki, update CLAUDE.md with project parameters. Run once at project start, or to recover from a broken wiki layout.
-argument-hint: [context — e.g. "review the legacy files" | "stack is Django + Postgres"]
+description: Detect project state, interview for product logic only, pick the stack silently, scaffold docs/wiki, bootstrap a skeleton that actually starts, and rewrite CLAUDE.md. Run once at project start.
+argument-hint: [context — e.g. "read my notes.md" | "the handoff is in docs/idea.md" | "it's a CLI"]
 type: command
 ---
 
@@ -9,15 +9,15 @@ type: command
 
 **Argument:** `$ARGUMENTS`
 
-You are initializing this project. This command detects state, interviews the human for requirements, scaffolds the wiki with real answers (not placeholders), and rewrites `CLAUDE.md` to be lean and project-specific.
+You are initializing this prototype. This command detects state, interviews the human about **what the thing should do** (never about the stack), picks the technical layer itself, scaffolds the wiki with real answers, bootstraps something that actually starts, and rewrites `CLAUDE.md`.
 
-If the argument is non-empty, treat it as **context that steers the init**, not as a separate task. Resolve it before step 3 and fold it into the pre-interview scan:
+If the argument is non-empty, treat it as **context that steers the init**:
 
-- **Points at existing material** (`review the legacy files`, `read src/ and the old README`, `the spec is in docs/spec.pdf`) → read those paths first, extract every answer you can, and mark those interview topics **covered** so you don't ask what the human already wrote down. Cite the file in the wiki page you fill from it.
-- **States a fact** (`stack is Django + Postgres`, `no CI yet`) → record it as a given, skip the matching question, and confirm it in the report rather than the interview.
-- **Narrows the scope** (`wiki only, skip the test bootstrap`) → honour it and say in the report which steps you skipped.
+- **Points at existing material** (`read my notes.md`, `the handoff is in docs/idea.md`) → read those paths first, extract every answer you can, and mark those interview topics **covered** so you don't ask what the human already wrote down. Cite the file in the wiki page you fill from it.
+- **States a fact** (`it's a CLI`, `single user`) → record it as a given and skip the matching question.
+- **Narrows the scope** (`wiki only, don't scaffold code`) → honour it and say in the report which steps you skipped.
 
-If the argument is empty, run the full procedure below. If it names a path that doesn't exist, say so and ask — don't silently proceed as if it were empty.
+If it names a path that doesn't exist, say so and ask — don't silently proceed.
 
 ## Preconditions
 
@@ -30,173 +30,116 @@ If the argument is empty, run the full procedure below. If it names a path that 
 
 Run `git status`.
 
-- If not a git repo — the **expected state** when starting from this template (the quick start erases the cloned `.git` so the project begins its own history):
-  1. `git init -b main` — always pass `-b main`; a bare `git init` may create `master` depending on the machine's `init.defaultBranch`.
-  2. **Keep the template's shipped `.gitignore`** — it carries entries the workflow relies on (the plan scratch, `settings.local.json`, `docs/.obsidian/`). Append stack-specific entries (Node, Python, OS, IDE) to it; never replace it.
-  3. Stage everything including dotfiles (`git add -A`) and commit `chore: initial commit` on `main` — the template's `.claude/`, `CLAUDE.md`, and `docs/` must all land in that first commit.
-  4. If the human has a remote URL, `git remote add origin <url>`; otherwise continue without one — every later push step is skipped and noted in the report until a remote exists.
-- If on `main` with uncommitted changes: stop and run `human-checkpoint`. Ask whether to commit, stash, or discard.
-- If on a feature branch: warn; don't switch.
+- **Not a git repo** — the expected state when starting from this template:
+  1. `git init -b main` — always pass `-b main`.
+  2. **Keep the template's shipped `.gitignore`**; append stack-specific entries, never replace it.
+  3. `git add -A` and commit `chore: initial commit` on `main`.
+  4. If the human has a remote URL, `git remote add origin <url>`; otherwise continue without one — every later push is skipped and noted in the report.
+- **On `main` with uncommitted changes:** stop and run `human-checkpoint`.
+- **On a branch:** warn; don't switch.
 
-### 2. Stack detection
+There is no `develop` branch in this template. `main` is the trunk; work happens on `proto/*` branches.
 
-Look for: `pyproject.toml`, `package.json`, `Cargo.toml`, `go.mod`, `Gemfile`, `composer.json`, `pom.xml`, `build.gradle`, `Dockerfile`, etc. Note what you find.
+### 2. Read the ground
 
-Look for a test command in `pyproject.toml` / `package.json` scripts / `Makefile`. Record it.
+Look for what already exists: manifests (`pyproject.toml`, `package.json`, `go.mod`, …), a run command in `Makefile`/scripts, an existing source layout, and — on the machine — which runtimes are actually installed. What's already there beats what you'd have chosen.
 
-Note the project directory layout: `src/`, `tests/`, `lib/`, `app/`, etc.
+### 3. Pre-interview scan
 
-### 3. Pre-interview wiki scan
+Before asking anything, read `docs/wiki/requirements.md` plus anything the argument pointed you at. Mark each **product** topic below as covered / partial / missing, and print a one-line summary:
 
-Before asking anything, check whether `docs/wiki/requirements.md` and `docs/wiki/architecture.md` already exist and contain real content (not just placeholder headings).
+> "Read notes.md. Vision, users, and the first capability are covered. I'll ask about: what it must not do, and what the first runnable version looks like."
 
-**Read anything the argument pointed you at first** — legacy source, an old README, a spec file, existing docs. Those are sources for the same extraction pass, and answers derived from them count as covered exactly like answers from the wiki.
+If everything is covered, skip to step 5.
 
-If they do, read them and extract answers for every interview topic below. Mark each topic as either:
-- **covered** — the doc has a concrete, non-placeholder answer; no question needed.
-- **partial** — some content exists but is incomplete or ambiguous; ask a focused follow-up only.
-- **missing** — no content; ask the full question.
+### 4. Interview — product only
 
-Print a one-line summary of what you found before starting the interview, e.g.:
-> "Found existing requirements.md and architecture.md. Vision, users, stack, and data are covered. I'll ask about: user stories, out-of-scope, deployment, and non-functional requirements."
+Ask only what's missing, one question at a time, always with your recommended answer. Follow the procedure in `/project:interview` (including the streaming-transcript rule). Topics, in order:
 
-If both files are fully populated and all topics are covered, skip the interview entirely and go straight to step 4.
+1. **What is this and why does it exist?** — one sentence.
+2. **Who operates it?** — usually one person; say so if it is.
+3. **What must it do?** — capabilities in priority order.
+4. **What must it NOT do?** — explicit non-goals; in a prototype this matters more than the feature list.
+5. **What does the first runnable version look like?** — the thinnest thing worth seeing run.
+6. **What would make you throw it away?** — the question that tells you what the prototype is actually testing.
 
-### 4. Interview
+**Do not ask about:** language, framework, database, file format, config, ports, process model, testing, CI, deployment, monitoring, scaling, or security posture. Those are yours under the `stack-assumption` skill (behavioral rule 6). If the human volunteers one, record it as a given — it binds you — and don't ask a follow-up about the rest.
 
-Ask only about topics that are **missing** or **partial** from the pre-interview scan. Follow the procedure from the `/project:interview` command. Cover these topics (in order), one question at a time, always providing your recommended answer:
+Open the transcript at `docs/raw/interviews/YYYY-MM-DD-init.md` **before** the first question; stream Q-by-Q and A-by-A, never batched.
 
-1. **Project vision** — one sentence. What does this project do and why does it exist?
-2. **Users** — who uses it? (user types, contexts)
-3. **Core user stories** — what must each user type be able to do? (priority order, enough to fill `## User stories`)
-4. **Out of scope** — what explicitly won't this project do?
-5. **Stack** — confirm detected stack. If nothing detected, ask: language, framework, package manager.
-6. **Test framework and command** — confirm detected. If none, ask what to use.
-7. **Data** — where does state live? (DB, files, in-memory, external services)
-8. **External services** — APIs, auth providers, infra dependencies.
-9. **Deployment** — how will this ship? (CI, target environment, release process)
-10. **Non-functional** — perf targets, security requirements, observability, compliance.
+### 5. Pick the stack — silently
 
-Open a transcript at `docs/raw/interviews/YYYY-MM-DD-init.md` **before** asking the first question (skip creating it if no questions are needed). Stream Q-by-Q and A-by-A: write the question to disk, ask, write the answer to disk on receipt — never batch. Same enforcement as `/project:interview` (see operating rule #7 in `.claude/commands/project/interview.md`).
+Follow the `stack-assumption` skill. Decide language, framework (if any), storage, config, and how it starts, inside the hardware envelope (behavioral rule 20). Write the choices into `architecture.md § Stack` and `§ Prototype constraints`. File an ADR only if you genuinely weighed alternatives. Announce the choices in the step 9 report — do not put them to a vote.
 
-Stop conditions:
+### 6. Scaffold the wiki
 
-- Human says stop.
-- All sections needed for wiki scaffolding have concrete answers (from pre-scan + interview combined).
-- You have enough to write Behavior cases for the first entity.
+Create missing directories: `docs/raw/interviews/`, `docs/wiki/entities/`, `docs/wiki/concepts/`, `docs/wiki/decisions/`, `docs/wiki/summaries/`.
 
-### 5. Scaffold wiki
+Fill with **real content** (no `<TBD>` except where genuinely undiscussed):
 
-Create directories that don't exist:
+- `docs/wiki/requirements.md` — Vision, Users, User stories, Functional requirements, Out of scope, Open questions. Non-functional stays at its assumed defaults unless the human stated a number.
+- `docs/wiki/architecture.md` — Stack, Prototype constraints, Layout, Data, plus the assumed defaults.
+- `docs/wiki/commands.md` — Install and **Run**, recorded only after you have executed them (step 7).
+- `docs/wiki/entities/<slug>.md` — one page per capability, with `## Slices` (`slice-writing`), three to six each, S1 being whatever makes it start.
+- `docs/wiki/todos.md` — seeded from the first entity's slices.
+- `docs/wiki/gotchas.md`, `docs/wiki/wiki-todos.md` — create empty only if missing; **never clear existing entries**.
+- `docs/wiki/log.md` — the init entry (step 8).
 
-```
-docs/raw/interviews/
-docs/wiki/entities/
-docs/wiki/concepts/
-docs/wiki/decisions/
-docs/wiki/summaries/
-```
+Frontmatter per the Obsidian standard (`wiki-update` skill).
 
-Create or update these pages with **real content from the pre-scan and interview combined** (no `<TBD>` placeholders except for topics genuinely not discussed):
+### 7. Bootstrap something that starts
 
-- `docs/wiki/requirements.md` — fill **all** sections: `## Vision`, `## Users`, `## User stories` (one per user-capability pair in `- As a <user type>, I want <capability>, so that <benefit>` format with Acceptance + `Maps to:` link), `## Functional requirements`, `## Non-functional requirements`, `## Out of scope`, `## Open questions`.
-- `docs/wiki/architecture.md` — fill `## Stack`, `## Layout`, `## Data`, `## External services`, `## Testing strategy`, `## Conventions`, `## Deployment`. Leave a section as `<TBD>` only if it was genuinely not discussed.
-- `docs/wiki/git-conventions.md` — default branch, branch prefixes, commit format.
-- `docs/wiki/commands.md` — test command, build command, lint command (whatever was detected/confirmed).
-- `docs/wiki/todos.md` — seeded with first work items from the interview.
-- `docs/wiki/gotchas.md` — create with empty headings (`## Critical`, `## Runtime`, `## Testing`, `## Tooling`) **only if missing. Never clear existing entries** — the template ships this file empty, but a re-run of `/project:init` on an established project must not wipe the traps that project has accumulated.
-- `docs/wiki/wiki-todos.md` — create empty only if missing; keep any pending lines.
-- `docs/wiki/log.md` — init entry (see step 6).
+The prototype's front door is the one thing every later cycle depends on. Create the minimum that runs and prints or serves *something*:
 
-Create entity pages under `docs/wiki/entities/` for each feature/module identified in the interview, with Behavior cases (see `spec-writing` skill).
+- the dependency manifest for the stack you chose,
+- the source layout named in `architecture.md § Layout`,
+- an entry point that starts and responds (a `/health` route, a `--version`, a startup line — whatever suits).
 
-File ADRs under `docs/wiki/decisions/` for non-trivial choices made during the interview (see `decision-recording` skill).
+Then **run it** and paste the real output. Record the verified install and run commands in `docs/wiki/commands.md`. If installing fails (no network, missing toolchain), stop and run `human-checkpoint` — do not record a run command you haven't executed.
 
-Every page gets correct frontmatter per the Obsidian LLM-wiki standard (see the `wiki-update` skill).
+Mark the corresponding S1 slice `[x]` on the entity page with the demonstration, since you just did it. Nothing beyond the front door: the first feature comes from `/project:work`.
 
-### 5a. Bootstrap a runnable test command
+### 8. Rewrite CLAUDE.md and log it
 
-`/project:work` cannot start a Red phase until the test command actually executes. On a greenfield repo the interview answer (`pytest -q`, `npm test`, …) names a command that does not yet run: no dependency manifest, no test directory, nothing installed. Close that gap here — it is the one precondition every later cycle depends on.
-
-1. **Check whether it already runs.** Execute the test command from `docs/wiki/commands.md`. If it exits with "no tests collected" / "0 passing" (or any clean zero-test result), the loop is already runnable — record that and skip to step 6.
-
-2. **If it doesn't run, propose the minimum skeleton.** Present the exact file list and install command to the human via `human-checkpoint` before creating anything. The minimum is only what makes an empty suite executable:
-   - the dependency manifest for the detected stack (`pyproject.toml`, `package.json`, `Cargo.toml`, …) declaring the test framework chosen in the interview,
-   - the test directory the framework expects (`tests/`, `__tests__/`, …) with nothing in it,
-   - the source directory named in `architecture.md ## Layout`, empty.
-
-   No application code, no example module, no placeholder test. The first real test comes from the first `/project:work` Red phase.
-
-3. **Install and verify.** Run the install command, then the test command. Confirm it exits cleanly on an empty suite. If installation fails (no network, missing toolchain), stop and run `human-checkpoint` — do not paper over it by writing a fake test command.
-
-4. **Record the verified commands** in `docs/wiki/commands.md`: `## Install`, `## Test`, and whatever else you confirmed. Only commands you have actually run go in this file.
-
-If the human declines the bootstrap, leave `commands.md ## Test` as `<TBD>` and say plainly in the report that `/project:work` will refuse to start until a test command runs.
-
-### 6. Rewrite CLAUDE.md
-
-Rewrite `CLAUDE.md` to be lean and project-specific. Drop the template framing — this is now a real project. **Use [`.claude/templates/CLAUDE.md.tmpl`](../../templates/CLAUDE.md.tmpl) as the exact skeleton:** copy it to `CLAUDE.md` and fill every `<placeholder>` (project name, vision, stack, test command) from the interview answers. Do not re-derive the section list — the template already carries it (Identity, Operating principles, Three layers, Wiki layout, Commands, Agent routing, North star).
-
-The template deliberately points at `.claude/rules/behavioral.md` for the binding rule list instead of duplicating it — keep that pointer; do not paste a "Golden rules" block back in. The result should be under ~120 lines. Every section earns its place — if a section doesn't help an agent operate, cut it.
-
-### 7. Log it
+Copy [`.claude/templates/CLAUDE.md.tmpl`](../../templates/CLAUDE.md.tmpl) to `CLAUDE.md` and fill every `<placeholder>` from the interview and your stack choices. Keep its pointer to `.claude/rules/behavioral.md` — don't paste rules back in. Result under ~100 lines.
 
 Append to `docs/wiki/log.md`:
 
 ```markdown
 ## [YYYY-MM-DD HH:MM] init
 
-- Stack: <stack>
-- Test command: <command>
-- Interview transcript: [YYYY-MM-DD-init](../raw/interviews/YYYY-MM-DD-init.md) (omit if no questions were needed)
+- Stack (assumed): <stack>
+- Run command: <command> — verified
+- Interview transcript: [YYYY-MM-DD-init](../raw/interviews/YYYY-MM-DD-init.md)
 - Pages created: <count>
-- ADRs: <count>
-- Next: run `/project:work` to pick up the first todo.
+- Next: `/project:work` for the first real slice.
 ```
 
-### 8. Commit
-
-Stage and commit everything created or modified, then push:
+### 9. Commit and report
 
 ```bash
-# Include any skeleton files created in step 5a (manifest, lockfile, empty test dir).
-git add docs/ CLAUDE.md <manifest-and-skeleton-paths>
-git commit -m "chore(init): scaffold wiki, CLAUDE.md, and runnable test command"
+git add -A
+git commit -m "chore(init): scaffold wiki, pick stack, bootstrap runnable skeleton"
 git push -u origin main
 ```
 
-If the repo has no remote yet, skip the push and note it in the report.
+No remote yet? Skip the push and say so. Then report:
 
-### 8a. Create the `develop` branch
-
-`/project:work` always starts and ends on `develop`. If it doesn't exist yet, create it from `main` and push:
-
-```bash
-git checkout -b develop
-git push -u origin develop
-git checkout develop
-```
-
-If `develop` already exists (locally or on the remote), check it out instead of recreating it.
-
-### 9. Report
-
-Print:
-
-- Stack and test command — and whether the test command was **verified to run** (step 5a) or is still `<TBD>`.
-- Pages created vs already present.
-- Key decisions from the interview.
-- Recommended next step: `/project:work` to start on the first todo.
+- **What you assumed technically**, in a few lines — stack, storage, how it starts, and why each fits one modest machine. Invite them to overrule any of it.
+- The verified run command, with the output you saw.
+- Pages created, first entity and its slices.
+- Next step: `/project:work`.
 
 ## Failure modes
 
-- If git is broken (no remote, divergent main): stop and run `human-checkpoint`.
-- If you can't detect a stack: ask in the interview. Don't guess.
-- If a wiki page exists with conflicting frontmatter: append to `docs/wiki/wiki-todos.md`, don't auto-fix.
-- If the human won't answer interview questions: scaffold with what you have; mark the rest `<TBD>`.
+- **Git broken (divergent main, no permissions):** stop, `human-checkpoint`.
+- **Chosen stack won't install on this machine:** don't fake it. Pick the next option in the envelope, and say in the report that you switched and why.
+- **The human insists on a stack outside the envelope:** their call — record it as a given, note the consequence in `architecture.md § Prototype constraints`, and proceed.
+- **Existing wiki page with conflicting frontmatter:** append to `docs/wiki/wiki-todos.md`, don't auto-fix.
 
 ## What you do NOT do
 
-- **No application code.** This command sets up wiki and schema, plus the empty skeleton step 5a needs to make the test command runnable (manifest, empty `tests/`, empty source dir). It does not generate modules, example tests, or boilerplate — the first real test comes from `/project:work`'s Red phase.
-- **No assumptions about the stack.** Detect or ask.
-- **No second-guessing existing wiki.** If a page exists, leave it. Append to `wiki-todos.md` if it needs cleanup.
+- **No stack interview.** Detect, choose, record (behavioral rule 6).
+- **No application features.** Step 7 is a front door, not a feature.
+- **No test scaffolding.** This template has no suite.
+- **No second-guessing an existing wiki.** If a page exists, leave it; queue cleanup in `wiki-todos.md`.

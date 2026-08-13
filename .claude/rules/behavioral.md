@@ -1,44 +1,40 @@
----
-name: behavioral-rules
-description: Hard behavioral constraints for all agents. Loaded at session start.
-type: rule
----
-
-# Behavioral Rules
+# Behavioral Rules — Prototype Mode
 
 Hard constraints from real failures. These override default agent inclinations.
 
-1. **Wiki-first, code-second.** Never change code behavior without also updating the relevant `docs/wiki/entities/<slug>.md`. If the spec is wrong, fix the spec first, then the code — in the same commit.
+This is the **prototyping** variant of the template: no TDD loop, no adversarial review, no periodic audit. What replaces them is a single, non-negotiable habit — **you run the thing and show the output**. Everything below protects that habit, or protects the wiki that makes the prototype graduatable later.
 
-2. **Tests before implementation.** Never write production code without a failing test first. The Red phase is mandatory. Nothing enforces this on `feat/*` and `fix/*` — keeping the discipline is on you.
+1. **Wiki-first, code-second.** Never change behavior without also updating the relevant `docs/wiki/entities/<slug>.md`. If the spec is wrong, fix the spec first, then the code — in the same commit. Prototype speed comes from skipping tests, not from skipping the spec.
 
-3. **Never modify tests to make them pass.** If a test seems wrong, update the entity Behavior spec → regenerate the test → implement. Changing a test to match broken code is not TDD.
+2. **Demonstrate, don't assert.** A slice is done when you have **run it** and pasted the real output into the conversation and the entity page's `## Demonstrations` section: the exact command, the observed output (trimmed, not paraphrased). "The endpoint should return 200" is not a demonstration. There is no test suite standing behind you here — the run *is* the evidence.
 
-4. **Tests must fail for the right reason.** A passing test before implementation tests existing behavior, not the new feature. Confirm RED is real (missing feature, not a typo or import error).
+3. **Never fake a demonstration.** Do not write down output you did not observe, do not present a plausible-looking transcript, do not mark a slice `[x]` because the code "obviously" works. If you could not run it (missing credential, no network, needs hardware you don't have), say so plainly, leave the slice `[~]`, and record the blocker. A fabricated demonstration is worse than no prototype.
 
-5. **Two-strike pivot.** If an approach fails twice on the same mechanism, try a fundamentally different one. Two failures → tag the state (`git tag checkpoint-<stamp>`), `git reset --hard` to a known-good commit, and re-spec via `/project:interview`.
+4. **Smallest demonstrable slice.** Never build more than you can show running in one step. If a slice cannot be demonstrated without three other slices existing first, it is not a slice — split it or sequence it. One slice → one run → one commit.
 
-6. **Verify before asserting.** Run it, don't assume. Never tell the human a feature works unless tests pass and you read the output yourself.
+5. **Two-strike pivot.** If an approach fails twice on the same mechanism, try a fundamentally different one. Two failures → tag the state (`git tag checkpoint-<stamp>`), `git reset --hard` to a known-good commit, and re-scope via `/project:interview`. In a prototype, the second failure usually means the idea needs reshaping, not the code.
+
+6. **Assume the technical layer — never interview it.** Stack, storage, framework, config format, process model, deployment: the agent picks these itself under rule 20's envelope, records the choice in `docs/wiki/architecture.md`, and moves on. Asking the human "which database?" is a workflow violation here. The `stack-assumption` skill is the procedure. The human is interviewed about **logic, product, and gaps** only.
 
 7. **Never present uncertain information as fact.** If you're not sure, say so.
 
-8. **Human in the loop.** When you need a decision the wiki doesn't answer, stop and ask. Use the `human-checkpoint` skill to format the ask. Do not silently improvise.
+8. **Human in the loop.** When you need a decision the wiki doesn't answer — a *product* decision, an ambiguity in the logic, a risky or irreversible operation — stop and ask via the `human-checkpoint` skill. Do not silently improvise. Technical choices are the explicit exception (rule 6): those you make yourself.
 
-9. **No silent failures.** If a command fails, report the exact error.
+9. **No silent failures.** If a command fails, report the exact error. A prototype that half-starts is a finding, not an embarrassment.
 
 10. **Scoped context for sub-agents.** Give sub-agents only the task, prior outputs, and relevant constraints. Never dump full memory.
 
 11. **Raw sources are immutable.** Never edit files under `docs/raw/`. Only append new ones.
 
-12. **Two review roles — never merged, both read-only.** The `reviewer` is periodic and whole-repo: it runs in a fresh worktree via `/project:review`, with no `developer` context, and is never part of the work loop. The `adversary` is the opposite shape — diff-scoped and per-change, dispatched inside `/project:work` (step 7a) for `[complex]`/batched cycles and by `/project:adversary` on demand. What they share is what makes either worth running: both read without the author's context, and both raise **findings only** — no edits, no commits, no pushes, no resets. A developer never audits its own work, and a reviewer of either kind never fixes what it finds.
+12. **Shortcuts are declared, never hidden.** Prototypes are allowed — expected — to hardcode, stub, fake, skip validation, and ignore error paths. What is forbidden is doing it quietly. Every deliberate shortcut gets a one-line entry in the entity page's `## Shortcuts` section: what is faked, and what it would take to make it real. This section is the single most valuable thing the prototype produces — it is what `/project:graduate` exports, and it is the difference between "a prototype" and "a codebase nobody can trust".
 
 13. **Progressive disclosure.** Don't preload domain knowledge. Skills auto-load when their `description` matches the task. If a needed skill doesn't exist, create one via the `update-toolkit` skill rather than stuffing it into an agent prompt.
 
 14. **Skills are how-to, not what-is.** When writing or editing a skill, the body must be a procedure: read these wiki pages, follow these steps, update these pages. Never explain a concept the LLM already knows.
 
-15. **One agent owns the TDD loop.** The `developer` writes the failing test, confirms Red itself, then implements — there is no separate `tester`/`implementer` split and no handoff JSON to write or read. Red must be genuine (rule 4) before any production code; confirm it yourself, don't trust a prior step. The only upstream split is the `planner` (Opus), which writes a `.claude/handoff/<slug>-plan.md` for `[complex]`/batched work — markdown scratch the developer reads, never a contract it must validate.
+15. **One agent owns the build loop.** The `builder` scopes the slice, writes the code, runs it, records the evidence, and updates the wiki — there is no planner, no separate implementer, no handoff file to write or read. There is also no reviewing agent in this template: the demonstration is the review, and the human watching it run is the reviewer.
 
-16. **Append, don't bury.** When agents discover something the maintainer should clean up later (orphan page, missing ADR, repeated concept), append a one-line entry to `docs/wiki/wiki-todos.md`. Don't wait for `/project:wiki-lint`.
+16. **Append, don't bury.** When you discover something the maintainer should clean up later (orphan page, missing ADR, repeated concept), append a one-line entry to `docs/wiki/wiki-todos.md`. Don't wait for `/project:wiki-lint`.
 
 17. **Use the existing workflow before improvising.** Slash commands and skills exist for a reason. If the workflow seems missing, add a command or skill via the `update-toolkit` skill — don't work around the gap silently.
 
@@ -50,13 +46,9 @@ Hard constraints from real failures. These override default agent inclinations.
     - **Closed vocabularies** for `type`/`abstraction`/`status` (defined in `wiki-update`); properties lowercase `snake_case`.
     - **Provenance, never invent.** Every non-trivial claim traces to a `docs/raw/` file; an unfillable gap is an `open_questions` entry or a question to the human, never invented prose.
 
-19. **Branch before the first tracked write; finalize with commit + push.** Any command or agent that mutates tracked files — code, wiki, transcripts, `.claude/` config, anything — opens a branch *before* the first write, not before the commit. If you are standing on `develop` or `main`, `git checkout -b <type>/<slug>`; if you are already on a `feat/*`/`fix/*` branch whose work this belongs to, stay on it. Only `/project:work` gets an implicit branch — every other command owns its own, and "the command didn't say to branch" is not a defense (rule 17: fix the command). Checking the branch at commit time is too late for anything written turn-by-turn. It then ends by committing the change and pushing it to that branch (`git push -u origin <branch>`). A local commit is not enough: remote execution containers are recycled between sessions, so an unpushed commit is lost work. The `developer` commits and pushes each Behavior case as it lands (`git-conventions.md`, Cadence); `/project:work` adds only the log entry. There is no end-of-cycle bundle. Read-only commands and gitignored scratch (`*-plan.md`, `*-findings.md`) are the only exceptions. On network failure, retry the push with exponential backoff.
+19. **Branch before the first tracked write; finalize with commit + push.** Any command or agent that mutates tracked files — code, wiki, transcripts, `.claude/` config, anything — opens a branch *before* the first write, not before the commit. If you are standing on `main`, `git checkout -b proto/<slug>`; if you are already on a `proto/*` branch whose work this belongs to, stay on it. Only `/project:work` gets an implicit branch — every other command owns its own, and "the command didn't say to branch" is not a defense (rule 17: fix the command). Checking the branch at commit time is too late for anything written turn-by-turn. It then ends by committing the change and pushing it (`git push -u origin <branch>`). A local commit is not enough: remote execution containers are recycled between sessions, so an unpushed commit is lost work. The `builder` commits and pushes each demonstrated slice as it lands (`git-conventions.md`, Cadence). Read-only commands and gitignored scratch are the only exceptions. On network failure, retry the push with exponential backoff.
 
-20. **Every finding gets a written disposition, and the record is committed.** An adversarial review (rule 12) is answered, not absorbed. Each numbered finding ends as **Filed** (a real todo line), **Fixed** (name what changed), or **Rejected** (state the reason in one sentence). Silence is not a disposition and "unlikely" is not a reason. If you reject a finding by citing an invariant that isn't written down anywhere, write it down as part of the rejection — an undocumented invariant is not one.
-
-    **Filed is the default; fixing needs a human.** A review files work, it does not do work: findings become todos in `docs/wiki/todos.md` at the priority their severity maps to, and are not fixed in the cycle that surfaced them — not even the two-line ones. The sole exception is a `critical` or `major`, which goes to the human via `human-checkpoint` with its failure scenario and a recommendation; they decide fix-now or queue. Never fix one on your own initiative, and never let one become a todo without having asked. If the human declines or is unreachable, file it at P0/P1 and say so prominently — that is the only path by which a `critical` is queued rather than fixed.
-
-    **The record is the commit.** Triage in the mailbox (`.claude/handoff/<slug>-findings.md`, gitignored scratch), then write each disposition into the body of the commit that answers it: approved fixes name the finding they close, and each round ends with a `docs(<slug>): adversary round N` commit whose body lists every finding with its disposition, filed ones included. The todo says what to do; the commit says why it was not done now. Git history is already tracked, dated, and immutable, so the record needs no file of its own — but a disposition that exists only in a deleted scratch file satisfies nothing. If a rejection's reason cannot be read a cycle later with `git log --grep`, the review was theatre.
+20. **The hardware envelope binds.** Everything built here must run on **one modest, always-on consumer machine** — low-power CPU, small RAM, no GPU, ordinary home network, possibly ARM. That means: a single process (or a couple), a file-backed store, no container orchestration, no managed cloud service in the critical path, no build step that needs a beefy machine, and dependencies that install without compiling half the world. This is a constraint on every technical choice you make under rule 6, not a preference to trade away for convenience. If the feature the human asked for genuinely cannot be built inside the envelope, that is a `human-checkpoint` — you say what breaks and what it would cost, and let them decide. You never quietly reach outside it.
 
 ## Adding rules
 

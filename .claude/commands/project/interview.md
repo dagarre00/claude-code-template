@@ -1,7 +1,7 @@
 ---
 name: interview
-description: Grill-me-relentlessly Q&A to define a plan, a feature, or fill requirements. Walks down each branch of the decision tree, resolving dependencies one at a time. Always provides a recommended answer. Streams a transcript to docs/raw/interviews/ Q-by-Q and A-by-A (never batched at the end), then updates affected wiki pages.
-argument-hint: [topic — e.g. "the auth flow" | "fill requirements" | "stress-test the sync plan"]
+description: Grill-me-relentlessly Q&A over product logic and gaps — never over the stack. Walks each branch of the decision tree, resolving dependencies one at a time, always with a recommended answer. Streams a transcript to docs/raw/interviews/ Q-by-Q and A-by-A, then updates the wiki and cuts slices.
+argument-hint: [topic — e.g. "the sync logic" | "what happens on a duplicate" | "stress-test the idea"]
 type: command
 ---
 
@@ -9,49 +9,41 @@ type: command
 
 **Argument:** `$ARGUMENTS`
 
-The argument is the **scope of the interview** — the feature, area, or question to grill on (`the auth flow`, `fill non-functional requirements`, `stress-test the offline sync plan`). It becomes the scope line in step 1 and the transcript slug. If it names an entity that already has a page, read that page before framing the scope so you refine rather than restart it. If the argument is empty, infer the scope from `docs/wiki/todos.md` and `## Open questions` in `requirements.md`, then confirm it with the human before opening the transcript.
+The argument is the **scope of the interview** — the feature, area, or question to grill on. It becomes the scope line in step 1 and the transcript slug. If it names an entity that already has a page, read that page first so you refine rather than restart. If empty, infer the scope from `docs/wiki/todos.md` and `## Open questions` in `requirements.md`, then confirm with the human before opening the transcript.
 
-You are the interviewer. Your job is to grill the human until you reach shared understanding. You walk down each branch of the decision tree, resolve dependencies one-by-one, and **always provide your recommended answer** so the human can react to it instead of generating from scratch.
-
-## When to use
-
-- After `/project:init`, to fill `docs/wiki/requirements.md`.
-- When adding a new feature to a mature project.
-- When the human says "grill me" or wants to stress-test a plan.
+You are the interviewer. Your job is to find the **holes in the logic** before they become holes in the prototype: the cases the human hasn't thought about, the contradictions between two things they said, the "what happens when both of those are true at once". You always offer your recommended answer so they can react instead of generating from scratch.
 
 ## Operating rules
 
 1. **One question at a time.** Never bundle. Never multi-part.
-2. **Each question has your recommended answer.** Start with "I'd say <X>, because <reason>. Does that hold?" — never open-ended without a recommendation.
-3. **If the codebase or wiki can answer a question, read it instead of asking.** Don't waste the human's time on facts you can derive.
-4. **Resolve dependencies before broadening.** If question A determines questions B and C, finish A before opening B.
-5. **Surface contradictions.** If an answer contradicts the wiki or a prior answer, stop and flag it.
-6. **Don't stop early.** Cover users, functional behavior, non-functional constraints (perf, security, deployment), failure modes, edge cases, and out-of-scope. The human will tell you when to stop.
-7. **Stream the transcript, never batch.** The transcript file is the source of truth, not your memory. Write the question to disk **before** asking it. Write the answer to disk **immediately** after the human responds — before processing it, before deciding the next question. Treat each Q+A as committed only when it's on disk. This is the `/export` pattern, continuous: if the session ends mid-interview, what's on disk is what we have.
+2. **Each question carries your recommended answer.** "I'd say <X>, because <reason>. Does that hold?" — never open-ended.
+3. **Product only — never plumbing.** Language, framework, storage, config, ports, deployment, testing, monitoring, scaling: not their problem (behavioral rule 6). If a technical question feels necessary, it is almost always a product question in disguise — ask *that* instead. "Should uploads survive a restart?" yes; "SQLite or Postgres?" no.
+4. **Hunt gaps, don't collect wishes.** A feature list is the easy part. Spend the interview on: what happens on the empty input, the duplicate, the second user, the interrupted run, the thing arriving twice, the thing never arriving. Those are what sink prototypes.
+5. **If the wiki or the code can answer it, read it instead of asking.**
+6. **Resolve dependencies before broadening.** If A determines B and C, finish A first.
+7. **Surface contradictions immediately.** If an answer contradicts the wiki or an earlier answer, stop and put both to them.
+8. **Stream the transcript, never batch.** Write the question to disk **before** asking it; write the answer to disk **immediately** on receipt, before processing it. If the session dies mid-interview, what's on disk is what we have.
+9. **Stop when you can cut slices.** The exit condition is not "every question answered" — it's "I can write three to six demonstrable slices" (`slice-writing`). Prototypes learn the rest by running.
 
 ## Preconditions
 
-- Working tree clean (the transcript and the wiki updates both land as tracked files).
-
-If dirty: run `human-checkpoint`.
+- Working tree clean (the transcript and the wiki updates are tracked files). If dirty: `human-checkpoint`.
 
 ## Procedure
 
-1. **Frame the scope.** Take the scope from the argument above. Read `docs/wiki/requirements.md` and any existing entity pages relevant to the topic. State the scope in one line and confirm with the human. Derive the transcript slug from the argument (`the auth flow` → `auth-flow`).
+1. **Frame the scope.** Read `docs/wiki/requirements.md` and any relevant entity page. State the scope in one line, confirm it, derive the transcript slug (`the sync logic` → `sync-logic`).
 
-1a. **Branch before writing anything.** The transcript and the wiki edits are tracked files, and `develop`/`main` take no direct commits (`feature-branching`, `git-conventions.md`). Branch *before* opening the transcript — the file is written turn-by-turn, so branching afterwards would mean the first Q+A already landed on the wrong branch:
+1a. **Branch before writing anything** — the transcript is written turn-by-turn, so branching afterwards means the first Q+A already landed on the wrong branch:
 
    ```bash
-   git fetch origin develop
-   git checkout develop && git merge --ff-only origin/develop
+   git fetch origin main
+   git checkout main && git merge --ff-only origin/main
    git checkout -b docs/interview-<slug>
    ```
 
-   No remote yet (`git remote` prints nothing)? Skip the fetch/merge and branch straight off local `develop`.
+   No remote? Branch straight off local `main`. **Already on a `proto/*` branch** whose feature this refines? Stay there.
 
-   **Already on a `feat/*` or `fix/*` branch?** Stay there — an interview that refines the feature you're mid-cycle on belongs in that branch's history. Only branch when you're standing on `develop` or `main`.
-
-2. **Open the transcript file BEFORE asking anything.** Path: `docs/raw/interviews/YYYY-MM-DD-<slug>.md`. Write frontmatter plus a one-paragraph framing of the scope. The file must exist and be on disk before the first question.
+2. **Open the transcript BEFORE asking anything.** Path: `docs/raw/interviews/YYYY-MM-DD-<slug>.md`. Frontmatter plus a one-paragraph framing:
 
    ```yaml
    ---
@@ -63,58 +55,51 @@ If dirty: run `human-checkpoint`.
    ---
    ```
 
-   (`type: raw-transcript`, not `wiki-summary` — this file lives under `docs/raw/`, which is a source layer, not the wiki. A summary page, if one is later made, is a separate `wiki-summary` under `docs/wiki/summaries/`.)
+   **Raw is immutable** (behavioral rule 11) — never edit prior answers; only append.
 
-   **Raw is immutable** (see `.claude/rules/behavioral.md` #11) — never edit prior answers; only append.
+3. **Run the loop.** Per question, in order, with a disk write between each step:
 
-3. **Run the interview as an append-only loop.** For each question, follow these steps **in order**, with a disk write between every step:
+   a. **Append the question** under `## Q<n>. <topic>`, including your recommended answer and rationale. Save.
+   b. **Ask the human.** `AskUserQuestion` when there are 2–4 discrete choices; plain text otherwise.
+   c. **Append the answer verbatim** under `**A:**` immediately on receipt. Save.
+   d. **Only now** process it and pick the next question. Never modify a prior `**A:**`.
 
-   a. **Append the question to the transcript first**, under a `## Q<n>. <topic>` heading, including your recommended answer and rationale. Save. The question is now on disk.
-   b. **Ask the human.** Use `AskUserQuestion` with options when there are 2–4 discrete choices; otherwise plain text.
-   c. **Append the human's response verbatim** under `**A:**` immediately upon receipt — before doing anything else. Save. The answer is now on disk.
-   d. **Only now** process the answer and decide the next question. If the answer triggers a follow-up or a course-correction, repeat from (a) — never modify a prior `**A:**`.
+   **Topic checklist — work down it, dependencies first:**
+   - **Who operates this, and in what situation?** → `## Users`
+   - **What must it do, in priority order?** → `## User stories`, `## Functional requirements`
+   - **What must it explicitly not do?** → `## Out of scope` (the most valuable answers in a prototype)
+   - **What's the input, really?** — where it comes from, how big, how messy, how often
+   - **What's the output, and who reads it?** — the surface where the human sees it working
+   - **The gap sweep:** empty input, malformed input, duplicate, concurrent second run, interrupted halfway, dependency unavailable, ran twice by accident. For each: what *should* happen — and is it worth a slice, or does it go straight to `## Shortcuts` as "not handled"?
+   - **What state has to survive a restart?** (product question, not storage question)
+   - **How will you know it worked?** — the observable check that makes a demonstration meaningful
+   - **What's the thinnest version worth seeing run?** → S1
+   - **What would make you throw it away?** → what the prototype is actually testing
 
-   This is the same shape as a `/export`, run continuously. If the session ends mid-interview, the transcript reflects exactly the Q's asked and the A's received. Never buffer Q+A pairs in memory hoping to write them later.
+4. **Track open branches.** After each answer, note which dependent questions unblocked, and take those next.
 
-   **Topic checklist (the iteration content — work through these in roughly this order, resolving dependencies first):**
-   - **Who** uses this? (user types, contexts) → fills `## Users` and seeds `## User stories`
-   - **What** must it do? (capabilities per user, in priority order) → fills `## User stories` and `## Functional requirements`
-   - **What must it NOT do?** (explicit out-of-scope) → fills `## Out of scope`
-   - **When** does it run? (triggers, schedules, latency budgets) → fills Non-functional `Performance`
-   - **Where** does state live? (DB, files, in-memory; durability requirements) → fills `## Data` in architecture
-   - **What external services?** (APIs, queues, auth providers, infra deps) → fills `## External services` in architecture
-   - **How** does it fail? (recoverable vs not; what does the user see?) → fills Non-functional `Reliability` + entity failure Behaviors
-   - **Security, compliance, observability?** (auth model, data retention, logging requirements) → fills Non-functional `Security`, `Observability`, `Compliance / data`
-   - **What's the smallest first slice?** (MVP boundary) → shapes first todos
-   - **What's the test framework, test command, and deployment target?** → fills `## Testing strategy` and `## Deployment` in architecture
-
-4. **Track open branches.** After each answer, list the dependent questions that unblocked. Tackle them next.
-
-5. **Stop conditions.**
-   - Human says stop.
-   - All branches of the decision tree have a concrete answer.
-   - You've identified an entity-level set of Behavior cases sharp enough to write tests against (see `spec-writing` skill).
+5. **Stop conditions.** The human says stop; every branch has a concrete answer; or you can cut three to six demonstrable slices.
 
 ## After the interview
 
-1. **Ingest the transcript.** For each affected wiki page, apply the changes. Pages this often touches:
-   - `docs/wiki/requirements.md` — fill **all** sections: `## Vision`, `## Users`, `## User stories` (one story per user-capability pair, in `- As a <user type>, I want <capability>, so that <benefit>` format with Acceptance + `Maps to:` link), `## Functional requirements` (link each item to its entity page), `## Non-functional requirements` (specific numbers where known), `## Out of scope`, `## Open questions` (any unresolved items from the interview).
-   - `docs/wiki/entities/<slug>.md` — create or update, with Behavior cases.
-   - `docs/wiki/architecture.md` — fill `## Stack`, `## Layout`, `## Data` (where state lives, persistence requirements), `## External services` (third-party APIs, infra deps), `## Testing strategy` (framework, test command, fixture conventions, coverage target), `## Conventions` (naming, errors, logging, config), `## Deployment` (CI, build artifacts, release process). Leave sections as `<TBD>` only if genuinely not discussed.
-   - `docs/wiki/decisions/<slug>.md` — file an ADR per `decision-recording` skill for non-trivial choices.
-   - `docs/wiki/todos.md` — add new todos for the work the interview implies.
+1. **Ingest the transcript** into the wiki:
+   - `docs/wiki/requirements.md` — Vision, Users, User stories (with the acceptance check), Functional requirements, Out of scope, Open questions. Non-functional stays at assumed defaults unless the human gave a number.
+   - `docs/wiki/entities/<slug>.md` — create or update, with `## Slices` per `slice-writing`. Every gap the sweep found is either a slice or a declared `## Shortcuts` line — never silently dropped.
+   - `docs/wiki/architecture.md` — only if an answer changes a technical assumption you made.
+   - `docs/wiki/decisions/<slug>.md` — an ADR for a genuine product fork (`decision-recording`).
+   - `docs/wiki/todos.md` — todos for the slices the interview implies.
 
-2. **Sanity check via wiki-update skill.** Obsidian links, frontmatter, entity-page structure.
+2. **Sanity check** via `wiki-update` (links, frontmatter, page structure).
 
-3. **Log it.** Append to `docs/wiki/log.md`:
+3. **Log it:**
 
    ```markdown
    ## [YYYY-MM-DD HH:MM] interview — <slug>
 
    - Transcript: [YYYY-MM-DD-<slug>](../raw/interviews/YYYY-MM-DD-<slug>.md)
    - Updated: <pages>
-   - New todos: <count>
-   - ADRs: <count>
+   - Slices cut: <count>
+   - Gaps found: <count> (<n> slices, <n> declared shortcuts)
    ```
 
 4. **Commit and push** onto the branch from step 1a (behavioral rule 19):
@@ -125,20 +110,18 @@ If dirty: run `human-checkpoint`.
    git push -u origin "$(git branch --show-current)"
    ```
 
-   Verify with `git branch --show-current` that you are not on `develop` or `main` before committing. If you are, you skipped step 1a — branch now (the changes come along, uncommitted) and commit there.
+   Verify with `git branch --show-current` that you're not on `main`. If you are, you skipped step 1a — branch now (the changes come along) and commit there.
 
-5. **Open a PR and return to `develop`** — only if step 1a created a `docs/interview-<slug>` branch. Follow the `pr-create` skill, targeting `develop`; the body is the interview summary (scope, pages updated, new todos, ADRs) rather than Behavior cases. Then `git checkout develop`. Merging is the human's call. If you stayed on an existing `feat/*` branch, skip this — that branch's own PR carries the change.
+5. **Merge or continue.** If step 1a created a `docs/interview-<slug>` branch, offer to merge it to `main` (`feature-branching`) — an interview has nothing to demonstrate, so the human's "yes, that's the shape" is the gate. If you stayed on a `proto/*` branch, leave it there.
 
-6. **Recommend the next step.** Usually `/project:work` to pick up the first new todo.
+6. **Recommend the next step** — usually `/project:work` on the first new slice.
 
 ## Anti-patterns
 
-- **Bundled questions.** "What's the data model, the API, and the deploy target?" — split.
-- **Open-ended without a recommendation.** Always say what you'd do and ask the human to push back.
-- **Skipping non-functional questions.** Perf, security, observability, deployment — most projects skip these and pay for it later.
-- **Ingesting before the human signs off.** Confirm scope coverage with the human, then write to the wiki.
-- **Asking what you could read.** If the wiki or codebase already answers the question, read first.
-- **Batching the transcript.** Writing the full transcript at the end instead of streaming it Q-by-Q and A-by-A. The transcript must be on disk turn-by-turn — if the session ends mid-interview, every Q+A already asked must be preserved.
-- **Editing prior answers.** Raw is immutable. If you discover an error or want to refine, append a follow-up Q+A clarifying it — never modify history.
-- **Interviewing on `develop` or `main`.** The transcript is a tracked file written turn-by-turn — by the time you notice, the branch is already wrong. Branch at step 1a, before the first question.
-- **Asking without writing the Q first.** If you ask before the Q is on disk and the session ends mid-answer, you've lost the question. Always: write Q → ask → write A.
+- **Asking about the stack.** Workflow violation (behavioral rule 6). Decide it yourself.
+- **Bundled questions.** Split them.
+- **Open-ended without a recommendation.** Always say what you'd do and invite pushback.
+- **Collecting features instead of hunting gaps.** The feature list is the easy half; the edge cases are why prototypes get thrown away.
+- **Interviewing to exhaustion.** Stop when you can cut slices. The prototype answers the rest by running.
+- **Batching the transcript** or **asking before the Q is on disk.** Write Q → ask → write A.
+- **Editing prior answers.** Raw is immutable — append a clarifying follow-up instead.

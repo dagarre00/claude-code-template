@@ -1,7 +1,7 @@
 ---
 name: work
-description: Pick the top todo (or batch consecutive todos sharing context), open a feat/* branch from develop, dispatch the planner (Opus) for complex/batched work, then the developer through red→green→refactor→wiki-update, then commit, push, and (if the entity is fully done) open a PR to develop and return to develop. The core development loop.
-argument-hint: [todo, entity, or scope — e.g. "the login endpoint" | "batch the auth todos"]
+description: Pick the top todo, open a proto/* branch from main, dispatch the builder to build the slice and actually run it, verify the demonstration yourself, log, and offer the merge. The core prototyping loop.
+argument-hint: [todo, entity, or slice — e.g. "the upload page" | "S3" | "just get it starting"]
 type: command
 ---
 
@@ -11,158 +11,103 @@ type: command
 
 The argument **selects the work** and overrides the default "take the top todo" in step 1:
 
-- **Names a todo or entity** (`the login endpoint`, `entities/auth`) → work that instead of the top item. Match it against `docs/wiki/todos.md` lines and entity slugs; if nothing matches, say what you looked for and stop rather than picking something adjacent.
-- **Asks for a batch** (`batch the auth todos`, `next 3`) → batch those todos under one branch, subject to the same shared-entity/shared-context rule.
-- **Adds a constraint** (`skip the planner`, `tests only`) → honour it and note the deviation in the report.
+- **Names a todo, entity, or slice** (`the upload page`, `entities/ingest`, `S3`) → work that instead of the top item. Match it against `docs/wiki/todos.md` lines, entity slugs, and slice IDs; if nothing matches, say what you looked for and stop rather than picking something adjacent.
+- **Adds a constraint** (`ugliest possible version`, `don't touch the schema`) → honour it and note the deviation in the report.
 
-An argument never bypasses the preconditions, the Red phase, or the entity-page check — it only chooses *what* the cycle covers. If it's empty, take the top todo as usual.
+An argument never bypasses the preconditions or the demonstration. If it's empty, take the top todo.
 
-You orchestrate one TDD cycle (or a small batch). You do **not** write tests or production code directly — you dispatch the `planner` (only for complex or batched work) and then the `developer`, which commits each Behavior case as it lands. You verify their output, add the log entry, and — once the entity's Behavior cases are all complete — open a PR back to `develop`.
+You orchestrate one build cycle. You do **not** write code directly — you dispatch the `builder`, which commits and pushes each slice as it lands. You verify the demonstration is real, add the log entry, and offer the merge.
 
 ## Preconditions
 
-**Starting fresh (on `develop`):**
+**Starting fresh (on `main`):**
 
 - Clean working tree.
 - `docs/wiki/todos.md` has at least one item.
-- `docs/wiki/commands.md ## Test` is not `<TBD>`, **and the command actually runs.** Execute it once before dispatching anything. A command that errors out (framework not installed, no manifest, no test dir) is not a test command — Red would fail for the wrong reason and the whole cycle thrashes. If it doesn't run, stop and run `human-checkpoint`: the fix is `/project:init` step 5a (bootstrap a runnable test command), not improvising a skeleton mid-cycle.
+- `docs/wiki/commands.md § Run` is not `<TBD>`, **and the command actually starts the thing.** Run it once before dispatching. The exception is a brand-new prototype whose first slice *is* the run command — in that case there is nothing to check yet, and the builder records it when it lands.
 
-If any precondition fails: stop and run `human-checkpoint`.
+If a precondition fails: stop and run `human-checkpoint`.
 
-**If you are on a `feat/*` branch when `/project:work` is invoked**, check whether there is in-progress work (uncommitted changes or commits not yet pushed). If yes, continue from where you left off (step 5). If the branch is clean and fully pushed, it is a leftover from a prior cycle — run `git checkout develop` to reset to the correct starting point, then proceed from step 1.
+**If you are on a `proto/*` branch when invoked**, check for in-progress work (uncommitted changes, or slices at `[~]`). If yes, continue from step 4. If the branch is clean, demonstrated, and merged, `git checkout main` and proceed from step 1.
 
 ## Resuming an interrupted cycle
 
-The `developer` commits and pushes after each green case, so a container recycle loses at most the case in flight. Re-run `/project:work`: `git fetch origin feat/<slug>` recovers everything already pushed, and the remaining Behavior cases are still `[ ]`/`[~]` on the entity page, which is the resume point.
-
-If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-limit pause within the same container, tree intact), don't restart — re-dispatch the `developer` with the same scope; it reads the working tree and continues from where it stopped.
+The `builder` commits and pushes after each demonstrated slice, so a container recycle loses at most the slice in flight. Re-run `/project:work`: `git fetch origin proto/<slug>` recovers what was pushed, and the `[ ]`/`[~]` slices on the entity page are the resume point.
 
 ## Steps
 
-1. **Pick the work.**
-   - Read `docs/wiki/todos.md`. Take the top item — or, if the argument named a todo/entity/batch, take that instead. Skip any line tagged `[wiki]` — those belong to `/project:wiki-lint`, not here.
-   - **If the argument steers you off P0, check saturation first.** Taking the top item already drains P0, so no check is needed on the default path. But when an argument selects work outside `## Now (P0 — next)`, count the open P0 items:
+1. **Pick the work.** Read `docs/wiki/todos.md`, take the top item (or what the argument named). Skip `[wiki]` lines — those belong to `/project:wiki-lint`. Identify the matching `docs/wiki/entities/<slug>.md`. If it doesn't exist, **stop** and recommend `/project:interview` to shape the entity first.
 
-     ```bash
-     awk '/^## Now \(P0/{f=1;next} /^## /{f=0} f && /^- \[ \]/' docs/wiki/todos.md | wc -l
-     ```
-
-     At or above `P0_MAX` (10 — `docs/wiki/todos.md § P0 saturation threshold`), stop and run `human-checkpoint` before starting: name the count, the oldest P0 entries, and the work the argument asked for, and let the human confirm they want to skip a saturated P0. They may well say yes — the point is that it is their call, not a silent bypass.
-   - If the next 1–3 todos share an entity and context, propose a batch. Confirm with the human via `human-checkpoint` if batching is non-obvious.
-   - Identify the matching `docs/wiki/entities/<slug>.md`. If it doesn't exist, **stop** and recommend `/project:interview` to define the entity first.
-
-2. **Fetch and branch.** Follow `feature-branching` skill. Fetch first so the divergence check is against actual remote state, not a stale local mirror:
+2. **Branch.** Follow the `feature-branching` skill:
 
    ```bash
-   git fetch origin develop
-   git checkout develop && git merge --ff-only origin/develop
-   git checkout -b feat/<slug>
+   git fetch origin main
+   git checkout main && git merge --ff-only origin/main
+   git checkout -b proto/<slug>
    ```
 
-   If `merge --ff-only` fails (develop has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force develop.
+   If `merge --ff-only` fails, stop and use `human-checkpoint` — do not rebase or force main. No remote? Skip the fetch/merge, branch locally, and note every skipped push in the report.
 
-   **No remote yet?** `/project:init` supports finishing without one. Check with `git remote` — if it prints nothing, skip the fetch/merge and branch straight off local `develop`. Every push step in this command is then skipped and noted in the report until the human adds a remote.
+3. **Verify the slices are demonstrable.** Read the entity page's `## Slices`. Each slice this cycle covers must name the command that will demonstrate it (`slice-writing`). If a slice names no command, or the section is empty, **fix that first** — either shape it yourself with `slice-writing` if the product intent is unambiguous, or stop and recommend `/project:interview` if it isn't. Never dispatch the builder at a slice nobody can demonstrate.
 
-3. **Verify Behavior cases exist.** Read the entity page's `## Behavior` section. If any case is `[ ]` and unimplemented, that's the test target. If the section is empty or vague, **stop** — `/project:interview` or the `spec-writing` skill must define them first.
-
-4. **Plan first if the work is complex or batched.** If the todo line is tagged `[complex]`, or you are batching 2+ todos under this branch, **dispatch the `planner`** (runs on Opus) before any testing. Pass it:
-   - The entity slug(s) and the batch contents, if any.
-   - The Behavior case IDs to cover this cycle.
-   - The test command from `docs/wiki/commands.md`.
-
-   The planner writes `.claude/handoff/<slug>-plan.md` (gitignored scratch) and does nothing else — no branch, no tests, no code. **Sanity-check the plan it produces:** confirm the steps cover the listed Behavior cases and the scope hasn't drifted. If it's wrong, send it back once (a second failure means re-spec via `/project:interview`). For a single simple todo, **skip planning** — go straight to step 5.
-
-5. **Dispatch the `developer`** with this scope:
+4. **Dispatch the `builder`** with this scope:
    - The entity slug and the branch name.
-   - The Behavior case IDs to cover this cycle.
-   - The test command from `docs/wiki/commands.md`.
-   - The path to the plan at `.claude/handoff/<slug>-plan.md` **if one was written** in step 4 — the developer follows its step order unless reality forces a noted deviation.
+   - The slice IDs to cover this cycle (**one to three** — resist more; unshown work compounds).
+   - The run command from `docs/wiki/commands.md`.
+   - Any constraint from the argument.
 
-   The developer runs the loop **once per Behavior case**: Red (failing test, confirmed failing for the right reason) → Green (minimum code) → refactor → tick the case → commit → push, then the next case. It owns committing; you do not bundle its work afterwards (`docs/wiki/git-conventions.md`, Cadence).
+   The builder runs the loop **once per slice**: scope → build → run → record the real output → tick → commit → push, then the next slice. It owns committing; you do not bundle its work afterwards.
 
-6. **Verify Red, Green, and granularity yourself.** Run the full test command: the new tests exist and the whole suite is green with no regression. Then run `git log --oneline develop..HEAD` and confirm the commits are per-case, not one lump — a single commit covering several Behavior cases is a defect to send back, because it breaks bisect and inflates the review diff. If the developer's output doesn't hold up, send it back with notes (one redo; a second failure on the same mechanism is the two-strike rule — see Failure modes).
+5. **Verify the demonstrations yourself.** This is the step that makes the template trustworthy, so do it properly:
+   - Re-run the demo command for each slice the builder marked `[x]`. You should see what the entity page's `## Demonstrations` says you'll see. **If the recorded output and the real output disagree, the slice is not done** — send it back, and treat a fabricated demonstration as a hard stop (behavioral rule 3), not a redo.
+   - Run the `## Run` command once to confirm the prototype still starts.
+   - `git log --oneline main..HEAD` — one commit per slice, not one lump.
 
-7. **Wiki update check.** The developer should have updated the entity page. Confirm:
-   - Behavior cases ticked (`[~]` → `[x]`).
-   - Implementation and Tests sections reflect the current files.
-   - The todo is checked off / removed from `docs/wiki/todos.md` (shipped work lives in git history, not a separate file).
+6. **Check the wiki.** Slices ticked; `## Demonstrations` holds real commands and real output; `## Shortcuts` has a line for every fake the builder took (if the diff hardcodes something and the ledger doesn't mention it, that's a defect — send it back); `## Implementation` points at the files that exist; the todo is removed from `docs/wiki/todos.md`.
 
-7a. **Adversarial review — `[complex]` and batched cycles only.** If you dispatched the `planner` in step 4, the change is risky enough to need a second reader. Dispatch the `adversary` (Opus, fresh context) and follow the `adversarial-review` skill. Pass it **only** a commit range, the entity slug(s) and Behavior case IDs it covers, the mailbox path `.claude/handoff/<slug>-findings.md`, and the test command. **Never pass the plan file or your own reasoning** — the independence is the product.
-
-   **Scope it small — one case, or a few closely-related ones.** Reviewing a whole multi-case cycle at once is what makes these reviews run to round 5: a large diff yields many findings, the fixes enlarge it, and the next round finds more. Several small reviews beat one large one.
-
-   **Findings become todos; they are not fixed here.** Triage every finding to Filed / Fixed / Rejected-with-reason and **record each disposition in the commit that answers it** (behavioral rule 20). The default is Filed: a line in `docs/wiki/todos.md` at the priority its severity maps to. The review does not gate the cycle — a cycle with open findings still completes, because the queue owns them now.
-
-   **`critical` and `major` are the exception.** Do not fix them and do not silently file them: run one `human-checkpoint` covering all of them, with each finding's failure scenario and your recommendation, and let the human choose fix-now or queue. Approved → fix in its own commit, failing test first, then re-run the full suite. Declined or unreachable → file at P0/P1 and flag it prominently in your step 12 report.
-
-   Close the round with a `docs(<slug>): adversary round N` commit listing every finding and its disposition. Re-dispatch the adversary only if a fix actually landed, and then **over the fix commits only** — with nothing fixed there is nothing to re-review. Two rounds maximum; findings surviving round two mean the unit was too big, so split it and review the pieces.
-
-   For a single simple todo, **skip this step**; the human can run `/project:adversary` on demand.
-
-8. **Append to log.** `docs/wiki/log.md` — this is the one commit `/project:work` makes itself:
+7. **Append to log and commit.** `docs/wiki/log.md` — the one commit this command makes itself:
 
    ```markdown
    ## [YYYY-MM-DD HH:MM] work — <slug>
 
    - TODO(s): <list>
-   - Cases: B1, B2
-   - Branch: feat/<slug>
-   - Adversary: <N> findings — <Fi> filed, <Fx> fixed, <R> rejected   # omit if step 7a was skipped
+   - Slices: S1, S2 — demonstrated
+   - Not demonstrated: S3 — <blocker>   # omit if none
+   - Shortcuts declared: <count>
+   - Branch: proto/<slug>
    ```
-
-   The counts are an index, not the record. The per-finding claims and rejection reasons are in the commits themselves — `git log --grep="adversary round"`.
-
-9. **Commit the log entry and push.** The implementation is already committed and pushed, case by case, by the `developer`; the adversary dispositions likewise. All that is left is the log:
 
    ```bash
    git add docs/wiki/log.md
    git commit -m "docs(<slug>): log cycle"
-   git push -u origin feat/<slug>
+   git push -u origin proto/<slug>
    ```
 
-   Then delete the `.claude/handoff/<slug>-*.md` scratch — both files are gitignored and nothing needs saving from them. Confirm `git status --porcelain` prints nothing, and that `git log --oneline develop..HEAD` reads as a per-case sequence rather than one lump.
+   Confirm `git status --porcelain` prints nothing.
 
-10. **Check feature completion.** Re-read the entity page's `## Behavior` section.
-    - **All cases are `[x]`** → the feature is finished. Proceed to step 11.
-    - **Some cases remain `[ ]` or `[~]`** → skip to step 12 (no PR yet).
+8. **Show the human, and offer the merge.** Paste the demonstration output — the actual thing working is the report. Then ask whether it does what they wanted:
+   - **Yes** → merge to `main` per `feature-branching` ("Merging back to main") and return to `main`.
+   - **Not quite** → stay on the branch, take their correction as the next slice.
 
-11. **Create PR and return to develop.** Feature is done — open the PR immediately:
-    - Follow the `pr-create` skill to draft the body.
-    - Open the PR using `mcp__github__create_pull_request` targeting `develop`.
-    - Append the `pr — <slug>` entry to `docs/wiki/log.md` (the PR number only exists now, so it could not ship in step 9's commit), then commit and push it. Skipping this leaves the tree dirty and the next `git checkout` either drags the change along or fails:
+   Never merge without that answer; it is the only review gate this template has.
 
-      ```bash
-      git add docs/wiki/log.md
-      git commit -m "docs(<slug>): log PR #N"
-      git push
-      ```
-
-    - Tell the human: "Feature `<slug>` is complete. I've opened PR #N targeting `develop` — please review and merge when ready."
-    - Confirm the tree is clean (`git status --porcelain` prints nothing), then switch back to develop:
-
-      ```bash
-      git checkout develop
-      ```
-
-12. **Report to human.** What was done, what's next. If step 7a ran, lead with any `critical`/`major` that was filed rather than fixed — that is the one outcome the human most needs to see, and it is easy to lose among the cycle's other notes. Suggest:
-    - More todos in the same entity → keep going (run `/project:work` again from `develop` or the existing branch if still open).
-    - Cross-cutting work piling up → `/project:review` may be due.
-    - Risky next change → tag a checkpoint first (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`).
+9. **Report.** What now works (with output), what you assumed technically, what you faked, what's next. Suggest:
+   - More slices on this entity → run `/project:work` again.
+   - The shape of the thing is wrong → `/project:interview` to re-cut it.
+   - Wanting tests, review, or a spec you can defend → `/project:graduate`.
 
 ## Failure modes
 
-- **Planner can't produce a coherent plan.** The spec is too ambiguous. Stop and run `/project:interview` to refine the Behavior cases.
-- **Adversary finding survives two rounds.** Don't open a third. `human-checkpoint` with both positions stated — the author's and the reviewer's.
-- **Adversary edits, commits, or pushes.** The read-only invariant is broken and the round is void. Report it, `git diff` to see what it touched, and re-dispatch after restoring the tree.
-- **Developer can't confirm Red.** Stop. The Behavior cases or the test environment is wrong. Use `human-checkpoint`.
-- **Developer fails twice on the same mechanism.** Two-strike rule (behavioral rule 5). Tag the state (`git tag checkpoint-<stamp>`), `git reset --hard` to a known-good commit, and re-spec via `/project:interview`. For complex/batched work, re-dispatch the `planner` to overwrite the plan with a fundamentally different approach before the next `developer` attempt.
-- **Test suite has pre-existing failures.** Stop. Don't add work on top of a broken develop. Use `human-checkpoint`.
-- **Merge conflicts during branch sync.** Follow the `git-recovery` skill (Resolve merge / rebase / cherry-pick conflicts). If the conflicts are too broad or ambiguous, use `human-checkpoint` rather than guessing.
-- **Lost work after a container recycle.** Commits pushed to remote survive; only unpushed local state is gone. Check `git reflog` on the remote via `git ls-remote` — if the branch was pushed, `git fetch origin feat/<slug> && git checkout feat/<slug>` recovers it. If unpushed, re-run from the last open todo.
+- **Builder can't run the thing.** Stop. The run command or the environment is wrong — `human-checkpoint`, don't paper over it with "the code looks right".
+- **Builder reports success but the demo doesn't reproduce.** Hard stop (behavioral rule 3). Report it to the human explicitly, revert or re-open the slice, and re-dispatch only after establishing why the output didn't match.
+- **Builder fails twice on the same mechanism.** Two-strike rule (behavioral rule 5). Tag the state, then `human-checkpoint` — and offer the cruder in-envelope version as one of the options.
+- **The slice needs something outside the hardware envelope.** `human-checkpoint` per behavioral rule 20. Don't quietly add a cloud dependency.
+- **Merge conflicts.** Follow `git-recovery`. If ambiguous, `human-checkpoint`.
+- **Lost work after a container recycle.** Pushed commits survive. `git fetch origin proto/<slug> && git checkout proto/<slug>`. If it was never pushed, re-run from the last `[ ]` slice.
 
 ## What you do NOT do
 
-- **No coding directly.** You dispatch the `planner` (when needed), the `developer`, and the `adversary` (when gated). You can read files and run commands to verify; you don't write tests or production code in this command. Fixes for adversary findings are the exception you hand back to the `developer` if they are more than a line or two.
-- **No periodic review.** That's `/project:review`, dispatched separately in a worktree. The `reviewer` never runs here — the in-loop second reader is the `adversary`, which is diff-scoped and read-only (behavioral rule 12).
-- **No merging.** PR creation is automated (step 11); merging is always the human's call.
-- **No silent batching.** If you batch todos, name the batch in the commit message scope.
+- **No coding directly.** You dispatch the `builder`; you read files and run commands to verify.
+- **No accepting an unverified claim.** You re-run the demo yourself (step 5). "The builder said it works" is not verification.
+- **No tests.** This template has no suite. Wanting one is the signal to run `/project:graduate`.
+- **No merging without the human's confirmation** (step 8).
