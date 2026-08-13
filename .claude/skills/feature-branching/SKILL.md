@@ -47,7 +47,7 @@ Every command that writes tracked files branches **before its first write** (beh
 | `/project:wiki-ingest` | `docs/ingest-<slug>`               | the summary page        |
 | `/project:agent-scout` | `chore/agent-scout-<date>`         | the first skill file    |
 | `/project:wiki-lint`   | `chore/wiki-lint-<date>`           | the maintainer dispatch |
-| `/project:demo`        | none — read-only                   | —                       |
+| `/project:demo`        | `chore/demo-<date>`, only if it files todos | the todo lines |
 
 In every case the rule is the same: **branch only if you're on `main`.** Already on a `proto/*` branch whose work this belongs to → stay there.
 
