@@ -68,6 +68,12 @@ For each category below, check whether the wiki provides a positive signal. A po
 | Data processing / ETL / ML pipelines            | `data-impl`        |
 | Infrastructure / IaC (Terraform, Pulumi, k8s)   | `infra-impl`       |
 
+**UI signal → the design-system page**
+
+If any UI row above fires (frontend, mobile, or a TUI/desktop surface), check whether `docs/wiki/design-system.md` exists. If it does not, that is a wiki gap, not a skill gap — `/project:init` skips the page for headless projects, and a UI arriving later leaves nothing holding the token roles, the contrast assertions, or the a11y contract. Recommend creating it from the design-system template in the `wiki-update` skill. This is the only wiki page this command recommends; every other gap belongs to `/project:wiki-lint`.
+
+**Scope the skill against `design-system-check`, which already ships.** That skill owns the stack-agnostic half — reading token roles before writing, referencing roles instead of raw values, the raw-value sweep, verifying contrast and a11y assertions before commit. A recommended `frontend-impl` covers only what is genuinely stack-specific: this project's component file layout, its styling mechanism and how tokens are consumed through it, state management, routing, and how UI is rendered under test. Recommending a `frontend-impl` that restates the check procedure is the duplicate the "only recommend what is genuinely missing" rule forbids.
+
 **Domain signals → targeted skills**
 
 | Signal in wiki                                | Skill to recommend   |
@@ -137,6 +143,15 @@ For each agent (only if a genuine role gap exists):
 
 ---
 
+### Wiki gap (only if a UI signal fired and `design-system.md` is absent)
+
+**Page:** `docs/wiki/design-system.md`
+**Why this project:** <cite the UI surface found in architecture or entities>
+**Fill now:** <which sections the wiki already answers — intention from personas, a11y target from non-functionals>
+**Defer to interview:** <the token sections that need `/project:interview the design system`>
+
+---
+
 ### Not recommended
 
 List signal categories from Step 3 that do NOT apply to this project, with one-line reasons. Categories skipped because the argument narrowed the survey are listed separately as "out of scope this run" — never mixed in with analysed-and-rejected. This shows exactly how complete the analysis was.
@@ -166,6 +181,7 @@ After presenting the report, ask the human which recommendations to act on. For 
 
 - **Skill:** invoke the `update-toolkit` skill (Skills section) with the name, trigger description, and procedure outline from the report.
 - **Agent:** invoke the `update-toolkit` skill (Agents section) with the name, model, tools list (derive from mandate — be conservative; only grant tools the agent genuinely needs), and mandate.
+- **Design-system page:** create it from the template in the `wiki-update` skill, filling only what the wiki already answers and leaving the rest `<TBD>`. File a todo to run `/project:interview the design system`. Never invent tokens to avoid a `<TBD>` — rule 18's provenance clause applies to colour and type like anything else.
 
 Do not create anything that the human has not explicitly approved.
 

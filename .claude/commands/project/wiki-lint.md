@@ -27,11 +27,17 @@ If dirty: run `human-checkpoint`.
 
 ## Steps
 
-1. **Branch for the maintenance pass:**
+1. **Fetch and branch for the maintenance pass.** Fetch and sync `develop` first, same as every other command that branches (`feature-branching` skill) — otherwise the pass runs against a stale local mirror instead of actual remote state:
 
    ```bash
-   git checkout -b chore/wiki-lint-YYYY-MM-DD
+   git fetch origin develop
+   git checkout develop && git merge --ff-only origin/develop
+   git checkout -b chore/wiki-lint-$(date -u +%Y-%m-%d)
    ```
+
+   If `merge --ff-only` fails (develop has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force develop.
+
+   No remote yet (`git remote` prints nothing)? Skip the fetch/merge and branch off local `develop`. **Already on a `feat/*`/`fix/*` branch?** Stay there — a lint pass that supports the feature you're mid-cycle on belongs in that branch's history. Only branch when standing on `develop` or `main`.
 
    Keeps maintenance commits separate from feature work.
 
@@ -72,7 +78,7 @@ If dirty: run `human-checkpoint`.
    ```bash
    git add docs/wiki/
    git commit -m "chore(wiki): lint — <N todos processed, M orphans, K broken links>"
-   git push -u origin chore/wiki-lint-YYYY-MM-DD
+   git push -u origin "$(git branch --show-current)"
    ```
 
 7. **Report to the human.** What was processed, what remains, gaps and contradictions detected — and the maintainer's **batched clarification questions in one lot** (contradictions, gaps needing knowledge outside `docs/raw/`, ambiguous merges). The human or `/project:interview` resolves which version is correct; unresolved `contradicts` entries stay flagged until then.

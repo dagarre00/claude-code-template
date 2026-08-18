@@ -76,6 +76,7 @@ Ask only about topics that are **missing** or **partial** from the pre-interview
 8. **External services** — APIs, auth providers, infra dependencies.
 9. **Deployment** — how will this ship? (CI, target environment, release process)
 10. **Non-functional** — perf targets, security requirements, observability, compliance.
+11. **Design intention** — **ask only if the project has a UI surface** (web, mobile, desktop, TUI). Three questions, no more: what should it feel like (three adjectives), what must it never feel like, and is there an existing design system / component library to adopt. Deeper token work is not an init topic — it goes to `/project:interview the design system` once the stack is real.
 
 Open a transcript at `docs/raw/interviews/YYYY-MM-DD-init.md` **before** asking the first question (skip creating it if no questions are needed). Stream Q-by-Q and A-by-A: write the question to disk, ask, write the answer to disk on receipt — never batch. Same enforcement as `/project:interview` (see operating rule #7 in `.claude/commands/project/interview.md`).
 
@@ -107,6 +108,7 @@ Create or update these pages with **real content from the pre-scan and interview
 - `docs/wiki/gotchas.md` — create with empty headings (`## Critical`, `## Runtime`, `## Testing`, `## Tooling`) **only if missing. Never clear existing entries** — the template ships this file empty, but a re-run of `/project:init` on an established project must not wipe the traps that project has accumulated.
 - `docs/wiki/wiki-todos.md` — create empty only if missing; keep any pending lines.
 - `docs/wiki/log.md` — init entry (see step 6).
+- `docs/wiki/design-system.md` — **conditional.** Create it only if the project has a UI surface (web, mobile, desktop, TUI). Use the design-system template in the `wiki-update` skill, filled with the topic-11 answers; leave the token sections `<TBD>` and file a todo to run `/project:interview the design system`. A library, CLI, or headless service project does not get this page — do not create it "for later".
 
 Create entity pages under `docs/wiki/entities/` for each feature/module identified in the interview, with Behavior cases (see `spec-writing` skill).
 
