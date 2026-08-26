@@ -26,7 +26,7 @@ updated: 2026-08-05
   - [ ] [adversary] <one-line claim> — <severity>/<category>, F<N> of <sha>, entity <slug>
   ```
 
-  Severity sets the section it lands in: `critical` → P0, `major` → P1, `minor` → P2, `nit` → Backlog. The reasoning behind the filing is in the review's commit — `git log --grep="adversary round"`. These are ordinary todos: `/project:work` picks them up in priority order like any other.
+  Severity sets the section it lands in: `critical` → P0, `major` → P1, `minor` → P2. **`nit` findings are not filed at all** — the adversary tallies them in the round commit and they end there (`adversarial-review` § The reporting floor), because a queue that took 46 of them and acted on none was not a queue. The reasoning behind the filing is in the review's commit — `git log --grep="adversary round"`. These are ordinary todos: `/project:work` picks them up in priority order like any other.
 
 ## P0 saturation threshold
 
@@ -47,7 +47,7 @@ To change the threshold for a project, edit the number here — both call sites 
 
 ## Filed-findings backlog
 
-**`FINDINGS_MAX = 40`.** Rule 20 makes *filed* the default disposition for every `minor` and `nit` finding, so this queue grows by design — and a queue nothing drains is where findings go to be forgotten while everyone believes they were handled. Real numbers from projects running this template: 146 open `[adversary]` items after eleven days, 98 of them `minor` and 46 `nit`, with roughly one in seven ever fixed.
+**`FINDINGS_MAX = 40`.** Rule 20 makes *filed* the default disposition for every `minor` finding, so this queue grows by design — and a queue nothing drains is where findings go to be forgotten while everyone believes they were handled. Real numbers from projects running this template: 146 open `[adversary]` items after eleven days, 98 of them `minor` and 46 `nit`, with roughly one in seven ever fixed.
 
 Count with:
 
@@ -55,7 +55,7 @@ Count with:
 grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md
 ```
 
-Unlike `P0_MAX`, this is not a saturation alarm — a long `minor`/`nit` tail is normal and mostly harmless. It is a **re-triage trigger**, and exactly two things act on it:
+Unlike `P0_MAX`, this is not a saturation alarm — a long `minor` tail is normal and mostly harmless. It is a **re-triage trigger**, and exactly two things act on it:
 
 - **`/project:wiki-lint`** re-triages the whole `[adversary]` backlog on each pass: re-grade what was mis-severed, merge duplicates, close what later work already fixed. Closing a finding here needs the same one-line reason in the commit body that rejecting one needs (rule 20) — a queue pruned silently is a queue deleted.
 - **`/project:work` step 12** surfaces `/project:wiki-lint` as due once the count reaches `FINDINGS_MAX`.

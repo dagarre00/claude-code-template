@@ -53,7 +53,7 @@ If dirty: run `human-checkpoint`.
 
    `log.md` grows unboundedly; models loading it lose signal in the noise. The archive is reference-only — agents never load it by default. (Shipped work isn't tracked in a `completed.md` — git history is the record.)
 
-3. **Re-triage the filed-findings backlog.** Rule 20 files every `minor`/`nit` adversary finding as a todo and nothing else ever drains them, so this pass is their only consumer (behavioral rule 22):
+3. **Re-triage the filed-findings backlog.** Rule 20 files every `minor` adversary finding as a todo and nothing else ever drains them, so this pass is their only consumer (behavioral rule 22):
 
    ```bash
    grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md          # against FINDINGS_MAX

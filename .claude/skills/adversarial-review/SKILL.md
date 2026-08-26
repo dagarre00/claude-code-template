@@ -47,7 +47,7 @@ Runs over the commits just landed. A read-only `adversary` (Opus, fresh context)
    git commit -m "fix(<slug>): reject empty token — adversary F1"   # approved criticals/majors only
    git add docs/wiki/todos.md
    git commit -m "$(cat <<'MSG'
-   docs(<slug>): adversary round 1 — 4 findings, 1 fixed, 2 filed, 1 rejected
+   docs(<slug>): adversary round 1 — 3 findings, 1 fixed, 1 filed, 1 rejected, 2 nits
 
    F1 critical correctness — Fixed in a1b2c3d (human approved): empty token now
       rejected before lookup.
@@ -55,7 +55,7 @@ Runs over the commits just landed. A read-only `adversary` (Opus, fresh context)
       unbounded on a 5xx from the token service.
    F3 minor test-integrity — Rejected: the boundary is covered by the integration
       test in tests/integration/test_auth.py; narrowing the mock would duplicate it.
-   F4 nit other — Filed Backlog: `_tmp` is a misleading name for the parsed claims.
+   Nits: 2 (naming ×1, stale comment ×1) — not filed.
    MSG
    )"
    ```
@@ -124,8 +124,23 @@ Severity now has **procedural consequences** — it decides whether the human is
 | ---------- | ----------------------------------------------------------------------- | ---------------------------------------------------------- |
 | `critical` | Data corruption, secret exposure, or wrong result on a normal path      | **Ask the human** to fix now (`human-checkpoint`); todo only if they decline |
 | `major`    | Wrong result on an edge path, or a test that does not test its Behavior | **Ask the human** to fix now; todo only if they decline     |
-| `minor`    | Real but contained — poor error message, narrow missing validation      | Todo — never fixed in this cycle                            |
-| `nit`      | Style, naming, comment                                                  | Todo (Backlog) — never fixed in this cycle                  |
+| `minor`    | Real but contained — poor error message, narrow missing validation      | Todo — never fixed in this cycle. **One line, no failure scenario** |
+| `nit`      | Style, naming, comment                                                  | **Not itemised** — tallied at the end of the mailbox, never filed |
+
+### The reporting floor — write up what earns it
+
+The adversary sweeps all six categories at full depth. What the floor governs is how much prose each finding gets back:
+
+- **`critical`/`major`** — full write-up with a concrete failure scenario. A human is about to be interrupted to decide fix-now, and the scenario is what they decide on.
+- **`minor`** — one line: the claim and where. No scenario, no reproduction, no patch.
+- **`nit`** — not written up at all. One tallied line at the end of the mailbox (`Nits: 3 (naming ×2, stale comment ×1)`), and nothing filed.
+
+This is a cost decision made on evidence, not a lowering of standards. Across projects on this template, roughly **one filed finding in seven** was ever acted on, and `minor`+`nit` were **144 of 146** open entries. Every one of those carried a full failure scenario written for a queue that reads them at most once. The sweep is the expensive part worth paying for; persuading nobody is not.
+
+Two guards against this becoming a quality cut:
+
+- **The floor is on reporting, never on looking.** A `critical` in a category you skipped is a review that failed. Depth of sweep is unchanged.
+- **Doubt grades up, not down.** "If you are unsure between two grades, take the lower one" still holds *between `critical` and `major`*. But a finding you are unsure is a nit is a `minor` — the tally is only for things you are certain do not matter.
 
 ## Triage protocol
 
@@ -153,7 +168,7 @@ Batch the asks: one checkpoint listing every `critical`/`major` from the round, 
 | `critical` | `## Now (P0 — next)`            |
 | `major`    | `## Next (P1)`                  |
 | `minor`    | `## Later (P2)`                 |
-| `nit`      | `## Backlog`                    |
+| `nit`      | *not filed* — tallied in the round commit only |
 
 Todo line format — one per finding, so the queue is traceable back to the review:
 
