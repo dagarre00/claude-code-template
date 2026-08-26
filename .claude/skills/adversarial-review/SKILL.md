@@ -178,6 +178,7 @@ Cross-vendor independence is stronger than a second context on the same family. 
 - **Leaking author context into the dispatch.** Pasting the plan or "here's what I was going for" turns the adversary into a rubber stamp. The Behavior case IDs are the whole brief.
 - **Letting the adversary fix things.** It raises, you decide. A reviewer that edits erases both the decision and the record of it.
 - **Absorbing findings silently.** Filing three and ignoring two without a written reason is how a review becomes theatre.
+- **Filing as if it were disposal.** Filed findings have exactly one consumer — `/project:wiki-lint`'s re-triage pass (behavioral rule 22) — and it only runs if someone runs it. When your filing pushes the open `[adversary]` count to `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`), say so in the cycle report. A backlog that grows every round and drains never means the reviews are producing paperwork, not fixes.
 - **Fixing findings because they are small.** A `minor` that takes two lines is still filed. "While I'm here" is how a review becomes an unplanned refactor, and it skips the Red-first loop.
 - **Fixing a `critical` without asking.** The gate is not paperwork — it is the human's call whether the branch stops for this. Fix without approval and you have made a scheduling decision that was not yours.
 - **Inflating severity to force a fix.** Severity drives the interruption, so grading a `minor` as `major` spends the human's attention on your preference.

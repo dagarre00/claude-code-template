@@ -21,6 +21,15 @@ Stop and ask when the wiki doesn't have an answer. Don't guess. Don't silently i
 | A skill or wiki page you need doesn't exist                       | Stop. Ask before improvising; offer to create it via `update-toolkit`.                              |
 | Test command runs but produces ambiguous output                   | Stop. Show the output, ask what to interpret it as.                                                 |
 
+## When NOT to stop
+
+Measured across three projects on this template: **72–100% of checkpoints were answered by taking the agent's own `(Recommended)` option, unchanged** — 81 of 112 in one, 12 of 12 in another. A checkpoint the human always answers the same way is a notification wearing a question's clothes, and it costs the same attention as a real one. Two tests before you ask:
+
+- **Is there a genuine fork?** If you have a recommendation and the alternative is one you would argue against, that is not a decision — state what you are doing and why, in one line, and do it. Reversibility is what makes this safe: a branch, a commit, and a tick in an entity page are all cheap to undo, so proceed and let the human redirect.
+- **Does the schema already answer it?** Asking "should this go through the spec-first workflow?" or "should I write the test first?" is asking permission to skip rules 1 and 2. The answer is in `behavioral.md`; read it instead of asking.
+
+The rows in the table above stay checkpoints regardless — they are the irreversible and genuinely-forked cases, and rule 20's `critical`/`major` gate is deliberately an interruption. What this section removes is the third kind: the confirmation you already know the answer to.
+
 ## How to ask
 
 Use this structure — clear, structured, no padding:
@@ -64,6 +73,8 @@ Otherwise, post the structured ask in chat text and wait.
 ## Anti-patterns
 
 - **Asking after acting.** "I did X — is that OK?" is not a checkpoint. Stop before acting.
+- **Asking what the rules already answer.** A checkpoint is for what the wiki and `behavioral.md` don't decide. Requesting permission to skip a rule is not a checkpoint; it is the rule failing.
+- **Checkpointing a foregone conclusion.** If you would argue against every option but your recommendation, say what you're doing and proceed (see *When NOT to stop*).
 - **Open-ended questions.** "What should I do?" wastes the human's time. Present options and a recommendation.
 - **Wall-of-text context dumps.** Three bullets, then the question.
 - **Asking without the wiki-anchor.** Cite the entity / todo / requirement that prompted the ask, so the human can correct the spec if needed.

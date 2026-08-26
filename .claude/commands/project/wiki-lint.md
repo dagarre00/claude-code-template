@@ -14,6 +14,7 @@ The argument **narrows the pass** — a subtree (`entities/ only`, `summaries/`)
 You dispatch the `wiki-maintainer` agent for a full health pass. This is **periodic**, not every-cycle. Heuristics:
 
 - `docs/wiki/wiki-todos.md` has > 10 unticked entries.
+- Open `[adversary]` todos have reached `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`).
 - Last `/project:wiki-lint` was > 5 work cycles ago.
 - `/project:review` flagged drift.
 - A new batch of raw sources landed in `docs/raw/`.
@@ -52,14 +53,28 @@ If dirty: run `human-checkpoint`.
 
    `log.md` grows unboundedly; models loading it lose signal in the noise. The archive is reference-only — agents never load it by default. (Shipped work isn't tracked in a `completed.md` — git history is the record.)
 
-3. **Dispatch `wiki-maintainer`** with:
+3. **Re-triage the filed-findings backlog.** Rule 20 files every `minor`/`nit` adversary finding as a todo and nothing else ever drains them, so this pass is their only consumer (behavioral rule 22):
+
+   ```bash
+   grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md          # against FINDINGS_MAX
+   grep -n '^- \[ \] \[adversary\]' docs/wiki/todos.md | head -20   # oldest first
+   ```
+
+   Walk them oldest-first and give each one of three outcomes:
+   - **Closed** — later work already fixed it, or it duplicates another entry. Verify by reading the code, not by assuming; a duplicate merges into the entry that stays.
+   - **Re-graded** — its severity was wrong when filed. A finding that has sat through two of these passes untouched is telling you it was never a `minor`; either promote it to a priority that will actually be worked, or close it as not worth doing.
+   - **Kept** — still true, still worth doing, correctly graded.
+
+   Closing needs the same one-line reason in the commit body that rejecting a finding needs (rule 20). A backlog pruned silently is a backlog deleted, and the next adversary round re-finds every one of them.
+
+4. **Dispatch `wiki-maintainer`** with:
    - The focus from the argument, if any — and an explicit instruction to skip checks outside it.
    - The current `docs/wiki/wiki-todos.md` content.
    - The list of raw files added since the last summary in `docs/wiki/summaries/`.
    - The overflow check results from step 2 (so the maintainer knows which archival tasks apply).
    - Explicit instructions: process the queue, ingest, run the **reconciliation pass** (computable gaps: techniques without `implements`, instances without `specializes`, broken `depends_on` targets, ≥3-reference terms without a page, orphaned **content** pages only — ledgers, root spec pages and folder READMEs are navigational and exempt — asymmetric `contrasts_with`/`alternative_to`, unresolved `contradicts`), check the **lint invariants** (illegal filename characters, broken wikilinks, nested frontmatter objects, unquoted/multiple wikilinks in properties, out-of-vocabulary `type`/`abstraction`/`status`, singular `tag`/`alias` keys, claims without provenance), migrate any queued legacy pages, archive overflow, and end with a summary plus a **single batched lot of clarification questions** for the human.
 
-4. **Maintainer writes:**
+5. **Maintainer writes:**
    - Resolved `wiki-todos` lines (removed).
    - New `summaries/` pages for any ingested raw sources.
    - Updates to entity/concept/decision pages, including cross-links so new pages are reachable (no central index).
@@ -68,20 +83,20 @@ If dirty: run `human-checkpoint`.
    - Archival files under `docs/wiki/summaries/` if overflow thresholds were hit.
    - A log entry to `log.md`.
 
-5. **Review the diff** — `git diff --stat`. Sanity-check:
+6. **Review the diff** — `git diff --stat`. Sanity-check:
    - No code outside `docs/wiki/` was touched.
    - No raw files were modified.
    - No mass rewrites of entity pages (the maintainer is conservative; a 500-line entity diff is a red flag).
 
-6. **Commit and push.** Push immediately (behavioral rule 19):
+7. **Commit and push.** Push immediately (behavioral rule 19):
 
    ```bash
    git add docs/wiki/
-   git commit -m "chore(wiki): lint — <N todos processed, M orphans, K broken links>"
+   git commit -m "chore(wiki): lint — <N todos processed, M orphans, K broken links, F findings re-triaged>"
    git push -u origin "$(git branch --show-current)"
    ```
 
-7. **Report to the human.** What was processed, what remains, gaps and contradictions detected — and the maintainer's **batched clarification questions in one lot** (contradictions, gaps needing knowledge outside `docs/raw/`, ambiguous merges). The human or `/project:interview` resolves which version is correct; unresolved `contradicts` entries stay flagged until then.
+8. **Report to the human.** What was processed, what remains, gaps and contradictions detected — and the maintainer's **batched clarification questions in one lot** (contradictions, gaps needing knowledge outside `docs/raw/`, ambiguous merges). The human or `/project:interview` resolves which version is correct; unresolved `contradicts` entries stay flagged until then.
 
 ## Failure modes
 
