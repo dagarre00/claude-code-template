@@ -34,11 +34,15 @@ If any fails: run `human-checkpoint`.
 
 1. **Pin the scope.** If the argument named an area or lens, write it down in one line — that line is what you hand the reviewer in step 3. Otherwise the review is whole-repo.
 
-1a. **Branch for the report.** The report is a tracked file, and `develop`/`main` take no direct commits (`feature-branching`, `git-conventions.md`). Branch before the reviewer writes anything:
+1a. **Fetch, sync, and branch for the report.** The report is a tracked file, and `develop`/`main` take no direct commits (`feature-branching`, `git-conventions.md`). Fetch and fast-forward `develop` before the reviewer writes anything, same as every other command that branches — otherwise the review runs against a stale local mirror instead of actual remote state:
 
    ```bash
+   git fetch origin develop
+   git merge --ff-only origin/develop
    git checkout -b chore/review-$(date -u +%Y-%m-%d)
    ```
+
+   If `merge --ff-only` fails (develop has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force develop. No remote yet (`git remote` prints nothing)? Skip the fetch/merge and branch off local `develop`.
 
 2. **Create the worktree.** Outside the main checkout:
 
