@@ -23,7 +23,7 @@ You orchestrate one TDD cycle (or a small batch). You do **not** write tests or 
 
 **Starting fresh (on `develop`):**
 
-- Clean working tree.
+- **Clean working tree — and "clean" means *yours*.** Run `git status --porcelain` and account for every line. Changes you did not make are another session's live work, not stale dirt: never stash, reset, or check out over them (behavioral rule 21) — stop and run `human-checkpoint` naming the paths.
 - `docs/wiki/todos.md` has at least one item.
 - `docs/wiki/commands.md ## Test` is not `<TBD>`, **and the command actually runs.** Execute it once before dispatching anything. A command that errors out (framework not installed, no manifest, no test dir) is not a test command — Red would fail for the wrong reason and the whole cycle thrashes. If it doesn't run, stop and run `human-checkpoint`: the fix is `/project:init` step 5a (bootstrap a runnable test command), not improvising a skeleton mid-cycle.
 
@@ -40,6 +40,13 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 ## Steps
 
 1. **Pick the work.**
+   - **Fetch before you read.** `todos.md` on disk cannot know that another session merged a PR finishing the top item, so this runs before anything else in this step:
+
+     ```bash
+     git fetch origin develop
+     ```
+
+     Check the candidate against `origin/develop` rather than the local mirror: if the entity page there already has its Behavior cases ticked, or `git log origin/develop --oneline --grep='<slug>'` shows the work shipped, remove the stale line from `todos.md` and take the next one. This fetch is read-only — step 2 still does the fast-forward merge. It exists so that the pick, the spec read, and any checkpoint are not spent on work that is already done.
    - Read `docs/wiki/todos.md`. Take the top item — or, if the argument named a todo/entity/batch, take that instead. Skip any line tagged `[wiki]` — those belong to `/project:wiki-lint`, not here.
    - **If the argument steers you off P0, check saturation first.** Taking the top item already drains P0, so no check is needed on the default path. But when an argument selects work outside `## Now (P0 — next)`, count the open P0 items:
 
@@ -50,6 +57,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
      At or above `P0_MAX` (10 — `docs/wiki/todos.md § P0 saturation threshold`), stop and run `human-checkpoint` before starting: name the count, the oldest P0 entries, and the work the argument asked for, and let the human confirm they want to skip a saturated P0. They may well say yes — the point is that it is their call, not a silent bypass.
    - If the next 1–3 todos share an entity and context, propose a batch. Confirm with the human via `human-checkpoint` if batching is non-obvious.
    - Identify the matching `docs/wiki/entities/<slug>.md`. If it doesn't exist, **stop** and recommend `/project:interview` to define the entity first.
+   - **`[infra]` todos map to a concept page instead.** Deployment, CI, environment, and configuration work has no feature entity, and a loop that only accepts entity-backed todos locks it out entirely — which is how infrastructure ends up shipping outside the schema: untested, unreviewed, and unlogged. A todo tagged `[infra]` may name a `docs/wiki/concepts/<slug>.md` page, whose `## Behavior` section holds verifiable operational assertions ("a request without `X-Edge-Secret` gets 403", "CORS allows exactly these origins"). Everything else in this command is unchanged — infra work is still Red-first, still committed per case, still logged.
 
 2. **Fetch and branch.** Follow `feature-branching` skill. Fetch first so the divergence check is against actual remote state, not a stale local mirror:
 
@@ -63,7 +71,9 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 
    **No remote yet?** `/project:init` supports finishing without one. Check with `git remote` — if it prints nothing, skip the fetch/merge and branch straight off local `develop`. Every push step in this command is then skipped and noted in the report until the human adds a remote.
 
-3. **Verify Behavior cases exist.** Read the entity page's `## Behavior` section. If any case is `[ ]` and unimplemented, that's the test target. If the section is empty or vague, **stop** — `/project:interview` or the `spec-writing` skill must define them first.
+3. **Verify Behavior cases exist.** Read the `## Behavior` section of the entity page — or, for an `[infra]` todo, of the concept page named in step 1. If any case is `[ ]` and unimplemented, that's the test target. If the section is empty or vague, **stop** — `/project:interview` or the `spec-writing` skill must define them first.
+
+   **Config and deploy changes are behavior.** Middleware, an auth header, a CORS rule, a routing change — each alters what the system does with a request, so each takes a failing test first like any other case (behavioral rule 2). "It's just config" is the sentence that ships an untested authentication gate.
 
 4. **Plan first if the work is complex or batched.** If the todo line is tagged `[complex]`, or you are batching 2+ todos under this branch, **dispatch the `planner`** (runs on Opus) before any testing. Pass it:
    - The entity slug(s) and the batch contents, if any.
@@ -128,7 +138,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 
 11. **Create PR and return to develop.** Feature is done — open the PR immediately:
     - Follow the `pr-create` skill to draft the body.
-    - Open the PR using `mcp__github__create_pull_request` targeting `develop`.
+    - Open the PR targeting `develop` with `mcp__github__create_pull_request`. **If that tool is not available here** — many environments run without the GitHub MCP server — fall back to `gh pr create --base develop --title "<title>" --body-file <path>`. Don't invent a third route: if neither works, push the branch, hand the human the drafted body, and say the PR is theirs to open.
     - Append the `pr — <slug>` entry to `docs/wiki/log.md` (the PR number only exists now, so it could not ship in step 9's commit), then commit and push it. Skipping this leaves the tree dirty and the next `git checkout` either drags the change along or fails:
 
       ```bash
@@ -145,9 +155,23 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
       ```
 
 12. **Report to human.** What was done, what's next. If step 7a ran, lead with any `critical`/`major` that was filed rather than fixed — that is the one outcome the human most needs to see, and it is easy to lose among the cycle's other notes. Suggest:
+    Then run the **maintenance cadence check**. This is the only place the periodic commands are ever surfaced, so it runs even when the cycle went perfectly — especially then, because a clean cycle is exactly when nobody thinks to lint:
+
+    ```bash
+    grep -n '^## \[' docs/wiki/log.md | tail -1                     # cycles since…
+    grep -n '\] review$\|\] wiki-maintenance$' docs/wiki/log.md | tail -2   # …each last ran
+    grep -cE '^- \[ \] [0-9]{4}-' docs/wiki/wiki-todos.md            # maintainer queue depth (dated entries only — the file's own format example is not one)
+    grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md              # filed findings never triaged
+    ```
+
+    Suggest, naming the number that fired:
     - More todos in the same entity → keep going (run `/project:work` again from `develop` or the existing branch if still open).
-    - Cross-cutting work piling up → `/project:review` may be due.
+    - **`/project:review` is due** — 5+ `work` entries in `log.md` since the last `review` entry, or cross-cutting work piling up.
+    - **`/project:wiki-lint` is due** — 10+ unticked entries in `wiki-todos.md`, 5+ work cycles since the last `wiki-maintenance` entry, or the `[adversary]` count at or above `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`). Its own trigger heuristics are written inside `wiki-lint.md`, which nobody opens unless they have already decided to run it — this line is what makes them reachable.
+    - **`/project:agent-scout` is due** — you hand-rolled a multi-step procedure this cycle that no skill covers, or the stack gained a service. A gap you improvise twice is a missing skill (behavioral rule 17), and scout is what turns it into one.
     - Risky next change → tag a checkpoint first (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`).
+
+    A due command is a **recommendation, not an interruption** — say it in one line and let the human decide. But say it: an unsurfaced cadence is a dead command, and a dead `wiki-lint` is a `gotchas.md` that every future session reads and no session prunes.
 
 ## Failure modes
 
