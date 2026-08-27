@@ -46,6 +46,15 @@ You are the **compiler + librarian** of `docs/wiki/`: you compile `docs/raw/` in
    - **Orphans:** **content** pages (entities, concepts, decisions, summaries) with no inbound links → connect or queue for deletion. Operational ledgers, the root spec pages, and folder `README.md` guides are navigational and expected to have none — see `wiki-update` → "Navigational pages are exempt from the orphan rule". Reporting those as orphans on a fresh project is noise that buries the real findings.
    - **Asymmetries:** A `contrasts_with`/`alternative_to` B but B doesn't link back.
    - **Contradictions:** any unresolved `contradicts`, or two Essences asserting opposites about the same concept → decision queue (human batch).
+   - **Dangling schema references:** a `<file>.md § <Section>` citation inside `.claude/rules/behavioral.md`, `.claude/skills/`, or `.claude/commands/` whose target heading doesn't exist in `<file>.md`. Grep for the pattern:
+
+     ```bash
+     grep -rhoE '[a-z0-9_/-]+\.md § [A-Za-z0-9 -]+' .claude/rules .claude/skills .claude/commands | sort -u
+     ```
+
+     then confirm each `<file>.md` under `docs/wiki/` actually has a matching `##`/`###` heading. This is how schema commits (rules, skills, commands) drift out of sync with the living wiki pages they assume already carry a section — the same drift a project hits after merging in upstream schema updates without also picking up the wiki-side content those updates assume. Missing → add a minimal stub heading (`_(stub — populate per <citing file>)_`), never invented prose; log it in `wiki-todos.md` if it needs human content rather than boilerplate.
+
+
 
    Example Dataview view (Bases equivalent: filter `abstraction is technique` and `implements is empty`):
 
@@ -92,7 +101,7 @@ Return: (a) pages created/updated/merged/migrated, (b) the **batched clarificati
 ## [YYYY-MM-DD HH:MM] wiki-maintenance
 
 - Ingested: <list>
-- Reconciliation: <N gaps (by type), M contradictions>
+- Reconciliation: <N gaps (by type), M contradictions, K dangling schema refs>
 - Lint: <N orphans, M broken links, K stale claims, J invariant violations>
 - Migrated: <pages>
 - Wiki-todos processed: <N>
