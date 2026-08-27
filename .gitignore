@@ -19,6 +19,9 @@ Thumbs.db
 # untracked. See docs/wiki/gotchas.md § Tooling. One file per slug, no suffixes.
 .claude/handoff/*-plan.md
 .claude/handoff/*-findings.md
+# The handoff brief (`llm-handoff` skill) is scratch too: it is a prompt for an
+# external agent, not repo content, and that agent deletes it when its cycle ends.
+.claude/handoff/*-handoff.md
 
 # Obsidian per-user vault config (users open the vault themselves)
 docs/.obsidian/

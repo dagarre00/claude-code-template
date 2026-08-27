@@ -23,3 +23,4 @@ updated: 2026-07-21
 ## Pending
 
 *(Empty.)*
+- [ ] 2026-08-27 [wiki] Reconcile the findings-mailbox lifecycle: `.gitignore` says the mailbox is promoted to `docs/wiki/reviews/<date>-<slug>.md` and must never be deleted unpromoted, while behavioral rule 20 and `adversarial-review` step 9 say the record is the commit body and the mailbox is deleted. One of the two is stale.
