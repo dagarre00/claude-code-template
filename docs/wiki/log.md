@@ -26,3 +26,22 @@ updated: 2026-08-05
   definition-of-done checklist. The external agent deletes it and reports back.
 - `.gitignore`: `.claude/handoff/*-handoff.md` joins the scratch globs.
 - `CLAUDE.md`: slash-command table row and skill-catalog entry.
+
+## [2026-08-27 21:19] wiki-maintenance — findings-mailbox lifecycle
+
+- Drained `wiki-todos.md`: the one open item was the `.gitignore` / rule 20
+  contradiction over the findings mailbox. Resolved in favour of rule 20.
+- The `.gitignore` comment was the stale side: it claimed the mailbox is
+  promoted to `docs/wiki/reviews/<date>-<slug>.md` and must never be deleted
+  unpromoted, citing `adversarial-review` step 8. But step 8 is the stop
+  condition and says nothing about promotion; step 9 says delete. The
+  `docs/wiki/reviews/` directory does not exist and is referenced nowhere
+  else. Rule 20, `adversarial-review` step 9, and `/project:work` step 9 all
+  agree the record is the commit body.
+- Rewrote the comment to match, folded the `*-handoff.md` glob into the same
+  block, and corrected the suffix caveat to cover all three globs.
+- Verified the globs functionally with `git check-ignore`, including the
+  documented case that a suffixed variant (`*-plan-v2.md`) is NOT ignored.
+- Scanned the repo for sibling defects — dangling path references and broken
+  wikilinks. No genuine ones: the remaining hits are templated paths, the
+  conditional `design-system.md`, and fenced/backticked examples.

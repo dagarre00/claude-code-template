@@ -8,19 +8,23 @@ Thumbs.db
 
 # Handoff scratch — the cycle's working surface, deleted when the cycle ends.
 #
-# Both files are transient, but only one leaves a record. The plan is simply
-# discarded. The findings mailbox is **promoted** at commit time into
-# `docs/wiki/reviews/<date>-<slug>.md`, which is the tracked, date-keyed home
-# of the dispositions behavioral rule 20 requires. Never delete a mailbox
-# without promoting it first — see the `adversarial-review` skill, step 8.
+# All three files are transient and none of them is a record. The plan is
+# discarded; the findings mailbox is a triage scratchpad, deleted once every
+# finding's disposition is written into the body of the commit that answers it
+# (behavioral rule 20, `adversarial-review` step 9). Git history is already
+# tracked, dated, and immutable, so the dispositions need no file of their own —
+# `git log --grep="adversary round"` reads them back. Do not add a tracked
+# review report here; that is `/project:review`'s artifact, not this one's.
 #
-# Note these globs match only names ending exactly in `-plan.md` / `-findings.md`;
+# Note these globs match only names ending exactly in `-plan.md` / `-findings.md` /
+# `-handoff.md`;
 # a suffixed variant (`auth-plan-v2.md`) is NOT ignored and will surface as
 # untracked. See docs/wiki/gotchas.md § Tooling. One file per slug, no suffixes.
+#
+# The third file is the handoff brief (`llm-handoff` skill): a prompt for an
+# external agent, not repo content. That agent deletes it when its cycle ends.
 .claude/handoff/*-plan.md
 .claude/handoff/*-findings.md
-# The handoff brief (`llm-handoff` skill) is scratch too: it is a prompt for an
-# external agent, not repo content, and that agent deletes it when its cycle ends.
 .claude/handoff/*-handoff.md
 
 # Obsidian per-user vault config (users open the vault themselves)
