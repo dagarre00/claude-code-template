@@ -47,7 +47,7 @@ Any failure → `human-checkpoint`.
 
 5. **Read it back as the reader would**, with no context (skill step 8). This is the step that decides whether the handoff works, and it is the one worth spending time on.
 
-6. **Hand it to the human.** Give the path, and say plainly: paste the contents as the external agent's entire opening prompt, in a checkout of this repo. It will branch `feat/<slug>`, work test-first, commit per case, push, open a PR against `develop`, delete the brief, and report back. It will not merge.
+6. **Hand it to the human.** Give the path, and say plainly: paste the contents as the external agent's entire opening prompt, in a checkout of this repo. It will cut its own git worktree (so the main checkout is never disturbed), work test-first on `feat/<slug>`, commit per case, push, sync by merging rather than rebasing, open a PR against `develop`, delete the brief, tear the worktree down, and report back. It never force-pushes and it does not merge.
 
 7. **Log, commit, push** — the `handoff` entry in `docs/wiki/log.md`, per the skill.
 
@@ -63,6 +63,6 @@ Any failure → `human-checkpoint`.
 ## What you do NOT do
 
 - **No implementation.** No tests, no production code, no dispatching the `developer`. This command's whole output is one file and a log entry.
-- **No branching on the external agent's behalf.** `feat/<slug>` is theirs to cut; creating it here just leaves an empty branch when the handoff is never used.
+- **No branching or worktree creation on the external agent's behalf.** `feat/<slug>` and the worktree are theirs to cut; creating either here just leaves debris when the handoff is never used.
 - **No merging, ever** — and the brief says the same to them.
 - **No fixing what comes back.** Gaps in the returned work are PR feedback (skill § When the work comes back). A recurring gap is a `TEMPLATE.md` bug.
