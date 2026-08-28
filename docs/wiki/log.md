@@ -63,3 +63,13 @@ updated: 2026-08-05
   installs dependencies there, then verifies with `git check-ignore` — a
   smoke test caught that the ignore rule only applies if the branch cut from
   carries it, so the brief is moved out rather than committed if it does not.
+
+## [2026-08-28 04:32] pr — llm-handoff worktrees
+
+- Branch: claude/llm-handoff-file-instructions-jccasa
+- PR: https://github.com/dagarre00/claude-code-template/pull/36
+- PR #34 merged the branch's first two commits to `main` (reconciled into
+  `develop` as 03ded64). The worktree / no-force-push commit landed after that
+  merge, so it needed a new PR — a merged PR cannot track follow-up work.
+- Brought the branch current by merging `develop` in (not rebasing), so no
+  history was rewritten and no force-push was needed.
