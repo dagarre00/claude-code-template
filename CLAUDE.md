@@ -72,6 +72,7 @@ The wiki follows the **Obsidian LLM-wiki standard**. The full standard — templ
 | `/project:wiki-lint`   | Wiki health check: reconciliation, lint invariants, orphans, broken links, drift; archives `log.md` when it overflows                | Subtree or single check to focus on                 |
 | `/project:wiki-ingest` | Ingest a file or research topic into the wiki (`spec.pdf`, or `search for ...`)                                                      | The file path or research query (**required**)      |
 | `/project:agent-scout` | Post-init survey: recommends agents and skills tailored to this project's stack, domain, and services                                | Signal category, feature, or output filter          |
+| `/project:handoff`     | Package a todo as a self-contained brief for an external (non-Claude) LLM agent — spec, conventions and procedure in one file it can run from alone | Which todo/entity to delegate, or a batch           |
 
 Routine git operations (checkpoint tag, reset, status/log) use plain git, not bespoke commands.
 
@@ -94,6 +95,6 @@ There is intentionally no domain-specialized agent (no "backend agent"). Domain 
 
 **Meta skill** — evolves the agent's own toolkit: `update-toolkit` (agents, skills, commands).
 
-**Core process skills:** `tdd-loop`, `plan-writing`, `adversarial-review`, `wiki-update`, `feature-branching`, `pr-create`, `human-checkpoint`, `spec-writing`, `decision-recording`, `gotcha-recording`, `design-system-check` (UI changes vs `design-system.md`), `git-recovery` (git edge cases + conflict resolution).
+**Core process skills:** `tdd-loop`, `plan-writing`, `adversarial-review`, `wiki-update`, `feature-branching`, `pr-create`, `human-checkpoint`, `spec-writing`, `decision-recording`, `gotcha-recording`, `design-system-check` (UI changes vs `design-system.md`), `git-recovery` (git edge cases + conflict resolution), `llm-handoff` (packaging a todo for an outside agent).
 
 Stack-specific skills (`backend-impl`, `database-impl`, `frontend-impl`, …) are not shipped by default. `/project:interview` and `/project:agent-scout` add them once the stack is known. `design-system-check` is not one of them — it is stack-agnostic project procedure, and says nothing about any framework.
