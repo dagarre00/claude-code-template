@@ -17,8 +17,8 @@ hole the external agent will fill by guessing.
 
 You are an autonomous software agent. **This file is your complete brief.** There is no other prompt, no chat history, and no one to ask for the parts that seem missing — everything you need to do the job correctly is written below, including the project's rules, spec, conventions, and commands. Read all of it before you touch anything.
 
-- You are working in a checkout of this project's git repository. The paths below are relative to the repository root.
-- If this file is not on disk in your checkout, write its full contents to `{{HANDOFF_PATH}}` before you begin. Sub-agents you dispatch read it from there. It is excluded from version control, so it will never appear in a commit.
+- You are working in a checkout of this project's git repository. **You will not work in that checkout directly** — Step 2 creates a dedicated git worktree and everything after it happens there, so another session using the main checkout is never disturbed by you. Paths below are relative to the worktree root once it exists.
+- If this file is not on disk, write its full contents to `{{HANDOFF_PATH}}` before you begin, and copy it into the worktree in Step 2. Sub-agents you dispatch read it from there. It is excluded from version control, so it never appears in a commit and never dirties the tree.
 - **You delete this file at the end of the cycle** (§5, Step 8). That deletion is part of the job, not a courtesy.
 - You may dispatch sub-agents. §8 contains the exact briefs to give them — use them verbatim.
 - These instructions assume nothing about which model or vendor you are. Use whatever tools, sub-agents, and framework you have.
@@ -60,7 +60,7 @@ These are project law, derived from real failures. They override your default in
 11. **A reviewer never fixes what it finds.** The review sub-agent in §8.1 is read-only: it produces findings, it does not edit, commit, push, or reset. You triage; it reports. If it edits anything, the round is void — restore the tree and re-run it.
 12. **Every finding gets a written disposition.** Fixed, Filed, or Rejected-with-a-reason. Silence is not a disposition and "unlikely" is not a reason. The dispositions go in commit messages (§5, Step 5).
 13. **Never edit anything under `docs/raw/`.** Those files are immutable source material. Append-only, and not by you.
-14. **Never commit to `{{BASE_BRANCH}}` or `main`, and never force-push either.** All work lands on `{{BRANCH_NAME}}`.
+14. **Never commit to `{{BASE_BRANCH}}` or `main`, and never force-push anything** — not `--force`, not `--force-with-lease`, not even your own branch. All work lands on `{{BRANCH_NAME}}`, and Step 7 syncs by merging, which never rewrites published history. If you think you need a force-push, you have gone off the procedure: stop and ask (§9).
 15. **A dirty tree you did not dirty belongs to someone else.** Before any destructive git operation, run `git status --porcelain` and account for every line. If a path is not one you touched, it is evidence, not dirt — stop and ask (§9). Never `stash`, `reset --hard`, `checkout --`, or `clean` over changes whose author you cannot name.
 16. **Push every commit.** An unpushed commit is lost work — execution containers get recycled. `git push -u origin {{BRANCH_NAME}}` after each one.
 17. **Delete this file when you are done** (§5, Step 8) and tell the user you have finished (§10).
@@ -128,22 +128,40 @@ If behavior genuinely changed and a shipped (`[x]`) case is now wrong, do not ed
 ### Step 1 — Preflight
 
 ```bash
-git status --porcelain          # must be empty; if not, see rule 15
 git fetch origin {{BASE_BRANCH}}
+git log --oneline -1 origin/{{BASE_BRANCH}}
 ```
 
-Then run the test command from §3.5 and confirm the suite is green. Read §3.4 (gotchas) now, not after you get stuck.
+Read §3.4 (gotchas) now, not after you get stuck.
 
-Stop and ask (§9) if: the tree is dirty with changes you did not make, the test command does not run, or the suite has pre-existing failures.
+You do **not** need the main checkout to be clean, and you must not tidy it: your work happens in a worktree cut straight from `origin/{{BASE_BRANCH}}`, so whatever state that checkout is in is somebody else's business (rule 15). If the fetch fails, stop and ask (§9).
 
-### Step 2 — Branch
+### Step 2 — Create your worktree
+
+A worktree is a second working directory backed by the same repository — same branches, same remotes, same object store, but its own checked-out files. Working in one means you never touch the main checkout.
 
 ```bash
-git checkout {{BASE_BRANCH}} && git merge --ff-only origin/{{BASE_BRANCH}}
-git checkout -b {{BRANCH_NAME}}
+git worktree add {{WORKTREE_PATH}} -b {{BRANCH_NAME}} origin/{{BASE_BRANCH}}
+cd {{WORKTREE_PATH}}
 ```
 
-If `merge --ff-only` fails, the base branch has diverged in a way that needs a human — stop and ask. Do not rebase or force the base branch.
+Everything from here on runs **inside `{{WORKTREE_PATH}}`**. Two things do not come across, because git does not copy ignored files into a new worktree:
+
+```bash
+mkdir -p .claude/handoff
+cp <path to this brief in the main checkout> {{HANDOFF_PATH}}   # so sub-agents can read it
+{{INSTALL_CMD}}                                                 # dependencies are ignored too
+```
+
+Then confirm the brief is actually ignored here, rather than assuming it:
+
+```bash
+git check-ignore -v {{HANDOFF_PATH}} && git status --porcelain
+```
+
+`.gitignore` is tracked, so it normally applies in the worktree exactly as in the main checkout — but only if the branch you cut from carries the rule. If `check-ignore` finds no match, or `git status` shows the brief as untracked, **do not commit it and do not add an ignore rule for it**: move the brief back out of the worktree, keep it wherever you can read it from, and pass its absolute path to sub-agents instead. An untracked brief left in place will fail the clean-tree check in Step 8 and get committed by accident.
+
+Now run the test command from §3.5 and confirm the suite is green **before you change anything**. If it does not run, or there are pre-existing failures, stop and ask (§9) — do not build on a broken suite.
 
 ### Step 3 — The loop, once per Behavior case
 
@@ -255,12 +273,12 @@ git push
 
 ```bash
 git fetch origin {{BASE_BRANCH}}
-git rebase origin/{{BASE_BRANCH}}          # resolve conflicts if any; ask if they are ambiguous
-{{TEST_CMD}}                               # the rebase can break things — re-verify
-git push --force-with-lease origin {{BRANCH_NAME}}
+git merge origin/{{BASE_BRANCH}}     # resolve conflicts if any; ask if they are ambiguous
+{{TEST_CMD}}                         # the merge can bring in breakage — re-verify
+git push origin {{BRANCH_NAME}}
 ```
 
-`--force-with-lease` is the only acceptable force-push, and only on your own branch. Never bare `--force`. Never either on `{{BASE_BRANCH}}` or `main`.
+Merge the base branch in; do **not** rebase. A merge commit leaves every published commit untouched, so this push is an ordinary fast-forward and no force-push is ever needed. Rebasing would rewrite commits you have already pushed and invalidate anyone else's checkout of this branch.
 
 Then open a pull request from `{{BRANCH_NAME}}` targeting **`{{BASE_BRANCH}}`**, using the body format in §7.6. Title in the same conventional-commit form as your lead commit.
 
@@ -289,7 +307,16 @@ If you have no way to open a pull request from your environment, push the branch
 
 3. Delete any other scratch you created under `.claude/handoff/`.
 
-4. **Tell the user you have finished**, using the report format in §10. This is the last thing you do.
+4. **Remove your worktree.** Everything is pushed, so the directory is disposable:
+
+   ```bash
+   cd <the main checkout>
+   git worktree remove {{WORKTREE_PATH}}
+   ```
+
+   If git refuses with *"contains modified or untracked files"*, **do not pass `--force`.** That message means something is in there that is not in a commit — build artifacts and installed dependencies usually, but possibly work you did not push. Say so in your report and leave the directory for the user to inspect and delete. A forced removal that quietly discards real work is not cleanup.
+
+5. **Tell the user you have finished**, using the report format in §10. This is the last thing you do.
 
 ## 6. Git conventions
 
@@ -318,9 +345,11 @@ If you have no way to open a pull request from your environment, push the branch
 
 **Staging** — always by explicit path. Never `git add -A`, never `git commit -a`, never `git add -p` (interactive mode hangs when there is no human at the prompt).
 
-**Force-push** — `--force-with-lease` only, on your own branch only, and only after a rebase. It fails safely if the remote moved.
+**Force-push** — never, in any form, on any branch. The sync in Step 7 is a merge, so published history is never rewritten and an ordinary push always suffices. If you reach a state where a force-push looks necessary, stop and ask (§9) rather than reaching for it.
 
-**History** — do not squash locally. The red-green-refactor sequence is the evidence the loop was actually run.
+**Worktrees** — you work in one (Step 2). It shares the repository's branches, remotes, and objects with the main checkout, so a commit or push from inside it is visible everywhere immediately. Two consequences: a branch checked out in one worktree cannot be checked out in another, and ignored files (dependencies, this brief) exist per-directory and are not carried across.
+
+**History** — do not squash locally, and do not rebase. The red-green-refactor sequence is the evidence the loop was actually run.
 
 **Merge conflicts** — resolve the markers, then grep the tree for leftover `<<<<<<<`, `=======`, `>>>>>>>` before continuing. Run the full suite after resolving. If both sides changed the same logic and picking either loses behavior, stop and ask (§9).
 
@@ -406,7 +435,7 @@ Link the entity **page** and list the case IDs as plain text. Behavior cases are
 
 ### 8.1 The reviewer — use this text verbatim
 
-Dispatch a fresh sub-agent with no prior context. Give it read access to the repository and the ability to run the test command. Give it this brief and nothing else:
+Dispatch a fresh sub-agent with no prior context. Point it at your worktree (`{{WORKTREE_PATH}}`) as its working directory, give it read access there and the ability to run the test command, and give it this brief and nothing else:
 
 > You are a read-only adversarial reviewer. You review and report; you never edit files, commit, push, or reset the tree. Doing so voids the review.
 >
@@ -551,6 +580,9 @@ Each of these has actually happened on this project.
 - **Fixing a `critical` without asking.** That is a scheduling decision, and it is not yours.
 - **Absorbing findings silently.** Filing three and ignoring two with no written reason makes the whole review theatre.
 - **Re-reviewing the whole diff each round.** The fixes made it bigger, so round two finds new surface and you never converge.
+- **Working in the main checkout instead of your worktree.** The whole point of Step 2 is that another session may have that checkout open on another branch. Changing what it has checked out under it is the rudest thing you can do here.
+- **Rebasing to get a tidy history, then force-pushing.** It rewrites commits you already published and breaks every other checkout of the branch. Merge instead (Step 7).
+- **Forcing the worktree removal.** `--force` on a refusal discards whatever was uncommitted in there, which is the one case where the refusal was worth reading.
 - **A separate "update docs" commit at the end.** Wiki edits ride with the code (rule 6).
 - **Leaving a ticked-off todo in `todos.md`.** Closed items are removed; git history is the record.
 - **Inventing wiki content to fill a gap.** `open_questions`, or ask.
@@ -570,8 +602,10 @@ Every line must be true before you write your report.
 - [ ] Every `critical`/`major` finding went to the user before anything was done about it.
 - [ ] Closed todos removed from `docs/wiki/todos.md`; filed findings added.
 - [ ] `docs/wiki/log.md` has the `work` entry, and the `pr` entry if a pull request was opened.
-- [ ] Branch rebased on `{{BASE_BRANCH}}`, tests re-run after the rebase, and pushed.
+- [ ] `{{BASE_BRANCH}}` merged into the branch, tests re-run after the merge, and pushed.
 - [ ] Pull request open against `{{BASE_BRANCH}}` and **not merged**.
+- [ ] No force-push was used at any point.
 - [ ] `git status --porcelain` prints nothing.
 - [ ] `{{HANDOFF_PATH}}` is deleted, along with any other scratch under `.claude/handoff/`.
+- [ ] The worktree is removed — or, if git refused without `--force`, it is left in place and your report says why.
 - [ ] The user has been told, in the format at §10.

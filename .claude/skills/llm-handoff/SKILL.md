@@ -47,6 +47,7 @@ So: when you are unsure whether something belongs in the file, it belongs in the
    | `{{RELATED_WIKI_EXCERPTS}}` | Concept pages, ADRs, and design-system rows the work depends on. Paste the relevant sections |
    | `{{PLAN_SECTION}}` | For `[complex]`/batched work only — see step 5. Otherwise delete the line |
    | `{{BASE_BRANCH}}` `{{BRANCH_NAME}}` `{{HANDOFF_PATH}}` | `develop`, `feat/<slug>`, `.claude/handoff/<slug>-handoff.md` |
+   | `{{WORKTREE_PATH}}` | Where the agent's worktree goes — `../<slug>` unless the human wants it elsewhere. Must be outside the repo directory, not a path inside it |
 
 4. **Resolve the wikilinks you inline.** `[[entities/auth]]` means nothing to a reader who cannot browse the vault. Either paste the target's relevant section too, or rewrite the link as plain prose naming the file path. A dangling wikilink in a handoff file is a dead end, not a link.
 
@@ -78,7 +79,9 @@ So: when you are unsure whether something belongs in the file, it belongs in the
    - Does the file say what to do when something goes wrong, not only when it goes right?
    - Would I know, at the end, exactly what "done" means? (§12 is that answer — check it matches the actual scope.)
 
-9. **Hand it over.** Give the human the path and tell them how it is meant to be used: paste the file's contents as the external agent's entire opening prompt, in a checkout of this repo. Mention explicitly that the agent will open a PR against `develop` and will not merge it.
+9. **Hand it over.** Give the human the path and tell them how it is meant to be used: paste the file's contents as the external agent's entire opening prompt, in a checkout of this repo. Say what it will do, so none of it is a surprise: it creates its own git worktree at `{{WORKTREE_PATH}}` rather than working in the main checkout, syncs by merging (it never force-pushes), opens a PR against `develop`, and does not merge it.
+
+   The worktree is why this is safe to run against a checkout someone else is using — the external agent never changes the branch that checkout has open. Two consequences worth passing on: the agent must copy the brief and install dependencies into the worktree itself, because git does not carry ignored files across; and if it cannot remove the worktree cleanly at the end, it is instructed to leave the directory rather than force it, so the human may find one to delete.
 
 10. **Log it, commit, push.** The handoff file is gitignored, so the tracked change is the log entry:
 
@@ -106,6 +109,8 @@ The external agent's cycle ends with a PR and a report. Yours ends with checking
 - **The wiki shipped with the code.** Behavior cases `[x]`, `## Implementation` and `## Tests` accurate, closed todos removed, `log.md` entries present.
 - **The findings have dispositions.** `git log --grep="review round"` on the branch. Every finding, filed ones included.
 - **The handoff file is gone**, and no scratch is left under `.claude/handoff/`.
+- **No history was rewritten.** `git log --oneline` on the branch should show a merge of `develop` rather than a rebase, and no commit should have been replaced. A force-push is a procedure violation here, not a style choice.
+- **The worktree is gone**, or the report says why it could not be removed. `git worktree list` in the main checkout tells you; `git worktree prune` clears a stale entry if the directory was deleted by hand.
 
 Anything missing is PR feedback, not something you fix yourself — the same rule that keeps a reviewer from fixing what it finds. If the same gap shows up across two handoffs, the template is what is wrong: fix `TEMPLATE.md`, not the individual file.
 

@@ -49,3 +49,27 @@ updated: 2026-08-05
 - Scanned the repo for sibling defects — dangling path references and broken
   wikilinks. No genuine ones: the remaining hits are templated paths, the
   conditional `design-system.md`, and fenced/backticked examples.
+
+## [2026-08-28 04:18] chore — llm-handoff worktrees, no force-push
+
+- The external agent now works in its own git worktree (§5 Step 2) instead of
+  the main checkout, so a session already using that checkout is never
+  disturbed. Teardown in Step 8; `git worktree remove` is never forced.
+- Removed the only force flag the brief carried: Step 7 synced with
+  `git rebase` + `git push --force-with-lease`, and now merges the base branch
+  in and pushes normally. Rule 14 and the § 6 policy became a flat prohibition.
+- Handoff brief stays gitignored (`.claude/handoff/*-handoff.md`). Git does not
+  carry ignored files into a new worktree, so Step 2 copies the brief in and
+  installs dependencies there, then verifies with `git check-ignore` — a
+  smoke test caught that the ignore rule only applies if the branch cut from
+  carries it, so the brief is moved out rather than committed if it does not.
+
+## [2026-08-28 04:32] pr — llm-handoff worktrees
+
+- Branch: claude/llm-handoff-file-instructions-jccasa
+- PR: https://github.com/dagarre00/claude-code-template/pull/36
+- PR #34 merged the branch's first two commits to `main` (reconciled into
+  `develop` as 03ded64). The worktree / no-force-push commit landed after that
+  merge, so it needed a new PR — a merged PR cannot track follow-up work.
+- Brought the branch current by merging `develop` in (not rebasing), so no
+  history was rewritten and no force-push was needed.
