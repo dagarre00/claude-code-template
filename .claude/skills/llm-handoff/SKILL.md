@@ -46,7 +46,7 @@ So: when you are unsure whether something belongs in the file, it belongs in the
    | `{{INSTALL_CMD}}` `{{TEST_CMD}}` `{{LINT_CMD}}` `{{FORMAT_CMD}}` `{{BUILD_CMD}}` | `docs/wiki/commands.md`, verbatim. `{{TEST_CMD}}` appears three times in the template — replace all of them |
    | `{{RELATED_WIKI_EXCERPTS}}` | Concept pages, ADRs, and design-system rows the work depends on. Paste the relevant sections |
    | `{{PLAN_SECTION}}` | For `[complex]`/batched work only — see step 5. Otherwise delete the line |
-   | `{{BASE_BRANCH}}` `{{BRANCH_NAME}}` `{{HANDOFF_PATH}}` | `develop`, `feat/<slug>`, `.claude/handoff/<slug>-handoff.md` |
+   | `{{CUT_FROM_BRANCH}}` `{{BASE_BRANCH}}` `{{BRANCH_NAME}}` `{{HANDOFF_PATH}}` | Normally `develop`, `develop`, `feat/<slug>`, `.claude/handoff/<slug>-handoff.md` — `{{CUT_FROM_BRANCH}}` is what you branch from and merge back in to stay synced; `{{BASE_BRANCH}}` is what the PR targets. For a **stacked cycle** (this todo continues an earlier, not-yet-merged cycle's branch) they diverge: set `{{CUT_FROM_BRANCH}}` to that earlier feature branch, and `{{BASE_BRANCH}}` to wherever this cycle's PR should land — usually that same earlier branch, unless the plan says this cycle lands independently on `develop` |
    | `{{WORKTREE_PATH}}` | Where the agent's worktree goes — `../<slug>` unless the human wants it elsewhere. Must be outside the repo directory, not a path inside it |
 
 4. **Resolve the wikilinks you inline.** `[[entities/auth]]` means nothing to a reader who cannot browse the vault. Either paste the target's relevant section too, or rewrite the link as plain prose naming the file path. A dangling wikilink in a handoff file is a dead end, not a link.
@@ -79,7 +79,7 @@ So: when you are unsure whether something belongs in the file, it belongs in the
    - Does the file say what to do when something goes wrong, not only when it goes right?
    - Would I know, at the end, exactly what "done" means? (§12 is that answer — check it matches the actual scope.)
 
-9. **Hand it over.** Give the human the path and tell them how it is meant to be used: paste the file's contents as the external agent's entire opening prompt, in a checkout of this repo. Say what it will do, so none of it is a surprise: it creates its own git worktree at `{{WORKTREE_PATH}}` rather than working in the main checkout, syncs by merging (it never force-pushes), opens a PR against `develop`, and does not merge it.
+9. **Hand it over.** Give the human the path and tell them how it is meant to be used: paste the file's contents as the external agent's entire opening prompt, in a checkout of this repo. Say what it will do, so none of it is a surprise: it creates its own git worktree at `{{WORKTREE_PATH}}` cut from `{{CUT_FROM_BRANCH}}` rather than working in the main checkout, syncs by merging `{{CUT_FROM_BRANCH}}` back in (it never force-pushes), opens a PR against `{{BASE_BRANCH}}`, and does not merge it. On a stacked cycle, flag explicitly that `{{CUT_FROM_BRANCH}}` and `{{BASE_BRANCH}}` are not the same branch, since that is easy to miss on a skim.
 
    The worktree is why this is safe to run against a checkout someone else is using — the external agent never changes the branch that checkout has open. Two consequences worth passing on: the agent must copy the brief and install dependencies into the worktree itself, because git does not carry ignored files across; and if it cannot remove the worktree cleanly at the end, it is instructed to leave the directory rather than force it, so the human may find one to delete.
 
@@ -106,8 +106,8 @@ The external agent's cycle ends with a PR and a report. Yours ends with checking
 
 - **The commits are per-case.** `git log --oneline develop..feat/<slug>`. One lump means the loop was not run as specified — say so on the PR.
 - **Red actually happened.** Each case's test should be in the same commit as its implementation, and the test should be one that could only pass with that implementation. A test committed after the code it tests is the signature of a skipped Red phase.
-- **The wiki shipped with the code.** Behavior cases `[x]`, `## Implementation` and `## Tests` accurate, closed todos removed, `log.md` entries present.
-- **The findings have dispositions.** `git log --grep="review round"` on the branch. Every finding, filed ones included.
+- **The wiki shipped with the code.** Behavior cases `[x]`, `## Implementation` and `## Tests` accurate, closed todo line(s) removed — and, if the todo was multi-part, only the parts this cycle actually shipped, not the whole item — `log.md` entries present.
+- **The findings have dispositions.** `git log --grep="review round"` on the branch. Every finding, filed ones included, tagged `[adversary]` (not `[review]` or anything else) so the backlog counter sees it.
 - **The handoff file is gone**, and no scratch is left under `.claude/handoff/`.
 - **No history was rewritten.** `git log --oneline` on the branch should show a merge of `develop` rather than a rebase, and no commit should have been replaced. A force-push is a procedure violation here, not a style choice.
 - **The worktree is gone**, or the report says why it could not be removed. `git worktree list` in the main checkout tells you; `git worktree prune` clears a stale entry if the directory was deleted by hand.
