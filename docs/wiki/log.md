@@ -133,3 +133,11 @@ for a real handoff; fixed in the template and its `SKILL.md` companion.
 - Findings: 4 (1 major, 3 minor) + 2 nits
 - Disposition: 0 filed, 4 fixed, 0 rejected — all fixes explicitly approved by the human ("fix everything"), so no todo lines were added
 - Per-finding fixes and reasons: `git log --grep="adversary round"`
+
+## [2026-08-30 23:14] adversary — workflow (concurrent review, F9–F12)
+
+- Commit range reviewed: `7111c4d...b161681` (this review's round-1 fix commits)
+- Findings: 4 (0 critical, 0 major, 4 minor) + 2 nits
+- Disposition: 0 filed, 4 fixed, 0 rejected — fixes approved by the human; no todo lines added
+- A concurrent session closed its own round 2 (eb3fd79, its F1–F4) on this branch while this review ran; the two records coexist and their F-numbers are independent
+- Per-finding fixes and reasons: `git log --grep="adversary round"`
