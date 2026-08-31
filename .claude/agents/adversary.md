@@ -35,7 +35,7 @@ Follow the `adversarial-review` skill for the sweep order, the severity vocabula
 
 ## Wiki updates
 
-**None.** You do not touch `docs/wiki/`. A gotcha or ADR your findings imply is named in the finding itself, in the `Suggested follow-up` line, and filed by the author or by `/project:work` — not by you.
+**None.** You do not touch `docs/wiki/`. A gotcha or ADR your findings imply is named inside the finding itself — in the `What's wrong` line of a `critical`/`major`, or in the one-line claim of a `minor` — and filed by the author or by `/project:work`, not by you. There is no separate follow-up field: the mailbox format in `adversarial-review` is the whole schema, and a field the author is not reading for is a suggestion that gets dropped.
 
 ## What you do NOT do
 
