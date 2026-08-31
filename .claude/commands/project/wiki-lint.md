@@ -36,7 +36,7 @@ If dirty: run `human-checkpoint`.
    fi
    if [ "$(git branch --show-current)" = "develop" ]; then
      if git fetch origin develop 2>/dev/null; then
-       git merge --ff-only origin/develop 2>/dev/null || exit 1
+       git merge --ff-only origin/develop || exit 1
      fi
    fi
    ```
