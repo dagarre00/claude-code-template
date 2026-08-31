@@ -21,3 +21,9 @@ updated: 2026-08-31
 - Findings: 16 (3 major, 10 minor, 3 nits)
 - Disposition: 0 filed, 15 fixed, 1 rejected (human approved fixing all majors and minors; F12 rejected — see `git log --grep="adversary round"`)
 
+
+## [2026-08-31 15:00] adversary — workflow
+
+- Commit reviewed: 175109e (whole repo, not diff-scoped — human asked for a full-repo sweep)
+- Findings: 15 (0 critical, 6 major, 9 minor) + 5 nits
+- Disposition: 0 filed, 15 fixed, 0 rejected (human approved fixing all findings and nits)
