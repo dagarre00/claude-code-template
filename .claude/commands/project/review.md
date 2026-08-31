@@ -36,7 +36,7 @@ If any fails: run `human-checkpoint`.
 
    ```bash
    if [ "$(git branch --show-current)" = "main" ]; then
-     git checkout develop || exit 1
+     git checkout develop || { echo "no local develop — stop and run human-checkpoint"; exit 1; }
    fi
    if [ "$(git branch --show-current)" = "develop" ]; then
      if git fetch origin develop 2>/dev/null; then
@@ -45,7 +45,7 @@ If any fails: run `human-checkpoint`.
    fi
    ```
 
-   **Never from `main`.** The guard above moves you to `develop` first — `main` is the release branch, updated only when `develop` is promoted (`docs/wiki/git-conventions.md`).
+   **Never from `main`.** The guard above moves you to `develop` first — `main` is the release branch, updated only when `develop` is promoted (`docs/wiki/git-conventions.md`). If the guard fails, `develop` does not exist locally (a fresh clone whose only branch is `main`) — stop and run `human-checkpoint`; never proceed on `main`.
 
    **If `git merge --ff-only` fails**, `develop` has diverged in a non-fast-forward way — stop and run `human-checkpoint` before proceeding. Committing on a stale `develop` and failing the push is exactly the unpushed-commit loss behavioral rule 19 exists to prevent.
 
@@ -75,11 +75,13 @@ If any fails: run `human-checkpoint`.
 6. **Commit and push.** Living wiki updates commit directly on `develop` (or your active branch, behavioral rule 19):
 
    ```bash
-   git status --porcelain   # residue outside docs/wiki/ is reviewer dirt — restore it with git checkout/clean before staging
+   git status --porcelain   # any dirt outside docs/wiki/ must be accounted for, never blindly restored (behavioral rule 21)
    git add docs/wiki/
    git commit -m "docs(review): audit YYYY-MM-DD — <N critical, M warnings, K drift>"
    git push -u origin "$(git branch --show-current)"  # if detached HEAD, attach to develop first
    ```
+
+   Dirt outside `docs/wiki/` is not automatically yours: if it matches the reviewer's report (suite-written files the reviewer missed), restore those paths; anything you cannot account for is another session's live work — stop and run `human-checkpoint` naming the paths (behavioral rule 21).
 
 7. **Report to the human.** Highlight critical items only. Recommend whether the next step is `/project:work` (fix critical), `/project:interview` (spec gap), or `/project:wiki-lint` (heavy drift).
 
