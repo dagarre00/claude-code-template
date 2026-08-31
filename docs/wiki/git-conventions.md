@@ -88,7 +88,7 @@ Follow the [git-recovery skill](../../.claude/skills/git-recovery/SKILL.md) (Res
 
 ```bash
 git checkout develop
-git pull --ff-only
+git fetch origin develop && git merge --ff-only origin/develop
 git branch -d feat/<slug>              # -d is safe: errors if unmerged
 git push origin --delete feat/<slug>
 ```

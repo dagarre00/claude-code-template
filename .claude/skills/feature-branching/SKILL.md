@@ -124,7 +124,7 @@ If conflicts arise, follow the `git-recovery` skill (Resolve merge / rebase / ch
 
    ```bash
    git checkout develop
-   git pull --ff-only
+   git fetch origin develop && git merge --ff-only origin/develop
    git branch -d feat/<slug>              # safe delete (errors if unmerged)
    git push origin --delete feat/<slug>   # delete remote tracking branch
    ```
