@@ -171,27 +171,28 @@ Some features are too big to attack directly — they cross files, need careful 
 
 ## Scenario: Batching multiple small todos
 
-When you have several related todos, running them in one cycle is often cheaper than three separate commits.
+When you have several related todos, running them in one cycle is often cheaper than three separate branches and PRs. A batch shares a **branch, a plan, and a PR — not a commit.** The per-case cadence is unchanged: each Behavior case still lands as its own commit.
 
-**Batch when:**
+**Batch when** (all three — the [`feature-branching`](../.claude/skills/feature-branching/SKILL.md) skill owns this rule):
 
 - The todos share the same entity (`auth-login: case A`, `auth-login: case B`, `auth-login: case C`).
-- The middle commits would have no standalone meaning (an API handler isn't useful until both its query parser and response serializer exist).
-- The Behavior cases are independent enough that one round of Red drives all of them.
+- The later ones depend on the earlier ones (an API handler isn't useful until both its query parser and response serializer exist).
+- Splitting them across branches would produce a PR with no standalone meaning.
 
 **Don't batch when:**
 
-- The todos cross entities — keep entity pages and commits aligned.
-- A user might want to revert one without the others — then they need standalone commits.
-- The total work is large enough that a single commit becomes hard to review.
+- The todos cross entities — keep entity pages and branches aligned.
+- Any one of them could ship and merge without the others.
+- The total work is large enough that the branch's diff becomes hard to review — a batch is 2–3 todos, not a milestone.
 
 **How `/project:work` handles it:**
 
 1. `/project:work` reads the top 1–3 todos. If they share an entity and context, it proposes a batch and asks you to confirm via `human-checkpoint`.
 2. You confirm. `/project:work` flags the cycle as a batch and dispatches the `planner` first (any batch of 2+ triggers a plan).
-3. The developer writes one set of failing tests covering all cases in the batch, then drives them all Green in one pass, refactoring as it goes.
-4. Single commit at the end. Conventional commit scope names the batch, e.g. `feat(auth-login): add rate limiting and lockout (B3, B4, B5)`.
-5. The entity page Behavior section is ticked for every case in the batch in the same commit.
+3. The developer takes the cases **one at a time**: Red → Green → refactor → tick → commit → push for B3, then the same for B4, then B5. It does *not* write all the tests first and drive them green together — a commit spanning several cases breaks `git bisect`, makes a single case unrevertable, and hands the `adversary` a diff too large to converge on. `/project:work` step 6 checks the granularity and sends a lump back as a defect.
+4. One commit per case, each named for its own behavior — `feat(auth-login): add rate limiting`, then `feat(auth-login): lock out after five failed attempts`. The batch is named in the branch and the PR, never folded into one commit.
+5. Each case's entity-page tick (`[~]` → `[x]`) rides in that case's own commit, alongside its test and implementation.
+6. Because the batch dispatched the `planner`, it also triggers the adversarial review at step 7a.
 
 ## Scenario: Requesting a periodic review
 
