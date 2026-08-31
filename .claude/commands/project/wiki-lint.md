@@ -32,7 +32,7 @@ If dirty: run `human-checkpoint`.
 
    ```bash
    if [ "$(git branch --show-current)" = "main" ]; then
-     git checkout develop || exit 1
+     git checkout develop || { echo "no local develop — stop and run human-checkpoint"; exit 1; }
    fi
    if [ "$(git branch --show-current)" = "develop" ]; then
      if git fetch origin develop 2>/dev/null; then
@@ -41,7 +41,7 @@ If dirty: run `human-checkpoint`.
    fi
    ```
 
-   **Never from `main`.** The guard above moves you to `develop` first — `main` is the release branch, updated only when `develop` is promoted (`docs/wiki/git-conventions.md`).
+   **Never from `main`.** The guard above moves you to `develop` first — `main` is the release branch, updated only when `develop` is promoted (`docs/wiki/git-conventions.md`). If the guard fails, `develop` does not exist locally (a fresh clone whose only branch is `main`) — stop and run `human-checkpoint`; never proceed on `main`.
 
    **If `git merge --ff-only` fails**, `develop` has diverged in a non-fast-forward way — stop and run `human-checkpoint` before proceeding. Committing on a stale `develop` and failing the push is exactly the unpushed-commit loss behavioral rule 19 exists to prevent.
 
