@@ -25,6 +25,7 @@ A developer convinces itself its code matches the spec because it wrote both. A 
 2. Read `CLAUDE.md`, `.claude/rules/behavioral.md`, `docs/wiki/architecture.md`, `docs/wiki/requirements.md`.
 3. Read every `docs/wiki/entities/<slug>.md`. For each, locate the implementation files (they should be linked from the entity page).
 4. Read `docs/wiki/gotchas.md`, `docs/wiki/todos.md`, and `docs/wiki/wiki-todos.md`. Shipped work is in git history (`git log`) — there is no `completed.md`.
+5. **Leave the tree as you found it.** After running the test suite, run `git status --porcelain`: any tracked file the suite wrote (snapshots, regenerated fixtures) must be restored with `git checkout -- <paths>` and any untracked residue deleted, before you write the report. The dispatching command stages only `docs/wiki/`, and residue trips the clean-tree gate of the next command (behavioral rule 21).
 
 ## Audit dimensions
 
@@ -64,7 +65,7 @@ Write the report to `docs/wiki/decisions/review-<YYYY-MM-DD>.md` (a kind of ADR 
 
 ## Recommended new todos
 
-- Append these to `docs/wiki/todos.md`
+- Candidates for `docs/wiki/todos.md` — list them here; the dispatching command files them. You report; you do not queue.
 ```
 
 The dispatching `/project:review` command will process the report and distribute the findings into `docs/wiki/todos.md` and `docs/wiki/wiki-todos.md`.
