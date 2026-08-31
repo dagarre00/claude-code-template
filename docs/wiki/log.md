@@ -96,3 +96,12 @@ for a real handoff; fixed in the template and its `SKILL.md` companion.
   `{{CUT_FROM_BRANCH}}` (worktree source, Step 7 sync target) and
   `{{BASE_BRANCH}}` (PR target only), threaded through §1, rule 14, Steps 1/2/7,
   and §12; updated `SKILL.md`'s placeholder table and hand-over note to match.
+
+## [2026-08-30 20:58] fix — template logic gaps and command sync
+
+- Fixed branch resumption and creation in `/project:work`: if on `feat/<slug>` with open Behavior cases, continue rather than resetting to `develop`; in step 2, check if `feat/<slug>` exists before checkout instead of failing with `checkout -b`.
+- Fixed `/project:review` worktree cleanup: use `git worktree remove --force "$WORKTREE"` after copying the report back to avoid failure on untracked report files.
+- Fixed `/project:init` step 8a: check for remote before pushing `develop` to prevent errors on unlinked repos.
+- Synchronized `/project:handoff` across all tables: added to `CLAUDE.md.tmpl`, `HUMAN.md`, `README.md`, `feature-branching` skill, and `docs/getting-started.md`.
+- Fixed maintenance cadence and schema reference greps: added robust regex matching for multi-word/suffixed log entries and heading citations with slashes.
+- Fixed stale commit description in `docs/getting-started.md` to reflect the per-case developer commit cadence.

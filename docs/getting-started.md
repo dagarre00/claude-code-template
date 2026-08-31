@@ -148,7 +148,7 @@ A new user story landed. You want it specified, tested, and shipped.
 3. **Run `/project:work`.** It picks the top todo, opens `feat/auth-login`, and dispatches the `developer`. The developer reads `entities/auth-login.md#Behavior`, writes failing tests, and confirms Red.
 4. **The same agent implements.** It writes the minimum code to turn Red into Green, then refactors. There's no handoff to another agent — one developer owns the whole cycle.
 5. **Wiki updates land in the same commit.** The developer ticks the Behavior cases on the entity page, checks the todo off in `docs/wiki/todos.md` (shipped work lives in git history — there's no `completed.md`), and appends a one-line log entry. Code changed but no wiki page touched is drift — the same-commit rule is the safety net.
-6. **Commit.** `/project:work` makes the bundled conventional commit, e.g. `feat(auth-login): reject unknown user`, and pushes it. See [git-conventions.md](wiki/git-conventions.md).
+6. **Commit.** The developer commits and pushes each Behavior case as it lands (test + implementation + entity-page update). `/project:work` verifies the suite and adds only the cycle log entry (see [git-conventions.md](wiki/git-conventions.md)).
 
 The developer plans **first** if the todo is tagged `[complex]` or a batch of 2+ todos is being run together. For a single simple todo, planning is skipped — straight to Red.
 
@@ -349,6 +349,7 @@ Check state at session start, after a long break, or before deciding whether to 
 | `/project:review`      | Periodic (every ~5 todos), before a release, after several merges             |
 | `/project:wiki-lint`   | When `wiki-todos.md` piles up or after heavy ingest                           |
 | `/project:wiki-ingest` | When you have a new external doc, or to commission web research               |
+| `/project:handoff`     | When delegating execution of a well-specified todo to an external agent       |
 
 Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `git reset --hard <tag>` to recover, `git status` / `git log` to see where you are — use plain git, not bespoke commands.
 

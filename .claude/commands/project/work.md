@@ -29,7 +29,9 @@ You orchestrate one TDD cycle (or a small batch). You do **not** write tests or 
 
 If any precondition fails: stop and run `human-checkpoint`.
 
-**If you are on a `feat/*` branch when `/project:work` is invoked**, check whether there is in-progress work (uncommitted changes or commits not yet pushed). If yes, continue from where you left off (step 5). If the branch is clean and fully pushed, it is a leftover from a prior cycle — run `git checkout develop` to reset to the correct starting point, then proceed from step 1.
+**If you are on a `feat/*` branch when `/project:work` is invoked**, check whether there is in-progress work:
+- If there are uncommitted changes or commits not yet pushed, or if the current entity still has unticked Behavior cases (`[ ]` / `[~]`), stay on `feat/<slug>` and continue the feature (step 5).
+- If all Behavior cases on the entity page are already `[x]` and pushed (a finished cycle whose PR was merged into develop), check out `develop` (`git checkout develop`), pull the latest changes, and delete the merged local branch before proceeding from step 1.
 
 ## Resuming an interrupted cycle
 
@@ -64,7 +66,12 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
    ```bash
    git fetch origin develop
    git checkout develop && git merge --ff-only origin/develop
-   git checkout -b feat/<slug>
+   if git show-ref --verify --quiet "refs/heads/feat/<slug>"; then
+     git checkout "feat/<slug>"
+     git merge --ff-only "origin/feat/<slug>" 2>/dev/null || true
+   else
+     git checkout -b "feat/<slug>"
+   fi
    ```
 
    If `merge --ff-only` fails (develop has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force develop.
@@ -158,10 +165,10 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
     Then run the **maintenance cadence check**. This is the only place the periodic commands are ever surfaced, so it runs even when the cycle went perfectly — especially then, because a clean cycle is exactly when nobody thinks to lint:
 
     ```bash
-    grep -n '^## \[' docs/wiki/log.md | tail -1                     # cycles since…
-    grep -n '\] review$\|\] wiki-maintenance$' docs/wiki/log.md | tail -2   # …each last ran
-    grep -cE '^- \[ \] [0-9]{4}-' docs/wiki/wiki-todos.md            # maintainer queue depth (dated entries only — the file's own format example is not one)
-    grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md              # filed findings never triaged
+    grep -n '^## \[' docs/wiki/log.md 2>/dev/null | tail -1                     # cycles since…
+    grep -nE '\] (review|wiki-maintenance)' docs/wiki/log.md 2>/dev/null | tail -2   # …each last ran
+    grep -cE '^- \[ \] [0-9]{4}-' docs/wiki/wiki-todos.md 2>/dev/null || echo 0      # maintainer queue depth (dated entries only — the file's own format example is not one)
+    grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null || echo 0        # filed findings never triaged
     ```
 
     Suggest, naming the number that fired:

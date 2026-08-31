@@ -58,7 +58,7 @@ Example:
 5. **Size check.** After appending, count the non-blank, non-header content lines in `gotchas.md`:
 
    ```bash
-   grep -c "^\*\*\(When\|Symptom\|Cause\|Fix\|Related\):\*\*" docs/wiki/gotchas.md
+   grep -cE "^\*\*(When|Symptom|Cause|Fix|Related):\*\*" docs/wiki/gotchas.md 2>/dev/null || echo 0
    ```
 
    (The colon is inside the bold markers — `**When:**`. Omitting it from the pattern makes the count silently return 0 and the size check never fires.)

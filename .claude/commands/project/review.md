@@ -80,7 +80,7 @@ If any fails: run `human-checkpoint`.
 7. **Clean up the worktree** (you are already back in the main checkout from step 5):
 
    ```bash
-   git worktree remove "$WORKTREE"
+   git worktree remove --force "$WORKTREE"
    ```
 
 8. **Log it.** Append to `docs/wiki/log.md`:

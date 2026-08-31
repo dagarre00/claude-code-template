@@ -175,8 +175,9 @@ If the repo has no remote yet, skip the push and note it in the report.
 
 ```bash
 git checkout -b develop
-git push -u origin develop
-git checkout develop
+if git remote | grep -q "^origin$"; then
+  git push -u origin develop
+fi
 ```
 
 If `develop` already exists (locally or on the remote), check it out instead of recreating it.

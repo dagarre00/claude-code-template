@@ -44,7 +44,8 @@ Runs over the commits just landed. A read-only `adversary` (Opus, fresh context)
 6. **Commit the dispositions — this is the record** (behavioral rule 20). Any approved fix is its own commit; the todo lines and the round summary land together:
 
    ```bash
-   git commit -m "fix(<slug>): reject empty token — adversary F1"   # approved criticals/majors only
+   git add <fixed-files>                                           # approved criticals/majors only
+   git commit -m "fix(<slug>): reject empty token — adversary F1"
    git add docs/wiki/todos.md
    git commit -m "$(cat <<'MSG'
    docs(<slug>): adversary round 1 — 3 findings, 1 fixed, 1 filed, 1 rejected, 2 nits

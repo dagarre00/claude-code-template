@@ -58,7 +58,8 @@ Clean tree and no base ref: stop and say there is nothing to review. Do not disp
 6. **Commit the dispositions and push.** Each fix is its own commit naming the finding it closes; one commit then closes the round with every finding's disposition in its body (behavioral rule 19, and rule 20's record):
 
    ```bash
-   git commit -m "fix(<slug>): <what changed> — adversary F1"   # approved criticals/majors only
+   git add <fixed-files>                                              # approved criticals/majors only
+   git commit -m "fix(<slug>): <what changed> — adversary F1"
    git add docs/wiki/todos.md docs/wiki/log.md
    git commit -m "docs(<slug>): adversary round 1 — <N> findings, …"   # body: one line per finding
    git push -u origin "$(git branch --show-current)"

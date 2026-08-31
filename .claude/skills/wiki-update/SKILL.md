@@ -283,7 +283,7 @@ at the UI level.)_
 - Token / choice ← `docs/raw/...` or [[decisions/<slug>]].
 ```
 
-Like `requirements.md` and `architecture.md`, this page keeps its own body format — the Essence → Model → Detail → Boundaries spine does not apply, but the frontmatter hard rules do. Route the neighbouring frontend material to its existing home rather than restating it here: stack and styling approach → `architecture.md § Stack / Conventions`; a11y level, browser matrix, and perf budgets → `requirements.md § Non-functional`; per-component specs → `entities/`; an interaction pattern recurring 3+ times → `concepts/`; "why this palette / framework" → `decisions/`.
+Like `requirements.md` and `architecture.md`, this page keeps its own body format — the Essence → Model → Detail → Boundaries spine does not apply, but the frontmatter hard rules do. Route the neighbouring frontend material to its existing home rather than restating it here: stack and styling approach → `architecture.md § Stack` and `architecture.md § Conventions`; a11y level, browser matrix, and perf budgets → `requirements.md § Non-functional requirements`; per-component specs → `entities/`; an interaction pattern recurring 3+ times → `concepts/`; "why this palette / framework" → `decisions/`.
 
 ## Facet vocabulary (closed)
 

@@ -47,6 +47,7 @@ Every command that writes tracked files branches **before its first write** (beh
 | `/project:agent-scout` | `chore/agent-scout-<date>`         | the first skill/agent   |
 | `/project:wiki-lint`   | `chore/wiki-lint-<date>`           | the maintainer dispatch |
 | `/project:review`      | `chore/review-<date>`              | the reviewer dispatch   |
+| `/project:handoff`     | `docs/handoff-<slug>`              | the brief file          |
 | `/project:adversary`   | none — runs on the existing branch | —                       |
 
 In every case the rule is the same: **branch only if you're on `develop` or `main`.** Already on a `feat/*`/`fix/*` branch whose work this belongs to → stay there and let that branch's PR carry the change.
