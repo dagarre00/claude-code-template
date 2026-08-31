@@ -82,7 +82,13 @@ Accepted as of YYYY-MM-DD.
 
 4. If the decision created new work, file todos in `docs/wiki/todos.md`.
 
-5. Commit with `docs: add ADR <slug>`.
+5. **Ship it in the commit that made the decision** — never a commit of its own. An ADR is a wiki edit, and wiki edits ride with the change they describe (behavioral rule 1; `wiki-update` → "Inline vs maintainer"). Stage the new file with the code:
+
+   ```bash
+   git add <the implementation> docs/wiki/entities/<slug>.md docs/wiki/decisions/<adr-slug>.md
+   ```
+
+   If the stance came out of adversary triage instead, it goes in that round's commit (`adversarial-review` step 6). An ADR left unstaged is one that sits in the tree until it trips the next clean-tree gate — or lands in an unrelated commit later.
 
 ## Superseding an ADR
 

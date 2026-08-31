@@ -47,7 +47,7 @@ Only after green. Goal: improve structure without changing behavior.
 Close each case before starting the next — this is the cadence `docs/wiki/git-conventions.md` specifies, and you own it, not `/project:work`.
 
 1. Tick the case `[~]` → `[x]` on the entity page (see "Wiki update" below).
-2. Stage that case's test, its implementation, and the entity-page edit — explicitly by path, never `git add -A`.
+2. Stage that case's test, its implementation, and the entity-page edit — explicitly by path, never `git add -A`. If this case also produced a gotcha or an ADR (see *Wiki update* below), stage `docs/wiki/gotchas.md` / `docs/wiki/decisions/<slug>.md` here too — they ride in this commit and never get one of their own.
 3. Commit: `feat(<slug>): <behavior in present tense>`, one case per commit.
 4. Push (`git push -u origin "$(git branch --show-current)"`). An unpushed commit dies with the container — behavioral rule 19.
 5. Refactor commits are separate (`refactor(<slug>): …`). Never commit half-green code.

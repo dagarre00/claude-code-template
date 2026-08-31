@@ -199,6 +199,7 @@ Run this in full for **one** case, commit and push it, then start the next case.
 
 ```bash
 git add <the test> <the implementation> {{ENTITY_PATH}}   # explicit paths, never -A or -a
+git add docs/wiki/gotchas.md                              # only if this case produced one (§7.4)
 git commit -m "feat({{SLUG}}): <the behavior, present tense, <=72 chars>"
 git push -u origin {{BRANCH_NAME}}
 ```
@@ -236,6 +237,7 @@ Close the round with one commit whose body is the record:
 
 ```bash
 git add docs/wiki/todos.md
+git add docs/wiki/gotchas.md {{ENTITY_PATH}}   # only if a rejection made you write down an invariant
 git commit -m "$(cat <<'MSG'
 docs({{SLUG}}): review round 1 — 3 findings, 1 fixed, 1 filed, 1 rejected, 2 nits
 
