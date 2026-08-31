@@ -58,7 +58,7 @@ If any fails: run `human-checkpoint`.
 
 4. **Process findings in the wiki.**
    - Read the report.
-   - For each Critical / Warning: file a TODO in `docs/wiki/todos.md` with priority.
+   - For each Critical / Warning / Recommended new todo: file a TODO in `docs/wiki/todos.md` with priority.
    - For each Drift item: append to `docs/wiki/wiki-todos.md` for the maintainer.
    - For each Missing ADR: queue the ADR for the next `/project:work` cycle.
 
@@ -78,7 +78,7 @@ If any fails: run `human-checkpoint`.
    git status --porcelain   # residue outside docs/wiki/ is reviewer dirt — restore it with git checkout/clean before staging
    git add docs/wiki/
    git commit -m "docs(review): audit YYYY-MM-DD — <N critical, M warnings, K drift>"
-   git push -u origin "$(git branch --show-current)"
+   git push -u origin "$(git branch --show-current)"  # if detached HEAD, attach to develop first
    ```
 
 7. **Report to the human.** Highlight critical items only. Recommend whether the next step is `/project:work` (fix critical), `/project:interview` (spec gap), or `/project:wiki-lint` (heavy drift).
