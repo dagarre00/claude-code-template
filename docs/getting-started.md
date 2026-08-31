@@ -113,7 +113,7 @@ If a step fails twice on the same approach, the **two-strike rule** fires — th
 
 Runs the `reviewer` agent in a fresh session context with no developer baggage. It audits code against the wiki and flags drift, missing tests, security/perf concerns. Critical and Warning findings become prioritized items in `todos.md` (they turn into the next `/project:work` cycles); Drift findings go to `wiki-todos.md` for the maintainer. The audit report and todo updates commit directly to `develop`.
 
-This is **not** part of `/project:work` — it's periodic and isolated.
+This is **not** part of `/project:work` — it's periodic, run on demand or roughly every 5 todos.
 
 Don't confuse it with `/project:adversary`. Both are read-only and both run without the author's context, but they answer different questions: the `adversary` reads **one diff before it ships** and hunts for defects in it; the `reviewer` reads **the whole repo after things have shipped** and hunts for drift between the wiki and the code. Diff-scoped review never sees a problem in code it didn't touch, and a whole-repo audit arrives too late to stop the commit.
 

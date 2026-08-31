@@ -31,7 +31,7 @@ The guard block moves off `main` first, then fast-forwards `develop` before the 
 
 ```bash
 if [ "$(git branch --show-current)" = "main" ]; then
-  git checkout develop || { echo "no local develop — stop and run human-checkpoint"; exit 1; }
+  git checkout develop || { echo "could not switch to develop — stop and run human-checkpoint"; exit 1; }
 fi
 branch="$(git branch --show-current)"
 if [ -z "$branch" ]; then
@@ -46,7 +46,7 @@ if [ "$branch" = "develop" ]; then
 fi
 ```
 
-**Never from `main`.** The guard above moves you to `develop` first — `main` is the release branch, updated only when `develop` is promoted (`docs/wiki/git-conventions.md`). If the guard fails, `develop` does not exist locally (a fresh clone whose only branch is `main`) — stop and run `human-checkpoint`; never proceed on `main`.
+**Never from `main`.** The guard above moves you to `develop` first — `main` is the release branch, updated only when `develop` is promoted (`docs/wiki/git-conventions.md`). If the guard fails, something is stopping the checkout — most likely a fresh clone whose only branch is `main`, but any checkout failure (e.g. a conflicting uncommitted file) hits the same message — stop and run `human-checkpoint`; never proceed on `main`.
 
 **If `git merge --ff-only` fails**, `develop` has diverged in a non-fast-forward way — stop and run `human-checkpoint` before proceeding. Committing on a stale `develop` and failing the push is exactly the unpushed-commit loss behavioral rule 19 exists to prevent.
 
