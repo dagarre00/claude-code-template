@@ -26,6 +26,7 @@ A developer convinces itself its code matches the spec because it wrote both. A 
 3. Read every `docs/wiki/entities/<slug>.md`. For each, locate the implementation files (they should be linked from the entity page).
 4. Read `docs/wiki/gotchas.md`, `docs/wiki/todos.md`, and `docs/wiki/wiki-todos.md`. Shipped work is in git history (`git log`) — there is no `completed.md`.
 5. **Leave the tree as you found it.** After running the test suite, run `git status --porcelain`: any tracked file the suite wrote (snapshots, regenerated fixtures) must be restored with `git checkout -- <paths>` and any untracked residue deleted, before you write the report. The dispatching command stages only `docs/wiki/`, and residue trips the clean-tree gate of the next command (behavioral rule 21).
+6. **Anchor the audit to HEAD.** Run `git rev-parse HEAD` when you start. This is a live checkout — another session can mutate files mid-read (behavioral rule 21). If a file changes under you, re-verify the claim against the anchored commit (`git show <sha>:<path>`) before you cite it, and name the commit your findings were checked against in the report.
 
 ## Audit dimensions
 

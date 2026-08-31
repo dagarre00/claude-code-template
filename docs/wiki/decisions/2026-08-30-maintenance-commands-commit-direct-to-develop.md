@@ -32,7 +32,7 @@ We will commit and push living documentation and operations (`docs/wiki/`, `docs
 ## Consequences
 
 - **Positive:** no branch/PR proliferation for routine knowledge-base updates; the living spec updates in the same commit as the change that drove it; no dependency re-install per review.
-- **Negative:** concurrent maintenance sessions can race on `develop` — mitigated by the ff-only sync plus the divergence stop; the reviewer's suite now runs in the main checkout, so the reviewer must restore any suite-written files before writing the report (`reviewer.md` entry checklist, behavioral rule 21).
+- **Negative:** concurrent maintenance sessions can race on `develop` — mitigated by the ff-only sync plus the divergence stop. The reviewer now reads and runs the suite in a live checkout another session can mutate mid-read; accepted, with the reviewer anchoring its audit to `git rev-parse HEAD` and restoring any suite-written files before writing the report (`reviewer.md` entry checklist, behavioral rule 21).
 - **Follow-ups:** none open — the guard rails named here were added in the same adversary round that filed this ADR.
 
 ## Alternatives considered
@@ -42,4 +42,4 @@ We will commit and push living documentation and operations (`docs/wiki/`, `docs
 
 ## References
 
-- Relates to: [[git-conventions]], [feature-branching](../../.claude/skills/feature-branching/SKILL.md), `.claude/rules/behavioral.md` rule 19.
+- Relates to: [[git-conventions]], [feature-branching](../../../.claude/skills/feature-branching/SKILL.md), `.claude/rules/behavioral.md` rule 19.
