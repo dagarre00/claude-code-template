@@ -168,8 +168,10 @@ Number the recommendations in the order that will unblock the most /project:work
 If you are standing on `develop`, fetch and fast-forward before creating any approved toolkit assets:
 
 ```bash
-git fetch origin develop 2>/dev/null || true
-git merge --ff-only origin/develop 2>/dev/null || true
+if [ "$(git branch --show-current)" = "develop" ]; then
+  git fetch origin develop 2>/dev/null || true
+  git merge --ff-only origin/develop 2>/dev/null || true
+fi
 ```
 
 **Already on a `feat/*` or `fix/*` branch?** Stay there. Living toolkit configuration and log updates commit directly on `develop` (or your active feature branch, behavioral rule 19).

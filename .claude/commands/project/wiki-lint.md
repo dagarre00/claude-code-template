@@ -31,8 +31,10 @@ If dirty: run `human-checkpoint`.
 1. **Sync develop if standing on develop.** If standing on `develop`, fetch and fast-forward before the lint pass begins:
 
    ```bash
-   git fetch origin develop 2>/dev/null || true
-   git merge --ff-only origin/develop 2>/dev/null || true
+   if [ "$(git branch --show-current)" = "develop" ]; then
+     git fetch origin develop 2>/dev/null || true
+     git merge --ff-only origin/develop 2>/dev/null || true
+   fi
    ```
 
    **Already on a `feat/*`/`fix/*` branch?** Stay there — a lint pass that supports the feature you're mid-cycle on belongs in that branch's history. Living wiki updates commit directly on `develop` (or your active feature branch, behavioral rule 19).

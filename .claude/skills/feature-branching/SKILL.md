@@ -30,12 +30,8 @@ Always branch before code implementation. Feature and bugfix code (`feat/*`, `fi
 3. Branch as `<type>/<short-slug>` where `<type>` ∈ `feat`, `fix`, `chore`, `docs`, `refactor`, `test`. Examples: `feat/auth-login`, `fix/race-on-double-submit`, `chore/upgrade-pytest`, `feat/profile` (batched).
 
    ```bash
-   if git show-ref --verify --quiet "refs/heads/feat/$slug"; then
-     git checkout "feat/$slug"
-     git merge --ff-only "origin/feat/$slug" 2>/dev/null || true
-   else
-     git checkout -b "feat/$slug"
-   fi
+   git checkout "<type>/<slug>" 2>/dev/null || git checkout -b "<type>/<slug>"
+   git merge --ff-only "origin/<type>/<slug>" 2>/dev/null || true
    ```
 
 **The `<slug>` must equal the entity-page slug** — the branch name (`feat/<slug>`), the entity page, the plan scratch (`.claude/handoff/<slug>-plan.md`), and the test names all key off it. Pick it once and keep it stable.

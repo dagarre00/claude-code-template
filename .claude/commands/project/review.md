@@ -35,8 +35,10 @@ If any fails: run `human-checkpoint`.
 1. **Sync develop.** If standing on `develop`, fetch and fast-forward before the audit begins:
 
    ```bash
-   git fetch origin develop 2>/dev/null || true
-   git merge --ff-only origin/develop 2>/dev/null || true
+   if [ "$(git branch --show-current)" = "develop" ]; then
+     git fetch origin develop 2>/dev/null || true
+     git merge --ff-only origin/develop 2>/dev/null || true
+   fi
    ```
 
 2. **Dispatch the `reviewer` agent** with:

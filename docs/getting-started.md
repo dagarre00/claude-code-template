@@ -209,7 +209,6 @@ The reviewer is fresh eyes on the codebase. It catches drift the developer can't
 1. `/project:review` syncs `develop` and dispatches the reviewer agent in a fresh session context — no prior developer context, fresh read of every entity page and the code that implements it.
 2. Reviewer runs the test suite itself. Trusts nothing.
 3. Findings land in `docs/wiki/decisions/review-YYYY-MM-DD.md` — structured by severity (Critical / Warning / Drift / Missing ADR).
-4. Anything cross-page or wiki-shaped also goes into `docs/wiki/wiki-todos.md` for the maintainer.
 
 **Processing the report:**
 

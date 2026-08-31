@@ -112,3 +112,10 @@ for a real handoff; fixed in the template and its `SKILL.md` companion.
 - Adopted Option A integration model (Rule 19, `git-conventions.md`, `feature-branching`): code modifications strictly branch and open PRs (`feat/*`, `fix/*`), while routine living-wiki/docs maintenance (`/project:wiki-lint`, `/project:review`, `/project:wiki-ingest`, `/project:interview`, `/project:agent-scout`, `/project:handoff`) commits directly to `develop` (or stays on the active feature branch).
 - Synchronized command steps across `review.md`, `interview.md`, `wiki-lint.md`, `wiki-ingest.md`, `agent-scout.md`, and `handoff.md` to remove throwaway chore branches and PRs for wiki-only edits.
 - Updated `CLAUDE.md`, `CLAUDE.md.tmpl`, `HUMAN.md`, `README.md`, and `docs/getting-started.md` to match the streamlined workflow.
+
+## [2026-08-30 21:25] fix — adversary review round 1 fixes
+
+- Fixed `reviewer.md`: removed redundant `wiki-todos.md` queue append instruction to eliminate double-processing with `review.md` caller extraction.
+- Fixed remote branch resumption in `work.md` and `feature-branching`: use `git checkout "<type>/<slug>" 2>/dev/null || git checkout -b "<type>/<slug>"` to properly auto-track existing remote branches in ephemeral containers.
+- Added self-defensive `if [ "$(git branch --show-current)" = "develop" ]` guards to `develop` fast-forward blocks in all maintenance commands (`review`, `interview`, `wiki-lint`, `wiki-ingest`, `agent-scout`).
+- Added `/project:handoff` to `docs/wiki/git-conventions.md` integration model list.

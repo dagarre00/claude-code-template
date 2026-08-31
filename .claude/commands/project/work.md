@@ -66,12 +66,8 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
    ```bash
    git fetch origin develop
    git checkout develop && git merge --ff-only origin/develop
-   if git show-ref --verify --quiet "refs/heads/feat/<slug>"; then
-     git checkout "feat/<slug>"
-     git merge --ff-only "origin/feat/<slug>" 2>/dev/null || true
-   else
-     git checkout -b "feat/<slug>"
-   fi
+   git checkout "feat/<slug>" 2>/dev/null || git checkout -b "feat/<slug>"
+   git merge --ff-only "origin/feat/<slug>" 2>/dev/null || true
    ```
 
    If `merge --ff-only` fails (develop has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force develop.

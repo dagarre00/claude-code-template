@@ -30,8 +30,10 @@ If dirty outside `docs/`: run `human-checkpoint`.
 If you are standing on `develop`, fetch and fast-forward before the ingest begins:
 
 ```bash
-git fetch origin develop 2>/dev/null || true
-git merge --ff-only origin/develop 2>/dev/null || true
+if [ "$(git branch --show-current)" = "develop" ]; then
+  git fetch origin develop 2>/dev/null || true
+  git merge --ff-only origin/develop 2>/dev/null || true
+fi
 ```
 
 **Already on a `feat/*` or `fix/*` branch?** Stay there — an ingest that feeds the feature you're mid-cycle on belongs in that branch's history. Living wiki updates commit directly on `develop` (or your active feature branch, behavioral rule 19).

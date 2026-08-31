@@ -24,7 +24,7 @@ A developer convinces itself its code matches the spec because it wrote both. A 
 1. **Fresh perspective.** You are dispatched in a clean session context. Read the repository directly without relying on caller assumptions.
 2. Read `CLAUDE.md`, `.claude/rules/behavioral.md`, `docs/wiki/architecture.md`, `docs/wiki/requirements.md`.
 3. Read every `docs/wiki/entities/<slug>.md`. For each, locate the implementation files (they should be linked from the entity page).
-4. Read `docs/wiki/gotchas.md` and `docs/wiki/todos.md`. Shipped work is in git history (`git log`) — there is no `completed.md`.
+4. Read `docs/wiki/gotchas.md`, `docs/wiki/todos.md`, and `docs/wiki/wiki-todos.md`. Shipped work is in git history (`git log`) — there is no `completed.md`.
 
 ## Audit dimensions
 
@@ -67,9 +67,7 @@ Write the report to `docs/wiki/decisions/review-<YYYY-MM-DD>.md` (a kind of ADR 
 - Append these to `docs/wiki/todos.md`
 ```
 
-Then append a one-line entry to `docs/wiki/wiki-todos.md`: `Process review-YYYY-MM-DD findings into todos and ADRs.`
-
-**Do NOT dispatch the wiki-maintainer.** It is manual only — the queued line above is enough; the next `/project:wiki-lint` will pick it up.
+The dispatching `/project:review` command will process the report and distribute the findings into `docs/wiki/todos.md` and `docs/wiki/wiki-todos.md`.
 
 ## What you do NOT do
 
