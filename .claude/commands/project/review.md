@@ -32,7 +32,7 @@ If any fails: run `human-checkpoint`.
 
 ## Steps
 
-1. **Sync develop.** If standing on `develop`, fetch and fast-forward before the audit begins:
+1. **Sync develop.** The guard block moves off `main` first, then fast-forwards `develop` before the audit begins:
 
    ```bash
    if [ "$(git branch --show-current)" = "main" ]; then

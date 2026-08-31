@@ -163,9 +163,9 @@ List signal categories from Step 3 that do NOT apply to this project, with one-l
 Number the recommendations in the order that will unblock the most /project:work cycles first.
 ```
 
-### 4a. Sync develop if standing on develop
+### 4a. Sync develop
 
-If you are standing on `develop`, fetch and fast-forward before creating any approved toolkit assets:
+The guard block moves off `main` first, then fast-forwards `develop` before creating any approved toolkit assets:
 
 ```bash
 if [ "$(git branch --show-current)" = "main" ]; then

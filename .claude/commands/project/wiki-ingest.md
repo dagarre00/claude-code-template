@@ -27,7 +27,7 @@ If dirty outside `docs/`: run `human-checkpoint`.
 
 ## Sync develop (both modes)
 
-If you are standing on `develop`, fetch and fast-forward before the ingest begins:
+The guard block moves off `main` first, then fast-forwards `develop` before the ingest begins:
 
 ```bash
 if [ "$(git branch --show-current)" = "main" ]; then

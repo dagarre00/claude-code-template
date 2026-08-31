@@ -33,7 +33,7 @@ We will commit and push living documentation and operations (`docs/wiki/`, `docs
 
 - **Positive:** no branch/PR proliferation for routine knowledge-base updates; the living spec updates in the same commit as the change that drove it; no dependency re-install per review.
 - **Negative:** concurrent maintenance sessions can race on `develop` — mitigated by the ff-only sync plus the divergence stop. The reviewer now reads and runs the suite in a live checkout another session can mutate mid-read; accepted, with the reviewer anchoring its audit to `git rev-parse HEAD` and restoring any suite-written files before writing the report (`reviewer.md` entry checklist, behavioral rule 21).
-- **Follow-ups:** none open — the guard rails named here were added in the same adversary round that filed this ADR.
+- **Follow-ups:** none open — the guard rails named here were added in the same adversary round that created this ADR.
 
 ## Alternatives considered
 

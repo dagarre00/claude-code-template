@@ -28,7 +28,7 @@ If dirty: run `human-checkpoint`.
 
 ## Steps
 
-1. **Sync develop if standing on develop.** If standing on `develop`, fetch and fast-forward before the lint pass begins:
+1. **Sync develop.** The guard block moves off `main` first, then fast-forwards `develop` before the lint pass begins:
 
    ```bash
    if [ "$(git branch --show-current)" = "main" ]; then

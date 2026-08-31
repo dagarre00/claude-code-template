@@ -39,7 +39,7 @@ If dirty: run `human-checkpoint`.
 
 1. **Frame the scope.** Take the scope from the argument above. Read `docs/wiki/requirements.md` and any existing entity pages relevant to the topic. State the scope in one line and confirm with the human. Derive the transcript slug from the argument (`the auth flow` → `auth-flow`).
 
-1a. **Sync develop if standing on develop.** If you are standing on `develop`, fetch and fast-forward before the interview begins:
+1a. **Sync develop.** The guard block moves off `main` first, then fast-forwards `develop` before the interview begins:
 
    ```bash
    if [ "$(git branch --show-current)" = "main" ]; then
