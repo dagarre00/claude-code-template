@@ -73,3 +73,26 @@ updated: 2026-08-05
   merge, so it needed a new PR — a merged PR cannot track follow-up work.
 - Brought the branch current by merging `develop` in (not rebasing), so no
   history was rewritten and no force-push was needed.
+
+## [2026-08-29 11:34] chore — llm-handoff TEMPLATE.md defects
+
+Three defects surfaced while filling in `.claude/skills/llm-handoff/TEMPLATE.md`
+for a real handoff; fixed in the template and its `SKILL.md` companion.
+
+- §6 Step 6.4, §7.3, and §12 said "remove the closed todo line(s)"
+  unconditionally — destructive for a multi-part todo, since closing one part
+  would delete the whole item including still-open siblings. Reworded to
+  remove only the specific line(s) actually closed this cycle and leave open
+  parts of a multi-part item in place.
+- §7.3's filed-finding line used a `[review]` tag, but this repo's
+  findings-backlog saturation counter (rule 22 / `FINDINGS_MAX`) greps for the
+  literal string `[adversary]`. Changed the template's example line and
+  `SKILL.md`'s audit checklist to `[adversary]`, and noted why the exact tag
+  matters.
+- The template had one `{{BASE_BRANCH}}` placeholder serving two different
+  roles: where to cut the worktree branch from, and where the PR lands. Fine
+  for a plain cycle where they coincide, but unrepresentable for a stacked
+  cycle (branching from a prior, not-yet-merged cycle's branch). Split it into
+  `{{CUT_FROM_BRANCH}}` (worktree source, Step 7 sync target) and
+  `{{BASE_BRANCH}}` (PR target only), threaded through §1, rule 14, Steps 1/2/7,
+  and §12; updated `SKILL.md`'s placeholder table and hand-over note to match.
