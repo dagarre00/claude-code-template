@@ -190,6 +190,6 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 ## What you do NOT do
 
 - **No coding directly.** You dispatch the `planner` (when needed), the `developer`, and the `adversary` (when gated). You can read files and run commands to verify; you don't write tests or production code in this command. Fixes for adversary findings are the exception you hand back to the `developer` if they are more than a line or two.
-- **No periodic review.** That's `/project:review`, dispatched separately in a worktree. The `reviewer` never runs here — the in-loop second reader is the `adversary`, which is diff-scoped and read-only (behavioral rule 12).
+- **No periodic review.** That's `/project:review`, dispatched separately in a fresh session context. The `reviewer` never runs here — the in-loop second reader is the `adversary`, which is diff-scoped and read-only (behavioral rule 12).
 - **No merging.** PR creation is automated (step 11); merging is always the human's call.
 - **No silent batching.** If you batch todos, name the batch in the commit message scope.
