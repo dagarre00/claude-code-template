@@ -31,7 +31,7 @@ If any precondition fails: stop and run `human-checkpoint`.
 
 **If you are on a `feat/*` branch when `/project:work` is invoked**, check whether there is in-progress work:
 - If there are uncommitted changes or commits not yet pushed, or if the current entity still has unticked Behavior cases (`[ ]` / `[~]`), stay on `feat/<slug>` and continue the feature (step 5).
-- If all Behavior cases on the entity page are already `[x]` and pushed (a finished cycle whose PR was merged into develop), check out `develop` (`git checkout develop`), pull the latest changes, and delete the merged local branch before proceeding from step 1.
+- If all Behavior cases on the entity page are already `[x]` and pushed, confirm the PR was actually merged (`gh pr view <branch> --json state`, or check whether `develop`'s log already has the merge commit) before treating this as a finished cycle — `[x]`-and-pushed alone is also true of an open, unmerged PR. Once confirmed: check out `develop`, sync with `git fetch origin develop && git merge --ff-only origin/develop` (not bare `pull` — `feature-branching`'s convention, so a non-fast-forward fails safely instead of creating a merge commit), then delete the local branch with `git branch -d <branch>` — lowercase `-d`, which refuses if git itself doesn't consider the branch merged, as a second check on the confirmation above.
 
 ## Resuming an interrupted cycle
 
