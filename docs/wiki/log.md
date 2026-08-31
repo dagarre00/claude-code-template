@@ -126,3 +126,10 @@ for a real handoff; fixed in the template and its `SKILL.md` companion.
 - Findings: 8 (0 critical, 0 major, 8 minor) + 2 nits
 - Disposition: 0 filed, 8 fixed, 0 rejected — all fixes explicitly approved by the human ("fix all the findings, this is a template and should not have any pending todo"), so no todo lines were added
 - Per-finding fixes and reasons: `git log --grep="adversary round"`
+
+## [2026-08-30 22:23] adversary — workflow round 2
+
+- Commit range reviewed: `7111c4d..HEAD`
+- Findings: 4 (1 major, 3 minor) + 2 nits
+- Disposition: 0 filed, 4 fixed, 0 rejected — all fixes explicitly approved by the human ("fix everything"), so no todo lines were added
+- Per-finding fixes and reasons: `git log --grep="adversary round"`
