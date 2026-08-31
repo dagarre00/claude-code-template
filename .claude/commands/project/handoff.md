@@ -70,7 +70,7 @@ Any failure → `human-checkpoint`.
 
 5. **Read it back as the reader would**, with no context (skill step 8). This is the step that decides whether the handoff works, and it is the one worth spending time on.
 
-6. **Hand it to the human.** Give the path, and say plainly: paste the contents as the external agent's entire opening prompt, in a checkout of this repo. It will work test-first on `feat/<slug>`, commit per case, push, sync by merging rather than rebasing, open a PR against `develop`, delete the brief, and report back. It never force-pushes and it does not merge.
+6. **Hand it to the human.** Give the path, and say plainly: paste the contents as the external agent's entire opening prompt, in a checkout of this repo. It will create its own git worktree cut from `develop` rather than working in the main checkout, work test-first on `feat/<slug>` there, commit per case, push, sync by merging rather than rebasing, open a PR against `develop`, remove the worktree, delete the brief, and report back. It never force-pushes and it does not merge. The worktree is what makes this safe to run against a checkout someone else is using — surface it now so it isn't a surprise (`llm-handoff` skill step 9).
 
 7. **Log, commit, push** — the `handoff` entry in `docs/wiki/log.md`, committed and pushed directly to `develop` (or active branch):
 
