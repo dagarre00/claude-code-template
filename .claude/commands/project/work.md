@@ -166,11 +166,15 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
     Then run the **maintenance cadence check**. This is the only place the periodic commands are ever surfaced, so it runs even when the cycle went perfectly — especially then, because a clean cycle is exactly when nobody thinks to lint:
 
     ```bash
-    grep -n '^## \[' docs/wiki/log.md 2>/dev/null | tail -1                     # cycles since…
-    grep -nE '^## \[.*\] (review|wiki-maintenance)' docs/wiki/log.md 2>/dev/null | tail -2   # …each last ran
+    # Count each cadence independently — never one grep piped to `tail -N` over a
+    # combined match set, which drops whichever kind did not run most recently.
+    awk '/^## \[[^]]*\] review[[:space:]]*$/{n=0;next} /^## \[[^]]*\] work/{n++} END{print n+0}' docs/wiki/log.md            # work cycles since /project:review
+    awk '/^## \[[^]]*\] wiki-maintenance[[:space:]]*$/{n=0;next} /^## \[[^]]*\] work/{n++} END{print n+0}' docs/wiki/log.md  # work cycles since /project:wiki-lint
     grep -cE '^- \[ \] [0-9]{4}-' docs/wiki/wiki-todos.md 2>/dev/null || true                 # maintainer queue depth (dated entries only — the file's own format example is not one)
     grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null || true                   # filed findings never triaged
     ```
+
+    Each `awk` resets its counter at the last entry of its own kind and counts the `work` entries after it, so it answers the trigger as written ("5+ work cycles since…") rather than handing you two line numbers to eyeball. A log with no `review` entry yet counts every cycle, which is the right answer.
 
     Suggest, naming the number that fired:
     - More todos in the same entity → keep going (run `/project:work` again from `develop` or the existing branch if still open).
