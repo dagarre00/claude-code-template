@@ -21,7 +21,7 @@ Always branch before code implementation. Feature and bugfix code (`feat/*`, `fi
 2. Fetch and sync develop. Using `fetch` + `merge --ff-only` (rather than bare `pull`) makes the two steps explicit and fails safely if develop has diverged in a non-fast-forward way:
 
    ```bash
-   git fetch origin develop
+   git fetch origin develop "refs/heads/<type>/<slug>:refs/remotes/origin/<type>/<slug>" 2>/dev/null || git fetch origin develop 2>/dev/null || true
    git checkout develop && git merge --ff-only origin/develop
    ```
 

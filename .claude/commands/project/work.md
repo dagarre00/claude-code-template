@@ -64,7 +64,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 2. **Fetch and branch.** Follow `feature-branching` skill. Fetch first so the divergence check is against actual remote state, not a stale local mirror:
 
    ```bash
-   git fetch origin develop
+   git fetch origin develop "refs/heads/feat/<slug>:refs/remotes/origin/feat/<slug>" 2>/dev/null || git fetch origin develop 2>/dev/null || true
    git checkout develop && git merge --ff-only origin/develop
    git checkout "feat/<slug>" 2>/dev/null || git checkout -b "feat/<slug>"
    git merge --ff-only "origin/feat/<slug>" 2>/dev/null || true
