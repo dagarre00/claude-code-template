@@ -6,7 +6,9 @@ type: skill
 
 # Adversarial Review — Dispatch, Mailbox, Triage
 
-Runs over the commits just landed. A read-only `adversary` (Opus, fresh context) reads them and writes numbered findings to a scratch mailbox; the author triages every one and records the dispositions **in the commits that answer them**.
+Runs over the commits just landed. A read-only `adversary` (Opus, fresh context) reads them and writes numbered findings to a scratch mailbox; every one is triaged and the dispositions are recorded **in the commits that answer them**.
+
+**Who triages.** The word "author" below means whoever is driving the cycle, and the split is fixed: the **`developer`** supplies the technical judgement on each finding (is it real, does an invariant rule it out, what would the fix touch) and makes any approved fix, failing test first. The **dispatching command** — `/project:work` step 7a, or `/project:adversary` — owns the `human-checkpoint` for `critical`/`major`, the todo lines, and the round-closing commit. A sub-agent cannot hold the conversation with the human, so the checkpoint never belongs to the `developer`; and the `developer` has the code context the orchestrator lacks, so the judgement never belongs to the orchestrator alone.
 
 **A review files work, it does not do work.** The default disposition is a todo in `docs/wiki/todos.md` — findings are not fixed in the cycle that surfaced them. The one exception is a `critical` or `major`, which is put to the human via `human-checkpoint`: they decide whether it is fixed now or queued like the rest. This keeps a review from silently reordering the work queue, and keeps one review from becoming an open-ended fix-and-re-review loop.
 
