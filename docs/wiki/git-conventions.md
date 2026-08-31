@@ -21,8 +21,6 @@ updated: 2026-08-30
 - **Code modifications (`feat/*`, `fix/*`, `refactor/*`, `perf/*`)** must always be built on a dedicated branch cut from `develop` and merged via PR. No direct code commits on `develop`.
 - **Living documentation & operations (`docs/wiki/`, `docs/raw/`, `.claude/` config)**: maintenance commands (`/project:wiki-lint`, `/project:review`, `/project:wiki-ingest`, `/project:interview`, `/project:agent-scout`, `/project:handoff`) commit and push directly to `develop` when standing on `develop` (or stay on the active feature branch if mid-feature). This keeps the living knowledge base fast and responsive without PR fatigue for documentation.
 
-The why for this model: [[decisions/2026-08-30-maintenance-commands-commit-direct-to-develop]].
-
 The branching rules and command tables are defined in the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md).
 
 ## Branch naming
