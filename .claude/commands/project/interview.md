@@ -39,17 +39,14 @@ If dirty: run `human-checkpoint`.
 
 1. **Frame the scope.** Take the scope from the argument above. Read `docs/wiki/requirements.md` and any existing entity pages relevant to the topic. State the scope in one line and confirm with the human. Derive the transcript slug from the argument (`the auth flow` → `auth-flow`).
 
-1a. **Branch before writing anything.** The transcript and the wiki edits are tracked files, and `develop`/`main` take no direct commits (`feature-branching`, `git-conventions.md`). Branch *before* opening the transcript — the file is written turn-by-turn, so branching afterwards would mean the first Q+A already landed on the wrong branch:
+1a. **Sync develop if standing on develop.** If you are standing on `develop`, fetch and fast-forward before the interview begins:
 
    ```bash
-   git fetch origin develop
-   git checkout develop && git merge --ff-only origin/develop
-   git checkout -b docs/interview-<slug>
+   git fetch origin develop 2>/dev/null || true
+   git merge --ff-only origin/develop 2>/dev/null || true
    ```
 
-   No remote yet (`git remote` prints nothing)? Skip the fetch/merge and branch straight off local `develop`.
-
-   **Already on a `feat/*` or `fix/*` branch?** Stay there — an interview that refines the feature you're mid-cycle on belongs in that branch's history. Only branch when you're standing on `develop` or `main`.
+   **Already on a `feat/*` or `fix/*` branch?** Stay there — an interview that refines the feature you're mid-cycle on belongs in that branch's history. Living wiki updates commit directly on `develop` (or your active feature branch, behavioral rule 19).
 
 2. **Open the transcript file BEFORE asking anything.** Path: `docs/raw/interviews/YYYY-MM-DD-<slug>.md`. Write frontmatter plus a one-paragraph framing of the scope. The file must exist and be on disk before the first question.
 
@@ -117,7 +114,7 @@ If dirty: run `human-checkpoint`.
    - ADRs: <count>
    ```
 
-4. **Commit and push** onto the branch from step 1a (behavioral rule 19):
+4. **Commit and push** directly to `develop` (or active branch, behavioral rule 19):
 
    ```bash
    git add docs/wiki/ docs/raw/interviews/
@@ -125,11 +122,7 @@ If dirty: run `human-checkpoint`.
    git push -u origin "$(git branch --show-current)"
    ```
 
-   Verify with `git branch --show-current` that you are not on `develop` or `main` before committing. If you are, you skipped step 1a — branch now (the changes come along, uncommitted) and commit there.
-
-5. **Open a PR and return to `develop`** — only if step 1a created a `docs/interview-<slug>` branch. Follow the `pr-create` skill, targeting `develop`; the body is the interview summary (scope, pages updated, new todos, ADRs) rather than Behavior cases. Then `git checkout develop`. Merging is the human's call. If you stayed on an existing `feat/*` branch, skip this — that branch's own PR carries the change.
-
-6. **Recommend the next step.** Usually `/project:work` to pick up the first new todo.
+5. **Recommend the next step.** Usually `/project:work` to pick up the first new todo.
 
 ## Anti-patterns
 
@@ -140,5 +133,4 @@ If dirty: run `human-checkpoint`.
 - **Asking what you could read.** If the wiki or codebase already answers the question, read first.
 - **Batching the transcript.** Writing the full transcript at the end instead of streaming it Q-by-Q and A-by-A. The transcript must be on disk turn-by-turn — if the session ends mid-interview, every Q+A already asked must be preserved.
 - **Editing prior answers.** Raw is immutable. If you discover an error or want to refine, append a follow-up Q+A clarifying it — never modify history.
-- **Interviewing on `develop` or `main`.** The transcript is a tracked file written turn-by-turn — by the time you notice, the branch is already wrong. Branch at step 1a, before the first question.
 - **Asking without writing the Q first.** If you ask before the Q is on disk and the session ends mid-answer, you've lost the question. Always: write Q → ask → write A.

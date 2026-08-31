@@ -163,17 +163,16 @@ List signal categories from Step 3 that do NOT apply to this project, with one-l
 Number the recommendations in the order that will unblock the most /project:work cycles first.
 ```
 
-### 4a. Branch before creating anything
+### 4a. Sync develop if standing on develop
 
-Steps 1–4 are read-only, so branch here — right before the first tracked write. The skill/agent files and the log entry are tracked, and `develop`/`main` take no direct commits (`feature-branching`, `git-conventions.md`):
+If you are standing on `develop`, fetch and fast-forward before creating any approved toolkit assets:
 
 ```bash
-git fetch origin develop
-git checkout develop && git merge --ff-only origin/develop
-git checkout -b chore/agent-scout-$(date -u +%Y-%m-%d)
+git fetch origin develop 2>/dev/null || true
+git merge --ff-only origin/develop 2>/dev/null || true
 ```
 
-No remote yet (`git remote` prints nothing)? Skip the fetch/merge and branch off local `develop`. **Already on a `feat/*` or `fix/*` branch?** Stay there. Branch only when standing on `develop` or `main`; in that case step 7 ends with a PR to `develop` (`pr-create`, body = the survey report) and `git checkout develop`.
+**Already on a `feat/*` or `fix/*` branch?** Stay there. Living toolkit configuration and log updates commit directly on `develop` (or your active feature branch, behavioral rule 19).
 
 ### 5. Offer to create
 

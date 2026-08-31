@@ -6,7 +6,7 @@ type: skill
 
 # Branching
 
-Always branch before code. Never commit directly to `develop` or `main`. Commit-message format and PR template live in [`docs/wiki/git-conventions.md`](../../../docs/wiki/git-conventions.md) — this skill won't repeat them.
+Always branch before code implementation. Feature and bugfix code (`feat/*`, `fix/*`, `refactor/*`, `perf/*`) is built on a dedicated branch cut from `develop` and merged via PR. Living documentation and maintenance (`docs/wiki/`, `docs/raw/`, `.claude/` config) commits directly to `develop` (or stays on your active branch) to keep the living spec responsive without PR fatigue. Commit-message format and PR template live in [`docs/wiki/git-conventions.md`](../../../docs/wiki/git-conventions.md).
 
 ## Starting work
 
@@ -30,27 +30,32 @@ Always branch before code. Never commit directly to `develop` or `main`. Commit-
 3. Branch as `<type>/<short-slug>` where `<type>` ∈ `feat`, `fix`, `chore`, `docs`, `refactor`, `test`. Examples: `feat/auth-login`, `fix/race-on-double-submit`, `chore/upgrade-pytest`, `feat/profile` (batched).
 
    ```bash
-   git checkout -b feat/<slug>
+   if git show-ref --verify --quiet "refs/heads/feat/$slug"; then
+     git checkout "feat/$slug"
+     git merge --ff-only "origin/feat/$slug" 2>/dev/null || true
+   else
+     git checkout -b "feat/$slug"
+   fi
    ```
 
 **The `<slug>` must equal the entity-page slug** — the branch name (`feat/<slug>`), the entity page, the plan scratch (`.claude/handoff/<slug>-plan.md`), and the test names all key off it. Pick it once and keep it stable.
 
 ## Which command branches, and when
 
-Every command that writes tracked files branches **before its first write** (behavioral rule 19) — not before its commit. A command whose output is written turn-by-turn (an interview transcript) has already landed on the wrong branch by the time you check at commit time.
+Code mutations branch **before the first write** (behavioral rule 19). Living documentation and knowledge-base maintenance commit directly to `develop` when standing on `develop`, or stay on your active feature branch if running mid-task.
 
 | Command                | Branch                             | Created before          |
 | ---------------------- | ---------------------------------- | ----------------------- |
 | `/project:work`        | `feat/<slug>`                      | the failing test        |
-| `/project:interview`   | `docs/interview-<slug>`            | the transcript file     |
-| `/project:wiki-ingest` | `docs/ingest-<slug>`               | the summary page        |
-| `/project:agent-scout` | `chore/agent-scout-<date>`         | the first skill/agent   |
-| `/project:wiki-lint`   | `chore/wiki-lint-<date>`           | the maintainer dispatch |
-| `/project:review`      | `chore/review-<date>`              | the reviewer dispatch   |
-| `/project:handoff`     | `docs/handoff-<slug>`              | the brief file          |
-| `/project:adversary`   | none — runs on the existing branch | —                       |
+| `/project:interview`   | none (direct on `develop` or active `feat/*`) | —                       |
+| `/project:wiki-ingest` | none (direct on `develop` or active `feat/*`) | —                       |
+| `/project:agent-scout` | none (direct on `develop` or active `feat/*`) | —                       |
+| `/project:wiki-lint`   | none (direct on `develop` or active `feat/*`) | —                       |
+| `/project:review`      | none (direct on `develop` or active `feat/*`) | —                       |
+| `/project:handoff`     | none (direct on `develop` or active `feat/*`) | —                       |
+| `/project:adversary`   | none (runs on existing `feat/*` branch)       | —                       |
 
-In every case the rule is the same: **branch only if you're on `develop` or `main`.** Already on a `feat/*`/`fix/*` branch whose work this belongs to → stay there and let that branch's PR carry the change.
+In every case the rule is the same: **code changes branch from `develop`.** Already on a `feat/*`/`fix/*` branch whose work this belongs to → stay there and let that branch's PR carry the change.
 
 ## Batching todos
 

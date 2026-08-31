@@ -15,11 +15,13 @@ updated: 2026-08-05
 > [!abstract] Essence
 > Branching and commit conventions for this project. Mirrors the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md) — updated when the team adopts a new flow; mirror changes into the skill.
 
-## Default branch
+## Integration and branching model
 
-`develop` — protected, integration branch. No direct commits. `/project:work` always starts and ends on `develop`. `main` is the release branch, updated separately when `develop` is promoted.
+`develop` is the primary integration branch; `main` is the release branch.
+- **Code modifications (`feat/*`, `fix/*`, `refactor/*`, `perf/*`)** must always be built on a dedicated branch cut from `develop` and merged via PR. No direct code commits on `develop`.
+- **Living documentation & operations (`docs/wiki/`, `docs/raw/`, `.claude/` config)**: maintenance commands (`/project:wiki-lint`, `/project:review`, `/project:wiki-ingest`, `/project:interview`, `/project:agent-scout`) commit and push directly to `develop` when standing on `develop` (or stay on the active feature branch if mid-feature). This keeps the living knowledge base fast and responsive without PR fatigue for documentation.
 
-"No direct commits" binds **every** command that writes tracked files, not just `/project:work` — wiki edits, interview transcripts and `.claude/` config are as tracked as code. Each such command opens its own branch before its first write; the per-command branch names are tabulated in the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md).
+The branching rules and command tables are defined in the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md).
 
 ## Branch naming
 

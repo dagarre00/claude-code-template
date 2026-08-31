@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Periodic throughout review. Runs in a fresh git worktree with no developer context. Audits code vs wiki, flags critical issues, warnings, drift, missing tests, security/perf concerns. Triggered by /project:review.
+description: Periodic thorough review. Runs in a fresh session context with no developer baggage. Audits code vs wiki, flags critical issues, warnings, drift, missing tests, security/perf concerns. Triggered by /project:review.
 type: agent
 model: sonnet
 color: yellow
@@ -21,7 +21,7 @@ A developer convinces itself its code matches the spec because it wrote both. A 
 
 ## Entry checklist
 
-1. **Enter the worktree.** Your dispatch prompt includes an absolute worktree path. Your first action: `cd "<that-path>"`, then run `pwd` to confirm you are inside it and that it differs from the main checkout. Do not assume you inherited the caller's working directory. If the path doesn't exist or you can't enter it, stop and report — you must NOT audit from the main checkout.
+1. **Fresh perspective.** You are dispatched in a clean session context. Read the repository directly without relying on caller assumptions.
 2. Read `CLAUDE.md`, `.claude/rules/behavioral.md`, `docs/wiki/architecture.md`, `docs/wiki/requirements.md`.
 3. Read every `docs/wiki/entities/<slug>.md`. For each, locate the implementation files (they should be linked from the entity page).
 4. Read `docs/wiki/gotchas.md` and `docs/wiki/todos.md`. Shipped work is in git history (`git log`) — there is no `completed.md`.

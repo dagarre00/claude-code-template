@@ -57,7 +57,7 @@ The wiki follows the Obsidian LLM-wiki standard — full standard in the [`wiki-
 | `/project:interview`   | Q&A to define requirements or features            |
 | `/project:work`        | Top todo → spec → red → green → refactor → commit |
 | `/project:adversary`   | Read-only second model over the diff; findings only |
-| `/project:review`      | Full audit in isolated worktree                   |
+| `/project:review`      | Full audit in fresh session context               |
 | `/project:wiki-lint`   | Wiki health check                                 |
 | `/project:wiki-ingest` | Ingest file or research into wiki                 |
 | `/project:agent-scout` | Recommend project-specific agents and skills      |
@@ -72,7 +72,7 @@ Each takes free-text context that scopes it — `/project:work the login endpoin
 | Plan complex/batched todos | `planner` (Opus) — before the developer, via `/project:work` |
 | TDD cycle                  | `developer` (red → green → refactor; loads skills on demand) |
 | Adversarial diff review    | `adversary` (Opus, fresh context) — `/project:work` step 7a  |
-| Periodic audit             | `reviewer` (worktree-isolated)                               |
+| Periodic audit             | `reviewer` (fresh session context)                           |
 | Wiki health                | `wiki-maintainer` (manual only via `/project:wiki-lint`)     |
 | Web research               | `researcher`                                                 |
 

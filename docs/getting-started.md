@@ -111,7 +111,7 @@ If a step fails twice on the same approach, the **two-strike rule** fires — th
 /project:review
 ```
 
-Runs the `reviewer` agent in a fresh git worktree with no developer context. It audits code against the wiki and flags drift, missing tests, security/perf concerns. Critical and Warning findings become prioritized items in `todos.md` (they turn into the next `/project:work` cycles); Drift findings go to `wiki-todos.md` for the maintainer. The report itself lands on a `chore/review-*` branch and is PR'd to `develop` like any other tracked change.
+Runs the `reviewer` agent in a fresh session context with no developer baggage. It audits code against the wiki and flags drift, missing tests, security/perf concerns. Critical and Warning findings become prioritized items in `todos.md` (they turn into the next `/project:work` cycles); Drift findings go to `wiki-todos.md` for the maintainer. The audit report and todo updates commit directly to `develop`.
 
 This is **not** part of `/project:work` — it's periodic and isolated.
 
@@ -206,27 +206,18 @@ The reviewer is fresh eyes on the codebase. It catches drift the developer can't
 
 **What happens:**
 
-1. `/project:review` opens a `chore/review-YYYY-MM-DD` branch (the report is a tracked file, and `develop` takes no direct commits), then creates a fresh git worktree at `../<repo>-review-YYYY-MM-DD` (sibling directory, not inside the repo).
-2. Dispatches the reviewer agent **inside the worktree** — no prior developer context, fresh read of every entity page and the code that implements it.
-3. Reviewer runs the test suite itself. Trusts nothing.
-4. Findings land in `docs/wiki/decisions/review-YYYY-MM-DD.md` — structured by severity (Critical / Warning / Drift / Missing ADR).
-5. Anything cross-page or wiki-shaped also goes into `docs/wiki/wiki-todos.md` for the maintainer.
+1. `/project:review` syncs `develop` and dispatches the reviewer agent in a fresh session context — no prior developer context, fresh read of every entity page and the code that implements it.
+2. Reviewer runs the test suite itself. Trusts nothing.
+3. Findings land in `docs/wiki/decisions/review-YYYY-MM-DD.md` — structured by severity (Critical / Warning / Drift / Missing ADR).
+4. Anything cross-page or wiki-shaped also goes into `docs/wiki/wiki-todos.md` for the maintainer.
 
-**Processing the report (back in the main checkout):**
+**Processing the report:**
 
 1. Read `docs/wiki/decisions/review-YYYY-MM-DD.md`.
 2. For each Critical / Warning, file a TODO in `docs/wiki/todos.md` with priority. These become the next `/project:work` cycles.
 3. For each Drift item, append to `docs/wiki/wiki-todos.md` for the next `/project:wiki-lint`.
 4. For each Missing ADR, queue an ADR for the next `/project:work` cycle to file via the `decision-recording` skill.
-5. Append a log entry summarising counts.
-
-**Worktree cleanup:**
-
-```bash
-git worktree remove ../<repo>-review-YYYY-MM-DD
-```
-
-`/project:review` does this for you at the end. If something goes wrong and the worktree is left over, run that command yourself.
+5. Append a log entry summarising counts, then commit and push directly to `develop`.
 
 ## Scenario: Filing a hotfix on production code
 
@@ -359,7 +350,7 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `/project:work` refuses to start (test command)    | `commands.md ## Test` is `<TBD>` or errors out — re-run `/project:init` step 5a to bootstrap a runnable command            |
 | Developer won't start (no Behavior cases)          | Entity page missing or `## Behavior` empty — run `/project:interview` first                                               |
-| Reviewer claims it's in the wrong dir              | `/project:review` didn't `cd` into the worktree first — re-run, ensure worktree path is passed                            |
+| Reviewer scope unclear                             | Re-run `/project:review` with an explicit scope argument (e.g. `/project:review security only`)                            |
 | `wiki-todos.md` is huge                            | Run `/project:wiki-lint`                                                                                                  |
 | Developer keeps retrying the same failing approach | Two-strike rule should fire — it stops after the second failure and asks you                                              |
 | Plan looks wrong                                   | Edit `.claude/handoff/<slug>-plan.md`, or just tell the developer the approach to take                                    |

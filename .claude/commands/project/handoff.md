@@ -37,9 +37,9 @@ Any failure → `human-checkpoint`.
 
 ## Steps
 
-1. **Pick the work.** `git fetch origin develop` first, then read `docs/wiki/todos.md` — the argument overrides the default. Skip `[wiki]` lines. Confirm against `origin/develop` that it has not already shipped.
+1. **Pick the work.** If standing on `develop`, `git fetch origin develop 2>/dev/null || true && git merge --ff-only origin/develop 2>/dev/null || true`, then read `docs/wiki/todos.md` — the argument overrides the default. Skip `[wiki]` lines. Confirm against `origin/develop` that it has not already shipped.
 
-2. **Branch if you are on `develop` or `main`:** `git checkout -b docs/handoff-<slug>`. The brief is gitignored, but the log entry is tracked (behavioral rule 19).
+2. **Stay on current branch.** If standing on `develop`, stay on `develop`. If on an existing `feat/*` branch, stay there. The brief is gitignored, and the log entry commits directly on `develop` (or your active branch, behavioral rule 19).
 
 3. **Plan first for `[complex]` or batched work.** Dispatch the `planner`; its output goes *into* the brief (skill step 5), not into a file the external agent cannot see.
 
@@ -47,9 +47,15 @@ Any failure → `human-checkpoint`.
 
 5. **Read it back as the reader would**, with no context (skill step 8). This is the step that decides whether the handoff works, and it is the one worth spending time on.
 
-6. **Hand it to the human.** Give the path, and say plainly: paste the contents as the external agent's entire opening prompt, in a checkout of this repo. It will cut its own git worktree (so the main checkout is never disturbed), work test-first on `feat/<slug>`, commit per case, push, sync by merging rather than rebasing, open a PR against `develop`, delete the brief, tear the worktree down, and report back. It never force-pushes and it does not merge.
+6. **Hand it to the human.** Give the path, and say plainly: paste the contents as the external agent's entire opening prompt, in a checkout of this repo. It will work test-first on `feat/<slug>`, commit per case, push, sync by merging rather than rebasing, open a PR against `develop`, delete the brief, and report back. It never force-pushes and it does not merge.
 
-7. **Log, commit, push** — the `handoff` entry in `docs/wiki/log.md`, per the skill.
+7. **Log, commit, push** — the `handoff` entry in `docs/wiki/log.md`, committed and pushed directly to `develop` (or active branch):
+
+   ```bash
+   git add docs/wiki/log.md
+   git commit -m "docs(handoff): package <slug>"
+   git push -u origin "$(git branch --show-current)"
+   ```
 
 8. **Report.** Name what was delegated, the cases covered, the branch to expect, and what you will check when the PR arrives (skill § When the work comes back).
 

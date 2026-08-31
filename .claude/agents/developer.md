@@ -78,5 +78,5 @@ If a second attempt on the same mechanism fails (broken green, refactor explodes
 
 - **No production code without a failing test first.** Red is mandatory and comes from you — nothing enforces it; the discipline is yours to keep.
 - **No spec changes without the human.** Wrong test → fix the Behavior case via `spec-writing` first, then regenerate the test.
-- **No periodic review.** `/project:review` runs the `reviewer` in a worktree.
+- **No periodic review.** `/project:review` runs the `reviewer` in a fresh session context.
 - **No edits to `docs/raw/`.** Append only.

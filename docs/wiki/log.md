@@ -105,3 +105,10 @@ for a real handoff; fixed in the template and its `SKILL.md` companion.
 - Synchronized `/project:handoff` across all tables: added to `CLAUDE.md.tmpl`, `HUMAN.md`, `README.md`, `feature-branching` skill, and `docs/getting-started.md`.
 - Fixed maintenance cadence and schema reference greps: added robust regex matching for multi-word/suffixed log entries and heading citations with slashes.
 - Fixed stale commit description in `docs/getting-started.md` to reflect the per-case developer commit cadence.
+
+## [2026-08-30 21:08] refactor — remove review worktrees & adopt lean living-wiki on develop
+
+- Removed worktree isolation from `/project:review` and `reviewer.md`: reviewer now runs directly in a fresh subagent context, avoiding dependency re-install overhead and worktree teardown friction.
+- Adopted Option A integration model (Rule 19, `git-conventions.md`, `feature-branching`): code modifications strictly branch and open PRs (`feat/*`, `fix/*`), while routine living-wiki/docs maintenance (`/project:wiki-lint`, `/project:review`, `/project:wiki-ingest`, `/project:interview`, `/project:agent-scout`, `/project:handoff`) commits directly to `develop` (or stays on the active feature branch).
+- Synchronized command steps across `review.md`, `interview.md`, `wiki-lint.md`, `wiki-ingest.md`, `agent-scout.md`, and `handoff.md` to remove throwaway chore branches and PRs for wiki-only edits.
+- Updated `CLAUDE.md`, `CLAUDE.md.tmpl`, `HUMAN.md`, `README.md`, and `docs/getting-started.md` to match the streamlined workflow.

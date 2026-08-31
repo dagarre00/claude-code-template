@@ -28,19 +28,14 @@ If dirty: run `human-checkpoint`.
 
 ## Steps
 
-1. **Fetch and branch for the maintenance pass.** Fetch and sync `develop` first, same as every other command that branches (`feature-branching` skill) — otherwise the pass runs against a stale local mirror instead of actual remote state:
+1. **Sync develop if standing on develop.** If standing on `develop`, fetch and fast-forward before the lint pass begins:
 
    ```bash
-   git fetch origin develop
-   git checkout develop && git merge --ff-only origin/develop
-   git checkout -b chore/wiki-lint-$(date -u +%Y-%m-%d)
+   git fetch origin develop 2>/dev/null || true
+   git merge --ff-only origin/develop 2>/dev/null || true
    ```
 
-   If `merge --ff-only` fails (develop has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force develop.
-
-   No remote yet (`git remote` prints nothing)? Skip the fetch/merge and branch off local `develop`. **Already on a `feat/*`/`fix/*` branch?** Stay there — a lint pass that supports the feature you're mid-cycle on belongs in that branch's history. Only branch when standing on `develop` or `main`.
-
-   Keeps maintenance commits separate from feature work.
+   **Already on a `feat/*`/`fix/*` branch?** Stay there — a lint pass that supports the feature you're mid-cycle on belongs in that branch's history. Living wiki updates commit directly on `develop` (or your active feature branch, behavioral rule 19).
 
 2. **Check append-only files for overflow** before dispatching:
 
