@@ -24,7 +24,7 @@ Do **not** use `/project:review` inside `/project:work`. They're different phase
 
 ## Preconditions
 
-- On `develop` (or any non-`feat`/`fix` branch). Standing on `main` is corrected by step 1's guard — this command never runs from `main`.
+- On `develop`, or your active `feat/*`/`fix/*` branch if running mid-cycle (behavioral rule 19; same as `feature-branching`'s table). Standing on `main` is corrected by step 1's guard — this command never runs from `main`.
 - Working tree clean.
 - `docs/wiki/` exists and has at least one entity page.
 
