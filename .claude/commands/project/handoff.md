@@ -44,12 +44,15 @@ Any failure → `human-checkpoint`.
      git checkout develop || exit 1
    fi
    if [ "$(git branch --show-current)" = "develop" ]; then
-     git fetch origin develop 2>/dev/null || true
-     git merge --ff-only origin/develop 2>/dev/null || true
+     if git fetch origin develop 2>/dev/null; then
+       git merge --ff-only origin/develop 2>/dev/null || exit 1
+     fi
    fi
    ```
 
    **Never from `main`.** The guard above moves you to `develop` first — `main` is the release branch, updated only when `develop` is promoted (`docs/wiki/git-conventions.md`).
+
+   **If `git merge --ff-only` fails**, `develop` has diverged in a non-fast-forward way — stop and run `human-checkpoint` before proceeding. Committing on a stale `develop` and failing the push is exactly the unpushed-commit loss behavioral rule 19 exists to prevent.
 
    Then read `docs/wiki/todos.md` — the argument overrides the default. Skip `[wiki]` lines. Confirm against `origin/develop` that it has not already shipped.
 
