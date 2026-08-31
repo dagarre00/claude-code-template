@@ -29,7 +29,8 @@ Not a substitute for `/project:review` (periodic, whole-repo, drift) or for writ
 ## Preconditions
 
 - A diff exists: `git status --porcelain` is non-empty, or you were given a base ref.
-- On a `feat`/`fix`/`chore` branch, not `develop` or `main` — fixes land on a branch.
+- On a `feat`/`fix`/`chore` branch, not `main` — any fix the human approves has to land somewhere, and it is never `main`.
+- **`develop` is allowed for exactly one case:** the release review named above (`/project:adversary against main`), which is diff-scoped and read-only by construction. If that round yields an approved `critical`/`major`, cut a `fix/*` branch for the fix rather than committing it to `develop`; the round-closing todo and log lines are living documentation and may land on `develop` directly (behavioral rule 19).
 
 Clean tree and no base ref: stop and say there is nothing to review. Do not dispatch.
 
@@ -58,10 +59,15 @@ Clean tree and no base ref: stop and say there is nothing to review. Do not disp
 6. **Commit the dispositions and push.** Each fix is its own commit naming the finding it closes; one commit then closes the round with every finding's disposition in its body (behavioral rule 19, and rule 20's record):
 
    ```bash
-   git commit -m "fix(<slug>): <what changed> — adversary F1"   # approved criticals/majors only
+   git add <fixed-files>                                              # approved criticals/majors only
+   git commit -m "fix(<slug>): <what changed> — adversary F1"
    git add docs/wiki/todos.md docs/wiki/log.md
    git commit -m "docs(<slug>): adversary round 1 — <N> findings, …"   # body: one line per finding
-   git push -u origin "$(git branch --show-current)"
+   if git remote get-url origin >/dev/null 2>&1; then
+     git push -u origin "$(git branch --show-current)"
+   else
+     echo "no remote — the commit is local only; say so in the report"
+   fi
    ```
 
    Most rounds have no `fix` commit at all — that is the expected shape, not a failed review. If a round produced neither a fix nor a todo (everything rejected), make the round-closing commit `--allow-empty`: its written rejections are the only thing that has to survive.

@@ -22,6 +22,7 @@ Three layers, each owned by a different actor:
 | Audit the project                                 | `/project:review`                         |
 | Check the wiki is healthy                         | `/project:wiki-lint`                      |
 | Ingest a doc or research a topic                  | `/project:wiki-ingest`                    |
+| Package a todo for an outside agent               | `/project:handoff`                        |
 | See where you are                                 | `git status` / `git log --oneline`        |
 | Tag before a risky change                         | `git tag checkpoint-<stamp>`              |
 | Recover from a bad attempt                        | `git reset --hard <checkpoint-tag>`       |

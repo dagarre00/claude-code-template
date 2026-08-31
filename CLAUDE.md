@@ -68,7 +68,7 @@ The wiki follows the **Obsidian LLM-wiki standard**. The full standard — templ
 | `/project:interview`   | Grill-me-relentlessly Q&A for requirements or a new feature. Streams a transcript to `docs/raw/interviews/`, then updates the wiki   | The topic to grill on                               |
 | `/project:work`        | Pick the top todo (or batch), branch from `develop`, dispatch the `planner` (complex/batched) then the `developer`, commit, push, PR | Which todo/entity to work, or a batch               |
 | `/project:adversary`   | Point a read-only second model (Opus, fresh context) at the current diff. Findings only — you triage each one. Per-change            | Base ref to diff against, or a lens                 |
-| `/project:review`      | Thorough review of code vs wiki. Runs the `reviewer` in a fresh worktree with isolated context                                       | Area or lens to pin the review to                   |
+| `/project:review`      | Thorough review of code vs wiki. Runs the `reviewer` in a fresh session context with no developer baggage                             | Area or lens to pin the review to                   |
 | `/project:wiki-lint`   | Wiki health check: reconciliation, lint invariants, orphans, broken links, drift; archives `log.md` when it overflows                | Subtree or single check to focus on                 |
 | `/project:wiki-ingest` | Ingest a file or research topic into the wiki (`spec.pdf`, or `search for ...`)                                                      | The file path or research query (**required**)      |
 | `/project:agent-scout` | Post-init survey: recommends agents and skills tailored to this project's stack, domain, and services                                | Signal category, feature, or output filter          |
@@ -80,16 +80,16 @@ Routine git operations (checkpoint tag, reset, status/log) use plain git, not be
 
 | Task                                            | Agent                                                                  |
 | ----------------------------------------------- | ---------------------------------------------------------------------- |
-| Decompose a `[complex]` or batched todo         | `planner` (Opus) — dispatched by `/project:work` before the developer  |
-| TDD cycle — red → green → refactor → wiki        | `developer` — dispatched by `/project:work`; loads skills on demand    |
-| Adversarial diff review before commit           | `adversary` (Opus, fresh context) — `/project:work` step 7a, or `/project:adversary` |
-| Periodic full audit (≈every 5 todos)            | `reviewer` (worktree-isolated) — via `/project:review`                 |
+| Complex/batched planning (before tests)         | `planner` (Opus) — via `/project:work`                                 |
+| Code implementation (Red → Green → Refactor)   | `developer` — via `/project:work`                                      |
+| Adversarial diff audit (findings only)          | `adversary` (Opus, read-only) — via `/project:work` or `/project:adversary` |
+| Periodic full audit (≈every 5 todos)            | `reviewer` (fresh session context) — via `/project:review`            |
 | Periodic wiki health, ingest, cross-link        | `wiki-maintainer` — **manual only** via `/project:wiki-lint`           |
 | Web research — search, fetch, synthesize        | `researcher` — via `/project:wiki-ingest` or directly by the human     |
 
 There is intentionally no domain-specialized agent (no "backend agent"). Domain knowledge lives in skills the `developer` loads on demand. The `planner` and the `adversary` run on **Opus** — the adversary deliberately on a different tier from the `developer` it reviews, so the second reader is a second *model*, not just a second context. All other agents run on Sonnet (researcher on Haiku).
 
-**Wiki edits — inline only.** The `developer` and `reviewer` make small wiki edits **inline** in the same commit as the code (Behavior tick, single ADR, single gotcha line, log entry). Larger cross-page work is queued in `wiki-todos.md` for the human to run `/project:wiki-lint`. **No agent auto-invokes the wiki-maintainer.**
+**Wiki edits — inline only.** The `developer` makes small wiki edits **inline** in the same commit as the code (Behavior tick, single ADR, single gotcha line, log entry). The `reviewer` and the `adversary` make none: both are findings-only (behavioral rule 12), and the dispatching command files what they raise — the `reviewer` writes one report page and nothing else, the `adversary` writes only its gitignored mailbox. Larger cross-page work is queued in `wiki-todos.md` for the human to run `/project:wiki-lint`. **No agent auto-invokes the wiki-maintainer.**
 
 ## Skill catalog
 

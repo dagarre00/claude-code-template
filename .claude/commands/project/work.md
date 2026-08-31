@@ -29,7 +29,9 @@ You orchestrate one TDD cycle (or a small batch). You do **not** write tests or 
 
 If any precondition fails: stop and run `human-checkpoint`.
 
-**If you are on a `feat/*` branch when `/project:work` is invoked**, check whether there is in-progress work (uncommitted changes or commits not yet pushed). If yes, continue from where you left off (step 5). If the branch is clean and fully pushed, it is a leftover from a prior cycle — run `git checkout develop` to reset to the correct starting point, then proceed from step 1.
+**If you are on a `feat/*` branch when `/project:work` is invoked**, check whether there is in-progress work:
+- If there are uncommitted changes or commits not yet pushed, or if the current entity still has unticked Behavior cases (`[ ]` / `[~]`), stay on `feat/<slug>` and continue the feature (step 5).
+- If all Behavior cases on the entity page are already `[x]` and pushed, confirm the PR was actually merged (`gh pr view <branch> --json state`, or check whether `develop`'s log already has the merge commit) before treating this as a finished cycle — `[x]`-and-pushed alone is also true of an open, unmerged PR. Once confirmed: check out `develop`, sync with `git fetch origin develop && git merge --ff-only origin/develop` (not bare `pull` — `feature-branching`'s convention, so a non-fast-forward fails safely instead of creating a merge commit), then delete the local branch with `git branch -d <branch>` — lowercase `-d`, which refuses if git itself doesn't consider the branch merged, as a second check on the confirmation above.
 
 ## Resuming an interrupted cycle
 
@@ -62,14 +64,20 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 2. **Fetch and branch.** Follow `feature-branching` skill. Fetch first so the divergence check is against actual remote state, not a stale local mirror:
 
    ```bash
-   git fetch origin develop
-   git checkout develop && git merge --ff-only origin/develop
-   git checkout -b feat/<slug>
+   git checkout develop || { echo "could not switch to develop — stop and run human-checkpoint"; exit 1; }
+   if git remote get-url origin >/dev/null 2>&1; then
+     git fetch origin develop "refs/heads/feat/<slug>:refs/remotes/origin/feat/<slug>" 2>/dev/null || git fetch origin develop || { echo "fetch failed — stop and run human-checkpoint"; exit 1; }
+     git merge --ff-only origin/develop || { echo "develop has diverged from origin — stop and run human-checkpoint"; exit 1; }
+   fi
+   git checkout "feat/<slug>" 2>/dev/null || git checkout -b "feat/<slug>"
+   if git rev-parse --verify origin/feat/<slug> >/dev/null 2>&1; then
+     git merge --ff-only "origin/feat/<slug>" || { echo "feat/<slug> has diverged from origin — stop and run human-checkpoint"; exit 1; }
+   fi
    ```
 
-   If `merge --ff-only` fails (develop has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force develop.
+   If `merge --ff-only` fails (develop has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force develop. Same if `origin/feat/<slug>` exists but has diverged: that means another session pushed to this branch — do not force-push over it.
 
-   **No remote yet?** `/project:init` supports finishing without one. Check with `git remote` — if it prints nothing, skip the fetch/merge and branch straight off local `develop`. Every push step in this command is then skipped and noted in the report until the human adds a remote.
+   **No remote yet?** `/project:init` supports finishing without one. `git remote get-url origin` fails in that case, so the fetch **and** the `merge --ff-only` are both skipped and the block branches straight off local `develop`. Both must stay inside that guard: `origin/develop` does not exist without a remote, so a merge left outside it fails with `not something we can merge` and halts the cycle on a perfectly healthy repo. Every push step in this command is then skipped and noted in the report until the human adds a remote.
 
 3. **Verify Behavior cases exist.** Read the `## Behavior` section of the entity page — or, for an `[infra]` todo, of the concept page named in step 1. If any case is `[ ]` and unimplemented, that's the test target. If the section is empty or vague, **stop** — `/project:interview` or the `spec-writing` skill must define them first.
 
@@ -101,7 +109,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 
    **Scope it small — one case, or a few closely-related ones.** Reviewing a whole multi-case cycle at once is what makes these reviews run to round 5: a large diff yields many findings, the fixes enlarge it, and the next round finds more. Several small reviews beat one large one.
 
-   **Findings become todos; they are not fixed here.** Triage every finding to Filed / Fixed / Rejected-with-reason and **record each disposition in the commit that answers it** (behavioral rule 20). The default is Filed: a line in `docs/wiki/todos.md` at the priority its severity maps to. The review does not gate the cycle — a cycle with open findings still completes, because the queue owns them now.
+   **Findings become todos; they are not fixed here.** Re-dispatch the `developer` with the mailbox to get a recommended disposition per finding — it has the code context you don't — then triage every finding to Filed / Fixed / Rejected-with-reason yourself and **record each disposition in the commit that answers it** (behavioral rule 20). You own the checkpoint, the todo lines and the round commit; the `developer` owns the judgement and any approved fix. The default is Filed: a line in `docs/wiki/todos.md` at the priority its severity maps to. The review does not gate the cycle — a cycle with open findings still completes, because the queue owns them now.
 
    **`critical` and `major` are the exception.** Do not fix them and do not silently file them: run one `human-checkpoint` covering all of them, with each finding's failure scenario and your recommendation, and let the human choose fix-now or queue. Approved → fix in its own commit, failing test first, then re-run the full suite. Declined or unreachable → file at P0/P1 and flag it prominently in your step 12 report.
 
@@ -158,11 +166,15 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
     Then run the **maintenance cadence check**. This is the only place the periodic commands are ever surfaced, so it runs even when the cycle went perfectly — especially then, because a clean cycle is exactly when nobody thinks to lint:
 
     ```bash
-    grep -n '^## \[' docs/wiki/log.md | tail -1                     # cycles since…
-    grep -n '\] review$\|\] wiki-maintenance$' docs/wiki/log.md | tail -2   # …each last ran
-    grep -cE '^- \[ \] [0-9]{4}-' docs/wiki/wiki-todos.md            # maintainer queue depth (dated entries only — the file's own format example is not one)
-    grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md              # filed findings never triaged
+    # Count each cadence independently — never one grep piped to `tail -N` over a
+    # combined match set, which drops whichever kind did not run most recently.
+    awk '/^## \[[^]]*\] review[[:space:]]*$/{n=0;next} /^## \[[^]]*\] work/{n++} END{print n+0}' docs/wiki/log.md            # work cycles since /project:review
+    awk '/^## \[[^]]*\] wiki-maintenance[[:space:]]*$/{n=0;next} /^## \[[^]]*\] work/{n++} END{print n+0}' docs/wiki/log.md  # work cycles since /project:wiki-lint
+    grep -cE '^- \[ \] [0-9]{4}-' docs/wiki/wiki-todos.md 2>/dev/null || true                 # maintainer queue depth (dated entries only — the file's own format example is not one)
+    grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null || true                   # filed findings never triaged
     ```
+
+    Each `awk` resets its counter at the last entry of its own kind and counts the `work` entries after it, so it answers the trigger as written ("5+ work cycles since…") rather than handing you two line numbers to eyeball. A log with no `review` entry yet counts every cycle, which is the right answer.
 
     Suggest, naming the number that fired:
     - More todos in the same entity → keep going (run `/project:work` again from `develop` or the existing branch if still open).
@@ -179,7 +191,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 - **Adversary finding survives two rounds.** Don't open a third. `human-checkpoint` with both positions stated — the author's and the reviewer's.
 - **Adversary edits, commits, or pushes.** The read-only invariant is broken and the round is void. Report it, `git diff` to see what it touched, and re-dispatch after restoring the tree.
 - **Developer can't confirm Red.** Stop. The Behavior cases or the test environment is wrong. Use `human-checkpoint`.
-- **Developer fails twice on the same mechanism.** Two-strike rule (behavioral rule 5). Tag the state (`git tag checkpoint-<stamp>`), `git reset --hard` to a known-good commit, and re-spec via `/project:interview`. For complex/batched work, re-dispatch the `planner` to overwrite the plan with a fundamentally different approach before the next `developer` attempt.
+- **Developer fails twice on the same mechanism.** Two-strike rule (behavioral rule 5). Tag the state (`git tag checkpoint-<stamp>`), then run `human-checkpoint` with both failed attempts — the `git reset --hard` is the human's call, and `git status --porcelain` must account for every line before it runs (rule 21). On an approved reset, re-spec via `/project:interview`. For complex/batched work, re-dispatch the `planner` to overwrite the plan with a fundamentally different approach before the next `developer` attempt.
 - **Test suite has pre-existing failures.** Stop. Don't add work on top of a broken develop. Use `human-checkpoint`.
 - **Merge conflicts during branch sync.** Follow the `git-recovery` skill (Resolve merge / rebase / cherry-pick conflicts). If the conflicts are too broad or ambiguous, use `human-checkpoint` rather than guessing.
 - **Lost work after a container recycle.** Commits pushed to remote survive; only unpushed local state is gone. Check `git reflog` on the remote via `git ls-remote` — if the branch was pushed, `git fetch origin feat/<slug> && git checkout feat/<slug>` recovers it. If unpushed, re-run from the last open todo.
@@ -187,6 +199,6 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 ## What you do NOT do
 
 - **No coding directly.** You dispatch the `planner` (when needed), the `developer`, and the `adversary` (when gated). You can read files and run commands to verify; you don't write tests or production code in this command. Fixes for adversary findings are the exception you hand back to the `developer` if they are more than a line or two.
-- **No periodic review.** That's `/project:review`, dispatched separately in a worktree. The `reviewer` never runs here — the in-loop second reader is the `adversary`, which is diff-scoped and read-only (behavioral rule 12).
+- **No periodic review.** That's `/project:review`, dispatched separately in a fresh session context. The `reviewer` never runs here — the in-loop second reader is the `adversary`, which is diff-scoped and read-only (behavioral rule 12).
 - **No merging.** PR creation is automated (step 11); merging is always the human's call.
 - **No silent batching.** If you batch todos, name the batch in the commit message scope.

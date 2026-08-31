@@ -35,7 +35,9 @@ Implement the following, and nothing else.
 
 **Entity page (the spec):** `{{ENTITY_PATH}}`
 **Behavior cases to cover this cycle:** {{CASE_IDS}}
-**Branch to work on:** `{{BRANCH_NAME}}` — cut from `{{BASE_BRANCH}}`
+**Branch to work on:** `{{BRANCH_NAME}}` — cut from `{{CUT_FROM_BRANCH}}`, PR targets `{{BASE_BRANCH}}`
+
+For a plain cycle, `{{CUT_FROM_BRANCH}}` and `{{BASE_BRANCH}}` are the same branch (usually the trunk) — most cycles never notice the distinction. They diverge for a **stacked cycle**: one that continues work already sitting on a not-yet-merged branch from an earlier cycle. There, `{{CUT_FROM_BRANCH}}` is that earlier branch (you must build on its commits, not skip past them), while `{{BASE_BRANCH}}` is wherever this cycle's PR is meant to land — commonly that same earlier branch, forming a PR chain, but sometimes the trunk directly if the plan says this cycle should land independently. Do not assume they are equal; use whichever value each step below actually calls for.
 
 **Explicitly out of scope** — do not touch these even if you see something wrong with them. Note them in your final report instead:
 
@@ -60,7 +62,7 @@ These are project law, derived from real failures. They override your default in
 11. **A reviewer never fixes what it finds.** The review sub-agent in §8.1 is read-only: it produces findings, it does not edit, commit, push, or reset. You triage; it reports. If it edits anything, the round is void — restore the tree and re-run it.
 12. **Every finding gets a written disposition.** Fixed, Filed, or Rejected-with-a-reason. Silence is not a disposition and "unlikely" is not a reason. The dispositions go in commit messages (§5, Step 5).
 13. **Never edit anything under `docs/raw/`.** Those files are immutable source material. Append-only, and not by you.
-14. **Never commit to `{{BASE_BRANCH}}` or `main`, and never force-push anything** — not `--force`, not `--force-with-lease`, not even your own branch. All work lands on `{{BRANCH_NAME}}`, and Step 7 syncs by merging, which never rewrites published history. If you think you need a force-push, you have gone off the procedure: stop and ask (§9).
+14. **Never commit to `{{CUT_FROM_BRANCH}}`, `{{BASE_BRANCH}}`, or `main`, and never force-push anything** — not `--force`, not `--force-with-lease`, not even your own branch. All work lands on `{{BRANCH_NAME}}`, and Step 7 syncs by merging `{{CUT_FROM_BRANCH}}` in, which never rewrites published history. If you think you need a force-push, you have gone off the procedure: stop and ask (§9).
 15. **A dirty tree you did not dirty belongs to someone else.** Before any destructive git operation, run `git status --porcelain` and account for every line. If a path is not one you touched, it is evidence, not dirt — stop and ask (§9). Never `stash`, `reset --hard`, `checkout --`, or `clean` over changes whose author you cannot name.
 16. **Push every commit.** An unpushed commit is lost work — execution containers get recycled. `git push -u origin {{BRANCH_NAME}}` after each one.
 17. **Delete this file when you are done** (§5, Step 8) and tell the user you have finished (§10).
@@ -128,20 +130,20 @@ If behavior genuinely changed and a shipped (`[x]`) case is now wrong, do not ed
 ### Step 1 — Preflight
 
 ```bash
-git fetch origin {{BASE_BRANCH}}
-git log --oneline -1 origin/{{BASE_BRANCH}}
+git fetch origin {{CUT_FROM_BRANCH}}
+git log --oneline -1 origin/{{CUT_FROM_BRANCH}}
 ```
 
 Read §3.4 (gotchas) now, not after you get stuck.
 
-You do **not** need the main checkout to be clean, and you must not tidy it: your work happens in a worktree cut straight from `origin/{{BASE_BRANCH}}`, so whatever state that checkout is in is somebody else's business (rule 15). If the fetch fails, stop and ask (§9).
+You do **not** need the main checkout to be clean, and you must not tidy it: your work happens in a worktree cut straight from `origin/{{CUT_FROM_BRANCH}}`, so whatever state that checkout is in is somebody else's business (rule 15). If the fetch fails, stop and ask (§9).
 
 ### Step 2 — Create your worktree
 
 A worktree is a second working directory backed by the same repository — same branches, same remotes, same object store, but its own checked-out files. Working in one means you never touch the main checkout.
 
 ```bash
-git worktree add {{WORKTREE_PATH}} -b {{BRANCH_NAME}} origin/{{BASE_BRANCH}}
+git worktree add {{WORKTREE_PATH}} -b {{BRANCH_NAME}} origin/{{CUT_FROM_BRANCH}}
 cd {{WORKTREE_PATH}}
 ```
 
@@ -197,6 +199,7 @@ Run this in full for **one** case, commit and push it, then start the next case.
 
 ```bash
 git add <the test> <the implementation> {{ENTITY_PATH}}   # explicit paths, never -A or -a
+git add docs/wiki/gotchas.md                              # only if this case produced one (§7.4)
 git commit -m "feat({{SLUG}}): <the behavior, present tense, <=72 chars>"
 git push -u origin {{BRANCH_NAME}}
 ```
@@ -234,8 +237,9 @@ Close the round with one commit whose body is the record:
 
 ```bash
 git add docs/wiki/todos.md
+git add docs/wiki/gotchas.md {{ENTITY_PATH}}   # only if a rejection made you write down an invariant
 git commit -m "$(cat <<'MSG'
-docs({{SLUG}}): review round 1 — 3 findings, 1 fixed, 1 filed, 1 rejected, 2 nits
+docs({{SLUG}}): adversary round 1 — 3 findings, 1 fixed, 1 filed, 1 rejected, 2 nits
 
 F1 critical correctness — Fixed in <sha> (user approved): empty token now
    rejected before lookup.
@@ -248,7 +252,11 @@ MSG
 git push
 ```
 
-Every finding gets a line, filed ones included — the todo says what to do, the commit says why it was not done now. If the round produced neither a fix nor a todo, commit with `--allow-empty`: a round that changed nothing is precisely the one whose reasons must survive.
+Every finding gets a line, filed ones included — the todo says what to do, the commit says why it was not done now.
+
+**Use the literal words `adversary round` in that subject.** This project audits review records with `git log --grep="adversary round"`. Any other phrasing — `review round` included — leaves the dispositions in history but invisible to the one query that reads them back, which is the same failure mode as filing a finding under the wrong tag (§7.3).
+
+If the round produced neither a fix nor a todo, commit with `--allow-empty`: a round that changed nothing is precisely the one whose reasons must survive.
 
 **Re-dispatch only if a fix actually landed**, and then over the fix commits alone — never the original range, which is how a review manufactures fresh findings every round. **Two rounds maximum.** If findings survive round two, the unit was too big: stop and ask (§9) rather than opening round three.
 
@@ -259,7 +267,7 @@ Finally, delete the findings mailbox: `rm -f .claude/handoff/{{SLUG}}-findings.m
 1. Run the **full** test suite one more time and read the output. Green, no skips you introduced.
 2. Run the lint and format commands from §3.5 if the project has them.
 3. Confirm every case in §1 is `[x]` on the entity page, and that `## Implementation` and `## Tests` match reality.
-4. Remove the closed todo line(s) from `docs/wiki/todos.md`. Shipped work lives in git history, not in the queue — do not leave a ticked-off line behind.
+4. Remove **only** the specific line(s) from `docs/wiki/todos.md` that this cycle actually closed — the ones matching `{{TODO_LINES}}` and `{{CASE_IDS}}`, nothing else. If a todo is a multi-part item and this cycle closed only some of its parts, remove just those closed sub-lines and leave the still-open parts in place; never remove the parent line, or the item as a whole, while sibling parts remain open. Shipped work lives in git history, not in the queue — but only the part that actually shipped.
 5. Append a log entry to `docs/wiki/log.md` in the format at §7.5.
 6. Commit and push:
 
@@ -272,15 +280,15 @@ git push
 ### Step 7 — Sync and open the pull request
 
 ```bash
-git fetch origin {{BASE_BRANCH}}
-git merge origin/{{BASE_BRANCH}}     # resolve conflicts if any; ask if they are ambiguous
-{{TEST_CMD}}                         # the merge can bring in breakage — re-verify
+git fetch origin {{CUT_FROM_BRANCH}}
+git merge origin/{{CUT_FROM_BRANCH}}     # resolve conflicts if any; ask if they are ambiguous
+{{TEST_CMD}}                             # the merge can bring in breakage — re-verify
 git push origin {{BRANCH_NAME}}
 ```
 
-Merge the base branch in; do **not** rebase. A merge commit leaves every published commit untouched, so this push is an ordinary fast-forward and no force-push is ever needed. Rebasing would rewrite commits you have already pushed and invalidate anyone else's checkout of this branch.
+Merge in `{{CUT_FROM_BRANCH}}` — the branch you actually cut from and must stay in sync with, which for a stacked cycle is not necessarily where the PR lands. Do **not** rebase. A merge commit leaves every published commit untouched, so this push is an ordinary fast-forward and no force-push is ever needed. Rebasing would rewrite commits you have already pushed and invalidate anyone else's checkout of this branch.
 
-Then open a pull request from `{{BRANCH_NAME}}` targeting **`{{BASE_BRANCH}}`**, using the body format in §7.6. Title in the same conventional-commit form as your lead commit.
+Then open a pull request from `{{BRANCH_NAME}}` targeting **`{{BASE_BRANCH}}`** — the PR-target value from §1, which may differ from `{{CUT_FROM_BRANCH}}` on a stacked cycle — using the body format in §7.6. Title in the same conventional-commit form as your lead commit.
 
 **Do not merge it.** Merging is the user's call, always.
 
@@ -371,11 +379,13 @@ You probably need none. If the work forces a genuinely new concept, check first 
 
 ### 7.3 `docs/wiki/todos.md`
 
-Remove the lines you closed. Add one line per filed finding, in the section its severity maps to:
+Remove only the line(s) you actually closed this cycle — if the todo is multi-part and parts remain open, leave the parent line and the open parts untouched (§6, Step 6.4). Add one line per filed finding, in the section its severity maps to:
 
 ```markdown
-- [ ] [review] <one-line claim> — <severity>/<category>, F<N> of <sha>, entity {{SLUG}}
+- [ ] [adversary] <one-line claim> — <severity>/<category>, F<N> of <sha>, entity {{SLUG}}
 ```
+
+The `[adversary]` tag is not decorative: this repo's findings-backlog saturation counter (rule 22 / `FINDINGS_MAX`) greps for the literal string `[adversary]`. Any other tag — `[review]` included — makes the finding invisible to that counter and lets the backlog silently over-fill.
 
 ### 7.4 `docs/wiki/gotchas.md`
 
@@ -391,7 +401,7 @@ Append at the end (the file is chronological and append-only):
 - TODO(s): {{TODO_SUMMARY}}
 - Cases: {{CASE_IDS}}
 - Branch: {{BRANCH_NAME}}
-- Review: <N> findings — <F> filed, <X> fixed, <R> rejected
+- Adversary: <N> findings — <F> filed, <X> fixed, <R> rejected
 ```
 
 Add a second entry after the pull request exists:
@@ -585,6 +595,8 @@ Each of these has actually happened on this project.
 - **Forcing the worktree removal.** `--force` on a refusal discards whatever was uncommitted in there, which is the one case where the refusal was worth reading.
 - **A separate "update docs" commit at the end.** Wiki edits ride with the code (rule 6).
 - **Leaving a ticked-off todo in `todos.md`.** Closed items are removed; git history is the record.
+- **Removing a whole multi-part todo because one part closed.** Only the part(s) this cycle actually shipped come out; siblings that are still open stay in the queue (§6, Step 6.4).
+- **Filing a finding under `[review]` or any tag other than `[adversary]`.** The backlog saturation counter greps for the literal string `[adversary]`; anything else is invisible to it (§7.3).
 - **Inventing wiki content to fill a gap.** `open_questions`, or ask.
 - **Reporting success you did not verify** (rule 9).
 - **Finishing without deleting this file** (rule 17).
@@ -598,12 +610,12 @@ Every line must be true before you write your report.
 - [ ] The full test suite passes, and you read the output yourself.
 - [ ] Lint and format pass (if this project has them).
 - [ ] `git log` on the branch reads as one commit per case, each pushed.
-- [ ] A review round ran (§5, Step 4) and every finding has a written disposition in a commit body.
+- [ ] A review round ran (§5, Step 4) and every finding has a written disposition in a commit body whose subject contains the literal words `adversary round`.
 - [ ] Every `critical`/`major` finding went to the user before anything was done about it.
-- [ ] Closed todos removed from `docs/wiki/todos.md`; filed findings added.
+- [ ] Only the todo line(s) this cycle actually closed removed from `docs/wiki/todos.md` — any still-open sibling parts of a multi-part item left in place; filed findings added with the `[adversary]` tag.
 - [ ] `docs/wiki/log.md` has the `work` entry, and the `pr` entry if a pull request was opened.
-- [ ] `{{BASE_BRANCH}}` merged into the branch, tests re-run after the merge, and pushed.
-- [ ] Pull request open against `{{BASE_BRANCH}}` and **not merged**.
+- [ ] `{{CUT_FROM_BRANCH}}` merged into the branch, tests re-run after the merge, and pushed.
+- [ ] Pull request open against `{{BASE_BRANCH}}` (the PR-target value, not necessarily `{{CUT_FROM_BRANCH}}`) and **not merged**.
 - [ ] No force-push was used at any point.
 - [ ] `git status --porcelain` prints nothing.
 - [ ] `{{HANDOFF_PATH}}` is deleted, along with any other scratch under `.claude/handoff/`.

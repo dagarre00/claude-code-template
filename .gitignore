@@ -19,7 +19,8 @@ Thumbs.db
 # Note these globs match only names ending exactly in `-plan.md` / `-findings.md` /
 # `-handoff.md`;
 # a suffixed variant (`auth-plan-v2.md`) is NOT ignored and will surface as
-# untracked. See docs/wiki/gotchas.md § Tooling. One file per slug, no suffixes.
+# untracked, failing the clean-tree gate at the end of the cycle. One file per
+# slug, no suffixes.
 #
 # The third file is the handoff brief (`llm-handoff` skill): a prompt for an
 # external agent, not repo content. That agent deletes it when its cycle ends.

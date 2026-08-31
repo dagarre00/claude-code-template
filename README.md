@@ -23,8 +23,11 @@ Inside Claude Code:
 /project:interview   # grill yourself on requirements; populate the wiki
 /project:work        # pick the top todo, branch, run TDD (Red → Green → Refactor → wiki)
 /project:adversary   # point a read-only second model at the diff; findings only
-/project:review      # periodic audit in a fresh worktree
+/project:review      # periodic audit in a fresh session context
 /project:wiki-lint   # periodic wiki health check
+/project:wiki-ingest # direct ingest of a file or research query into wiki
+/project:agent-scout # survey and recommend stack/domain skills and agents
+/project:handoff     # package a todo as a self-contained brief for an external LLM
 ```
 
 Open `docs/wiki/` in Obsidian on the side. That's your view of the agent's knowledge.
@@ -37,7 +40,7 @@ For a worked walkthrough — `/project:init` → `/project:interview` → `/proj
 .claude/
 ├── agents/          # planner (opus), developer, adversary (opus), reviewer, wiki-maintainer, researcher
 ├── skills/          # process skills (TDD, branching, plan-writing, adversarial-review, wiki-update, …) + update-toolkit meta skill
-├── commands/        # /project:init, /project:interview, /project:work, /project:adversary, /project:review, /project:wiki-lint, /project:wiki-ingest, /project:agent-scout
+├── commands/        # /project:init, /project:interview, /project:work, /project:adversary, /project:review, /project:wiki-lint, /project:wiki-ingest, /project:agent-scout, /project:handoff
 ├── settings.json    # harness settings
 └── rules/           # behavioral constraints
 docs/

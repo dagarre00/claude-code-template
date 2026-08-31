@@ -100,13 +100,13 @@ updated: YYYY-MM-DD
 
 ## Implementation
 
-- Files: [src/foo.py](../../src/foo.py)
+- Files: [src/foo.py](../../../src/foo.py)
 - Key functions: `do_thing()`, `parse_x()`
 - Used by: [[consumer-entity]]
 
 ## Tests
 
-- Files: [tests/test_foo.py](../../tests/test_foo.py)
+- Files: [tests/test_foo.py](../../../tests/test_foo.py)
 - Mapping: B1 → `test_does_thing`, B2 → `test_parses_x`
 
 ## Boundaries
@@ -283,7 +283,7 @@ at the UI level.)_
 - Token / choice ← `docs/raw/...` or [[decisions/<slug>]].
 ```
 
-Like `requirements.md` and `architecture.md`, this page keeps its own body format — the Essence → Model → Detail → Boundaries spine does not apply, but the frontmatter hard rules do. Route the neighbouring frontend material to its existing home rather than restating it here: stack and styling approach → `architecture.md § Stack / Conventions`; a11y level, browser matrix, and perf budgets → `requirements.md § Non-functional`; per-component specs → `entities/`; an interaction pattern recurring 3+ times → `concepts/`; "why this palette / framework" → `decisions/`.
+Like `requirements.md` and `architecture.md`, this page keeps its own body format — the Essence → Model → Detail → Boundaries spine does not apply, but the frontmatter hard rules do. Route the neighbouring frontend material to its existing home rather than restating it here: stack and styling approach → `architecture.md § Stack` and `architecture.md § Conventions`; a11y level, browser matrix, and perf budgets → `requirements.md § Non-functional requirements`; per-component specs → `entities/`; an interaction pattern recurring 3+ times → `concepts/`; "why this palette / framework" → `decisions/`.
 
 ## Facet vocabulary (closed)
 
@@ -314,7 +314,7 @@ A gap is a hole in the graph relative to this schema — computable by `/project
 
 ## Inline vs maintainer routing
 
-You — the `developer` or `reviewer` — own **small, in-scope** wiki edits and make them in the same commit as the code. The wiki-maintainer is **manual only** and handles large or cross-page work.
+You — the `developer` — own **small, in-scope** wiki edits and make them in the same commit as the code. (The `reviewer` and `adversary` do not: they are findings-only under behavioral rule 12, and the command that dispatched them files what they raise.) The wiki-maintainer is **manual only** and handles large or cross-page work.
 
 **Inline** (same commit, no dispatch): single ADR via `decision-recording`; single gotcha via `gotcha-recording`; entity-page edit on the entity you're working on; fixing a single broken `[[link]]` you happened to notice; stubbing a missing link target.
 

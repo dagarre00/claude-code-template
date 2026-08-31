@@ -64,7 +64,7 @@ If a paragraph could appear in a textbook chapter on the topic, **delete it**. A
 
 ### Add an agent
 
-1. **Frontmatter.** `name`, `type: agent`, `model` (`sonnet` default / `opus` reasoning-heavy / `haiku` cheap mechanical), `tools:` allowlist **or** `disallowedTools:` denylist (grant only what the role needs; omit both for all tools), and a precise `description` matched against task content. Bad: "helps with code". Good: "Fresh-context auditor: reviews code against the wiki in an isolated worktree, flags drift and missing tests."
+1. **Frontmatter.** `name`, `type: agent`, `model` (`sonnet` default / `opus` reasoning-heavy / `haiku` cheap mechanical), `tools:` allowlist **or** `disallowedTools:` denylist (grant only what the role needs; omit both for all tools), and a precise `description` matched against task content. Bad: "helps with code". Good: "Fresh-context auditor: reviews code against the wiki in a fresh session context, flags drift and missing tests."
 2. **Body in order:** role statement (1–2 sentences) → **Entry checklist** (files to read first, always including relevant wiki pages) → Procedure → wiki updates the agent must make → **What you do NOT do** (invariants; make conflicts with other agents explicit).
 3. **Update `CLAUDE.md`** — add a row to the Agent routing table.
 4. **Verify routing.** Re-read every agent's `description`; if two could match the same task, tighten them.

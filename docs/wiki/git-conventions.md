@@ -7,7 +7,7 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-05-11
-updated: 2026-08-05
+updated: 2026-08-30
 ---
 
 # Git Conventions
@@ -15,11 +15,13 @@ updated: 2026-08-05
 > [!abstract] Essence
 > Branching and commit conventions for this project. Mirrors the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md) — updated when the team adopts a new flow; mirror changes into the skill.
 
-## Default branch
+## Integration and branching model
 
-`develop` — protected, integration branch. No direct commits. `/project:work` always starts and ends on `develop`. `main` is the release branch, updated separately when `develop` is promoted.
+`develop` is the primary integration branch; `main` is the release branch.
+- **Code modifications (`feat/*`, `fix/*`, `refactor/*`, `perf/*`)** must always be built on a dedicated branch cut from `develop` and merged via PR. No direct code commits on `develop`.
+- **Living documentation & operations (`docs/wiki/`, `docs/raw/`, `.claude/` config)**: maintenance commands (`/project:wiki-lint`, `/project:review`, `/project:wiki-ingest`, `/project:interview`, `/project:agent-scout`, `/project:handoff`, `/project:adversary`) commit and push directly to `develop` when standing on `develop` (or stay on the active `feat/*`/`fix/*`/`chore/*` branch if mid-feature). This keeps the living knowledge base fast and responsive without PR fatigue for documentation.
 
-"No direct commits" binds **every** command that writes tracked files, not just `/project:work` — wiki edits, interview transcripts and `.claude/` config are as tracked as code. Each such command opens its own branch before its first write; the per-command branch names are tabulated in the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md).
+The branching rules and command tables are defined in the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md).
 
 ## Branch naming
 
@@ -58,7 +60,7 @@ Conventional commits, present tense:
 
 - **One commit per Behavior case** — its test, its minimal implementation, and its entity-page tick, committed and pushed before the next case starts. The `developer` owns this; `/project:work` does not bundle a cycle's cases into one commit, and a commit spanning several cases is a defect (it breaks `git bisect`, makes a single case unrevertable, and inflates the adversarial-review diff past the point where it converges).
 - Refactor commits are separate from feat commits.
-- Adversary findings: most are **filed as todos, not fixed**, so a review round usually produces a single `docs(<slug>): adversary round N` commit whose body carries every finding's disposition and which stages the new `todos.md` lines. A `fix(<slug>): … — adversary F1` commit appears only for a `critical`/`major` the human approved fixing immediately. That round-commit body is the record behavioral rule 20 requires — `git log --grep="adversary round"` reads it back.
+- Adversary findings: most are **filed as todos, not fixed**, so a review round usually produces a single `docs(<slug>): adversary round N` commit whose body carries every finding's disposition and which stages the new `todos.md` lines. A `fix(<slug>): … — adversary F1` commit appears only for a `critical`/`major` the human approved fixing immediately. A human who explicitly approves fixing more than that (e.g. "fix all the findings") gets one per-finding commit for those too, named the same way. That round-commit body is the record behavioral rule 20 requires — `git log --grep="adversary round"` reads it back.
 - Don't commit half-green code.
 - **Always push after committing** (`git push -u origin <branch>`). An unpushed commit is lost when the execution container recycles — see `.claude/rules/behavioral.md` #19. Read-only commands (those that don't mutate tracked files) are the only exception.
 
@@ -86,7 +88,7 @@ Follow the [git-recovery skill](../../.claude/skills/git-recovery/SKILL.md) (Res
 
 ```bash
 git checkout develop
-git pull --ff-only
+git fetch origin develop && git merge --ff-only origin/develop
 git branch -d feat/<slug>              # -d is safe: errors if unmerged
 git push origin --delete feat/<slug>
 ```

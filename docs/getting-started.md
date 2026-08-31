@@ -111,9 +111,9 @@ If a step fails twice on the same approach, the **two-strike rule** fires — th
 /project:review
 ```
 
-Runs the `reviewer` agent in a fresh git worktree with no developer context. It audits code against the wiki and flags drift, missing tests, security/perf concerns. Critical and Warning findings become prioritized items in `todos.md` (they turn into the next `/project:work` cycles); Drift findings go to `wiki-todos.md` for the maintainer. The report itself lands on a `chore/review-*` branch and is PR'd to `develop` like any other tracked change.
+Runs the `reviewer` agent in a fresh session context with no developer baggage. It audits code against the wiki and flags drift, missing tests, security/perf concerns. Critical and Warning findings become prioritized items in `todos.md` (they turn into the next `/project:work` cycles); Drift findings go to `wiki-todos.md` for the maintainer. The audit report and todo updates commit directly to `develop`.
 
-This is **not** part of `/project:work` — it's periodic and isolated.
+This is **not** part of `/project:work` — it's periodic, run on demand or roughly every 5 todos.
 
 Don't confuse it with `/project:adversary`. Both are read-only and both run without the author's context, but they answer different questions: the `adversary` reads **one diff before it ships** and hunts for defects in it; the `reviewer` reads **the whole repo after things have shipped** and hunts for drift between the wiki and the code. Diff-scoped review never sees a problem in code it didn't touch, and a whole-repo audit arrives too late to stop the commit.
 
@@ -148,7 +148,7 @@ A new user story landed. You want it specified, tested, and shipped.
 3. **Run `/project:work`.** It picks the top todo, opens `feat/auth-login`, and dispatches the `developer`. The developer reads `entities/auth-login.md#Behavior`, writes failing tests, and confirms Red.
 4. **The same agent implements.** It writes the minimum code to turn Red into Green, then refactors. There's no handoff to another agent — one developer owns the whole cycle.
 5. **Wiki updates land in the same commit.** The developer ticks the Behavior cases on the entity page, checks the todo off in `docs/wiki/todos.md` (shipped work lives in git history — there's no `completed.md`), and appends a one-line log entry. Code changed but no wiki page touched is drift — the same-commit rule is the safety net.
-6. **Commit.** `/project:work` makes the bundled conventional commit, e.g. `feat(auth-login): reject unknown user`, and pushes it. See [git-conventions.md](wiki/git-conventions.md).
+6. **Commit.** The developer commits and pushes each Behavior case as it lands (test + implementation + entity-page update). `/project:work` verifies the suite and adds only the cycle log entry (see [git-conventions.md](wiki/git-conventions.md)).
 
 The developer plans **first** if the todo is tagged `[complex]` or a batch of 2+ todos is being run together. For a single simple todo, planning is skipped — straight to Red.
 
@@ -171,27 +171,28 @@ Some features are too big to attack directly — they cross files, need careful 
 
 ## Scenario: Batching multiple small todos
 
-When you have several related todos, running them in one cycle is often cheaper than three separate commits.
+When you have several related todos, running them in one cycle is often cheaper than three separate branches and PRs. A batch shares a **branch, a plan, and a PR — not a commit.** The per-case cadence is unchanged: each Behavior case still lands as its own commit.
 
-**Batch when:**
+**Batch when** (all three — the [`feature-branching`](../.claude/skills/feature-branching/SKILL.md) skill owns this rule):
 
 - The todos share the same entity (`auth-login: case A`, `auth-login: case B`, `auth-login: case C`).
-- The middle commits would have no standalone meaning (an API handler isn't useful until both its query parser and response serializer exist).
-- The Behavior cases are independent enough that one round of Red drives all of them.
+- The later ones depend on the earlier ones (an API handler isn't useful until both its query parser and response serializer exist).
+- Splitting them across branches would produce a PR with no standalone meaning.
 
 **Don't batch when:**
 
-- The todos cross entities — keep entity pages and commits aligned.
-- A user might want to revert one without the others — then they need standalone commits.
-- The total work is large enough that a single commit becomes hard to review.
+- The todos cross entities — keep entity pages and branches aligned.
+- Any one of them could ship and merge without the others.
+- The total work is large enough that the branch's diff becomes hard to review — a batch is 2–3 todos, not a milestone.
 
 **How `/project:work` handles it:**
 
 1. `/project:work` reads the top 1–3 todos. If they share an entity and context, it proposes a batch and asks you to confirm via `human-checkpoint`.
 2. You confirm. `/project:work` flags the cycle as a batch and dispatches the `planner` first (any batch of 2+ triggers a plan).
-3. The developer writes one set of failing tests covering all cases in the batch, then drives them all Green in one pass, refactoring as it goes.
-4. Single commit at the end. Conventional commit scope names the batch, e.g. `feat(auth-login): add rate limiting and lockout (B3, B4, B5)`.
-5. The entity page Behavior section is ticked for every case in the batch in the same commit.
+3. The developer takes the cases **one at a time**: Red → Green → refactor → tick → commit → push for B3, then the same for B4, then B5. It does *not* write all the tests first and drive them green together — a commit spanning several cases breaks `git bisect`, makes a single case unrevertable, and hands the `adversary` a diff too large to converge on. `/project:work` step 6 checks the granularity and sends a lump back as a defect.
+4. One commit per case, each named for its own behavior — `feat(auth-login): add rate limiting`, then `feat(auth-login): lock out after five failed attempts`. The batch is named in the branch and the PR, never folded into one commit.
+5. Each case's entity-page tick (`[~]` → `[x]`) rides in that case's own commit, alongside its test and implementation.
+6. Because the batch dispatched the `planner`, it also triggers the adversarial review at step 7a.
 
 ## Scenario: Requesting a periodic review
 
@@ -206,27 +207,17 @@ The reviewer is fresh eyes on the codebase. It catches drift the developer can't
 
 **What happens:**
 
-1. `/project:review` opens a `chore/review-YYYY-MM-DD` branch (the report is a tracked file, and `develop` takes no direct commits), then creates a fresh git worktree at `../<repo>-review-YYYY-MM-DD` (sibling directory, not inside the repo).
-2. Dispatches the reviewer agent **inside the worktree** — no prior developer context, fresh read of every entity page and the code that implements it.
-3. Reviewer runs the test suite itself. Trusts nothing.
-4. Findings land in `docs/wiki/decisions/review-YYYY-MM-DD.md` — structured by severity (Critical / Warning / Drift / Missing ADR).
-5. Anything cross-page or wiki-shaped also goes into `docs/wiki/wiki-todos.md` for the maintainer.
+1. `/project:review` syncs `develop` and dispatches the reviewer agent in a fresh session context — no prior developer context, fresh read of every entity page and the code that implements it.
+2. Reviewer runs the test suite itself. Trusts nothing.
+3. Findings land in `docs/wiki/decisions/review-YYYY-MM-DD.md` — structured by severity (Critical / Warning / Drift / Missing ADR).
 
-**Processing the report (back in the main checkout):**
+**Processing the report:**
 
 1. Read `docs/wiki/decisions/review-YYYY-MM-DD.md`.
 2. For each Critical / Warning, file a TODO in `docs/wiki/todos.md` with priority. These become the next `/project:work` cycles.
 3. For each Drift item, append to `docs/wiki/wiki-todos.md` for the next `/project:wiki-lint`.
 4. For each Missing ADR, queue an ADR for the next `/project:work` cycle to file via the `decision-recording` skill.
-5. Append a log entry summarising counts.
-
-**Worktree cleanup:**
-
-```bash
-git worktree remove ../<repo>-review-YYYY-MM-DD
-```
-
-`/project:review` does this for you at the end. If something goes wrong and the worktree is left over, run that command yourself.
+5. Append a log entry summarising counts, then commit and push directly to `develop`.
 
 ## Scenario: Filing a hotfix on production code
 
@@ -349,6 +340,7 @@ Check state at session start, after a long break, or before deciding whether to 
 | `/project:review`      | Periodic (every ~5 todos), before a release, after several merges             |
 | `/project:wiki-lint`   | When `wiki-todos.md` piles up or after heavy ingest                           |
 | `/project:wiki-ingest` | When you have a new external doc, or to commission web research               |
+| `/project:handoff`     | When delegating execution of a well-specified todo to an external agent       |
 
 Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `git reset --hard <tag>` to recover, `git status` / `git log` to see where you are — use plain git, not bespoke commands.
 
@@ -358,7 +350,7 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
 | `/project:work` refuses to start (test command)    | `commands.md ## Test` is `<TBD>` or errors out — re-run `/project:init` step 5a to bootstrap a runnable command            |
 | Developer won't start (no Behavior cases)          | Entity page missing or `## Behavior` empty — run `/project:interview` first                                               |
-| Reviewer claims it's in the wrong dir              | `/project:review` didn't `cd` into the worktree first — re-run, ensure worktree path is passed                            |
+| Reviewer scope unclear                             | Re-run `/project:review` with an explicit scope argument (e.g. `/project:review security only`)                            |
 | `wiki-todos.md` is huge                            | Run `/project:wiki-lint`                                                                                                  |
 | Developer keeps retrying the same failing approach | Two-strike rule should fire — it stops after the second failure and asks you                                              |
 | Plan looks wrong                                   | Edit `.claude/handoff/<slug>-plan.md`, or just tell the developer the approach to take                                    |
@@ -367,7 +359,7 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 
 # The mental model in one paragraph
 
-The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD; the `developer` agent runs the cycle (with the `planner` on Opus decomposing `[complex]` or batched todos first), and the wiki is updated in the same commit as the code. On risky cycles a read-only `adversary` (also Opus, with none of the developer's context) attacks the diff before it's committed, and every finding it raises is answered in writing. When in doubt, the agent stops and asks rather than guessing. Periodic `/project:review` and `/project:wiki-lint` keep both layers honest.
+The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD; the `developer` agent runs the cycle (with the `planner` on Opus decomposing `[complex]` or batched todos first), and the wiki is updated in the same commit as the code. On risky cycles a read-only `adversary` (also Opus, with none of the developer's context) attacks the commits the developer just landed, before the PR opens, and every finding it raises is answered in writing. When in doubt, the agent stops and asks rather than guessing. Periodic `/project:review` and `/project:wiki-lint` keep both layers honest.
 
 # Anti-patterns
 

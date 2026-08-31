@@ -58,7 +58,7 @@ Example:
 5. **Size check.** After appending, count the non-blank, non-header content lines in `gotchas.md`:
 
    ```bash
-   grep -c "^\*\*\(When\|Symptom\|Cause\|Fix\|Related\):\*\*" docs/wiki/gotchas.md
+   grep -cE "^\*\*(When|Symptom|Cause|Fix|Related):\*\*" docs/wiki/gotchas.md 2>/dev/null || true
    ```
 
    (The colon is inside the bold markers — `**When:**`. Omitting it from the pattern makes the count silently return 0 and the size check never fires.)
@@ -71,7 +71,13 @@ Example:
 
    This keeps the file scannable before it degrades model attention. (`/project:wiki-lint` compacts `gotchas.md`; there is no standalone prune command.)
 
-6. Commit with `docs: gotcha — <short title>`.
+6. **Ship it in the commit that discovered it** — never a commit of its own. A gotcha is a wiki edit, and wiki edits ride with the change that produced them (behavioral rule 1; `wiki-update` → "Inline vs maintainer"). So stage `docs/wiki/gotchas.md` alongside that case's test and implementation:
+
+   ```bash
+   git add <the test> <the implementation> docs/wiki/entities/<slug>.md docs/wiki/gotchas.md
+   ```
+
+   If the trap surfaced during adversary triage rather than during the work, it goes in that round's commit instead (`adversarial-review` step 6). A separate `docs: gotcha — …` commit is the "update docs at the end" anti-pattern, and — worse — a gotcha nobody stages is one that sits unstaged until it trips the next clean-tree gate.
 
 ## Format rules
 

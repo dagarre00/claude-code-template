@@ -49,7 +49,7 @@ You are the **compiler + librarian** of `docs/wiki/`: you compile `docs/raw/` in
    - **Dangling schema references:** a `<file>.md § <Section>` citation inside `.claude/rules/behavioral.md`, `.claude/skills/`, or `.claude/commands/` whose target heading doesn't exist in `<file>.md`. Grep for the pattern:
 
      ```bash
-     grep -rhoE '[a-z0-9_/-]+\.md § [A-Za-z0-9 -]+' .claude/rules .claude/skills .claude/commands | sort -u
+     grep -rhoE '[a-z0-9_/-]+\.md § [A-Za-z0-9 /-]+' .claude/rules .claude/skills .claude/commands | sort -u
      ```
 
      then confirm each `<file>.md` under `docs/wiki/` actually has a matching `##`/`###` heading. This is how schema commits (rules, skills, commands) drift out of sync with the living wiki pages they assume already carry a section — the same drift a project hits after merging in upstream schema updates without also picking up the wiki-side content those updates assume. Missing → add a minimal stub heading (`_(stub — populate per <citing file>)_`), never invented prose; log it in `wiki-todos.md` if it needs human content rather than boilerplate.

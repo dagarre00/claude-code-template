@@ -52,8 +52,10 @@ To change the threshold for a project, edit the number here — both call sites 
 Count with:
 
 ```bash
-grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md
+grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null || true
 ```
+
+The `|| true` is not decoration: `grep -c` exits 1 when the count is zero, which is the *healthy* state of this queue. Without it the command fails in any chained or `set -e` context, and both call sites below carry the same guard.
 
 Unlike `P0_MAX`, this is not a saturation alarm — a long `minor` tail is normal and mostly harmless. It is a **re-triage trigger**, and exactly two things act on it:
 

@@ -51,7 +51,7 @@ Compose the body from the artefacts above. Default skeleton (override with whate
 1. **Confirm preconditions.** Branch is `feat/*` or `fix/*`. Working tree clean. All commits pushed (`git push -u origin <branch>`).
 2. **Gather the inputs.** Read the files above.
 3. **Draft the body** following the skeleton.
-4. **Show the drafted PR body to the human** (a brief preview in the conversation), then open the PR immediately — no confirmation needed. Use `mcp__github__create_pull_request` targeting `develop` with the title in conventional-commit form (matching the lead commit on the branch).
+4. **Show the drafted PR body to the human** (a brief preview in the conversation), then open the PR immediately — no confirmation needed. Use `mcp__github__create_pull_request` targeting `develop` with the title in conventional-commit form (matching the lead commit on the branch). If the MCP tool is not available in the environment, fall back to `gh pr create --base develop --title "<title>" --body-file <path>`.
 5. **Tell the human:** "Feature `<slug>` is complete. PR #N is open targeting `develop` — please review and merge when ready."
 6. **Log it — and commit the entry.** The cycle's commits were already made and pushed before the PR existed, so this entry has nothing to ride along with. Append it, then commit and push it on its own; otherwise the entry is lost and step 7 runs against a dirty tree.
 

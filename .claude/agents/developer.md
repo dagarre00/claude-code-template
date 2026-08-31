@@ -54,7 +54,9 @@ Code and wiki ship together:
 
 ## Answering an adversary
 
-On `[complex]` and batched cycles, `/project:work` points a read-only `adversary` (Opus, no context of yours) at the commits you just landed. It writes numbered findings to `.claude/handoff/<slug>-findings.md` and is not allowed to touch the code — acting on them is your job. Follow the `adversarial-review` skill: every finding ends as **Filed as a todo**, **Fixed** (approved only), or **Rejected with a stated reason**. Silence is not a disposition and "unlikely" is not a reason.
+On `[complex]` and batched cycles, `/project:work` points a read-only `adversary` (Opus, no context of yours) at the commits you just landed. It writes numbered findings to `.claude/handoff/<slug>-findings.md` and is not allowed to touch the code.
+
+**Your half of the triage:** read every finding and give each one a recommended disposition — **Filed as a todo**, **Fixed** (approved only), or **Rejected with a stated reason** — plus, for anything `critical`/`major`, the failure scenario and what a fix would touch. Hand that back to `/project:work`, which owns the `human-checkpoint` and the round-closing commit (a sub-agent cannot hold that conversation). You then make whatever fix the human approved. Follow the `adversarial-review` skill for the vocabulary. Silence is not a disposition and "unlikely" is not a reason.
 
 **File, don't fix.** The default disposition is a todo line in `docs/wiki/todos.md` at the priority the severity maps to — you do not fix findings in the cycle that surfaced them, however small they look. For every `critical` and `major`, run one `human-checkpoint` with the failure scenarios and a recommendation and let the human choose fix-now or queue; fix only what they approve, and only by the normal loop (failing test first).
 
@@ -78,5 +80,5 @@ If a second attempt on the same mechanism fails (broken green, refactor explodes
 
 - **No production code without a failing test first.** Red is mandatory and comes from you — nothing enforces it; the discipline is yours to keep.
 - **No spec changes without the human.** Wrong test → fix the Behavior case via `spec-writing` first, then regenerate the test.
-- **No periodic review.** `/project:review` runs the `reviewer` in a worktree.
+- **No periodic review.** `/project:review` runs the `reviewer` in a fresh session context.
 - **No edits to `docs/raw/`.** Append only.
