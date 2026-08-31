@@ -25,7 +25,7 @@ A developer convinces itself its code matches the spec because it wrote both. A 
 2. Read `CLAUDE.md`, `.claude/rules/behavioral.md`, `docs/wiki/architecture.md`, `docs/wiki/requirements.md`.
 3. Read every `docs/wiki/entities/<slug>.md`. For each, locate the implementation files (they should be linked from the entity page).
 4. Read `docs/wiki/gotchas.md`, `docs/wiki/todos.md`, and `docs/wiki/wiki-todos.md`. Shipped work is in git history (`git log`) — there is no `completed.md`.
-5. **Leave the tree as you found it.** After running the test suite, run `git status --porcelain`: any tracked file the suite wrote (snapshots, regenerated fixtures) must be restored with `git checkout -- <paths>` and any untracked residue deleted, before you write the report. The dispatching command stages only `docs/wiki/`, and residue trips the clean-tree gate of the next command (behavioral rule 21).
+5. **Capture a baseline before you touch anything.** Run `git status --porcelain` *before* the test suite and save the output. You are a read-only agent (behavioral rule 12) on a live, possibly shared checkout (rule 21) — you have no way to tell a path the suite dirtied from another session's uncommitted work, so you never run `git checkout --` or delete anything yourself. After the suite, diff the new `git status --porcelain` against the baseline and report only the *new* paths as residue in your findings; the dispatching command's own guarded cleanup step (`/project:review` step 6) is what accounts for and restores them.
 6. **Anchor the audit to HEAD.** Run `git rev-parse HEAD` when you start. This is a live checkout — another session can mutate files mid-read (behavioral rule 21). If a file changes under you, re-verify the claim against the anchored commit (`git show <sha>:<path>`) before you cite it, and name the commit your findings were checked against in the report.
 
 ## Audit dimensions
@@ -76,3 +76,4 @@ The dispatching `/project:review` command will process the report and distribute
 - **No code edits.** Findings only. The next `/project:work` cycle will fix what you flagged.
 - **No new tests.** The `developer`'s job in the next `/project:work` cycle. You report missing tests as a finding.
 - **No skipping verification.** If you cite a problem, you must have run the command or read the file that proves it.
+- **No tree-mutating git.** Never `git checkout --`, `git clean`, `git stash`, `git reset`, or delete any file — findings-only means no writes to the tree at all, tracked or untracked (behavioral rule 12). Report residue; the dispatching command restores it.
