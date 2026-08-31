@@ -29,7 +29,8 @@ Not a substitute for `/project:review` (periodic, whole-repo, drift) or for writ
 ## Preconditions
 
 - A diff exists: `git status --porcelain` is non-empty, or you were given a base ref.
-- On a `feat`/`fix`/`chore` branch, not `develop` or `main` — fixes land on a branch.
+- On a `feat`/`fix`/`chore` branch, not `main` — any fix the human approves has to land somewhere, and it is never `main`.
+- **`develop` is allowed for exactly one case:** the release review named above (`/project:adversary against main`), which is diff-scoped and read-only by construction. If that round yields an approved `critical`/`major`, cut a `fix/*` branch for the fix rather than committing it to `develop`; the round-closing todo and log lines are living documentation and may land on `develop` directly (behavioral rule 19).
 
 Clean tree and no base ref: stop and say there is nothing to review. Do not dispatch.
 
