@@ -7,7 +7,7 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-08-05
+updated: 2026-08-30
 ---
 
 # Log
@@ -119,3 +119,10 @@ for a real handoff; fixed in the template and its `SKILL.md` companion.
 - Fixed remote branch resumption in `work.md` and `feature-branching`: use `git checkout "<type>/<slug>" 2>/dev/null || git checkout -b "<type>/<slug>"` to properly auto-track existing remote branches in ephemeral containers.
 - Added self-defensive `if [ "$(git branch --show-current)" = "develop" ]` guards to `develop` fast-forward blocks in all maintenance commands (`review`, `interview`, `wiki-lint`, `wiki-ingest`, `agent-scout`).
 - Added `/project:handoff` to `docs/wiki/git-conventions.md` integration model list.
+
+## [2026-08-30 22:07] adversary — workflow
+
+- Commit reviewed: 7111c4d (range `develop...HEAD`)
+- Findings: 8 (0 critical, 0 major, 8 minor) + 2 nits
+- Disposition: 0 filed, 8 fixed, 0 rejected — all fixes explicitly approved by the human ("fix all the findings, this is a template and should not have any pending todo"), so no todo lines were added
+- Per-finding fixes and reasons: `git log --grep="adversary round"`
