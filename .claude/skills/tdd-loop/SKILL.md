@@ -73,7 +73,7 @@ After green + any refactor:
 
 ## Two-strike rule
 
-If your second attempt on the same mechanism fails (broken green, refactor explodes, unsolvable test), stop. Tag the state (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`), `git reset --hard` to a known-good commit, then re-spec via `/project:interview` or pause with `human-checkpoint`.
+If your second attempt on the same mechanism fails (broken green, refactor explodes, unsolvable test), stop. Tag the state (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`), then run `human-checkpoint` with both failed attempts and let the human decide. Do **not** `git reset --hard` on your own initiative — it is the one unrecoverable step in this loop, and rule 21 requires `git status --porcelain` to account for every line before any tree-wide destructive git operation: uncommitted changes you did not write are another session's live work, and the checkpoint tag does not protect them. On an approved reset, re-spec via `/project:interview`.
 
 ## Anti-patterns
 

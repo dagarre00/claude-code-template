@@ -16,7 +16,9 @@ Hard constraints from real failures. These override default agent inclinations.
 
 4. **Tests must fail for the right reason.** A passing test before implementation tests existing behavior, not the new feature. Confirm RED is real (missing feature, not a typo or import error).
 
-5. **Two-strike pivot.** If an approach fails twice on the same mechanism, try a fundamentally different one. Two failures → tag the state (`git tag checkpoint-<stamp>`), `git reset --hard` to a known-good commit, and re-spec via `/project:interview`.
+5. **Two-strike pivot.** If an approach fails twice on the same mechanism, try a fundamentally different one. Two failures → tag the state (`git tag checkpoint-<stamp>`), then stop and put the reset to the human via `human-checkpoint`, presenting both failed attempts. Only on their say-so do you `git reset --hard` to a known-good commit and re-spec via `/project:interview`.
+
+    **The reset is gated because it is the most destructive step in this workflow.** Before it runs, `git status --porcelain` and account for every line (rule 21): the checkpoint tag protects committed history, but nothing protects uncommitted work, and a `reset --hard` over another session's is unrecoverable.
 
 6. **Verify before asserting.** Run it, don't assume. Never tell the human a feature works unless tests pass and you read the output yourself.
 
