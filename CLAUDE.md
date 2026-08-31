@@ -89,7 +89,7 @@ Routine git operations (checkpoint tag, reset, status/log) use plain git, not be
 
 There is intentionally no domain-specialized agent (no "backend agent"). Domain knowledge lives in skills the `developer` loads on demand. The `planner` and the `adversary` run on **Opus** — the adversary deliberately on a different tier from the `developer` it reviews, so the second reader is a second *model*, not just a second context. All other agents run on Sonnet (researcher on Haiku).
 
-**Wiki edits — inline only.** The `developer` and `reviewer` make small wiki edits **inline** in the same commit as the code (Behavior tick, single ADR, single gotcha line, log entry). Larger cross-page work is queued in `wiki-todos.md` for the human to run `/project:wiki-lint`. **No agent auto-invokes the wiki-maintainer.**
+**Wiki edits — inline only.** The `developer` makes small wiki edits **inline** in the same commit as the code (Behavior tick, single ADR, single gotcha line, log entry). The `reviewer` and the `adversary` make none: both are findings-only (behavioral rule 12), and the dispatching command files what they raise — the `reviewer` writes one report page and nothing else, the `adversary` writes only its gitignored mailbox. Larger cross-page work is queued in `wiki-todos.md` for the human to run `/project:wiki-lint`. **No agent auto-invokes the wiki-maintainer.**
 
 ## Skill catalog
 
