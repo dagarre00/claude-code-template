@@ -37,7 +37,21 @@ Any failure → `human-checkpoint`.
 
 ## Steps
 
-1. **Pick the work.** If standing on `develop`, `git fetch origin develop 2>/dev/null || true && git merge --ff-only origin/develop 2>/dev/null || true`, then read `docs/wiki/todos.md` — the argument overrides the default. Skip `[wiki]` lines. Confirm against `origin/develop` that it has not already shipped.
+1. **Pick the work.** Sync first — the same guarded block the other maintenance commands use, and never from `main`:
+
+   ```bash
+   if [ "$(git branch --show-current)" = "main" ]; then
+     git checkout develop || exit 1
+   fi
+   if [ "$(git branch --show-current)" = "develop" ]; then
+     git fetch origin develop 2>/dev/null || true
+     git merge --ff-only origin/develop 2>/dev/null || true
+   fi
+   ```
+
+   **Never from `main`.** The guard above moves you to `develop` first — `main` is the release branch, updated only when `develop` is promoted (`docs/wiki/git-conventions.md`).
+
+   Then read `docs/wiki/todos.md` — the argument overrides the default. Skip `[wiki]` lines. Confirm against `origin/develop` that it has not already shipped.
 
 2. **Stay on current branch.** If standing on `develop`, stay on `develop`. If on an existing `feat/*` branch, stay there. The brief is gitignored, and the log entry commits directly on `develop` (or your active branch, behavioral rule 19).
 

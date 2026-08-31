@@ -168,11 +168,16 @@ Number the recommendations in the order that will unblock the most /project:work
 If you are standing on `develop`, fetch and fast-forward before creating any approved toolkit assets:
 
 ```bash
+if [ "$(git branch --show-current)" = "main" ]; then
+  git checkout develop || exit 1
+fi
 if [ "$(git branch --show-current)" = "develop" ]; then
   git fetch origin develop 2>/dev/null || true
   git merge --ff-only origin/develop 2>/dev/null || true
 fi
 ```
+
+**Never from `main`.** The guard above moves you to `develop` first — `main` is the release branch, updated only when `develop` is promoted (`docs/wiki/git-conventions.md`).
 
 **Already on a `feat/*` or `fix/*` branch?** Stay there. Living toolkit configuration and log updates commit directly on `develop` (or your active feature branch, behavioral rule 19).
 

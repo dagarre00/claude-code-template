@@ -24,7 +24,7 @@ Do **not** use `/project:review` inside `/project:work`. They're different phase
 
 ## Preconditions
 
-- On `develop` (or any non-`feat`/`fix` branch). `develop` is this project's integration branch.
+- On `develop` (or any non-`feat`/`fix` branch). Standing on `main` is corrected by step 1's guard — this command never runs from `main`.
 - Working tree clean.
 - `docs/wiki/` exists and has at least one entity page.
 
@@ -35,11 +35,16 @@ If any fails: run `human-checkpoint`.
 1. **Sync develop.** If standing on `develop`, fetch and fast-forward before the audit begins:
 
    ```bash
+   if [ "$(git branch --show-current)" = "main" ]; then
+     git checkout develop || exit 1
+   fi
    if [ "$(git branch --show-current)" = "develop" ]; then
      git fetch origin develop 2>/dev/null || true
      git merge --ff-only origin/develop 2>/dev/null || true
    fi
    ```
+
+   **Never from `main`.** The guard above moves you to `develop` first — `main` is the release branch, updated only when `develop` is promoted (`docs/wiki/git-conventions.md`).
 
 2. **Dispatch the `reviewer` agent** with:
    - The scope (whole repo or specific area from `$ARGUMENTS`).
