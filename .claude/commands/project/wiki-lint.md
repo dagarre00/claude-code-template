@@ -34,8 +34,14 @@ If dirty: run `human-checkpoint`.
    if [ "$(git branch --show-current)" = "main" ]; then
      git checkout develop || { echo "no local develop — stop and run human-checkpoint"; exit 1; }
    fi
-   if [ "$(git branch --show-current)" = "develop" ]; then
-     if git fetch origin develop 2>/dev/null; then
+   branch="$(git branch --show-current)"
+   if [ -z "$branch" ]; then
+     echo "detached HEAD — stop and run human-checkpoint"
+     exit 1
+   fi
+   if [ "$branch" = "develop" ]; then
+     if git remote get-url origin >/dev/null 2>&1; then
+       git fetch origin develop || { echo "fetch failed — stop and run human-checkpoint"; exit 1; }
        git merge --ff-only origin/develop || exit 1
      fi
    fi

@@ -21,18 +21,24 @@ Always branch before code implementation. Feature and bugfix code (`feat/*`, `fi
 2. Fetch and sync develop. Using `fetch` + `merge --ff-only` (rather than bare `pull`) makes the two steps explicit and fails safely if develop has diverged in a non-fast-forward way:
 
    ```bash
-   git fetch origin develop "refs/heads/<type>/<slug>:refs/remotes/origin/<type>/<slug>" 2>/dev/null || git fetch origin develop 2>/dev/null || true
+   if git remote | grep -q .; then
+     git fetch origin develop "refs/heads/<type>/<slug>:refs/remotes/origin/<type>/<slug>" 2>/dev/null || git fetch origin develop || { echo "fetch failed — stop and run human-checkpoint"; exit 1; }
+   fi
    git checkout develop && git merge --ff-only origin/develop
    ```
 
-   If `merge --ff-only` fails, develop has diverged — use `human-checkpoint`. Do not force or rebase develop.
+   If `merge --ff-only` fails, develop has diverged — use `human-checkpoint`. Do not force or rebase develop. No remote at all (`git remote` prints nothing)? The block above skips the fetch/merge and works straight off local `develop`.
 
 3. Branch as `<type>/<short-slug>` where `<type>` ∈ `feat`, `fix`, `chore`, `docs`, `refactor`, `test`. Examples: `feat/auth-login`, `fix/race-on-double-submit`, `chore/upgrade-pytest`, `feat/profile` (batched).
 
    ```bash
    git checkout "<type>/<slug>" 2>/dev/null || git checkout -b "<type>/<slug>"
-   git merge --ff-only "origin/<type>/<slug>" 2>/dev/null || true
+   if git rev-parse --verify "origin/<type>/<slug>" >/dev/null 2>&1; then
+     git merge --ff-only "origin/<type>/<slug>" || { echo "<type>/<slug> has diverged from origin — stop and run human-checkpoint"; exit 1; }
+   fi
    ```
+
+   The `rev-parse --verify` guard tells "remote branch doesn't exist yet" (fine — this is likely the first push) apart from "remote branch exists and has diverged" (stop — another session may have pushed here).
 
 **The `<slug>` must equal the entity-page slug** — the branch name (`feat/<slug>`), the entity page, the plan scratch (`.claude/handoff/<slug>-plan.md`), and the test names all key off it. Pick it once and keep it stable.
 
