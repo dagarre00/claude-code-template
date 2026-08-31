@@ -124,6 +124,6 @@ If conflicts arise, follow the `git-recovery` skill (Resolve merge / rebase / ch
 
 ## Anti-patterns
 
-- **Committing to `develop` or `main`.** Branch first.
+- **Committing code to `develop` or `main`.** Branch first. (Living documentation and maintenance commands commit directly to `develop` under behavioral rule 19 — see the table above.)
 - **`git commit -a`.** Stage explicitly.
 - **Squashing locally to hide Red→Green cycles.** History is the trace of the TDD loop.
