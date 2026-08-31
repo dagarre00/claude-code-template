@@ -22,13 +22,13 @@ Always branch before code implementation. Feature and bugfix code (`feat/*`, `fi
 
    ```bash
    git checkout develop || { echo "could not switch to develop — stop and run human-checkpoint"; exit 1; }
-   if git remote | grep -q .; then
+   if git remote get-url origin >/dev/null 2>&1; then
      git fetch origin develop "refs/heads/<type>/<slug>:refs/remotes/origin/<type>/<slug>" 2>/dev/null || git fetch origin develop || { echo "fetch failed — stop and run human-checkpoint"; exit 1; }
      git merge --ff-only origin/develop || { echo "develop has diverged from origin — stop and run human-checkpoint"; exit 1; }
    fi
    ```
 
-   If `merge --ff-only` fails, develop has diverged — use `human-checkpoint`. Do not force or rebase develop. No remote at all (`git remote` prints nothing)? The fetch **and** the `merge --ff-only` are both inside the guard, so both are skipped and the block works straight off local `develop`. Keep them together: without a remote there is no `origin/develop` to merge, and a merge left outside the guard fails with `not something we can merge`.
+   If `merge --ff-only` fails, develop has diverged — use `human-checkpoint`. Do not force or rebase develop. No `origin` remote (`git remote get-url origin` fails)? The fetch **and** the `merge --ff-only` are both inside the guard, so both are skipped and the block works straight off local `develop`. Keep them together: without a remote there is no `origin/develop` to merge, and a merge left outside the guard fails with `not something we can merge`.
 
 3. Branch as `<type>/<short-slug>` where `<type>` ∈ `feat`, `fix`, `chore`, `docs`, `refactor`, `test`. Examples: `feat/auth-login`, `fix/race-on-double-submit`, `chore/upgrade-pytest`, `feat/profile` (batched).
 

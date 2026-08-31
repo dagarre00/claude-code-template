@@ -401,7 +401,7 @@ Append at the end (the file is chronological and append-only):
 - TODO(s): {{TODO_SUMMARY}}
 - Cases: {{CASE_IDS}}
 - Branch: {{BRANCH_NAME}}
-- Review: <N> findings — <F> filed, <X> fixed, <R> rejected
+- Adversary: <N> findings — <F> filed, <X> fixed, <R> rejected
 ```
 
 Add a second entry after the pull request exists:

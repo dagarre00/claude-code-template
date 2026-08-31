@@ -85,7 +85,7 @@ If any fails: run `human-checkpoint`.
    git add docs/wiki/
    git commit -m "docs(review): audit YYYY-MM-DD — <N critical, M warnings, K drift>"
    if git remote get-url origin >/dev/null 2>&1; then
-     git push -u origin "$(git branch --show-current)"  # if detached HEAD, attach to develop first
+     git push -u origin "$(git branch --show-current)"
    else
      echo "no remote — the commit is local only; say so in the report"
    fi

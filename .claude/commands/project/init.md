@@ -175,7 +175,7 @@ If the repo has no remote yet, skip the push and note it in the report.
 
 ```bash
 git checkout -b develop
-if git remote | grep -q "^origin$"; then
+if git remote get-url origin >/dev/null 2>&1; then
   git push -u origin develop
 fi
 ```

@@ -117,7 +117,7 @@ Triggered when the argument is a path to an existing file (e.g., `/project:wiki-
 6. **Commit and push** (push immediately — behavioral rule 19):
 
    ```bash
-   git add docs/wiki/
+   git add docs/wiki/ docs/raw/            # docs/raw/ too, so a source you moved in is tracked rather than left dirty
    git commit -m "docs: ingest <filename> → [[summaries/<slug>]]"
    if git remote get-url origin >/dev/null 2>&1; then
      git push -u origin "$(git branch --show-current)"
