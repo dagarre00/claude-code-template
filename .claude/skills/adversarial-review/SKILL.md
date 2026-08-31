@@ -46,7 +46,7 @@ Runs over the commits just landed. A read-only `adversary` (Opus, fresh context)
    ```bash
    git add <fixed-files>                                           # approved criticals/majors only
    git commit -m "fix(<slug>): reject empty token — adversary F1"
-   git add docs/wiki/todos.md
+   git add docs/wiki/todos.md docs/wiki/log.md
    git commit -m "$(cat <<'MSG'
    docs(<slug>): adversary round 1 — 3 findings, 1 fixed, 1 filed, 1 rejected, 2 nits
 
