@@ -64,10 +64,11 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 2. **Fetch and branch.** Follow `feature-branching` skill. Fetch first so the divergence check is against actual remote state, not a stale local mirror:
 
    ```bash
+   git checkout develop || { echo "could not switch to develop — stop and run human-checkpoint"; exit 1; }
    if git remote | grep -q .; then
      git fetch origin develop "refs/heads/feat/<slug>:refs/remotes/origin/feat/<slug>" 2>/dev/null || git fetch origin develop || { echo "fetch failed — stop and run human-checkpoint"; exit 1; }
+     git merge --ff-only origin/develop || { echo "develop has diverged from origin — stop and run human-checkpoint"; exit 1; }
    fi
-   git checkout develop && git merge --ff-only origin/develop
    git checkout "feat/<slug>" 2>/dev/null || git checkout -b "feat/<slug>"
    if git rev-parse --verify origin/feat/<slug> >/dev/null 2>&1; then
      git merge --ff-only "origin/feat/<slug>" || { echo "feat/<slug> has diverged from origin — stop and run human-checkpoint"; exit 1; }
@@ -76,7 +77,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 
    If `merge --ff-only` fails (develop has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force develop. Same if `origin/feat/<slug>` exists but has diverged: that means another session pushed to this branch — do not force-push over it.
 
-   **No remote yet?** `/project:init` supports finishing without one. `git remote | grep -q .` is false in that case — the block above skips the fetch/merge entirely and branches straight off local `develop`. Every push step in this command is then skipped and noted in the report until the human adds a remote.
+   **No remote yet?** `/project:init` supports finishing without one. `git remote | grep -q .` is false in that case, so the fetch **and** the `merge --ff-only` are both skipped and the block branches straight off local `develop`. Both must stay inside that guard: `origin/develop` does not exist without a remote, so a merge left outside it fails with `not something we can merge` and halts the cycle on a perfectly healthy repo. Every push step in this command is then skipped and noted in the report until the human adds a remote.
 
 3. **Verify Behavior cases exist.** Read the `## Behavior` section of the entity page — or, for an `[infra]` todo, of the concept page named in step 1. If any case is `[ ]` and unimplemented, that's the test target. If the section is empty or vague, **stop** — `/project:interview` or the `spec-writing` skill must define them first.
 
