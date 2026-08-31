@@ -75,8 +75,8 @@ If any fails: run `human-checkpoint`.
 6. **Commit and push.** Living wiki updates commit directly on `develop` (or your active branch, behavioral rule 19):
 
    ```bash
+   git status --porcelain   # residue outside docs/wiki/ is reviewer dirt — restore it with git checkout/clean before staging
    git add docs/wiki/
-   git status --porcelain   # residue outside docs/wiki/ is reviewer dirt — restore it, never commit it
    git commit -m "docs(review): audit YYYY-MM-DD — <N critical, M warnings, K drift>"
    git push -u origin "$(git branch --show-current)"
    ```
