@@ -28,7 +28,7 @@ So: when you are unsure whether something belongs in the file, it belongs in the
 
 1. **Pick the work and check it is delegable.** A todo is a good handoff candidate when its Behavior cases are sharp, it is scoped to one entity, and its verification is automated. It is a **bad** candidate when it needs a spec decision (interview it first), when its cases are vague (`spec-writing` first), or when it spans entities in a way that needs a plan you have not written. Delegating an ambiguous todo just relocates the ambiguity.
 
-2. **Branch, if you are not already on one.** This skill writes tracked files (`log.md`, and `CLAUDE.md`-adjacent wiring if it is the first use). If you are on `develop` or `main`: `git checkout -b docs/handoff-<slug>`. The handoff file itself is gitignored scratch, but the log entry is not.
+2. **Stay on your current branch.** Do not create a branch for this. The brief you are about to build is gitignored scratch; the only tracked file this skill writes is the `log.md` entry, and behavioral rule 19 puts that living-documentation commit directly on `develop` (or your active `feat/*` branch, if `/project:handoff` was run mid-cycle) — the same guarded sync `handoff.md` step 1 already ran. Never run this from `main` (`handoff.md` step 1's guard moves you off it first).
 
 3. **Gather the content.** For each placeholder, take the **verbatim** text from the wiki — do not paraphrase, do not summarize, do not "clean it up". Paraphrase is where a spec quietly changes meaning.
 
