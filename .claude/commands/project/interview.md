@@ -135,7 +135,11 @@ If dirty: run `human-checkpoint`.
    ```bash
    git add docs/wiki/ docs/raw/interviews/
    git commit -m "docs(wiki): interview — <slug>"
-   git push -u origin "$(git branch --show-current)"
+   if git remote get-url origin >/dev/null 2>&1; then
+     git push -u origin "$(git branch --show-current)"
+   else
+     echo "no remote — the commit is local only; say so in the report"
+   fi
    ```
 
 5. **Recommend the next step.** Usually `/project:work` to pick up the first new todo.

@@ -119,7 +119,11 @@ Triggered when the argument is a path to an existing file (e.g., `/project:wiki-
    ```bash
    git add docs/wiki/
    git commit -m "docs: ingest <filename> → [[summaries/<slug>]]"
-   git push -u origin "$(git branch --show-current)"
+   if git remote get-url origin >/dev/null 2>&1; then
+     git push -u origin "$(git branch --show-current)"
+   else
+     echo "no remote — the commit is local only; say so in the report"
+   fi
    ```
 
 7. **Report** to the human: slug, summary path, key claims, any contradictions flagged.
@@ -148,7 +152,11 @@ Triggered when the argument is a research query (starts with "search for", "rese
    ```bash
    git add docs/raw/research/ docs/wiki/
    git commit -m "docs: ingest research <slug> → [[summaries/<slug>]]"
-   git push -u origin "$(git branch --show-current)"
+   if git remote get-url origin >/dev/null 2>&1; then
+     git push -u origin "$(git branch --show-current)"
+   else
+     echo "no remote — the commit is local only; say so in the report"
+   fi
    ```
 
 8. **Report** to the human: topic, slug, top findings, key recommendations, any contradictions flagged.

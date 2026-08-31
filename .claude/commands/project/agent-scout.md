@@ -220,7 +220,11 @@ Stage every skill/agent file created this session plus the log entry, then push 
 ```bash
 git add .claude/ docs/wiki/log.md
 git commit -m "chore(agents): scout — <N skills, M agents created>"
-git push -u origin "$(git branch --show-current)"
+if git remote get-url origin >/dev/null 2>&1; then
+  git push -u origin "$(git branch --show-current)"
+else
+  echo "no remote — the commit is local only; say so in the report"
+fi
 ```
 
 If the human approved no new skills or agents, the log entry alone is still committed and pushed — the survey is a recorded action.

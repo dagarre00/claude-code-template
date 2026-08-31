@@ -104,7 +104,11 @@ If dirty: run `human-checkpoint`.
    ```bash
    git add docs/wiki/
    git commit -m "chore(wiki): lint — <N todos processed, M orphans, K broken links, F findings re-triaged>"
-   git push -u origin "$(git branch --show-current)"
+   if git remote get-url origin >/dev/null 2>&1; then
+     git push -u origin "$(git branch --show-current)"
+   else
+     echo "no remote — the commit is local only; say so in the report"
+   fi
    ```
 
 8. **Report to the human.** What was processed, what remains, gaps and contradictions detected — and the maintainer's **batched clarification questions in one lot** (contradictions, gaps needing knowledge outside `docs/raw/`, ambiguous merges). The human or `/project:interview` resolves which version is correct; unresolved `contradicts` entries stay flagged until then.

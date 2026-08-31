@@ -97,7 +97,11 @@ So: when you are unsure whether something belongs in the file, it belongs in the
     ```bash
     git add docs/wiki/log.md
     git commit -m "docs(<slug>): log handoff"
-    git push -u origin "$(git branch --show-current)"
+    if git remote get-url origin >/dev/null 2>&1; then
+      git push -u origin "$(git branch --show-current)"
+    else
+      echo "no remote — the commit is local only; say so in the report"
+    fi
     ```
 
 ## When the work comes back

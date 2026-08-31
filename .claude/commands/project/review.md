@@ -84,7 +84,11 @@ If any fails: run `human-checkpoint`.
    git status --porcelain   # any dirt outside docs/wiki/ must be accounted for, never blindly restored (behavioral rule 21)
    git add docs/wiki/
    git commit -m "docs(review): audit YYYY-MM-DD — <N critical, M warnings, K drift>"
-   git push -u origin "$(git branch --show-current)"  # if detached HEAD, attach to develop first
+   if git remote get-url origin >/dev/null 2>&1; then
+     git push -u origin "$(git branch --show-current)"  # if detached HEAD, attach to develop first
+   else
+     echo "no remote — the commit is local only; say so in the report"
+   fi
    ```
 
    Dirt outside `docs/wiki/` is not automatically yours: if it matches the reviewer's report (suite-written files the reviewer missed), restore those paths; anything you cannot account for is another session's live work — stop and run `human-checkpoint` naming the paths (behavioral rule 21).

@@ -77,7 +77,11 @@ Any failure → `human-checkpoint`.
    ```bash
    git add docs/wiki/log.md
    git commit -m "docs(handoff): package <slug>"
-   git push -u origin "$(git branch --show-current)"
+   if git remote get-url origin >/dev/null 2>&1; then
+     git push -u origin "$(git branch --show-current)"
+   else
+     echo "no remote — the commit is local only; say so in the report"
+   fi
    ```
 
 8. **Report.** Name what was delegated, the cases covered, the branch to expect, and what you will check when the PR arrives (skill § When the work comes back).

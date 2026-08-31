@@ -62,7 +62,11 @@ Clean tree and no base ref: stop and say there is nothing to review. Do not disp
    git commit -m "fix(<slug>): <what changed> — adversary F1"
    git add docs/wiki/todos.md docs/wiki/log.md
    git commit -m "docs(<slug>): adversary round 1 — <N> findings, …"   # body: one line per finding
-   git push -u origin "$(git branch --show-current)"
+   if git remote get-url origin >/dev/null 2>&1; then
+     git push -u origin "$(git branch --show-current)"
+   else
+     echo "no remote — the commit is local only; say so in the report"
+   fi
    ```
 
    Most rounds have no `fix` commit at all — that is the expected shape, not a failed review. If a round produced neither a fix nor a todo (everything rejected), make the round-closing commit `--allow-empty`: its written rejections are the only thing that has to survive.
