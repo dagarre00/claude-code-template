@@ -239,7 +239,7 @@ Close the round with one commit whose body is the record:
 git add docs/wiki/todos.md
 git add docs/wiki/gotchas.md {{ENTITY_PATH}}   # only if a rejection made you write down an invariant
 git commit -m "$(cat <<'MSG'
-docs({{SLUG}}): review round 1 — 3 findings, 1 fixed, 1 filed, 1 rejected, 2 nits
+docs({{SLUG}}): adversary round 1 — 3 findings, 1 fixed, 1 filed, 1 rejected, 2 nits
 
 F1 critical correctness — Fixed in <sha> (user approved): empty token now
    rejected before lookup.
@@ -252,7 +252,11 @@ MSG
 git push
 ```
 
-Every finding gets a line, filed ones included — the todo says what to do, the commit says why it was not done now. If the round produced neither a fix nor a todo, commit with `--allow-empty`: a round that changed nothing is precisely the one whose reasons must survive.
+Every finding gets a line, filed ones included — the todo says what to do, the commit says why it was not done now.
+
+**Use the literal words `adversary round` in that subject.** This project audits review records with `git log --grep="adversary round"`. Any other phrasing — `review round` included — leaves the dispositions in history but invisible to the one query that reads them back, which is the same failure mode as filing a finding under the wrong tag (§7.3).
+
+If the round produced neither a fix nor a todo, commit with `--allow-empty`: a round that changed nothing is precisely the one whose reasons must survive.
 
 **Re-dispatch only if a fix actually landed**, and then over the fix commits alone — never the original range, which is how a review manufactures fresh findings every round. **Two rounds maximum.** If findings survive round two, the unit was too big: stop and ask (§9) rather than opening round three.
 
@@ -606,7 +610,7 @@ Every line must be true before you write your report.
 - [ ] The full test suite passes, and you read the output yourself.
 - [ ] Lint and format pass (if this project has them).
 - [ ] `git log` on the branch reads as one commit per case, each pushed.
-- [ ] A review round ran (§5, Step 4) and every finding has a written disposition in a commit body.
+- [ ] A review round ran (§5, Step 4) and every finding has a written disposition in a commit body whose subject contains the literal words `adversary round`.
 - [ ] Every `critical`/`major` finding went to the user before anything was done about it.
 - [ ] Only the todo line(s) this cycle actually closed removed from `docs/wiki/todos.md` — any still-open sibling parts of a multi-part item left in place; filed findings added with the `[adversary]` tag.
 - [ ] `docs/wiki/log.md` has the `work` entry, and the `pr` entry if a pull request was opened.
