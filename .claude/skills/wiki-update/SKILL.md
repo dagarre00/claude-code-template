@@ -100,13 +100,13 @@ updated: YYYY-MM-DD
 
 ## Implementation
 
-- Files: [src/foo.py](../../src/foo.py)
+- Files: [src/foo.py](../../../src/foo.py)
 - Key functions: `do_thing()`, `parse_x()`
 - Used by: [[consumer-entity]]
 
 ## Tests
 
-- Files: [tests/test_foo.py](../../tests/test_foo.py)
+- Files: [tests/test_foo.py](../../../tests/test_foo.py)
 - Mapping: B1 → `test_does_thing`, B2 → `test_parses_x`
 
 ## Boundaries
