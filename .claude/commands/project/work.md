@@ -163,8 +163,8 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
     ```bash
     grep -n '^## \[' docs/wiki/log.md 2>/dev/null | tail -1                     # cycles since…
     grep -nE '\] (review|wiki-maintenance)' docs/wiki/log.md 2>/dev/null | tail -2   # …each last ran
-    grep -cE '^- \[ \] [0-9]{4}-' docs/wiki/wiki-todos.md 2>/dev/null                 # maintainer queue depth (dated entries only — the file's own format example is not one)
-    grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null                   # filed findings never triaged
+    grep -cE '^- \[ \] [0-9]{4}-' docs/wiki/wiki-todos.md 2>/dev/null || true                 # maintainer queue depth (dated entries only — the file's own format example is not one)
+    grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null || true                   # filed findings never triaged
     ```
 
     Suggest, naming the number that fired:

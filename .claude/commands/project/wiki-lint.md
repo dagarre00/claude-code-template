@@ -51,7 +51,7 @@ If dirty: run `human-checkpoint`.
 
    ```bash
    # log.md: count session entries
-   grep -c "^## \[" docs/wiki/log.md 2>/dev/null
+   grep -c "^## \[" docs/wiki/log.md 2>/dev/null || true
    ```
 
    - **`log.md` ≥ 100 entries:** Instruct the maintainer to move entries older than 90 days into `docs/wiki/summaries/log-archive-YYYY.md`, leaving only the most recent 30 entries in `log.md`. The archive file is append-only going forward.
@@ -61,8 +61,8 @@ If dirty: run `human-checkpoint`.
 3. **Re-triage the filed-findings backlog.** Rule 20 files every `minor` adversary finding as a todo and nothing else ever drains them, so this pass is their only consumer (behavioral rule 22):
 
    ```bash
-   grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null        # against FINDINGS_MAX
-   grep -n '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null | head -20   # oldest first
+   grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null || true        # against FINDINGS_MAX
+   grep -n '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null | head -20 || true   # oldest first
    ```
 
    Walk them oldest-first and give each one of three outcomes:
