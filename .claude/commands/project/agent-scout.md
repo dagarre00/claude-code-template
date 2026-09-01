@@ -165,30 +165,7 @@ Number the recommendations in the order that will unblock the most /project:work
 
 ### 4a. Sync develop
 
-The guard block moves off `main` first, then fast-forwards `develop` before creating any approved toolkit assets:
-
-```bash
-if [ "$(git branch --show-current)" = "main" ]; then
-  git checkout develop || { echo "could not switch to develop — stop and run human-checkpoint"; exit 1; }
-fi
-branch="$(git branch --show-current)"
-if [ -z "$branch" ]; then
-  echo "detached HEAD — stop and run human-checkpoint"
-  exit 1
-fi
-if [ "$branch" = "develop" ]; then
-  if git remote get-url origin >/dev/null 2>&1; then
-    git fetch origin develop || { echo "fetch failed — stop and run human-checkpoint"; exit 1; }
-    git merge --ff-only origin/develop || exit 1
-  fi
-fi
-```
-
-**Never from `main`.** The guard above moves you to `develop` first — `main` is the release branch, updated only when `develop` is promoted (`docs/wiki/git-conventions.md`). If the guard fails, something is stopping the checkout — most likely a fresh clone whose only branch is `main`, but any checkout failure (e.g. a conflicting uncommitted file) hits the same message — stop and run `human-checkpoint`; never proceed on `main`.
-
-**If `git merge --ff-only` fails**, `develop` has diverged in a non-fast-forward way — stop and run `human-checkpoint` before proceeding. Committing on a stale `develop` and failing the push is exactly the unpushed-commit loss behavioral rule 19 exists to prevent.
-
-**Already on a `feat/*` or `fix/*` branch?** Stay there. Living toolkit configuration and log updates commit directly on `develop` (or your active feature branch, behavioral rule 19).
+Before creating any approved toolkit assets, run the guarded sync block in `.claude/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply).
 
 ### 5. Offer to create
 
@@ -220,11 +197,7 @@ Stage every skill/agent file created this session plus the log entry, then push 
 ```bash
 git add .claude/ docs/wiki/log.md
 git commit -m "chore(agents): scout — <N skills, M agents created>"
-if git remote get-url origin >/dev/null 2>&1; then
-  git push -u origin "$(git branch --show-current)"
-else
-  echo "no remote — the commit is local only; say so in the report"
-fi
+git push -u origin "$(git branch --show-current)"   # no remote → skip and note (git-conventions § Cadence)
 ```
 
 If the human approved no new skills or agents, the log entry alone is still committed and pushed — the survey is a recorded action.

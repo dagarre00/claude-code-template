@@ -9,7 +9,7 @@ type: command
 
 **Argument:** `$ARGUMENTS`
 
-The argument is the **scope of the interview** — the feature, area, or question to grill on (`the auth flow`, `fill non-functional requirements`, `stress-test the offline sync plan`). It becomes the scope line in step 1 and the transcript slug. If it names an entity that already has a page, read that page before framing the scope so you refine rather than restart it. If the argument is empty, infer the scope from `docs/wiki/todos.md` and `## Open questions` in `requirements.md`, then confirm it with the human before opening the transcript.
+The argument is the **scope of the interview** — the feature, area, or question to grill on (`the auth flow`, `fill non-functional requirements`, `stress-test the offline sync plan`). It becomes the scope line in step 2 and the transcript slug. If it names an entity that already has a page, read that page before framing the scope so you refine rather than restart it. If the argument is empty, infer the scope from `docs/wiki/todos.md` and `## Open questions` in `requirements.md`, then confirm it with the human before opening the transcript.
 
 You are the interviewer. Your job is to grill the human until you reach shared understanding. You walk down each branch of the decision tree, resolve dependencies one-by-one, and **always provide your recommended answer** so the human can react to it instead of generating from scratch.
 
@@ -37,34 +37,11 @@ If dirty: run `human-checkpoint`.
 
 ## Procedure
 
-1. **Frame the scope.** Take the scope from the argument above. Read `docs/wiki/requirements.md` and any existing entity pages relevant to the topic. State the scope in one line and confirm with the human. Derive the transcript slug from the argument (`the auth flow` → `auth-flow`).
+1. **Sync develop.** Run the guarded sync block in `.claude/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply). Syncing first means the wiki you read in step 2 is current, not a stale mirror.
 
-1a. **Sync develop.** The guard block moves off `main` first, then fast-forwards `develop` before the interview begins:
+2. **Frame the scope.** Take the scope from the argument above. Read `docs/wiki/requirements.md` and any existing entity pages relevant to the topic. State the scope in one line and confirm with the human. Derive the transcript slug from the argument (`the auth flow` → `auth-flow`).
 
-   ```bash
-   if [ "$(git branch --show-current)" = "main" ]; then
-     git checkout develop || { echo "could not switch to develop — stop and run human-checkpoint"; exit 1; }
-   fi
-   branch="$(git branch --show-current)"
-   if [ -z "$branch" ]; then
-     echo "detached HEAD — stop and run human-checkpoint"
-     exit 1
-   fi
-   if [ "$branch" = "develop" ]; then
-     if git remote get-url origin >/dev/null 2>&1; then
-       git fetch origin develop || { echo "fetch failed — stop and run human-checkpoint"; exit 1; }
-       git merge --ff-only origin/develop || exit 1
-     fi
-   fi
-   ```
-
-   **Never from `main`.** The guard above moves you to `develop` first — `main` is the release branch, updated only when `develop` is promoted (`docs/wiki/git-conventions.md`). If the guard fails, something is stopping the checkout — most likely a fresh clone whose only branch is `main`, but any checkout failure (e.g. a conflicting uncommitted file) hits the same message — stop and run `human-checkpoint`; never proceed on `main`.
-
-   **If `git merge --ff-only` fails**, `develop` has diverged in a non-fast-forward way — stop and run `human-checkpoint` before proceeding. Committing on a stale `develop` and failing the push is exactly the unpushed-commit loss behavioral rule 19 exists to prevent.
-
-   **Already on a `feat/*` or `fix/*` branch?** Stay there — an interview that refines the feature you're mid-cycle on belongs in that branch's history. Living wiki updates commit directly on `develop` (or your active feature branch, behavioral rule 19).
-
-2. **Open the transcript file BEFORE asking anything.** Path: `docs/raw/interviews/YYYY-MM-DD-<slug>.md`. Write frontmatter plus a one-paragraph framing of the scope. The file must exist and be on disk before the first question.
+3. **Open the transcript file BEFORE asking anything.** Path: `docs/raw/interviews/YYYY-MM-DD-<slug>.md`. Write frontmatter plus a one-paragraph framing of the scope. The file must exist and be on disk before the first question.
 
    ```yaml
    ---
@@ -80,7 +57,7 @@ If dirty: run `human-checkpoint`.
 
    **Raw is immutable** (see `.claude/rules/behavioral.md` #11) — never edit prior answers; only append.
 
-3. **Run the interview as an append-only loop.** For each question, follow these steps **in order**, with a disk write between every step:
+4. **Run the interview as an append-only loop.** For each question, follow these steps **in order**, with a disk write between every step:
 
    a. **Append the question to the transcript first**, under a `## Q<n>. <topic>` heading, including your recommended answer and rationale. Save. The question is now on disk.
    b. **Ask the human.** Use `AskUserQuestion` with options when there are 2–4 discrete choices; otherwise plain text.
@@ -101,9 +78,9 @@ If dirty: run `human-checkpoint`.
    - **What's the smallest first slice?** (MVP boundary) → shapes first todos
    - **What's the test framework, test command, and deployment target?** → fills `## Testing strategy` and `## Deployment` in architecture
 
-4. **Track open branches.** After each answer, list the dependent questions that unblocked. Tackle them next.
+5. **Track open branches.** After each answer, list the dependent questions that unblocked. Tackle them next.
 
-5. **Stop conditions.**
+6. **Stop conditions.**
    - Human says stop.
    - All branches of the decision tree have a concrete answer.
    - You've identified an entity-level set of Behavior cases sharp enough to write tests against (see `spec-writing` skill).
@@ -135,11 +112,7 @@ If dirty: run `human-checkpoint`.
    ```bash
    git add docs/wiki/ docs/raw/interviews/
    git commit -m "docs(wiki): interview — <slug>"
-   if git remote get-url origin >/dev/null 2>&1; then
-     git push -u origin "$(git branch --show-current)"
-   else
-     echo "no remote — the commit is local only; say so in the report"
-   fi
+   git push -u origin "$(git branch --show-current)"   # no remote → skip and note (git-conventions § Cadence)
    ```
 
 5. **Recommend the next step.** Usually `/project:work` to pick up the first new todo.

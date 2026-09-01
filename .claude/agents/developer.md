@@ -54,15 +54,11 @@ Code and wiki ship together:
 
 ## Answering an adversary
 
-On `[complex]` and batched cycles, `/project:work` points a read-only `adversary` (Opus, no context of yours) at the commits you just landed. It writes numbered findings to `.claude/handoff/<slug>-findings.md` and is not allowed to touch the code.
+On `[complex]` and batched cycles, a read-only `adversary` writes numbered findings to `.claude/handoff/<slug>-findings.md`. The protocol — dispositions, severity vocabulary, the critical/major gate, the round commit — is the `adversarial-review` skill; follow it. Your half:
 
-**Your half of the triage:** read every finding and give each one a recommended disposition — **Filed as a todo**, **Fixed** (approved only), or **Rejected with a stated reason** — plus, for anything `critical`/`major`, the failure scenario and what a fix would touch. Hand that back to `/project:work`, which owns the `human-checkpoint` and the round-closing commit (a sub-agent cannot hold that conversation). You then make whatever fix the human approved. Follow the `adversarial-review` skill for the vocabulary. Silence is not a disposition and "unlikely" is not a reason.
-
-**File, don't fix.** The default disposition is a todo line in `docs/wiki/todos.md` at the priority the severity maps to — you do not fix findings in the cycle that surfaced them, however small they look. For every `critical` and `major`, run one `human-checkpoint` with the failure scenarios and a recommendation and let the human choose fix-now or queue; fix only what they approve, and only by the normal loop (failing test first).
-
-Triage in the mailbox, but **the record is the commit** (behavioral rule 20). An approved fix is its own commit naming the finding it closes (`fix(<slug>): reject empty token — adversary F1`), and the round ends with one `docs(<slug>): adversary round N` commit whose body lists every finding and its disposition, filed ones included. The mailbox is gitignored scratch and is deleted afterwards.
-
-An approved fix is ordinary work, not an exception to the loop: a behavior change still needs its failing test first (rule 2), and a finding that contradicts the entity spec means fixing the Behavior case before the code (rule 3). Re-run the full suite after each fix. You are entitled to reject a finding that misreads the code or whose scenario a documented invariant rules out — cite the invariant, and if it isn't written down anywhere, write it into the entity page or `gotchas.md` as part of the rejection.
+- **Recommend a disposition per finding** — Filed (the default), Fixed (approved only), or Rejected with a stated reason — plus, for `critical`/`major`, the failure scenario and what a fix would touch. Hand that back to `/project:work`, which owns the `human-checkpoint` and the round-closing commit; you then make whatever fix the human approved.
+- **An approved fix is ordinary work**: failing test first (rule 2); a finding that contradicts the entity spec means fixing the Behavior case before the code (rule 3); full suite re-run after each fix.
+- **You may reject** a finding that misreads the code or that a documented invariant rules out — cite the invariant, and if it isn't written down anywhere, write it into the entity page or `gotchas.md` as part of the rejection. Silence is not a disposition and "unlikely" is not a reason (rule 20).
 
 ## Finishing
 

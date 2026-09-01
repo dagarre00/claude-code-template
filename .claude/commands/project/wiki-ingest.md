@@ -18,39 +18,16 @@ This is **focused ingest only** — no orphan scan, no link audit, no lint pass.
 
 ## Preconditions
 
-- Working tree clean (or only `docs/` dirty).
+- Working tree clean, allowing two exceptions: `docs/` may be dirty, and so may the file being ingested (a source the human just dropped anywhere in the repo counts).
 - `docs/wiki/summaries/` directory exists.
 - For file mode: the target file must exist and be readable.
 - For research mode: internet access available.
 
-If dirty outside `docs/`: run `human-checkpoint`.
+Any other dirt: run `human-checkpoint`.
 
 ## Sync develop (both modes)
 
-The guard block moves off `main` first, then fast-forwards `develop` before the ingest begins:
-
-```bash
-if [ "$(git branch --show-current)" = "main" ]; then
-  git checkout develop || { echo "could not switch to develop — stop and run human-checkpoint"; exit 1; }
-fi
-branch="$(git branch --show-current)"
-if [ -z "$branch" ]; then
-  echo "detached HEAD — stop and run human-checkpoint"
-  exit 1
-fi
-if [ "$branch" = "develop" ]; then
-  if git remote get-url origin >/dev/null 2>&1; then
-    git fetch origin develop || { echo "fetch failed — stop and run human-checkpoint"; exit 1; }
-    git merge --ff-only origin/develop || exit 1
-  fi
-fi
-```
-
-**Never from `main`.** The guard above moves you to `develop` first — `main` is the release branch, updated only when `develop` is promoted (`docs/wiki/git-conventions.md`). If the guard fails, something is stopping the checkout — most likely a fresh clone whose only branch is `main`, but any checkout failure (e.g. a conflicting uncommitted file) hits the same message — stop and run `human-checkpoint`; never proceed on `main`.
-
-**If `git merge --ff-only` fails**, `develop` has diverged in a non-fast-forward way — stop and run `human-checkpoint` before proceeding. Committing on a stale `develop` and failing the push is exactly the unpushed-commit loss behavioral rule 19 exists to prevent.
-
-**Already on a `feat/*` or `fix/*` branch?** Stay there — an ingest that feeds the feature you're mid-cycle on belongs in that branch's history. Living wiki updates commit directly on `develop` (or your active feature branch, behavioral rule 19).
+Run the guarded sync block in `.claude/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply).
 
 ## Steps — file mode
 
@@ -108,7 +85,7 @@ Triggered when the argument is a path to an existing file (e.g., `/project:wiki-
 5. **Append to `docs/wiki/log.md`:**
 
    ```markdown
-   ## [YYYY-MM-DD HH:MM] /project:wiki-ingest file
+   ## [YYYY-MM-DD HH:MM] wiki-ingest — <slug>
 
    - Ingested: <path> → [[summaries/<slug>]]
    - Cross-links added: <list>
@@ -119,11 +96,7 @@ Triggered when the argument is a path to an existing file (e.g., `/project:wiki-
    ```bash
    git add docs/wiki/ docs/raw/            # docs/raw/ too, so a source you moved in is tracked rather than left dirty
    git commit -m "docs: ingest <filename> → [[summaries/<slug>]]"
-   if git remote get-url origin >/dev/null 2>&1; then
-     git push -u origin "$(git branch --show-current)"
-   else
-     echo "no remote — the commit is local only; say so in the report"
-   fi
+   git push -u origin "$(git branch --show-current)"   # no remote → skip and note (git-conventions § Cadence)
    ```
 
 7. **Report** to the human: slug, summary path, key claims, any contradictions flagged.
@@ -152,11 +125,7 @@ Triggered when the argument is a research query (starts with "search for", "rese
    ```bash
    git add docs/raw/research/ docs/wiki/
    git commit -m "docs: ingest research <slug> → [[summaries/<slug>]]"
-   if git remote get-url origin >/dev/null 2>&1; then
-     git push -u origin "$(git branch --show-current)"
-   else
-     echo "no remote — the commit is local only; say so in the report"
-   fi
+   git push -u origin "$(git branch --show-current)"   # no remote → skip and note (git-conventions § Cadence)
    ```
 
 8. **Report** to the human: topic, slug, top findings, key recommendations, any contradictions flagged.

@@ -137,7 +137,9 @@ If the human declines the bootstrap, leave `commands.md ## Test` as `<TBD>` and 
 
 ### 6. Rewrite CLAUDE.md
 
-Rewrite `CLAUDE.md` to be lean and project-specific. Drop the template framing — this is now a real project. **Use [`.claude/templates/CLAUDE.md.tmpl`](../../templates/CLAUDE.md.tmpl) as the exact skeleton:** copy it to `CLAUDE.md` and fill every `<placeholder>` (project name, vision, stack, test command) from the interview answers. Do not re-derive the section list — the template already carries it (Identity, Operating principles, Three layers, Wiki layout, Commands, Agent routing, North star).
+**Re-run guard first.** If `CLAUDE.md` is already project-specific — it no longer opens with the template's "Project Schema" framing, or its command/agent tables carry rows the template doesn't ship (added later via `update-toolkit`) — do **not** overwrite it: stop and run `human-checkpoint` offering rewrite / merge the new parameters in / skip this step. A blind rewrite from the template discards every toolkit row the project has added since.
+
+Otherwise, rewrite `CLAUDE.md` to be lean and project-specific. Drop the template framing — this is now a real project. **Use [`.claude/templates/CLAUDE.md.tmpl`](../../templates/CLAUDE.md.tmpl) as the exact skeleton:** copy it to `CLAUDE.md` and fill every `<placeholder>` (project name, vision, stack, test command) from the interview answers. Do not re-derive the section list — the template already carries it (Identity, Operating principles, Three layers, Wiki layout, Commands, Agent routing, North star).
 
 The template deliberately points at `.claude/rules/behavioral.md` for the binding rule list instead of duplicating it — keep that pointer; do not paste a "Golden rules" block back in. The result should be under ~120 lines. Every section earns its place — if a section doesn't help an agent operate, cut it.
 

@@ -56,7 +56,9 @@ Code mutations branch **before the first write** (behavioral rule 19). Living do
 | `/project:wiki-lint`   | none (direct on `develop` or active `feat/*`) | —                       |
 | `/project:review`      | none (direct on `develop` or active `feat/*`) | —                       |
 | `/project:handoff`     | none (direct on `develop` or active `feat/*`) | —                       |
-| `/project:adversary`   | none (runs on existing `feat/*` branch)       | —                       |
+| `/project:adversary`   | none (existing `feat/*`/`fix/*`/`chore/*`; `develop` only for the release review) | — |
+
+The maintenance commands sync via the canonical guarded block in [`sync-develop.md`](sync-develop.md) (next to this skill) — one copy, referenced everywhere.
 
 In every case the rule is the same: **code changes branch from `develop`.** Already on a `feat/*`/`fix/*` branch whose work this belongs to → stay there and let that branch's PR carry the change.
 
@@ -90,15 +92,16 @@ When interrupted mid-cycle (not at a green commit boundary), pick the lightest-w
 
 ## Sync with develop (long-running branches)
 
-When your branch has been open for several days and develop has moved on, rebase early — the longer you wait, the larger the conflict surface:
+When your branch has been open for a while and develop has moved on, **merge develop in** — early and often; the longer you wait, the larger the conflict surface:
 
 ```bash
 git fetch origin develop
-git rebase origin/develop
-git push --force-with-lease origin <branch>   # safe: fails if remote has new commits you don't have
+git merge origin/develop     # resolve conflicts per git-recovery skill
+<test command>               # the merge can bring in breakage — re-verify
+git push
 ```
 
-If conflicts arise, follow the `git-recovery` skill (Resolve merge / rebase / cherry-pick conflicts). `--force-with-lease` is the only acceptable force-push form; never bare `--force`.
+Never rebase a pushed branch as routine sync: sessions run concurrently on shared branches (behavioral rule 21, `/project:work` step 2's divergence guard), and a rebase rewrites history another session may hold. Rebase + `--force-with-lease` is an exception that needs explicit human approval via `human-checkpoint`; bare `--force` is never used.
 
 ## Commit cadence
 
@@ -115,10 +118,10 @@ If conflicts arise, follow the `git-recovery` skill (Resolve merge / rebase / ch
 
    ```bash
    git fetch origin develop
-   git rebase origin/develop   # follow git-recovery skill (conflicts) if needed
+   git merge origin/develop    # follow git-recovery skill (conflicts) if needed; then re-run the tests
    ```
 
-5. Push: `git push -u origin <branch>` (or `git push --force-with-lease` after a rebase).
+5. Push: `git push -u origin <branch>`.
 6. **Auto-PR (invoked by `/project:work`):** follow `pr-create` skill to draft and open the PR targeting `develop`, then `git checkout develop`.
 7. After the human merges the PR — clean up both local and remote branch:
 

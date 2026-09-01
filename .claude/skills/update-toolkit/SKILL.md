@@ -81,6 +81,6 @@ If a paragraph could appear in a textbook chapter on the topic, **delete it**. A
 
 - **Domain agents.** No "backend agent", no "frontend agent" — that's what skills are for.
 - **What-is content.** Never explain what testing/refactoring/migrations *are*. Tell the agent the procedure for this project.
-- **Long bodies.** Agents are read every dispatch; commands longer than ~40 lines are hiding skill content — lift it into a skill. Every paragraph costs context.
+- **Long bodies.** Agents are read every dispatch, commands on every invocation — every paragraph costs context. Commands orchestrate; if a command body *teaches a procedure* (how to write tests, how to structure a page), lift that into a skill. The shipped core commands run long because they orchestrate multi-agent cycles; a new command approaching their size deserves the same scrutiny.
 - **Generic descriptions.** "Helps with code" loads/routes on everything — useless. Be specific about the trigger.
 - **Duplicate procedures / invariants.** Two skills with the same steps → merge. A new agent that also writes tests or production code splits a cycle meant to live in the `developer` — reconsider whether it should be a skill.

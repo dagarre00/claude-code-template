@@ -40,7 +40,7 @@ awk '/^## Now \(P0/{f=1;next} /^## /{f=0} f && /^- \[ \]/' docs/wiki/todos.md | 
 
 The count is **all** P0 items, not just `[adversary]` ones — a saturated P0 is a scheduling problem whoever filed it. Two places act on it, and only two, so the threshold does not become a nag:
 
-- **When filing** (`adversarial-review` skill, step 6): crossing the threshold runs `human-checkpoint`. This is the moment of causation.
+- **When filing** (`adversarial-review` skill, step 6a): crossing the threshold runs `human-checkpoint`. This is the moment of causation.
 - **When `/project:work` is steered off P0** (step 1): its default is already to take the top item, so the normal path drains P0 first and needs no interruption. Only an argument that selects non-P0 work while P0 is saturated triggers a checkpoint.
 
 To change the threshold for a project, edit the number here — both call sites reference this section rather than hard-coding it.

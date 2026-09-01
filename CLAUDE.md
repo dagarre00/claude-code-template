@@ -3,7 +3,7 @@
 This repository is a **template for agentic software development**. Two ideas govern everything:
 
 1. **The wiki is the spec.** `docs/wiki/` is the source of truth for what the project is and how it works. Code that disagrees with the wiki is the bug.
-2. **Progressive disclosure beats specialized agents.** A single `developer` agent runs the whole TDD cycle, loading task-specific skills on demand. The two deliberate splits are both on Opus and both sit outside the loop: the `planner`, which decomposes `[complex]` or batched work before the developer executes it, and the `adversary`, which reads the resulting diff afterwards with none of the developer's context and raises findings it is not allowed to fix. Skills are short, procedural how-to for _this project_ — never abstract explanations of _what something is_.
+2. **Progressive disclosure beats specialized agents.** A single `developer` agent runs the whole TDD cycle, loading task-specific skills on demand. The two deliberate splits are both on Opus and both sit outside the developer's context: the `planner`, which decomposes `[complex]` or batched work before the developer executes it, and the `adversary`, which reads the resulting diff afterwards with none of the developer's context and raises findings it is not allowed to fix. Skills are short, procedural how-to for _this project_ — never abstract explanations of _what something is_.
 
 The hard behavioral constraints live in [`.claude/rules/behavioral.md`](.claude/rules/behavioral.md) — read them; they override default inclinations. This file is the map; that file is the law.
 
@@ -89,7 +89,7 @@ Routine git operations (checkpoint tag, reset, status/log) use plain git, not be
 
 There is intentionally no domain-specialized agent (no "backend agent"). Domain knowledge lives in skills the `developer` loads on demand. The `planner` and the `adversary` run on **Opus** — the adversary deliberately on a different tier from the `developer` it reviews, so the second reader is a second *model*, not just a second context. All other agents run on Sonnet (researcher on Haiku).
 
-**Wiki edits — inline only.** The `developer` makes small wiki edits **inline** in the same commit as the code (Behavior tick, single ADR, single gotcha line, log entry). The `reviewer` and the `adversary` make none: both are findings-only (behavioral rule 12), and the dispatching command files what they raise — the `reviewer` writes one report page and nothing else, the `adversary` writes only its gitignored mailbox. Larger cross-page work is queued in `wiki-todos.md` for the human to run `/project:wiki-lint`. **No agent auto-invokes the wiki-maintainer.**
+**Wiki edits — inline only.** The `developer` makes small wiki edits inline, same commit as the code (Behavior tick, single ADR, single gotcha line, log entry). The `reviewer` and `adversary` make none — findings-only (rule 12); the dispatching command files what they raise. Larger cross-page work queues in `wiki-todos.md` for `/project:wiki-lint`. **No agent auto-invokes the wiki-maintainer.**
 
 ## Skill catalog
 
