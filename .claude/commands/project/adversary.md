@@ -14,7 +14,7 @@ The argument **sets what gets reviewed**, resolved in step 1:
 - **A base ref** (`develop`, `against main`, `HEAD~3`) → diff against it (`git diff <ref>...HEAD`) instead of the working tree. This is the "or you were given a base ref" case in the preconditions — with a ref, a clean tree is reviewable rather than a stop condition.
 - **A lens** (`concurrency only`, `error handling`) → pass it to the adversary as an emphasis on top of the six-category sweep. It **narrows nothing**: the full sweep still runs, because a sweep the author gets to shrink is one the author gets to steer. Say in the report that a lens was applied.
 
-A lens never reaches the adversary as intent, rationale, or a summary of what the change is meant to do — that would leak exactly the context step 2 exists to withhold. If you cannot phrase it as a category to weight, drop it and say so. Empty argument means the working-tree diff and the standard sweep.
+A lens never reaches the adversary as intent, rationale, or a summary of what the change is meant to do — that would leak exactly the context step 2 exists to withhold. If you cannot phrase it as a category to weight, drop it and say so. Empty argument means the standard sweep over the unshipped change, resolved in step 1.
 
 You run one adversarial review of the change in the working directory. Findings only — the adversary never edits. You triage, fix, and re-dispatch once. Follow the `adversarial-review` skill for the mailbox format, sweep order, severity vocabulary, and triage protocol.
 
@@ -28,15 +28,20 @@ Not a substitute for `/project:review` (periodic, whole-repo, drift) or for writ
 
 ## Preconditions
 
-- A diff exists: `git status --porcelain` is non-empty, or you were given a base ref.
+- A diff exists: a dirty tree, unreviewed commits on the current branch, or a given base ref.
 - On a `feat`/`fix`/`chore` branch, not `main` — any fix the human approves has to land somewhere, and it is never `main`.
 - **`develop` is allowed for exactly one case:** the release review named above (`/project:adversary against main`), which is diff-scoped and read-only by construction. If that round yields an approved `critical`/`major`, cut a `fix/*` branch for the fix rather than committing it to `develop`; the round-closing todo and log lines are living documentation and may land on `develop` directly (behavioral rule 19).
 
-Clean tree and no base ref: stop and say there is nothing to review. Do not dispatch.
+Clean tree, nothing unshipped, and no base ref: stop and say there is nothing to review. Do not dispatch.
 
 ## Steps
 
-1. **Scope it, and keep it small.** If the argument named a base ref, use `git diff <ref>...HEAD`. Otherwise review the commits for one Behavior case, or a few closely-related ones — `git diff <sha-before-them>...HEAD`. Note the entity slug(s) touched. A whole-branch range is the usual reason a review runs past two rounds; prefer several small reviews to one large one.
+1. **Scope it, and keep it small.** Resolve the scope in this order:
+   - **Argument named a base ref** → `git diff <ref>...HEAD`.
+   - **Dirty tree** → the uncommitted change (`git diff HEAD`, naming any untracked files). If it builds on unpushed commits from the same task, widen to `git diff <sha-before-them>...HEAD` so the review sees the whole unshipped change.
+   - **Clean tree with unreviewed commits** → the commits for one Behavior case, or a few closely-related ones — `git diff <sha-before-them>...HEAD`.
+
+   Note the entity slug(s) touched. A whole-branch range is the usual reason a review runs past two rounds; prefer several small reviews to one large one.
 
 2. **Dispatch the `adversary`** with the diff scope, the entity slug(s) and Behavior case IDs, the mailbox path `.claude/handoff/<slug>-findings.md`, the test command from `docs/wiki/commands.md`, and the lens from the argument if there was one. Pass **nothing else** — no plan file, no rationale, no summary of intent. That independence is the whole product.
 
@@ -49,7 +54,7 @@ Clean tree and no base ref: stop and say there is nothing to review. Do not disp
    ```markdown
    ## [YYYY-MM-DD HH:MM] adversary — <slug>
 
-   - Commit reviewed: <sha>
+   - Commit reviewed: <sha> (append "+ dirty tree" if the working tree was in scope)
    - Findings: <N> (<C> critical, <M> major, <m> minor)
    - Disposition: <Fi> filed, <Fx> fixed, <R> rejected
    ```
@@ -63,11 +68,7 @@ Clean tree and no base ref: stop and say there is nothing to review. Do not disp
    git commit -m "fix(<slug>): <what changed> — adversary F1"
    git add docs/wiki/todos.md docs/wiki/log.md
    git commit -m "docs(<slug>): adversary round 1 — <N> findings, …"   # body: one line per finding
-   if git remote get-url origin >/dev/null 2>&1; then
-     git push -u origin "$(git branch --show-current)"
-   else
-     echo "no remote — the commit is local only; say so in the report"
-   fi
+   git push -u origin "$(git branch --show-current)"                   # no remote → skip and note (git-conventions § Cadence)
    ```
 
    Most rounds have no `fix` commit at all — that is the expected shape, not a failed review. If a round produced neither a fix nor a todo (everything rejected), make the round-closing commit `--allow-empty`: its written rejections are the only thing that has to survive.

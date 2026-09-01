@@ -30,7 +30,7 @@ git stash drop stash@{0}
 **Rules:**
 - Never stash across a branch switch and forget about it. Always pop before the next session.
 - If the stash is more than one session old, pop it, commit the state, and resume properly.
-- `feature-branching` says "don't be clever with stashing" — when in doubt, checkpoint-tag and reset.
+- `feature-branching` prefers a checkpoint-tagged `wip:` commit over a stash — when in doubt, checkpoint-tag and reset.
 
 ## Cherry-pick — bring a single commit across branches
 
@@ -117,20 +117,15 @@ git filter-repo --path <sensitive-file> --invert-paths
 # After, everyone who cloned must re-clone — communicate this.
 ```
 
-## Clean up a feature branch before PR
+## Sync a feature branch with develop before PR
 
 ```bash
-# Fetch latest develop
 git fetch origin develop
-
-# Rebase onto current develop (resolves conflicts per commit)
-git rebase origin/develop
-
-# Safe force-push (fails if remote has diverged beyond your rebase)
-git push --force-with-lease origin <branch>
+git merge origin/develop   # resolve conflicts per commit (see below), then re-run the full suite
+git push
 ```
 
-Only `--force-with-lease`, never bare `--force`.
+Merging, not rebasing, is the routine sync: sessions share branches, and a rebase rewrites pushed history another session may hold. Rebase + `--force-with-lease` only with explicit human approval (`human-checkpoint`); bare `--force` never.
 
 ## Delete a branch
 
@@ -203,4 +198,4 @@ git merge --abort   # or git rebase --abort / git cherry-pick --abort
 
 Then tag a checkpoint and use `human-checkpoint`.
 
-**Conflict anti-patterns:** committing conflict markers (always grep first); accepting "theirs" blindly (each side may hold correct logic); rebasing a shared branch someone else has pulled (merge instead). Rebase feature branches onto develop early and often — `git fetch origin develop && git rebase origin/develop && git push --force-with-lease origin <branch>` — to keep the conflict surface small. `--force-with-lease` is the only acceptable force-push; never bare `--force`.
+**Conflict anti-patterns:** committing conflict markers (always grep first); accepting "theirs" blindly (each side may hold correct logic); rebasing a shared branch (merge instead — see "Sync a feature branch" above). Merge develop in early and often to keep the conflict surface small.

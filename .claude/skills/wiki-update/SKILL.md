@@ -66,6 +66,8 @@ Edge cases, when it does NOT apply, unresolved tensions, open contradictions,
 
 The two axes coexist: *depth* (progressive disclosure) is the body sections (Essence → Model → Detail → Boundaries); the *semantic level* is the `abstraction` facet. They're independent — the same page has both. In frontmatter, wikilinks are quoted and solitary (one `"[[page]]"` per list element); in the body they're plain `[[wikilinks]]`.
 
+**`[infra]` extension:** a concept page backing an `[infra]` todo (`/project:work` step 1) additionally carries a `## Behavior` section of verifiable operational assertions, with the same `[ ]`/`[~]`/`[x]` states as an entity page. That section is valid there — the lint pass must not flag it as off-template.
+
 ## Entity page template (`docs/wiki/entities/<slug>.md`) — project extension
 
 Entities are this project's spec pages; they keep the Behavior/TDD machinery, mapped onto the disclosure spine:

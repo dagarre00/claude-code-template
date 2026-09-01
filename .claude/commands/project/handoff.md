@@ -37,30 +37,7 @@ Any failure → `human-checkpoint`.
 
 ## Steps
 
-1. **Pick the work.** Sync first — the same guarded block the other maintenance commands use, and never from `main`:
-
-   ```bash
-   if [ "$(git branch --show-current)" = "main" ]; then
-     git checkout develop || { echo "could not switch to develop — stop and run human-checkpoint"; exit 1; }
-   fi
-   branch="$(git branch --show-current)"
-   if [ -z "$branch" ]; then
-     echo "detached HEAD — stop and run human-checkpoint"
-     exit 1
-   fi
-   if [ "$branch" = "develop" ]; then
-     if git remote get-url origin >/dev/null 2>&1; then
-       git fetch origin develop || { echo "fetch failed — stop and run human-checkpoint"; exit 1; }
-       git merge --ff-only origin/develop || exit 1
-     fi
-   fi
-   ```
-
-   **Never from `main`.** The guard above moves you to `develop` first — `main` is the release branch, updated only when `develop` is promoted (`docs/wiki/git-conventions.md`). If the guard fails, something is stopping the checkout — most likely a fresh clone whose only branch is `main`, but any checkout failure (e.g. a conflicting uncommitted file) hits the same message — stop and run `human-checkpoint`; never proceed on `main`.
-
-   **If `git merge --ff-only` fails**, `develop` has diverged in a non-fast-forward way — stop and run `human-checkpoint` before proceeding. Committing on a stale `develop` and failing the push is exactly the unpushed-commit loss behavioral rule 19 exists to prevent.
-
-   Then read `docs/wiki/todos.md` — the argument overrides the default. Skip `[wiki]` lines. Confirm against `origin/develop` that it has not already shipped.
+1. **Pick the work.** Sync first: run the guarded sync block in `.claude/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply). Then read `docs/wiki/todos.md` — the argument overrides the default. Skip `[wiki]` lines. Confirm against `origin/develop` that it has not already shipped.
 
 2. **Stay on current branch.** If standing on `develop`, stay on `develop`. If on an existing `feat/*` branch, stay there. The brief is gitignored, and the log entry commits directly on `develop` (or your active branch, behavioral rule 19).
 
@@ -77,11 +54,7 @@ Any failure → `human-checkpoint`.
    ```bash
    git add docs/wiki/log.md
    git commit -m "docs(handoff): package <slug>"
-   if git remote get-url origin >/dev/null 2>&1; then
-     git push -u origin "$(git branch --show-current)"
-   else
-     echo "no remote — the commit is local only; say so in the report"
-   fi
+   git push -u origin "$(git branch --show-current)"   # no remote → skip and note (git-conventions § Cadence)
    ```
 
 8. **Report.** Name what was delegated, the cases covered, the branch to expect, and what you will check when the PR arrives (skill § When the work comes back).

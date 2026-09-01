@@ -28,30 +28,7 @@ If dirty: run `human-checkpoint`.
 
 ## Steps
 
-1. **Sync develop.** The guard block moves off `main` first, then fast-forwards `develop` before the lint pass begins:
-
-   ```bash
-   if [ "$(git branch --show-current)" = "main" ]; then
-     git checkout develop || { echo "could not switch to develop — stop and run human-checkpoint"; exit 1; }
-   fi
-   branch="$(git branch --show-current)"
-   if [ -z "$branch" ]; then
-     echo "detached HEAD — stop and run human-checkpoint"
-     exit 1
-   fi
-   if [ "$branch" = "develop" ]; then
-     if git remote get-url origin >/dev/null 2>&1; then
-       git fetch origin develop || { echo "fetch failed — stop and run human-checkpoint"; exit 1; }
-       git merge --ff-only origin/develop || exit 1
-     fi
-   fi
-   ```
-
-   **Never from `main`.** The guard above moves you to `develop` first — `main` is the release branch, updated only when `develop` is promoted (`docs/wiki/git-conventions.md`). If the guard fails, something is stopping the checkout — most likely a fresh clone whose only branch is `main`, but any checkout failure (e.g. a conflicting uncommitted file) hits the same message — stop and run `human-checkpoint`; never proceed on `main`.
-
-   **If `git merge --ff-only` fails**, `develop` has diverged in a non-fast-forward way — stop and run `human-checkpoint` before proceeding. Committing on a stale `develop` and failing the push is exactly the unpushed-commit loss behavioral rule 19 exists to prevent.
-
-   **Already on a `feat/*`/`fix/*` branch?** Stay there — a lint pass that supports the feature you're mid-cycle on belongs in that branch's history. Living wiki updates commit directly on `develop` (or your active feature branch, behavioral rule 19).
+1. **Sync develop.** Run the guarded sync block in `.claude/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply).
 
 2. **Check append-only files for overflow** before dispatching:
 
@@ -60,7 +37,7 @@ If dirty: run `human-checkpoint`.
    grep -c "^## \[" docs/wiki/log.md 2>/dev/null || true
    ```
 
-   - **`log.md` ≥ 100 entries:** Instruct the maintainer to move entries older than 90 days into `docs/wiki/summaries/log-archive-YYYY.md`, leaving only the most recent 30 entries in `log.md`. The archive file is append-only going forward.
+   - **`log.md` ≥ 100 entries:** Instruct the maintainer to move all but the most recent 30 entries into `docs/wiki/summaries/log-archive-YYYY.md` (age is irrelevant — recency is the only criterion). The archive file is append-only going forward.
 
    `log.md` grows unboundedly; models loading it lose signal in the noise. The archive is reference-only — agents never load it by default. (Shipped work isn't tracked in a `completed.md` — git history is the record.)
 
@@ -104,11 +81,7 @@ If dirty: run `human-checkpoint`.
    ```bash
    git add docs/wiki/
    git commit -m "chore(wiki): lint — <N todos processed, M orphans, K broken links, F findings re-triaged>"
-   if git remote get-url origin >/dev/null 2>&1; then
-     git push -u origin "$(git branch --show-current)"
-   else
-     echo "no remote — the commit is local only; say so in the report"
-   fi
+   git push -u origin "$(git branch --show-current)"   # no remote → skip and note (git-conventions § Cadence)
    ```
 
 8. **Report to the human.** What was processed, what remains, gaps and contradictions detected — and the maintainer's **batched clarification questions in one lot** (contradictions, gaps needing knowledge outside `docs/raw/`, ambiguous merges). The human or `/project:interview` resolves which version is correct; unresolved `contradicts` entries stay flagged until then.

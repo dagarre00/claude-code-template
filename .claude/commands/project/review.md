@@ -32,28 +32,7 @@ If any fails: run `human-checkpoint`.
 
 ## Steps
 
-1. **Sync develop.** The guard block moves off `main` first, then fast-forwards `develop` before the audit begins:
-
-   ```bash
-   if [ "$(git branch --show-current)" = "main" ]; then
-     git checkout develop || { echo "could not switch to develop — stop and run human-checkpoint"; exit 1; }
-   fi
-   branch="$(git branch --show-current)"
-   if [ -z "$branch" ]; then
-     echo "detached HEAD — stop and run human-checkpoint"
-     exit 1
-   fi
-   if [ "$branch" = "develop" ]; then
-     if git remote get-url origin >/dev/null 2>&1; then
-       git fetch origin develop || { echo "fetch failed — stop and run human-checkpoint"; exit 1; }
-       git merge --ff-only origin/develop || exit 1
-     fi
-   fi
-   ```
-
-   **Never from `main`.** The guard above moves you to `develop` first — `main` is the release branch, updated only when `develop` is promoted (`docs/wiki/git-conventions.md`). If the guard fails, something is stopping the checkout — most likely a fresh clone whose only branch is `main`, but any checkout failure (e.g. a conflicting uncommitted file) hits the same message — stop and run `human-checkpoint`; never proceed on `main`.
-
-   **If `git merge --ff-only` fails**, `develop` has diverged in a non-fast-forward way — stop and run `human-checkpoint` before proceeding. Committing on a stale `develop` and failing the push is exactly the unpushed-commit loss behavioral rule 19 exists to prevent.
+1. **Sync develop.** Run the guarded sync block in `.claude/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply).
 
 2. **Dispatch the `reviewer` agent** with:
    - The scope (whole repo or specific area from `$ARGUMENTS`).
@@ -84,11 +63,7 @@ If any fails: run `human-checkpoint`.
    git status --porcelain   # any dirt outside docs/wiki/ must be accounted for, never blindly restored (behavioral rule 21)
    git add docs/wiki/
    git commit -m "docs(review): audit YYYY-MM-DD — <N critical, M warnings, K drift>"
-   if git remote get-url origin >/dev/null 2>&1; then
-     git push -u origin "$(git branch --show-current)"
-   else
-     echo "no remote — the commit is local only; say so in the report"
-   fi
+   git push -u origin "$(git branch --show-current)"   # no remote → skip and note (git-conventions § Cadence)
    ```
 
    Dirt outside `docs/wiki/` is not automatically yours: if it matches the reviewer's report (suite-written files the reviewer missed), restore those paths; anything you cannot account for is another session's live work — stop and run `human-checkpoint` naming the paths (behavioral rule 21).

@@ -63,7 +63,7 @@ Example:
 
    (The colon is inside the bold markers — `**When:**`. Omitting it from the pattern makes the count silently return 0 and the size check never fires.)
 
-   If the result is **≥ 20** (roughly 4+ entries per field × 5 fields), append a wiki-todo:
+   If the result is **≥ 20** (4 entries × 5 fields each), append a wiki-todo:
 
    ```
    - [ ] YYYY-MM-DD agent: gotchas.md has N field-lines — compact it during the next /project:wiki-lint

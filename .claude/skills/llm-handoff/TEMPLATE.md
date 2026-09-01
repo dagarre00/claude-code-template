@@ -147,6 +147,8 @@ git worktree add {{WORKTREE_PATH}} -b {{BRANCH_NAME}} origin/{{CUT_FROM_BRANCH}}
 cd {{WORKTREE_PATH}}
 ```
 
+If `{{BRANCH_NAME}}` already exists (an earlier attempt at this same handoff), do not recreate it: `git worktree add {{WORKTREE_PATH}} {{BRANCH_NAME}}` instead, and resume from the first Behavior case still unticked on the entity page. A branch you did not create and cannot account for → stop and ask (§9).
+
 Everything from here on runs **inside `{{WORKTREE_PATH}}`**. Two things do not come across, because git does not copy ignored files into a new worktree:
 
 ```bash
@@ -385,7 +387,7 @@ Remove only the line(s) you actually closed this cycle — if the todo is multi-
 - [ ] [adversary] <one-line claim> — <severity>/<category>, F<N> of <sha>, entity {{SLUG}}
 ```
 
-The `[adversary]` tag is not decorative: this repo's findings-backlog saturation counter (rule 22 / `FINDINGS_MAX`) greps for the literal string `[adversary]`. Any other tag — `[review]` included — makes the finding invisible to that counter and lets the backlog silently over-fill.
+The `[adversary]` tag is not decorative: this repo's findings-backlog saturation counter (`FINDINGS_MAX`) greps for the literal string `[adversary]`. Any other tag — `[review]` included — makes the finding invisible to that counter and lets the backlog silently over-fill.
 
 ### 7.4 `docs/wiki/gotchas.md`
 

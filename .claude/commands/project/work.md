@@ -61,23 +61,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
    - Identify the matching `docs/wiki/entities/<slug>.md`. If it doesn't exist, **stop** and recommend `/project:interview` to define the entity first.
    - **`[infra]` todos map to a concept page instead.** Deployment, CI, environment, and configuration work has no feature entity, and a loop that only accepts entity-backed todos locks it out entirely — which is how infrastructure ends up shipping outside the schema: untested, unreviewed, and unlogged. A todo tagged `[infra]` may name a `docs/wiki/concepts/<slug>.md` page, whose `## Behavior` section holds verifiable operational assertions ("a request without `X-Edge-Secret` gets 403", "CORS allows exactly these origins"). Everything else in this command is unchanged — infra work is still Red-first, still committed per case, still logged.
 
-2. **Fetch and branch.** Follow `feature-branching` skill. Fetch first so the divergence check is against actual remote state, not a stale local mirror:
-
-   ```bash
-   git checkout develop || { echo "could not switch to develop — stop and run human-checkpoint"; exit 1; }
-   if git remote get-url origin >/dev/null 2>&1; then
-     git fetch origin develop "refs/heads/feat/<slug>:refs/remotes/origin/feat/<slug>" 2>/dev/null || git fetch origin develop || { echo "fetch failed — stop and run human-checkpoint"; exit 1; }
-     git merge --ff-only origin/develop || { echo "develop has diverged from origin — stop and run human-checkpoint"; exit 1; }
-   fi
-   git checkout "feat/<slug>" 2>/dev/null || git checkout -b "feat/<slug>"
-   if git rev-parse --verify origin/feat/<slug> >/dev/null 2>&1; then
-     git merge --ff-only "origin/feat/<slug>" || { echo "feat/<slug> has diverged from origin — stop and run human-checkpoint"; exit 1; }
-   fi
-   ```
-
-   If `merge --ff-only` fails (develop has diverged in a non-fast-forward way), stop and use `human-checkpoint` — do not rebase or force develop. Same if `origin/feat/<slug>` exists but has diverged: that means another session pushed to this branch — do not force-push over it.
-
-   **No remote yet?** `/project:init` supports finishing without one. `git remote get-url origin` fails in that case, so the fetch **and** the `merge --ff-only` are both skipped and the block branches straight off local `develop`. Both must stay inside that guard: `origin/develop` does not exist without a remote, so a merge left outside it fails with `not something we can merge` and halts the cycle on a perfectly healthy repo. Every push step in this command is then skipped and noted in the report until the human adds a remote.
+2. **Fetch and branch.** Run the "Starting work" blocks from the `feature-branching` skill (read them), with `<type>/<slug>` = `feat/<slug>`: guarded checkout of `develop`, fetch, `merge --ff-only`, then create or resume the branch. Any `--ff-only` failure or a diverged `origin/feat/<slug>` (another session pushed here) → stop and `human-checkpoint`; never rebase or force-push over it. No remote yet? The skill's guard skips the fetch and merge, and every push step in this command is then skipped and noted in the report (git-conventions § Cadence).
 
 3. **Verify Behavior cases exist.** Read the `## Behavior` section of the entity page — or, for an `[infra]` todo, of the concept page named in step 1. If any case is `[ ]` and unimplemented, that's the test target. If the section is empty or vague, **stop** — `/project:interview` or the `spec-writing` skill must define them first.
 
@@ -105,15 +89,11 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
    - Implementation and Tests sections reflect the current files.
    - The todo is checked off / removed from `docs/wiki/todos.md` (shipped work lives in git history, not a separate file).
 
-7a. **Adversarial review — `[complex]` and batched cycles only.** If you dispatched the `planner` in step 4, the change is risky enough to need a second reader. Dispatch the `adversary` (Opus, fresh context) and follow the `adversarial-review` skill. Pass it **only** a commit range, the entity slug(s) and Behavior case IDs it covers, the mailbox path `.claude/handoff/<slug>-findings.md`, and the test command. **Never pass the plan file or your own reasoning** — the independence is the product.
+7a. **Adversarial review — `[complex]` and batched cycles only.** If you dispatched the `planner` in step 4, dispatch the `adversary` (Opus, fresh context) and run the full protocol in the `adversarial-review` skill — dispatch contents, triage, dispositions, round commit, re-review, and stop conditions all live there. The command-level division of labour:
 
-   **Scope it small — one case, or a few closely-related ones.** Reviewing a whole multi-case cycle at once is what makes these reviews run to round 5: a large diff yields many findings, the fixes enlarge it, and the next round finds more. Several small reviews beat one large one.
-
-   **Findings become todos; they are not fixed here.** Re-dispatch the `developer` with the mailbox to get a recommended disposition per finding — it has the code context you don't — then triage every finding to Filed / Fixed / Rejected-with-reason yourself and **record each disposition in the commit that answers it** (behavioral rule 20). You own the checkpoint, the todo lines and the round commit; the `developer` owns the judgement and any approved fix. The default is Filed: a line in `docs/wiki/todos.md` at the priority its severity maps to. The review does not gate the cycle — a cycle with open findings still completes, because the queue owns them now.
-
-   **`critical` and `major` are the exception.** Do not fix them and do not silently file them: run one `human-checkpoint` covering all of them, with each finding's failure scenario and your recommendation, and let the human choose fix-now or queue. Approved → fix in its own commit, failing test first, then re-run the full suite. Declined or unreachable → file at P0/P1 and flag it prominently in your step 12 report.
-
-   Close the round with a `docs(<slug>): adversary round N` commit listing every finding and its disposition. Re-dispatch the adversary only if a fix actually landed, and then **over the fix commits only** — with nothing fixed there is nothing to re-review. Two rounds maximum; findings surviving round two mean the unit was too big, so split it and review the pieces.
+   - Pass **only** a small commit range (one case or a few closely-related ones), the entity slug(s) and Behavior case IDs, the mailbox path `.claude/handoff/<slug>-findings.md`, and the test command. Never the plan file or your own reasoning — the independence is the product.
+   - Re-dispatch the `developer` with the mailbox for a recommended disposition per finding (it has the code context you don't); **you** own the `human-checkpoint` for `critical`/`major`, the todo lines, and the round-closing commit. Declined-or-unreachable criticals get flagged prominently in your step 12 report.
+   - The review does not gate the cycle — a cycle with open filed findings still completes; the queue owns them now.
 
    For a single simple todo, **skip this step**; the human can run `/project:adversary` on demand.
 
@@ -162,7 +142,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
       git checkout develop
       ```
 
-12. **Report to human.** What was done, what's next. If step 7a ran, lead with any `critical`/`major` that was filed rather than fixed — that is the one outcome the human most needs to see, and it is easy to lose among the cycle's other notes. Suggest:
+12. **Report to human.** What was done, what's next. If step 7a ran, lead with any `critical`/`major` that was filed rather than fixed — that is the one outcome the human most needs to see, and it is easy to lose among the cycle's other notes.
     Then run the **maintenance cadence check**. This is the only place the periodic commands are ever surfaced, so it runs even when the cycle went perfectly — especially then, because a clean cycle is exactly when nobody thinks to lint:
 
     ```bash
