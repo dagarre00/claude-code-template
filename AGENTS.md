@@ -9,11 +9,11 @@ This repository is a **template for agentic software development**. Two ideas go
 
 To eliminate drift, all procedural skills, subagent definitions, and behavioral rules are defined canonically in [`.claude/`](.claude/):
 - **Behavioral Rules:** [`.claude/rules/behavioral.md`](.claude/rules/behavioral.md)
-- **Procedural Skills:** [`.claude/skills/<skill>/SKILL.md`](.claude/skills/)
+- **Procedural Skills:** [`.claude/skills/<skill>/SKILL.md`](.claude/skills/) (mounted natively into Antigravity via [`.agents/skills.json`](.agents/skills.json))
 - **Subagent Specifications:** [`.claude/agents/<agent>.md`](.claude/agents/)
 - **Claude Commands:** [`.claude/commands/project/<command>.md`](.claude/commands/project/)
 
-Antigravity command skills in [`.agents/skills/`](.agents/skills/) directly execute these canonical procedures.
+Antigravity command skills in [`.agents/skills/`](.agents/skills/) directly orchestrate these canonical procedures.
 
 ## Antigravity (AGY) Runtime Mappings
 
