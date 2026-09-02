@@ -27,6 +27,10 @@ Thumbs.db
 .claude/handoff/*-plan.md
 .claude/handoff/*-findings.md
 .claude/handoff/*-handoff.md
+.agents/tmp/
+.agents/handoff/*-plan.md
+.agents/handoff/*-findings.md
+.agents/handoff/*-handoff.md
 
 # Obsidian per-user vault config (users open the vault themselves)
 docs/.obsidian/
