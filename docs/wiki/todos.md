@@ -74,7 +74,7 @@ _(Items waiting for capacity. Should map to entity pages.)_
 
 ## Later (P2)
 
-_(Nice-to-have. Promote to Next when prioritized.)_
+- [ ] [adversary] Migrate remaining Claude commands (/project:init, /project:agent-scout, /project:handoff) into .agents/skills/ if needed — minor/other, F5 of bd5d7d6, entity agy-integration
 
 ## Backlog
 

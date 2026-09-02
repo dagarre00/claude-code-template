@@ -19,6 +19,6 @@ Follow that document's steps and preconditions verbatim, applying the Antigravit
    - Cross-link against affected wiki pages and flag any contradictions.
    - Append to `docs/wiki/log.md`, commit, and push.
 3. **Research Mode:** If argument is a search/research topic:
-   - Dispatch `researcher` subagent (TypeName: `research` or `self`, Role: `Researcher`, Model: `inherit`) following [`.claude/agents/researcher.md`](../../../.claude/agents/researcher.md).
+   - Dispatch `researcher` subagent (TypeName: `self`, Role: `Researcher`, Model: `inherit`) following [`.claude/agents/researcher.md`](../../../.claude/agents/researcher.md).
    - Read raw research at `docs/raw/research/<slug>.md`.
    - Compile summary page at `docs/wiki/summaries/<slug>.md`, cross-link, log, commit, and push.

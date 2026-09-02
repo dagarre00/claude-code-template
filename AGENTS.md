@@ -24,7 +24,7 @@ When following procedures from `.claude/`, apply these runtime conventions:
 | `AskUserQuestion` | `ask_question` tool | Format 2–4 options as user's response; list `(Recommended)` first. Otherwise output chat text and wait. |
 | Subagent dispatch (`Agent`) | `invoke_subagent` tool | Use `TypeName: "self"` with named `Role` and prompt from `.claude/agents/<agent>.md`. |
 | Model Tier | `inherit` model | Subagents inherit the active session model (e.g. Gemini 3.7 Flash / Pro). |
-| Mailbox / Plan scratch | `.claude/handoff/` or `.agents/handoff/` | Gitignored scratch files (`*-plan.md`, `*-findings.md`). |
+| Mailbox / Plan scratch | `.claude/handoff/` | Gitignored scratch files (`*-plan.md`, `*-findings.md`). |
 | GitHub MCP PR | `gh pr create` CLI fallback | Standard CLI if GitHub MCP server is absent. |
 
 ## Identity
@@ -88,10 +88,10 @@ You are an AI development agent working on this project in Antigravity (AGY). At
 | ---- | ---------- | -------------- |
 | Complex/batched planning (before tests) | [`.claude/agents/planner.md`](.claude/agents/planner.md) | `invoke_subagent` (TypeName: `self`, Role: `Planner`, Model: `inherit`) |
 | Code implementation (Red → Green → Refactor) | [`.claude/agents/developer.md`](.claude/agents/developer.md) | In-orchestrator or `invoke_subagent` (TypeName: `self`, Role: `Developer`, Model: `inherit`) |
-| Adversarial diff audit (findings only) | [`.claude/agents/adversary.md`](.claude/agents/adversary.md) | `invoke_subagent` (TypeName: `self`, Role: `Adversary`, Model: `inherit`, read-only) |
+| Adversarial diff audit (findings only) | [`.claude/agents/adversary.md`](.claude/agents/adversary.md) | `invoke_subagent` (TypeName: `self`, Role: `Adversary`, Model: `inherit`; prompt enforces read-only) |
 | Periodic full audit (≈every 5 todos) | [`.claude/agents/reviewer.md`](.claude/agents/reviewer.md) | `invoke_subagent` (TypeName: `self`, Role: `Reviewer`, Model: `inherit`) |
 | Periodic wiki health, ingest, cross-link | [`.claude/agents/wiki-maintainer.md`](.claude/agents/wiki-maintainer.md) | **Manual only** via `project-wiki-lint` (TypeName: `self`, Role: `Wiki Maintainer`, Model: `inherit`) |
-| Web research — search, fetch, synthesize | [`.claude/agents/researcher.md`](.claude/agents/researcher.md) | `invoke_subagent` (TypeName: `research` or `self`, Role: `Researcher`, Model: `inherit`) |
+| Web research — search, fetch, synthesize | [`.claude/agents/researcher.md`](.claude/agents/researcher.md) | `invoke_subagent` (TypeName: `self`, Role: `Researcher`, Model: `inherit`) |
 
 ## Hard Behavioral Constraints (Behavioral Rules)
 
