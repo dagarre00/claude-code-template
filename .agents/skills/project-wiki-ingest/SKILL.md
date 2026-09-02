@@ -5,20 +5,6 @@ description: Direct ingest of a file or research topic into the wiki. Use to ing
 
 # /project:wiki-ingest (Command)
 
-**Argument:** `$ARGUMENTS`
-
 The authoritative procedure for this command is defined in [`.claude/commands/project/wiki-ingest.md`](../../../.claude/commands/project/wiki-ingest.md).
-Follow that document's steps and preconditions verbatim, applying the Antigravity runtime mappings from [`AGENTS.md`](../../../AGENTS.md).
 
-## Summary of Procedure
-
-1. **Sync develop:** Run the canonical guarded sync in [`.claude/skills/feature-branching/sync-develop.md`](../../../.claude/skills/feature-branching/sync-develop.md).
-2. **File Mode:** If argument is an existing file path:
-   - Read file and check placement/dedup against `docs/wiki/`.
-   - Write summary at `docs/wiki/summaries/<slug>.md` using the canonical template from [`.claude/skills/wiki-update/SKILL.md`](../../../.claude/skills/wiki-update/SKILL.md).
-   - Cross-link against affected wiki pages and flag any contradictions.
-   - Append to `docs/wiki/log.md`, commit, and push.
-3. **Research Mode:** If argument is a search/research topic:
-   - Dispatch `researcher` subagent (TypeName: `self`, Role: `Researcher`, Model: `inherit`) following [`.claude/agents/researcher.md`](../../../.claude/agents/researcher.md).
-   - Read raw research at `docs/raw/research/<slug>.md`.
-   - Compile summary page at `docs/wiki/summaries/<slug>.md`, cross-link, log, commit, and push.
+Extract the target file path or research query directly from the user prompt (e.g. `/wiki-ingest <path or query>`). Read that command document and follow its preconditions, steps, and failure modes verbatim, applying the Antigravity runtime mappings from [`AGENTS.md`](../../../AGENTS.md).
