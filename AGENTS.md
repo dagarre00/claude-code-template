@@ -24,7 +24,7 @@ When following procedures from `.claude/`, apply these runtime conventions:
 | `AskUserQuestion` | `ask_question` tool | Format 2–4 options as user's response; list `(Recommended)` first. Otherwise output chat text and wait. |
 | Subagent dispatch (`Agent`) | `invoke_subagent` tool | Use `TypeName: "self"` with named `Role` and prompt from `.claude/agents/<agent>.md`. |
 | Model Tier | `inherit` model | Subagents inherit the active session model (e.g. Gemini 3.7 Flash / Pro). |
-| Mailbox / Plan scratch | `.claude/handoff/` | Gitignored scratch files (`*-plan.md`, `*-findings.md`). |
+| Mailbox / Plan / Handoff scratch | `.claude/handoff/` | Gitignored scratch files (`*-plan.md`, `*-findings.md`, `*-handoff.md`). |
 | GitHub MCP PR | `gh pr create` CLI fallback | Standard CLI if GitHub MCP server is absent. |
 
 ## Identity
@@ -75,12 +75,15 @@ You are an AI development agent working on this project in Antigravity (AGY). At
 
 | Command / Skill | Purpose | Argument |
 | --------------- | ------- | -------- |
+| `project-init` (`/init`) | Detect project state, scaffold `docs/wiki/`, fill base docs, initialize git if needed | Context to read first, or a stated fact |
 | `project-interview` (`/interview`) | Grill-me-relentlessly Q&A for requirements/feature. Streams transcript to `docs/raw/interviews/`, then updates wiki | The topic to grill on |
 | `project-work` (`/work`) | Pick top todo (or batch), branch from `develop`, dispatch `planner` then `developer`, commit, push, PR | Which todo/entity to work, or batch |
 | `project-adversary` (`/adversary`) | Point read-only second model (fresh context) at diff. Findings only — triage each one | Base ref to diff against, or lens |
 | `project-review` (`/review`) | Thorough review of code vs wiki in fresh session context | Area or lens to pin review to |
 | `project-wiki-lint` (`/wiki-lint`) | Wiki health check: reconciliation, lint invariants, orphans, broken links, drift | Subtree or single check to focus on |
 | `project-wiki-ingest` (`/wiki-ingest`) | Ingest file or research topic into wiki (`spec.pdf` or `search for ...`) | File path or query (**required**) |
+| `project-agent-scout` (`/agent-scout`) | Post-init survey: recommends agents and skills tailored to this project's stack, domain, and services | Signal category, feature, or output filter |
+| `project-handoff` (`/handoff`) | Package a todo as a self-contained brief for an external (non-Claude) LLM agent | Which todo/entity to delegate, or a batch |
 
 ## Agent Routing (All Subagents Inherit Active Session Model)
 

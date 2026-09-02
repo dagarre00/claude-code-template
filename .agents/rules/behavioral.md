@@ -1,7 +1,6 @@
 ---
 name: behavioral-rules
 description: Hard behavioral constraints for all agents. Loaded at session start.
-type: rule
 ---
 
 # Behavioral Rules
