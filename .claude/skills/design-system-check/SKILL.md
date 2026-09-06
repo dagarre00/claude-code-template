@@ -1,8 +1,9 @@
 ---
-name: design-system-check
-description: How to make a UI change in this project against docs/wiki/design-system.md — read the token roles before writing, reference roles instead of raw values, and verify the page's assertions before commit. Use for any change that touches visual output. Trigger on "UI change", "component", "styling", "CSS", "add a button", "design system", "design tokens", "colour", "typography", "spacing", "contrast", "accessibility", "dark mode", "responsive".
-type: skill
+name: "design-system-check"
+description: "How to make a UI change in this project against docs/wiki/design-system.md — read the token roles before writing, reference roles instead of raw values, and verify the page's assertions before commit. Use for any change that touches visual output. Trigger on \"UI change\", \"component\", \"styling\", \"CSS\", \"add a button\", \"design system\", \"design tokens\", \"colour\", \"typography\", \"spacing\", \"contrast\", \"accessibility\", \"dark mode\", \"responsive\"."
 ---
+
+<!-- Generated from .harness/skills/design-system-check/SKILL.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
 
 # Checking a UI Change Against the Design System
 

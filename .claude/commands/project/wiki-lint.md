@@ -1,17 +1,24 @@
 ---
-name: wiki-lint
-description: Periodic wiki health check. Dispatches the wiki-maintainer to process the wiki-todos.md queue, run the computable reconciliation pass (schema gaps, asymmetric relations, unresolved contradicts), check lint invariants, find orphans, broken [[links]], stale claims, and missing ADRs. Run every few work cycles or when wiki-todos.md is piling up.
-argument-hint: [focus — e.g. "entities/ only" | "broken links" | "archive the log"]
-type: command
+name: "wiki-lint"
+description: "Periodic wiki health check. Dispatches the wiki-maintainer to process the wiki-todos.md queue, run the computable reconciliation pass (schema gaps, asymmetric relations, unresolved contradicts), check lint invariants, find orphans, broken [[links]], stale claims, and missing ADRs. Run every few work cycles or when wiki-todos.md is piling up."
+argument-hint: "[focus — e.g. \"entities/ only\" | \"broken links\" | \"archive the log\"]"
 ---
+
+<!-- Generated from .harness/commands/project/wiki-lint.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
 
 # /project:wiki-lint
 
+**Conductor only.** Follow `mcp-coordination` for every worker dispatch, status
+check, cancellation, and local integration. A worker must return a result or
+blocker instead of invoking this command. Never substitute native delegation.
+
 **Argument:** `$ARGUMENTS`
 
-The argument **narrows the pass** — a subtree (`entities/ only`, `summaries/`), a specific check (`broken links`, `orphans`, `archive the log`), or a queue slice (`just the wiki-todos backlog`). Pass it to the maintainer in step 3 and have it skip the checks outside that focus, so a targeted pass stays cheap. Empty argument means the full health pass described below.
+The argument **narrows the pass** — a subtree (`entities/ only`, `summaries/`), a specific check (`broken links`, `orphans`, `archive the log`), or a queue slice (`just the wiki-todos backlog`). Pass it to the maintainer in step 4 and have it skip the checks outside that focus, so a targeted pass stays cheap. Empty argument means the full health pass described below.
 
-You dispatch the `wiki-maintainer` agent for a full health pass. This is **periodic**, not every-cycle. Heuristics:
+Only an explicit human invocation of this command or request for wiki maintenance
+allows the conductor to dispatch `wiki-maintainer`. Cadence heuristics are
+recommendations, never auto-dispatch authorization. This command conducts a **periodic** health pass, not an every-cycle action. Heuristics:
 
 - `docs/wiki/wiki-todos.md` has > 10 unticked entries.
 - Open `[adversary]` todos have reached `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`).
@@ -28,7 +35,7 @@ If dirty: run `human-checkpoint`.
 
 ## Steps
 
-1. **Sync develop.** Run the guarded sync block in `.claude/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply).
+1. **Sync develop.** Run the guarded sync block in `.harness/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply).
 
 2. **Check append-only files for overflow** before dispatching:
 
@@ -48,21 +55,24 @@ If dirty: run `human-checkpoint`.
    grep -n '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null | head -20   # oldest first — head's exit status, not grep's, ends the pipe
    ```
 
-   Walk them oldest-first and give each one of three outcomes:
+   Collect the entries for the maintainer to inspect oldest-first and return one of
+   three outcomes per entry. Do not dirty the integration checkout before spawning:
    - **Closed** — later work already fixed it, or it duplicates another entry. Verify by reading the code, not by assuming; a duplicate merges into the entry that stays.
    - **Re-graded** — its severity was wrong when filed. A finding that has sat through two of these passes untouched is telling you it was never a `minor`; either promote it to a priority that will actually be worked, or close it as not worth doing.
    - **Kept** — still true, still worth doing, correctly graded.
 
    Closing needs the same one-line reason in the commit body that rejecting a finding needs (rule 20). A backlog pruned silently is a backlog deleted, and the next adversary round re-finds every one of them.
 
-4. **Dispatch `wiki-maintainer`** with:
+4. **Call `spawn_worker` for `wiki-maintainer`**, with `docs/wiki/` as its
+   explicit owned scope (or narrower paths when the focus permits), including:
    - The focus from the argument, if any — and an explicit instruction to skip checks outside it.
-   - The current `docs/wiki/wiki-todos.md` content.
+   - The current `docs/wiki/wiki-todos.md` content and the backlog re-triage request
+     from step 3; the worker makes approved mechanical queue edits in its worktree.
    - The list of raw files added since the last summary in `docs/wiki/summaries/`.
    - The overflow check results from step 2 (so the maintainer knows which archival tasks apply).
-   - Explicit instructions: process the queue, ingest, run the **reconciliation pass** (computable gaps: techniques without `implements`, instances without `specializes`, broken `depends_on` targets, ≥3-reference terms without a page, orphaned **content** pages only — ledgers, root spec pages and folder READMEs are navigational and exempt — asymmetric `contrasts_with`/`alternative_to`, unresolved `contradicts`, dangling `<file>.md § <Section>` citations from `.claude/rules`/`.claude/skills`/`.claude/commands` whose target section doesn't exist yet), check the **lint invariants** (illegal filename characters, broken wikilinks, nested frontmatter objects, unquoted/multiple wikilinks in properties, out-of-vocabulary `type`/`abstraction`/`status`, singular `tag`/`alias` keys, claims without provenance), migrate any queued legacy pages, archive overflow, and end with a summary plus a **single batched lot of clarification questions** for the human.
+   - Explicit instructions: process the queue, ingest, run the **reconciliation pass** (computable gaps: techniques without `implements`, instances without `specializes`, broken `depends_on` targets, ≥3-reference terms without a page, orphaned **content** pages only — ledgers, root spec pages and folder READMEs are navigational and exempt — asymmetric `contrasts_with`/`alternative_to`, unresolved `contradicts`, dangling `<file>.md § <Section>` citations from `.harness/rules`/`.harness/skills`/`.harness/commands` whose target section doesn't exist yet), check the **lint invariants** (illegal filename characters, broken wikilinks, nested frontmatter objects, unquoted/multiple wikilinks in properties, out-of-vocabulary `type`/`abstraction`/`status`, singular `tag`/`alias` keys, claims without provenance), migrate any queued legacy pages, archive overflow, and end with a summary plus a **single batched lot of clarification questions** for the human.
 
-5. **Maintainer writes:**
+5. **Maintainer writes and locally commits in its own worktree:**
    - Resolved `wiki-todos` lines (removed).
    - New `summaries/` pages for any ingested raw sources.
    - Updates to entity/concept/decision pages, including cross-links so new pages are reachable (no central index).
@@ -71,25 +81,27 @@ If dirty: run `human-checkpoint`.
    - Archival files under `docs/wiki/summaries/` if overflow thresholds were hit.
    - A log entry to `log.md`.
 
-6. **Review the diff** — `git diff --stat`. Sanity-check:
+6. **Collect and review the completed task.** Poll `check_worker_status`, read
+   the complete report and commit diff, and sanity-check:
    - No code outside `docs/wiki/` was touched.
    - No raw files were modified.
    - No mass rewrites of entity pages (the maintainer is conservative; a 500-line entity diff is a red flag).
 
-7. **Commit and push.** Push immediately (behavioral rule 19):
-
-   ```bash
-   git add docs/wiki/
-   git commit -m "chore(wiki): lint — <N todos processed, M orphans, K broken links, F findings re-triaged>"
-   git push -u origin "$(git branch --show-current)"   # no remote → skip and note (git-conventions § Cadence)
-   ```
+7. **Integrate through MCP and push the integration branch.** Follow
+   `mcp-coordination` with the inspected target and worker SHAs. The worker has
+   already committed its wiki changes locally; do not stage another checkout's
+   files. Verify the integrated wiki diff and push the conductor's branch.
+   Preserve every backlog closure/regrade reason in the worker or conductor commit
+   body. If it is missing, record it before reporting the pass complete.
 
 8. **Report to the human.** What was processed, what remains, gaps and contradictions detected — and the maintainer's **batched clarification questions in one lot** (contradictions, gaps needing knowledge outside `docs/raw/`, ambiguous merges). The human or `/project:interview` resolves which version is correct; unresolved `contradicts` entries stay flagged until then.
 
 ## Failure modes
 
-- **Maintainer touches code outside `docs/wiki/`.** Reset; that's a behavioral violation. Re-dispatch with stricter instructions.
-- **Maintainer rewrites large sections of an entity page.** Reset; entity rewrites go through `/project:interview`. The maintainer's job is structure, not content overhaul.
+- **Maintainer touches code outside `docs/wiki/`.** Reject integration, preserve
+  the worktree and report the ownership violation. Never automatically reset.
+- **Maintainer rewrites large sections of an entity page.** Preserve the result
+  and ask before integration; content overhaul belongs to `/project:interview`.
 - **Conflicting versions of the same fact in two pages.** Don't auto-resolve. File both in the report and run `human-checkpoint` to decide which is correct.
 
 ## What you do NOT do

@@ -1,12 +1,19 @@
 ---
-name: gotcha-recording
-description: How to capture a project-specific failure mode in docs/wiki/gotchas.md so future agents avoid it. Use when you just got burned by something non-obvious that other agents will hit. Trigger on "gotcha", "burned by", "footgun", "got bitten", "edge case", "surprising behavior".
-type: skill
+name: "gotcha-recording"
+description: "How to capture a project-specific failure mode in docs/wiki/gotchas.md so future agents avoid it. Use when you just got burned by something non-obvious that other agents will hit. Trigger on \"gotcha\", \"burned by\", \"footgun\", \"got bitten\", \"edge case\", \"surprising behavior\"."
 ---
+
+<!-- Generated from .harness/skills/gotcha-recording/SKILL.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
 
 # Recording a Gotcha
 
-A gotcha is project-specific failure that would burn the next agent. Generic discipline issues (TDD slips, branch hygiene) go in `.Codex/rules/behavioral.md`. Project-specific traps go in `docs/wiki/gotchas.md`.
+**Respect execution scope.** Read-only planner/review workers return recommendations
+instead of writing wiki pages. Writing workers edit only assigned owned paths and
+commit locally; conductor-owned queue/log updates are returned in the report.
+During blank-template maintenance, keep wiki/raw scaffolds blank and record
+maintenance evidence in tests and commit messages, not application data.
+
+A gotcha is project-specific failure that would burn the next agent. Generic discipline issues (TDD slips, branch hygiene) go in `.harness/rules/behavioral.md`. Project-specific traps go in `docs/wiki/gotchas.md`.
 
 ## When to record
 
@@ -66,10 +73,10 @@ Example:
    If the result is **≥ 20** (4 entries × 5 fields each), append a wiki-todo:
 
    ```
-   - [ ] YYYY-MM-DD agent: gotchas.md has N field-lines — compact it during the next /project:wiki-lint
+   - [ ] YYYY-MM-DD agent: gotchas.md has N field-lines — compact it during the next project-wiki-lint
    ```
 
-   This keeps the file scannable before it degrades model attention. (`/project:wiki-lint` compacts `gotchas.md`; there is no standalone prune command.)
+   This keeps the file scannable before it degrades model attention. (`project-wiki-lint` compacts `gotchas.md`; there is no standalone prune command.)
 
 6. **Ship it in the commit that discovered it** — never a commit of its own. A gotcha is a wiki edit, and wiki edits ride with the change that produced them (behavioral rule 1; `wiki-update` → "Inline vs maintainer"). So stage `docs/wiki/gotchas.md` alongside that case's test and implementation:
 

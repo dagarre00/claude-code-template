@@ -1,100 +1,201 @@
-# Project Schema — Wiki-Driven, Spec + TDD, Progressive Disclosure
+<!-- Generated from .harness/; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
 
-This repository is a **template for agentic software development**. Two ideas govern everything:
+# Project
 
-1. **The wiki is the spec.** `docs/wiki/` is the source of truth for what the project is and how it works. Code that disagrees with the wiki is the bug.
-2. **Progressive disclosure beats specialized agents.** A single `developer` agent runs the whole TDD cycle, loading task-specific skills on demand. The two deliberate splits are both on Opus and both sit outside the developer's context: the `planner`, which decomposes `[complex]` or batched work before the developer executes it, and the `adversary`, which reads the resulting diff afterwards with none of the developer's context and raises findings it is not allowed to fix. Skills are short, procedural how-to for _this project_ — never abstract explanations of _what something is_.
+- Name: `<set during project initialization>`
+- Vision: `<set during project initialization>`
+- Stack: `<detect or ask during project initialization>`
+- Application tests: `<verify during project initialization>`
 
-The hard behavioral constraints live in [`.Codex/rules/behavioral.md`](.Codex/rules/behavioral.md) — read them; they override default inclinations. This file is the map; that file is the law.
+# Project Schema — Wiki-Driven Development
 
-## Identity
+This is a reusable development template for Claude Code, Codex, and Antigravity
+CLI. The wiki is the application spec; `.harness/` is the canonical source for
+the agent workflow. Generated harness files are delivery artifacts.
 
-You are an AI development agent working on this project. At the top of every session, read this file. Then, **before any implementation or code change**, check the wiki — never modify behavior blind:
+## Start every session
 
-1. Read `docs/wiki/gotchas.md` for known failure points.
-2. Read `docs/wiki/todos.md` to know what's next.
-3. If the task touches a feature, read the matching `docs/wiki/entities/<slug>.md` and the relevant section of `docs/wiki/requirements.md`.
-4. Grep `docs/wiki/` for terms from the task to find related concepts, decisions, or summaries before you act.
-5. Let any matching skill auto-load — skills tell you the procedure for _this project's_ TDD loop, branching, wiki updates, etc.
+1. Read the behavioral rules included below.
+2. Before implementation, read `docs/wiki/gotchas.md`, `docs/wiki/todos.md`, the
+   matching entity Behavior cases, and relevant requirements and architecture.
+3. Search `docs/wiki/` for related concepts and decisions before changing behavior.
+4. Load only relevant skills. If a harness does not expose a skill loader, read
+   `.harness/skills/<name>/SKILL.md` and its required supporting files directly.
+5. Follow the current user's scope. When maintaining this uninitialized template,
+   keep `docs/wiki/` and `docs/raw/` scaffolds blank: do not add migration todos,
+   requirements, entities, ADRs, transcripts, or log entries. Put maintenance
+   evidence in tests and commit messages. Project initialization fills these pages
+   only from the adopting project's facts and the human's answers.
 
-## Operating principles
+## Canonical authoring
 
-- **Progressive disclosure.** Agents start with minimal context. Skills load on demand based on task content. Never preload knowledge an agent doesn't need yet.
-- **Skills are how-to, not what-is.** Every skill body is a procedure: read these wiki pages, follow these steps, update these pages. No skill explains what a backend or TDD _is_.
-- **Dynamic config.** Agents, skills, and commands are evolved by the `update-toolkit` skill. When the project's needs change, the agent updates its own toolkit.
-- **Spec → Test → Code.** Write the entity Behavior cases first, derive failing tests, then implement. The discipline is yours to keep.
-- **Wiki always current.** Code edits and wiki edits ship together, in the same commit.
-- **Human in the loop.** When you need the human (uncommitted decisions, missing inputs, risky ops), stop and ask via the `human-checkpoint` skill — never silently improvise.
+Edit `.harness/project.md` for project identity and `.harness/instructions.md` for
+shared operating instructions, plus `.harness/rules/`, `.harness/commands/project/`,
+`.harness/skills/`, `.harness/agents/`, `.harness/templates/`, and
+`.harness/worker-contract.md`. Engine, model, reasoning, and role overrides live
+once in `.harness/settings.json`; both MCP and native adapters consume it.
+After any edit, run
+`node scripts/sync-harness.mjs`, then `node scripts/sync-harness.mjs --check` and
+`node --test tests/harness.test.mjs`. Commit source and generated outputs together.
+Never edit `AGENTS.md`, `CLAUDE.md`, `.claude/commands/`, `.claude/skills/`,
+`.claude/agents/`, `.agents/skills/`, `.agents/agents/`, or `.codex/agents/` directly.
+Do not replace user-owned settings files. See `docs/harnesses.md` for the mapping.
 
-## Three layers
+## Workflow and delegation
 
-1. **Raw sources** — `docs/raw/` (immutable, append-only inbox). Interviews, notes, articles, PDFs. The human deposits; agents read but never edit.
-2. **Wiki** — `docs/wiki/` (LLM-owned). The compiled state: durable, atomic, reconciled pages. Agents compile `raw → wiki` and reconcile continuously; the human browses (e.g. in Obsidian) and answers clarification questions. Never invent knowledge to plug a hole — record it in `open_questions` or ask.
-3. **Schema** — this file plus `.Codex/rules/behavioral.md`, `.Codex/agents/`, `.Codex/skills/`, `.Codex/commands/`. Tells agents how to operate.
+The interactive conductor uses the coordination MCP server for every worker
+dispatch, status check, cancellation, and local integration. Read and follow
+`.harness/skills/mcp-coordination/SKILL.md`. Native agents are compatibility entry
+points; do not use native delegation as a second orchestration path. All project
+commands are conductor-only. If MCP is unavailable, report the blocker.
 
-## Where things live
+One developer owns Spec → Red → Green → Refactor → wiki update. The conductor
+dispatches a read-only planner before complex/batched work and an independent
+read-only adversary afterwards. This explicitly authorizes those worker roles.
+Each worker receives an isolated worktree at committed HEAD, bounded context,
+explicit owned paths, and the canonical worker contract. It never recursively
+orchestrates, changes branches, pushes, opens PRs, or cleans up worktrees.
 
-| Question you have                    | File                                                                         |
-| ------------------------------------ | ---------------------------------------------------------------------------- |
-| What should this project do?         | `docs/wiki/requirements.md` — living spec; code that disagrees is the bug    |
-| How is it built?                     | `docs/wiki/architecture.md` (stack, patterns, testing strategy)              |
-| What does this feature do, exactly?  | `docs/wiki/entities/<slug>.md` — one page per feature/module; Behavior cases |
-| What should the UI look and feel like? | `docs/wiki/design-system.md` — token roles, contrast/a11y assertions, design intention. **UI projects only** — the page asserts, the code holds the values |
-| Why did we choose X?                 | `docs/wiki/decisions/` — ADRs                                                |
-| What pattern do we use for X?        | `docs/wiki/concepts/` — patterns, conventions, domain ideas                  |
-| What can go wrong?                   | `docs/wiki/gotchas.md` — known failure points                                |
-| What's next?                         | `docs/wiki/todos.md` — priority-ordered queue; `[wiki]` lines are lint work  |
-| What's shipped?                      | git history — one commit per Behavior case; closed todos **removed** from `todos.md` |
-| How do I run the tests?              | `docs/wiki/commands.md` — working shell commands                             |
-| Branch / commit rules?               | `docs/wiki/git-conventions.md`                                               |
-| What happened, and when?             | `docs/wiki/log.md` — chronological ops log                                   |
-| What wiki cleanup is deferred?       | `docs/wiki/wiki-todos.md` — `/project:wiki-lint` processes it                |
-| What did source X say?               | `docs/wiki/summaries/` — one page per ingested source in `docs/raw/`         |
-| Where are the immutable sources?     | `docs/raw/` — `interviews/`, `research/`; append-only                        |
-| What are the binding rules?          | `.Codex/rules/behavioral.md`                                                |
-| How do I structure a wiki page?      | `.Codex/skills/wiki-update/SKILL.md` — standard + templates                 |
+Use `get_settings()` to inspect the actual role configuration. Default engine
+selection inherits the conductor CLI; per-role engine/model/reasoning overrides
+are configured in `.harness/settings.json`. Prefer a different model for
+adversarial review when available. If the resolved models are the same, preserve
+fresh context and disclose reduced model independence. No profile authorizes
+silently switching providers, installing a CLI, or bypassing CLI permissions.
 
-Navigation is via the directory tree and Obsidian's graph — there is no hand-maintained `index.md`, no separate `glossary.md`. Folders are **surface grouping only**; a page's `domains`/`abstraction` facets live in frontmatter, not in the path.
+The planner and reviewers return complete reports; the conductor persists scratch
+mailboxes and passes plans inline to dependent workers. Ignored scratch is not
+shared across worktrees. `wiki-maintainer` is manual only through
+`project-wiki-lint` or an explicit human request; never auto-dispatch it.
+Noninteractive workers return blockers at human checkpoints. The conductor asks
+through the available question mechanism or plain conversation.
 
-The wiki follows the **Obsidian LLM-wiki standard**. The full standard — templates, facet vocabulary, link ontology, placement/dedup procedure — lives in the [`wiki-update` skill](.Codex/skills/wiki-update/SKILL.md); the non-negotiable invariants are behavioral rule 18. Gap and contradiction detection is computable (run by `/project:wiki-lint`), never intuition.
+Local worker merges are controlled by MCP after verification, with expected
+target and worker SHAs. The conductor owns pushing the integration branch and
+opening feature PRs; the human owns remote PR merges. Worktrees prevent ordinary
+file collisions but are **not security sandboxes**: permissions still apply and
+the Git store and credentials may be shared.
 
-## Slash commands
+## Files and shell commands
 
-**Every command takes free-text context as its argument** — `/project:init review the legacy files`, `/project:work the login endpoint`, `/project:review security only`. The argument scopes or steers that command; it never bypasses preconditions, the Red phase, or a human checkpoint. Omit it to get the default behavior in the Purpose column.
+Paths written in backticks are repository-root paths unless explicitly relative.
+Markdown links are navigation, not file inclusion. Read linked instructions when
+directed. Only `CLAUDE.md` uses a native `@` import; other prompt content is expanded
+by the generator. Do not assume `@path` or shell interpolation works in arbitrary
+agent or skill bodies. Shared skills take the user's trailing context as their
+argument, including spaces, quotes, Unicode, and newlines. Forward it verbatim
+when delegating; never interpolate it into shell command text.
 
-| Command                | Purpose                                                                                                                              | Argument                                            |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------- |
-| `/project:init`        | Detect project state, scaffold `docs/wiki/`, fill base docs, initialize git if needed                                                | Context to read first, or a stated fact             |
-| `/project:interview`   | Grill-me-relentlessly Q&A for requirements or a new feature. Streams a transcript to `docs/raw/interviews/`, then updates the wiki   | The topic to grill on                               |
-| `/project:work`        | Pick the top todo (or batch), branch from `develop`, dispatch the `planner` (complex/batched) then the `developer`, commit, push, PR | Which todo/entity to work, or a batch               |
-| `/project:adversary`   | Point a read-only second model (Opus, fresh context) at the current diff. Findings only — you triage each one. Per-change            | Base ref to diff against, or a lens                 |
-| `/project:review`      | Thorough review of code vs wiki. Runs the `reviewer` in a fresh session context with no developer baggage                             | Area or lens to pin the review to                   |
-| `/project:wiki-lint`   | Wiki health check: reconciliation, lint invariants, orphans, broken links, drift; archives `log.md` when it overflows                | Subtree or single check to focus on                 |
-| `/project:wiki-ingest` | Ingest a file or research topic into the wiki (`spec.pdf`, or `search for ...`)                                                      | The file path or research query (**required**)      |
-| `/project:agent-scout` | Post-init survey: recommends agents and skills tailored to this project's stack, domain, and services                                | Signal category, feature, or output filter          |
-| `/project:handoff`     | Package a todo as a self-contained brief for an external (non-Codex) LLM agent — spec, conventions and procedure in one file it can run from alone | Which todo/entity to delegate, or a batch           |
+Shell examples labeled `bash` require Bash (Git Bash on Windows), not PowerShell.
+Use the active shell's equivalents where necessary, preserving error checks and
+quoting. The template's Node.js checks run directly in either shell. Do not confuse
+template checks with the adopting application's test command.
 
-Routine git operations (checkpoint tag, reset, status/log) use plain git, not bespoke commands.
+## Wiki map
 
-## Agent routing
+- `docs/raw/`: immutable input; append new project sources, never edit old sources.
+- `docs/wiki/requirements.md`: what the application must do.
+- `docs/wiki/architecture.md`: stack, layout, patterns, testing strategy.
+- `docs/wiki/entities/`: feature/module specs and Behavior cases.
+- `docs/wiki/concepts/`, `decisions/`, `summaries/`: patterns, ADRs, source summaries.
+- `docs/wiki/design-system.md`: UI-only design contract, created when needed.
+- `docs/wiki/commands.md`: verified application commands.
+- `docs/wiki/todos.md`, `gotchas.md`, `log.md`, `wiki-todos.md`: work, traps, history,
+  deferred wiki maintenance. Closed todos are removed; git records shipped work.
 
-| Task                                            | Agent                                                                  |
-| ----------------------------------------------- | ---------------------------------------------------------------------- |
-| Complex/batched planning (before tests)         | `planner` (Opus) — via `/project:work`                                 |
-| Code implementation (Red → Green → Refactor)   | `developer` — via `/project:work`                                      |
-| Adversarial diff audit (findings only)          | `adversary` (Opus, read-only) — via `/project:work` or `/project:adversary` |
-| Periodic full audit (≈every 5 todos)            | `reviewer` (fresh session context) — via `/project:review`            |
-| Periodic wiki health, ingest, cross-link        | `wiki-maintainer` — **manual only** via `/project:wiki-lint`           |
-| Web research — search, fetch, synthesize        | `researcher` — via `/project:wiki-ingest` or directly by the human     |
+The wiki follows the Obsidian LLM-wiki standard in
+`.harness/skills/wiki-update/SKILL.md`. Navigation uses the directory tree and graph;
+there is no hand-maintained wiki index or glossary. Stack knowledge belongs in
+skills, not additional domain agents. Evolve the toolkit through `update-toolkit`.
 
-There is intentionally no domain-specialized agent (no "backend agent"). Domain knowledge lives in skills the `developer` loads on demand. The `planner` and the `adversary` run on **Opus** — the adversary deliberately on a different tier from the `developer` it reviews, so the second reader is a second *model*, not just a second context. All other agents run on Sonnet (researcher on Haiku).
 
-**Wiki edits — inline only.** The `developer` makes small wiki edits inline, same commit as the code (Behavior tick, single ADR, single gotcha line, log entry). The `reviewer` and `adversary` make none — findings-only (rule 12); the dispatching command files what they raise. Larger cross-page work queues in `wiki-todos.md` for `/project:wiki-lint`. **No agent auto-invokes the wiki-maintainer.**
+# Behavioral Rules
 
-## Skill catalog
+Hard constraints from real failures. These override default agent inclinations.
 
-**Meta skill** — evolves the agent's own toolkit: `update-toolkit` (agents, skills, commands).
+1. **Wiki-first, code-second.** Never change code behavior without also updating the relevant `docs/wiki/entities/<slug>.md`. If the spec is wrong, fix the spec first, then the code — in the same commit.
 
-**Core process skills:** `tdd-loop`, `plan-writing`, `adversarial-review`, `wiki-update`, `feature-branching`, `pr-create`, `human-checkpoint`, `spec-writing`, `decision-recording`, `gotcha-recording`, `design-system-check` (UI changes vs `design-system.md`), `git-recovery` (git edge cases + conflict resolution), `llm-handoff` (packaging a todo for an outside agent).
+2. **Tests before implementation.** Never write production code without a failing test first. The Red phase is mandatory. Nothing enforces this on `feat/*` and `fix/*` — keeping the discipline is on you.
 
-Stack-specific skills (`backend-impl`, `database-impl`, `frontend-impl`, …) are not shipped by default. `/project:interview` and `/project:agent-scout` add them once the stack is known. `design-system-check` is not one of them — it is stack-agnostic project procedure, and says nothing about any framework.
+3. **Never modify tests to make them pass.** If a test seems wrong, update the entity Behavior spec → regenerate the test → implement. Changing a test to match broken code is not TDD.
+
+4. **Tests must fail for the right reason.** A passing test before implementation tests existing behavior, not the new feature. Confirm RED is real (missing feature, not a typo or import error).
+
+5. **Two-strike pivot.** Two failures on the same mechanism → stop and preserve the state. A worker returns both failures and its task ID to the conductor without tagging or resetting. The conductor may tag known committed state (`git tag checkpoint-<stamp>`) and puts any proposed reset to the human via `human-checkpoint`, presenting both failed attempts. Only on their say-so do you `git reset --hard` and re-spec via `project-interview`. The reset is gated because it is the most destructive step in this workflow: the tag protects committed history, but nothing protects uncommitted work — before it runs, `git status --porcelain` and account for every line (rule 21).
+
+6. **Verify before asserting.** Run it, don't assume. Never tell the human a feature works unless tests pass and you read the output yourself.
+
+7. **Never present uncertain information as fact.** If you're not sure, say so.
+
+8. **Human in the loop.** When you need a decision the wiki doesn't answer, stop and ask. Use the `human-checkpoint` skill to format the ask. Do not silently improvise.
+
+9. **No silent failures.** If a command fails, report the exact error.
+
+10. **Scoped context for sub-agents.** Give sub-agents only the task, prior outputs, and relevant constraints. Never dump full memory.
+
+11. **Raw sources are immutable.** Never edit files under `docs/raw/`. Only append new ones.
+
+12. **Two review roles — never merged, both read-only.** The `reviewer` is periodic and whole-repo, in a fresh session context via `project-review`, never inside the work loop. The `adversary` is diff-scoped and per-change, dispatched by `project-work` step 7a (`[complex]`/batched) or `project-adversary`. Both read without the author's context and raise **findings only** — no edits, commits, pushes, or resets. A developer never audits its own work; a reviewer of either kind never fixes what it finds.
+
+13. **Progressive disclosure.** Don't preload domain knowledge. Skills auto-load when their `description` matches the task. If a needed skill doesn't exist, create one via the `update-toolkit` skill rather than stuffing it into an agent prompt.
+
+14. **Skills are how-to, not what-is.** When writing or editing a skill, the body must be a procedure: read these wiki pages, follow these steps, update these pages. Never explain a concept the LLM already knows.
+
+15. **One agent owns the TDD loop.** The `developer` writes the failing test, confirms Red itself (rule 4 — don't trust a prior step), then implements. No tester/implementer split, no handoff JSON. The only upstream split is the `planner` (the reasoning profile), which returns a complete Markdown plan for `[complex]`/batched work. The conductor may persist `.harness/handoff/<slug>-plan.md` and passes the full plan inline to the developer; ignored scratch is not shared between worktrees. The entity Behavior cases remain the spec.
+
+16. **Append, don't bury.** When writable agents discover something within their owned scope the maintainer should clean up later (orphan page, missing ADR, repeated concept), append a one-line entry to `docs/wiki/wiki-todos.md`. Don't wait for `project-wiki-lint`. Read-only agents report the discovery to the conductor instead of writing a queue entry.
+
+17. **Use the existing workflow before improvising.** Slash commands and skills exist for a reason. If the workflow seems missing, add a command or skill via the `update-toolkit` skill — don't work around the gap silently.
+
+18. **Obsidian LLM-wiki standard — hard rules.** Violating these breaks rendering, the graph, or dedup. Full standard: `wiki-update` skill. The invariants, inside `docs/wiki/`:
+    - **Wikilink syntax.** Internal links are `[[wiki-style]]` (`[[entities/auth]]`, `[[gotchas#login-flow]]`, `[[concepts/retry-pattern|alias]]`), tags `#tag`, embeds `![[summaries/x]]`. External URLs and non-wiki files keep standard markdown links. A broken wikilink is a bug.
+    - **Identity = filename.** No `id`/`name` field; alternative names go in `aliases`. Filenames never contain `* " \ / < > : | ? # ^ [ ]`.
+    - **One page = one concept.** Before creating a page, check existing filenames and `aliases`; if the concept exists → update, don't duplicate.
+    - **Flat frontmatter, quoted-solitary wikilinks.** No nested objects; plural special keys (`tags`, `aliases`, `cssclasses`); one `"[[page]]"` per list element.
+    - **Closed vocabularies** for `type`/`abstraction`/`status` (defined in `wiki-update`); properties lowercase `snake_case`.
+    - **Provenance, never invent.** Every non-trivial claim traces to a `docs/raw/` file; an unfillable gap is an `open_questions` entry or a question to the human, never invented prose.
+
+19. **Branch for code changes; living wiki commits directly on develop (or current branch).**
+    - **Code (`feat/*`, `fix/*`, `refactor/*`, `perf/*`)** is built on a dedicated branch cut from `develop` and merged via PR. The `developer` commits each Behavior case locally on its assigned worker branch. MCP integrates completed workers into the conductor's feature branch; the conductor verifies, pushes, and opens the PR.
+    - **Living documentation & operations (`docs/wiki/`, `docs/raw/`, `.harness/` config)** from maintenance commands commit and push directly to `develop` — or stay on the active `feat/*`/`fix/*`/`chore/*` branch when mid-cycle. Strict PR gating for code, no PR fatigue for knowledge.
+    - **The conductor pushes integration commits.** Workers never push. Their local branches and logs preserve results until integration, but are not an off-device backup. After each verified worker merge or conductor commit, push the integration branch. On network failure, retry with bounded backoff and report any remaining unpushed commits. No remote → skip the push and report local-only work.
+    - **The log entry belongs to the mutation, not to the command.** Whatever changed tracked files — a command, a bare chat instruction, a one-off fix — appends a `## [YYYY-MM-DD HH:MM] <kind>` entry to `docs/wiki/log.md` in the same commit (`chore` when no kind fits). A timeline with holes is worse than none, because the wiki cites it as evidence. Coordinate ledger ownership: include log changes in the worker's owned paths or have the conductor record them after integration. During blank-template maintenance, do not fill wiki/raw scaffolds; record evidence in tests and commit messages instead.
+
+20. **Every finding gets a written disposition, and the record is committed.** Each numbered adversary finding ends as **Filed** (a real todo line), **Fixed** (name what changed), or **Rejected** (one-sentence reason). Silence is not a disposition and "unlikely" is not a reason. Rejecting by citing an unwritten invariant → write the invariant down as part of the rejection.
+    - **Filed is the default; fixing needs a human.** Findings become todos at the priority their severity maps to — not fixed in the cycle that surfaced them, not even two-line ones. Exception: a `critical`/`major` goes to the human via `human-checkpoint` (fix-now or queue); it is filed at P0/P1 only if they decline or are unreachable, and that is said prominently. A human instruction like "fix all the findings" is itself the approval, at that scope.
+    - **The record is the commit.** Triage in the gitignored mailbox, then write each disposition into the commit that answers it: fixes name their finding; each round closes with a `docs(<slug>): adversary round N` commit whose body lists every finding's disposition. `git log --grep="adversary round"` must read the reasons back a cycle later — a disposition that exists only in deleted scratch satisfies nothing. Protocol: `adversarial-review` skill.
+
+21. **A dirty tree you did not dirty belongs to someone else.** Workers run in separate worktrees; the integration checkout can still contain human or other-session changes. "Clean working tree" preconditions mean a verified clean checkout, not permission to erase unknown work. Never `stash`, `reset --hard`, `checkout --`, or `clean` over changes whose author you cannot account for — stop and run `human-checkpoint` naming the paths. Before any tree-wide destructive git operation, `git status --porcelain` and account for every line: a path you didn't touch this session is evidence, not dirt.
+
+22. **A filed backlog needs a consumer, or filing is just deletion with extra steps.** Rule 20 makes filing the default, so `minor` findings accumulate by design (`nit` findings are never filed — the adversary tallies them and they end there). Two computable guards: `FINDINGS_MAX` caps the open `[adversary]` backlog (`docs/wiki/todos.md § Filed-findings backlog`), and `project-wiki-lint` re-triages it every pass — re-grading, merging duplicates, closing what later work fixed. A finding that sat unread through five cycles had the wrong severity, not too short a queue.
+
+23. **MCP is the worker control plane.** The conductor follows `mcp-coordination` for spawn, status, cancellation, and SHA-pinned local integration. Workers obey `.harness/worker-contract.md`: no recursive dispatch, branch changes, pushes, PRs, merges, resets, stashes, tags, or cleanup. A native agent invocation does not exempt a worker from this contract. Serialize overlapping ownership and merge dependencies before dispatching dependents. On failure, preserve worktrees and logs; never force-clean to manufacture success.
+
+## Adding rules
+
+When a new failure pattern emerges that's broader than a project-specific quirk (i.e. it's a discipline issue, not a domain detail), append it here as a numbered rule. Project-specific failures go in `docs/wiki/gotchas.md`.
+
+## Native command catalog
+
+Each command accepts trailing free-text context. Logical IDs in shared procedures name the corresponding entry below.
+
+| Claude Code | Codex | Antigravity CLI |
+| --- | --- | --- |
+| `/project:adversary` | `$project-adversary` | `/project-adversary` |
+| `/project:agent-scout` | `$project-agent-scout` | `/project-agent-scout` |
+| `/project:handoff` | `$project-handoff` | `/project-handoff` |
+| `/project:init` | `$project-init` | `/project-init` |
+| `/project:interview` | `$project-interview` | `/project-interview` |
+| `/project:review` | `$project-review` | `/project-review` |
+| `/project:wiki-ingest` | `$project-wiki-ingest` | `/project-wiki-ingest` |
+| `/project:wiki-lint` | `$project-wiki-lint` | `/project-wiki-lint` |
+| `/project:work` | `$project-work` | `/project-work` |
+
+## Native agent catalog
+
+- `adversary` (reasoning): Read-only diff hunter. Returns numbered findings to the caller for its mailbox; never edits, commits, or pushes. Dispatched by project-work for complex/batched cycles or project-adversary. Distinct from the periodic reviewer.
+- `developer` (balanced): TDD cycle in one agent — writes failing tests, makes them pass with minimal code, refactors, and updates the wiki. Follows a planner's plan for complex/batched work. Loads task-specific skills on demand. Triggered by project-work.
+- `planner` (reasoning): Read-only planning worker. Returns a complete stepwise plan for complex or batched work through the coordination MCP server. Never writes files, tests, code, commits, or scratch.
+- `researcher` (fast): Web research agent. Searches the web, fetches pages, synthesizes findings, and writes a structured raw research document to docs/raw/research/. Dispatched by project-wiki-ingest or directly by the human for research-heavy tasks. Never writes to docs/wiki/ directly — that's the ingest command's job.
+- `reviewer` (balanced): Periodic thorough review. Runs in a fresh session context with no developer baggage. Audits code vs wiki, flags critical issues, warnings, drift, missing tests, security/perf concerns. Triggered by project-review.
+- `wiki-maintainer` (balanced): Periodic wiki health — reconciliation pass (computable gaps/contradictions), lint invariants, batch ingest of straggler raw sources, cross-linking, legacy-page migration, ADR filing. MANUAL ONLY — never auto-invoked by another agent. Triggered exclusively by project-wiki-lint or an explicit human request. Individual ingests go through project-wiki-ingest, not through you.

@@ -1,10 +1,17 @@
 ---
-name: wiki-update
-description: How to structure a wiki page under the Obsidian LLM-wiki standard — placement/dedup before creating, canonical templates, facet vocabulary, link ontology — and how to route discoveries (gotchas / ADRs / cross-page cleanup). Use when creating or restructuring any docs/wiki/ page, or deciding whether a discovery belongs inline or in the maintainer queue. Trigger on "new entity page", "new concept page", "wiki page structure", "frontmatter", "wikilink property", "aliases", "inline vs maintainer", "wiki-todos queue", "found a pattern", "found a contradiction".
-type: skill
+name: "wiki-update"
+description: "How to structure a wiki page under the Obsidian LLM-wiki standard — placement/dedup before creating, canonical templates, facet vocabulary, link ontology — and how to route discoveries (gotchas / ADRs / cross-page cleanup). Use when creating or restructuring any docs/wiki/ page, or deciding whether a discovery belongs inline or in the maintainer queue. Trigger on \"new entity page\", \"new concept page\", \"wiki page structure\", \"frontmatter\", \"wikilink property\", \"aliases\", \"inline vs maintainer\", \"wiki-todos queue\", \"found a pattern\", \"found a contradiction\"."
 ---
 
+<!-- Generated from .harness/skills/wiki-update/SKILL.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
+
 # Wiki Update — Standard, Templates, Routing
+
+**Respect execution scope.** Read-only planner/review workers return recommendations
+instead of writing wiki pages. Writing workers edit only assigned owned paths and
+commit locally; conductor-owned queue/log updates are returned in the report.
+During blank-template maintenance, keep wiki/raw scaffolds blank and record
+maintenance evidence in tests and commit messages, not application data.
 
 The wiki follows the **Obsidian LLM-wiki standard**. This skill is the **single source of truth** for that standard; the non-negotiable invariants are also stated as behavioral rule 18. Routine ticks (`[ ]` → `[~]` → `[x]`, checking off a todo, appending a log line) are documented in `tdd-loop`. This skill covers: **placement**, the **templates**, the **facet/ontology tables**, and **inline-vs-maintainer routing**.
 
@@ -329,4 +336,5 @@ You — the `developer` — own **small, in-scope** wiki edits and make them in 
 - Mass cross-link cleanup, migration of legacy pages to this standard.
 - Any change that needs reading 5+ pages to do safely.
 
-**Discovery quick routing**: project pitfall → `gotcha-recording`. Design fork → `decision-recording`. Repeated pattern → wiki-todos line. **Never** dispatch the wiki-maintainer from another agent.
+**Discovery quick routing**: project pitfall → `gotcha-recording`. Design fork → `decision-recording`. Repeated pattern → wiki-todos line. Workers never dispatch the wiki-maintainer. Only the conductor may dispatch it
+through MCP after an explicit human maintenance request or `/project:wiki-lint`.

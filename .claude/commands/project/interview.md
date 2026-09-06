@@ -1,11 +1,16 @@
 ---
-name: interview
-description: Grill-me-relentlessly Q&A to define a plan, a feature, or fill requirements. Walks down each branch of the decision tree, resolving dependencies one at a time. Always provides a recommended answer. Streams a transcript to docs/raw/interviews/ Q-by-Q and A-by-A (never batched at the end), then updates affected wiki pages.
-argument-hint: [topic — e.g. "the auth flow" | "fill requirements" | "stress-test the sync plan"]
-type: command
+name: "interview"
+description: "Grill-me-relentlessly Q&A to define a plan, a feature, or fill requirements. Walks down each branch of the decision tree, resolving dependencies one at a time. Always provides a recommended answer. Streams a transcript to docs/raw/interviews/ Q-by-Q and A-by-A (never batched at the end), then updates affected wiki pages."
+argument-hint: "[topic — e.g. \"the auth flow\" | \"fill requirements\" | \"stress-test the sync plan\"]"
 ---
 
+<!-- Generated from .harness/commands/project/interview.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
+
 # /project:interview
+
+**Conductor only.** Follow `mcp-coordination` for every worker dispatch, status
+check, cancellation, and local integration. A worker must return a result or
+blocker instead of invoking this command. Never substitute native delegation.
 
 **Argument:** `$ARGUMENTS`
 
@@ -37,7 +42,7 @@ If dirty: run `human-checkpoint`.
 
 ## Procedure
 
-1. **Sync develop.** Run the guarded sync block in `.claude/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply). Syncing first means the wiki you read in step 2 is current, not a stale mirror.
+1. **Sync develop.** Run the guarded sync block in `.harness/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply). Syncing first means the wiki you read in step 2 is current, not a stale mirror.
 
 2. **Frame the scope.** Take the scope from the argument above. Read `docs/wiki/requirements.md` and any existing entity pages relevant to the topic. State the scope in one line and confirm with the human. Derive the transcript slug from the argument (`the auth flow` → `auth-flow`).
 
@@ -55,12 +60,12 @@ If dirty: run `human-checkpoint`.
 
    (`type: raw-transcript`, not `wiki-summary` — this file lives under `docs/raw/`, which is a source layer, not the wiki. A summary page, if one is later made, is a separate `wiki-summary` under `docs/wiki/summaries/`.)
 
-   **Raw is immutable** (see `.claude/rules/behavioral.md` #11) — never edit prior answers; only append.
+   **Raw is immutable** (see `.harness/rules/behavioral.md` #11) — never edit prior answers; only append.
 
 4. **Run the interview as an append-only loop.** For each question, follow these steps **in order**, with a disk write between every step:
 
    a. **Append the question to the transcript first**, under a `## Q<n>. <topic>` heading, including your recommended answer and rationale. Save. The question is now on disk.
-   b. **Ask the human.** Use `AskUserQuestion` with options when there are 2–4 discrete choices; otherwise plain text.
+   b. **Ask the human.** Use the current harness's question mechanism with options when supported and useful; otherwise ask in plain conversation. Never invent a question tool name.
    c. **Append the human's response verbatim** under `**A:**` immediately upon receipt — before doing anything else. Save. The answer is now on disk.
    d. **Only now** process the answer and decide the next question. If the answer triggers a follow-up or a course-correction, repeat from (a) — never modify a prior `**A:**`.
 
@@ -95,6 +100,12 @@ If dirty: run `human-checkpoint`.
    - `docs/wiki/todos.md` — add new todos for the work the interview implies.
 
 2. **Sanity check via wiki-update skill.** Obsidian links, frontmatter, entity-page structure.
+
+   If the interview changes project identity, update `.harness/project.md`. If it
+   changes the toolkit, use `update-toolkit` to edit the canonical sources. Run
+   `node scripts/sync-harness.mjs` and its `--check` mode, then include those sources
+   and every changed generated file in step 4's commit. Never rewrite `AGENTS.md`
+   or a native harness directory by hand.
 
 3. **Log it.** Append to `docs/wiki/log.md`:
 

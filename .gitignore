@@ -1,6 +1,15 @@
 # Claude Code
 .claude/settings.local.json
 .claude/tmp/
+.harness/handoff/
+.harness/tmp/
+.codex/config.local.toml
+.agents/settings.local.json
+CLAUDE.local.md
+.mcp.json
+.agents/mcp_config.json
+.codex/config.toml
+tools/coordination-mcp/node_modules/
 
 # OS
 .DS_Store

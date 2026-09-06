@@ -1,18 +1,28 @@
 ---
-name: human-checkpoint
-description: When and how to pause for the human — present a clear ask, options, and recommendation. Use whenever you need a decision the wiki doesn't answer, hit a two-strike pivot, or face risky/irreversible state. Trigger on "ask the human", "stop and ask", "human checkpoint", "need decision", "risky operation".
-type: skill
+name: "human-checkpoint"
+description: "When and how to pause for the human — present a clear ask, options, and recommendation. Use whenever you need a decision the wiki doesn't answer, hit a two-strike pivot, or face risky/irreversible state. Trigger on \"ask the human\", \"stop and ask\", \"human checkpoint\", \"need decision\", \"risky operation\"."
 ---
+
+<!-- Generated from .harness/skills/human-checkpoint/SKILL.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
 
 # Human Checkpoint
 
 Stop and ask when the wiki doesn't have an answer. Don't guess. Don't silently improvise.
 
+## Worker checkpoint
+
+A headless MCP worker cannot ask the human interactively. Stop the task and
+return a blocker containing the relevant facts, both attempts if applicable,
+exact errors, affected paths, current commit, options, and recommendation.
+Preserve all work. Do not spawn another agent, tag/reset/stash, or choose an
+answer for the human. The conductor presents the ask and decides whether a
+new dispatch is appropriate after receiving direction.
+
 ## When to stop
 
 | Situation                                                         | Action                                                                                              |
 | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Two failed attempts on the same mechanism                         | Stop. Tag the state (`git tag checkpoint-<stamp>`). Present the two attempts and ask for direction. |
+| Two failed attempts on the same mechanism                         | Stop and preserve state. Worker returns both attempts; conductor may tag known committed state and asks for direction. |
 | Test seems to encode wrong behavior                               | Stop. Spec change must come from human; don't change the test.                                      |
 | Design fork the wiki doesn't pre-decide                           | Stop. Present both options with tradeoffs and recommendation.                                       |
 | Uncommitted changes from a prior session                          | Stop. Ask whether to commit, stash, or discard.                                                     |
@@ -50,7 +60,7 @@ Use this structure — clear, structured, no padding:
 **What I need from you:** <pick one of the options OR give a different direction>
 ```
 
-Use the `AskUserQuestion` tool when:
+As conductor, use an available user-question mechanism when it supports the ask:
 
 - The choice has 2–4 discrete options.
 - Each option can be summarized in 1–2 lines.
@@ -66,7 +76,7 @@ Otherwise, post the structured ask in chat text and wait.
 ## After the human answers
 
 - Echo back the chosen path in one line so the human can confirm you understood.
-- If the decision implies a new rule, file it: add to `.Codex/rules/behavioral.md` (discipline issue) or `docs/wiki/gotchas.md` (project-specific failure).
+- If the decision implies a new rule, file it: add to `.harness/rules/behavioral.md` (discipline issue) or `docs/wiki/gotchas.md` (project-specific failure).
 - If the decision implies a new pattern, queue it: append to `docs/wiki/wiki-todos.md` (e.g. `Document <pattern> as a concept`).
 - Then resume work.
 

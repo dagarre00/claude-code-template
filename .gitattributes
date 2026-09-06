@@ -1,0 +1,7 @@
+# Keep generated text deterministic across Windows and Unix checkouts.
+*.md text eol=lf
+*.tmpl text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf

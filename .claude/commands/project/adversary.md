@@ -1,11 +1,16 @@
 ---
-name: adversary
-description: Point a read-only second model at the current change. Dispatches the adversary agent (Opus, fresh context) over the diff, collects numbered findings in a mailbox file, triages each one, and re-reviews once. Diff-scoped and per-change — unlike /project:review, which is periodic and whole-repo.
-argument-hint: [base ref or lens — e.g. "develop" | "against main" | "concurrency only"]
-type: command
+name: "adversary"
+description: "Point a read-only second model at the current change. Dispatches the adversary agent (the reasoning profile, fresh context) over the diff, collects numbered findings in a mailbox file, triages each one, and re-reviews once. Diff-scoped and per-change — unlike /project:review, which is periodic and whole-repo."
+argument-hint: "[base ref or lens — e.g. \"develop\" | \"against main\" | \"concurrency only\"]"
 ---
 
+<!-- Generated from .harness/commands/project/adversary.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
+
 # /project:adversary
+
+**Conductor only.** Follow `mcp-coordination` for every worker dispatch, status
+check, cancellation, and local integration. A worker must return a result or
+blocker instead of invoking this command. Never substitute native delegation.
 
 **Argument:** `$ARGUMENTS`
 
@@ -16,7 +21,7 @@ The argument **sets what gets reviewed**, resolved in step 1:
 
 A lens never reaches the adversary as intent, rationale, or a summary of what the change is meant to do — that would leak exactly the context step 2 exists to withhold. If you cannot phrase it as a category to weight, drop it and say so. Empty argument means the standard sweep over the unshipped change, resolved in step 1.
 
-You run one adversarial review of the change in the working directory. Findings only — the adversary never edits. You triage, fix, and re-dispatch once. Follow the `adversarial-review` skill for the mailbox format, sweep order, severity vocabulary, and triage protocol.
+You run one adversarial review of the change in the working directory. Findings only — the adversary never edits. You triage, route approved fixes through MCP developer workers, and re-dispatch once. Follow the `adversarial-review` skill for the mailbox format, sweep order, severity vocabulary, and triage protocol.
 
 ## When to use
 
@@ -28,7 +33,10 @@ Not a substitute for `/project:review` (periodic, whole-repo, drift) or for writ
 
 ## Preconditions
 
-- A diff exists: a dirty tree, unreviewed commits on the current branch, or a given base ref.
+- A committed diff exists: unreviewed commits on the current branch or a given base ref.
+- The integration tree is clean. For uncommitted changes, ask the human to authorize
+  a scoped checkpoint commit before dispatch. Never silently ignore dirty files,
+  stash them, or assume they transfer to a worker.
 - On a `feat`/`fix`/`chore` branch, not `main` — any fix the human approves has to land somewhere, and it is never `main`.
 - **`develop` is allowed for exactly one case:** the release review named above (`/project:adversary against main`), which is diff-scoped and read-only by construction. If that round yields an approved `critical`/`major`, cut a `fix/*` branch for the fix rather than committing it to `develop`; the round-closing todo and log lines are living documentation and may land on `develop` directly (behavioral rule 19).
 
@@ -38,14 +46,25 @@ Clean tree, nothing unshipped, and no base ref: stop and say there is nothing to
 
 1. **Scope it, and keep it small.** Resolve the scope in this order:
    - **Argument named a base ref** → `git diff <ref>...HEAD`.
-   - **Dirty tree** → the uncommitted change (`git diff HEAD`, naming any untracked files). If it builds on unpushed commits from the same task, widen to `git diff <sha-before-them>...HEAD` so the review sees the whole unshipped change.
+   - **Dirty tree** → stop before dispatch and resolve the clean-snapshot precondition.
+     If the human authorizes a checkpoint, review its committed range including
+     any relevant preceding task commits.
    - **Clean tree with unreviewed commits** → the commits for one Behavior case, or a few closely-related ones — `git diff <sha-before-them>...HEAD`.
 
    Note the entity slug(s) touched. A whole-branch range is the usual reason a review runs past two rounds; prefer several small reviews to one large one.
 
-2. **Dispatch the `adversary`** with the diff scope, the entity slug(s) and Behavior case IDs, the mailbox path `.claude/handoff/<slug>-findings.md`, the test command from `docs/wiki/commands.md`, and the lens from the argument if there was one. Pass **nothing else** — no plan file, no rationale, no summary of intent. That independence is the whole product.
+2. **Call `spawn_worker` for `adversary`** with the diff scope, the entity slug(s) and Behavior case IDs, the test command from `docs/wiki/commands.md`, and the lens from the argument if there was one. Pass **nothing else** — no plan file, no rationale, no summary of intent. That independence is the whole product.
 
-3. **Read the mailbox and triage** every finding to Filed / Fixed / Rejected-with-reason (behavioral rule 20). **Filed is the default** — a line in `docs/wiki/todos.md` at the priority its severity maps to, not a fix. For every `critical` and `major`, run one `human-checkpoint` with the failure scenarios and your recommendation, and let the human choose fix-now or queue; only an approved finding gets fixed, and then by the normal loop (failing test first; spec first if the finding contradicts the entity page).
+3. **Collect and persist the full report, then triage.** Poll `check_worker_status`,
+   inspect the final report/log (not just a truncated tail), and verify no writes.
+   Collect it before normal read-only cleanup through `mcp-coordination`.
+   Use `.harness/handoff/<slug>-findings.md` as conductor-owned scratch. Write the adversary's response
+   verbatim to the mailbox; the adversary remains read-only. Give every finding a
+   Filed / Fixed / Rejected-with-reason disposition (behavioral rule 20). Filed is
+   the default. For critical/major findings, ask once with the failure scenarios
+   and recommendation; follow existing human authorization if already supplied.
+   Approved fixes use a scoped MCP developer worker, the normal spec/test/code loop,
+   and SHA-pinned local integration before the fix-only re-review.
 
 4. **Re-dispatch only if a fix landed** — and then over the fix commits only (`git diff <sha-before-fixes>...HEAD`), never the original range: re-reading the whole thing is what makes each round surface new findings instead of converging. If everything was filed or rejected, no code changed and the review is already done. **Two rounds maximum** — findings surviving round two mean the unit was too big, so split it and review the pieces.
 
@@ -54,7 +73,8 @@ Clean tree, nothing unshipped, and no base ref: stop and say there is nothing to
    ```markdown
    ## [YYYY-MM-DD HH:MM] adversary — <slug>
 
-   - Commit reviewed: <sha> (append "+ dirty tree" if the working tree was in scope)
+   - Commit reviewed: <sha> (committed snapshot)
+   - Worker task: <task ID>
    - Findings: <N> (<C> critical, <M> major, <m> minor)
    - Disposition: <Fi> filed, <Fx> fixed, <R> rejected
    ```
@@ -64,8 +84,7 @@ Clean tree, nothing unshipped, and no base ref: stop and say there is nothing to
 6. **Commit the dispositions and push.** Each fix is its own commit naming the finding it closes; one commit then closes the round with every finding's disposition in its body (behavioral rule 19, and rule 20's record):
 
    ```bash
-   git add <fixed-files>                                              # approved criticals/majors only
-   git commit -m "fix(<slug>): <what changed> — adversary F1"
+   # Approved fixes are already locally committed by the worker and integrated.
    git add docs/wiki/todos.md docs/wiki/log.md
    git commit -m "docs(<slug>): adversary round 1 — <N> findings, …"   # body: one line per finding
    git push -u origin "$(git branch --show-current)"                   # no remote → skip and note (git-conventions § Cadence)
@@ -73,7 +92,7 @@ Clean tree, nothing unshipped, and no base ref: stop and say there is nothing to
 
    Most rounds have no `fix` commit at all — that is the expected shape, not a failed review. If a round produced neither a fix nor a todo (everything rejected), make the round-closing commit `--allow-empty`: its written rejections are the only thing that has to survive.
 
-7. **Clean up.** Delete `.claude/handoff/<slug>-findings.md` — gitignored scratch, and the dispositions are already in the commits.
+7. **Clean up.** Delete `.harness/handoff/<slug>-findings.md` — gitignored scratch, and the dispositions are already in the commits.
 
 8. **Report.** Findings by severity, what you filed and where it sits in the queue, what you fixed under approval, and what you rejected and why. Lead with any `critical`/`major` that was filed rather than fixed. Name any rejection the human might disagree with.
 
@@ -87,7 +106,8 @@ Clean tree, nothing unshipped, and no base ref: stop and say there is nothing to
 
 ## What you do NOT do
 
-- **No adversary edits.** Findings only; you make the fixes.
+- **No adversary edits.** Findings only; approved fixes are developer tasks.
 - **No leaking author context into the dispatch.** The Behavior case IDs are the brief.
 - **No whole-repo audit.** Out-of-diff problems go in the mailbox's `## Out of scope` list and, if they matter, into `docs/wiki/todos.md` for `/project:review`.
-- **No merging, no PR.** `/project:work` owns the PR.
+- **No remote PR merging or standalone PR creation.** `/project:work` owns the PR;
+  approved worker-result integration still uses MCP.

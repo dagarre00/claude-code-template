@@ -1,12 +1,19 @@
 ---
-name: gotcha-recording
-description: How to capture a project-specific failure mode in docs/wiki/gotchas.md so future agents avoid it. Use when you just got burned by something non-obvious that other agents will hit. Trigger on "gotcha", "burned by", "footgun", "got bitten", "edge case", "surprising behavior".
-type: skill
+name: "gotcha-recording"
+description: "How to capture a project-specific failure mode in docs/wiki/gotchas.md so future agents avoid it. Use when you just got burned by something non-obvious that other agents will hit. Trigger on \"gotcha\", \"burned by\", \"footgun\", \"got bitten\", \"edge case\", \"surprising behavior\"."
 ---
+
+<!-- Generated from .harness/skills/gotcha-recording/SKILL.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
 
 # Recording a Gotcha
 
-A gotcha is project-specific failure that would burn the next agent. Generic discipline issues (TDD slips, branch hygiene) go in `.claude/rules/behavioral.md`. Project-specific traps go in `docs/wiki/gotchas.md`.
+**Respect execution scope.** Read-only planner/review workers return recommendations
+instead of writing wiki pages. Writing workers edit only assigned owned paths and
+commit locally; conductor-owned queue/log updates are returned in the report.
+During blank-template maintenance, keep wiki/raw scaffolds blank and record
+maintenance evidence in tests and commit messages, not application data.
+
+A gotcha is project-specific failure that would burn the next agent. Generic discipline issues (TDD slips, branch hygiene) go in `.harness/rules/behavioral.md`. Project-specific traps go in `docs/wiki/gotchas.md`.
 
 ## When to record
 

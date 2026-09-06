@@ -1,17 +1,22 @@
 ---
-name: agent-scout
-description: Post-init survey that reads the wiki and recommends specific agents and skills tailored to this project's stack, domain, and external services. Run once after /project:init fills requirements and architecture. Re-run after /project:interview adds a major feature.
-argument-hint: [focus — e.g. "testing skills only" | "the payments feature" | "skills, no agents"]
-type: command
+name: "agent-scout"
+description: "Post-init survey that reads the wiki and recommends specific agents and skills tailored to this project's stack, domain, and external services. Run once after /project:init fills requirements and architecture. Re-run after /project:interview adds a major feature."
+argument-hint: "[focus — e.g. \"testing skills only\" | \"the payments feature\" | \"skills, no agents\"]"
 ---
 
+<!-- Generated from .harness/commands/project/agent-scout.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
+
 # /project:agent-scout
+
+**Conductor only.** Follow `mcp-coordination` for every worker dispatch, status
+check, cancellation, and local integration. A worker must return a result or
+blocker instead of invoking this command. Never substitute native delegation.
 
 **Argument:** `$ARGUMENTS`
 
 The argument **narrows the survey** — a signal category (`testing skills only`, `external services`), a feature (`the payments feature`), or an output filter (`skills, no agents`). Restrict step 3's analysis to the matching categories and say in the `### Not recommended` section that the rest were **out of scope this run**, not analysed and rejected — the two are different, and conflating them makes a partial survey look complete. Empty argument means the full survey.
 
-You read the initialized wiki and produce a prioritized list of agents and skills this project needs — ones not already present in `.claude/`. You do **not** create anything automatically; you present recommendations and let the human decide what to build.
+You read the initialized wiki and produce a prioritized list of agents and skills this project needs — ones not already present in `.harness/`. You do **not** create anything automatically; you present recommendations and let the human decide what to build.
 
 ## When to use
 
@@ -25,7 +30,7 @@ Check these before proceeding. If any fails, stop and run `human-checkpoint`:
 
 1. `docs/wiki/requirements.md` — `## Vision` must have real content (not `<TBD>`).
 2. `docs/wiki/architecture.md` — `## Stack` must name a real language and framework.
-3. `.claude/agents/` and `.claude/skills/` must exist.
+3. `.harness/agents/` and `.harness/skills/` must exist.
 
 If the project hasn't been initialized yet, tell the human to run `/project:init` first.
 
@@ -44,8 +49,8 @@ Read all of these — do not skip any:
 ### 2. Inventory what already exists
 
 ```bash
-ls .claude/agents/
-ls .claude/skills/
+ls .harness/agents/
+ls .harness/skills/
 ```
 
 Only recommend what is genuinely missing. Do not re-recommend agents or skills that already exist, even under a different name that covers the same ground.
@@ -136,7 +141,7 @@ For each skill, in priority order:
 For each agent (only if a genuine role gap exists):
 
 **Agent:** `<agent-name>`
-**Model:** sonnet | opus | haiku  (choose based on task complexity; prefer haiku for cheap tasks, opus only for planning)
+**Model:** balanced | reasoning | fast  (choose based on task complexity; prefer fast for cheap tasks, reasoning for planning and adversarial review)
 **Role gap:** <why no existing agent covers this>
 **Why this project:** <cite the wiki evidence>
 **Mandate:** <what it does and what it does NOT do>
@@ -165,14 +170,14 @@ Number the recommendations in the order that will unblock the most /project:work
 
 ### 4a. Sync develop
 
-Before creating any approved toolkit assets, run the guarded sync block in `.claude/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply).
+Before creating any approved toolkit assets, run the guarded sync block in `.harness/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply).
 
 ### 5. Offer to create
 
 After presenting the report, ask the human which recommendations to act on. For each approved item:
 
 - **Skill:** invoke the `update-toolkit` skill (Skills section) with the name, trigger description, and procedure outline from the report.
-- **Agent:** invoke the `update-toolkit` skill (Agents section) with the name, model, tools list (derive from mandate — be conservative; only grant tools the agent genuinely needs), and mandate.
+- **Agent:** invoke the `update-toolkit` skill (Agents section) with the canonical name, profile, access, and mandate. Put any approved engine/model/reasoning override in `.harness/settings.json`; regenerate all adapters from that source.
 - **Design-system page:** create it from the template in the `wiki-update` skill, filling only what the wiki already answers and leaving the rest `<TBD>`. File a todo to run `/project:interview the design system`. Never invent tokens to avoid a `<TBD>` — rule 18's provenance clause applies to colour and type like anything else.
 
 Do not create anything that the human has not explicitly approved.
@@ -195,7 +200,7 @@ Append to `docs/wiki/log.md`:
 Stage every skill/agent file created this session plus the log entry, then push immediately (behavioral rule 19):
 
 ```bash
-git add .claude/ docs/wiki/log.md
+git add .harness/ docs/wiki/log.md
 git commit -m "chore(agents): scout — <N skills, M agents created>"
 git push -u origin "$(git branch --show-current)"   # no remote → skip and note (git-conventions § Cadence)
 ```

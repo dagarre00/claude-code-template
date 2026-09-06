@@ -1,0 +1,118 @@
+import assert from 'node:assert/strict';
+import { readFileSync, readdirSync, cpSync, mkdtempSync, rmSync, mkdirSync, writeFileSync,
+  unlinkSync, existsSync, symlinkSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { tmpdir } from 'node:os';
+import test from 'node:test';
+import { sync } from '../scripts/sync-harness.mjs';
+
+const root = resolve(import.meta.dirname, '..');
+const read = p => readFileSync(resolve(root, p), 'utf8').replace(/\r\n/g, '\n');
+
+function fixture(t) {
+  const dir = mkdtempSync(resolve(tmpdir(), 'harness-test-'));
+  cpSync(resolve(root,'.harness'),resolve(dir,'.harness'),{recursive:true});
+  t.after(() => rmSync(dir,{recursive:true,force:true}));
+  sync(dir);
+  return dir;
+}
+
+test('invalid canonical input fails before changing any generated file', t => {
+  const dir = fixture(t);
+  const before = readFileSync(resolve(dir,'AGENTS.md'));
+  const source = resolve(dir,'.harness/commands/project/work.md');
+  const original = readFileSync(source,'utf8');
+  const added = resolve(dir,'.harness/commands/project/new-command.md');
+  writeFileSync(added,original.replace('name: work','name: mismatched-name'));
+  assert.throws(()=>sync(dir),/name.*path|filename/i);
+  assert.deepEqual(readFileSync(resolve(dir,'AGENTS.md')),before);
+  unlinkSync(added);
+  writeFileSync(source,original+'\n{{typo:unresolved}}\n');
+  assert.throws(()=>sync(dir),/Unresolved token/);
+  assert.deepEqual(readFileSync(resolve(dir,'AGENTS.md')),before);
+});
+
+test('manifest paths and symlink destinations cannot escape the fixture', t => {
+  const dir = fixture(t);
+  const manifestPath = resolve(dir,'.harness/generated.json');
+  const original = readFileSync(manifestPath,'utf8');
+  writeFileSync(manifestPath,JSON.stringify({version:1,files:{'../outside.md':'abc'}}));
+  assert.throws(()=>sync(dir,{force:true}),/Unsafe|Unmanaged/);
+  writeFileSync(manifestPath,original);
+  const outside = mkdtempSync(resolve(tmpdir(),'harness-outside-'));
+  t.after(()=>rmSync(outside,{recursive:true,force:true}));
+  const agentsDir = resolve(dir,'.codex/agents');
+  rmSync(agentsDir,{recursive:true});
+  symlinkSync(outside,agentsDir,'junction');
+  assert.throws(()=>sync(dir,{force:true}),/Symlink/);
+  assert.deepEqual(readdirSync(outside),[]);
+});
+
+test('check detects missing, changed, and obsolete output without writing', t => {
+  const dir = fixture(t);
+  const target = resolve(dir,'.claude/commands/project/work.md');
+  writeFileSync(target,'manual change\n');
+  unlinkSync(resolve(dir,'.codex/agents/developer.toml'));
+  unlinkSync(resolve(dir,'.harness/agents/researcher.md'));
+  const manifest = readFileSync(resolve(dir,'.harness/generated.json'));
+  const drift = sync(dir,{check:true});
+  assert.ok(drift.includes('.claude/commands/project/work.md'));
+  assert.ok(drift.includes('.codex/agents/developer.toml'));
+  assert.ok(drift.includes('.agents/agents/researcher.md'));
+  assert.equal(readFileSync(target,'utf8'),'manual change\n');
+  assert.deepEqual(readFileSync(resolve(dir,'.harness/generated.json')),manifest);
+  assert.throws(()=>sync(dir),/Manual edit/);
+});
+
+test('add, update, and retire assets while preserving local files and binary resources', t => {
+  const dir = fixture(t);
+  const source = resolve(dir,'.harness/skills/example');
+  mkdirSync(source);
+  writeFileSync(resolve(source,'SKILL.md'),'---\nname: example\ndescription: Example fixture skill\n---\n\nUse [script](helper.mjs).\n');
+  const script = 'console.log("literal $ARGUMENTS @file 😀");\n';
+  const binary = Buffer.from([0,255,254,13,10,128]);
+  writeFileSync(resolve(source,'helper.mjs'),script);
+  writeFileSync(resolve(source,'resource.bin'),binary);
+  const local = resolve(dir,'.claude/settings.local.json');
+  writeFileSync(local,'{"custom":true}\n');
+  const custom = resolve(dir,'.agents/skills/personal/SKILL.md');
+  mkdirSync(resolve(custom,'..'),{recursive:true});
+  writeFileSync(custom,'personal skill\n');
+  sync(dir);
+  for (const harness of ['.claude','.agents']) {
+    assert.equal(readFileSync(resolve(dir,harness,'skills/example/helper.mjs'),'utf8'),script);
+    assert.deepEqual(readFileSync(resolve(dir,harness,'skills/example/resource.bin')),binary);
+  }
+  writeFileSync(resolve(source,'SKILL.md'),'---\nname: example\ndescription: Updated fixture skill\n---\n\nChanged procedure.\n');
+  sync(dir);
+  assert.match(readFileSync(resolve(dir,'.agents/skills/example/SKILL.md'),'utf8'),/Changed procedure/);
+  rmSync(source,{recursive:true});
+  sync(dir);
+  assert.ok(!existsSync(resolve(dir,'.agents/skills/example/SKILL.md')));
+  assert.equal(readFileSync(local,'utf8'),'{"custom":true}\n');
+  assert.equal(readFileSync(custom,'utf8'),'personal skill\n');
+  assert.deepEqual(sync(dir,{check:true}),[]);
+});
+
+test('native harness entry points carry the canonical instructions', () => {
+  assert.match(read('AGENTS.md'), /Generated from \.harness\//);
+  assert.match(read('CLAUDE.md'), /^@AGENTS\.md$/m);
+  for (const file of readdirSync(resolve(root, '.harness/commands/project'))) {
+    const name = file.replace(/\.md$/, '');
+    const shared = read(`.agents/skills/project-${name}/SKILL.md`);
+    const claude = read(`.claude/commands/project/${name}.md`);
+    assert.match(shared, new RegExp(`name: ["']?project-${name}`));
+    assert.match(shared, /user.*(?:context|argument)/i);
+    assert.ok(!shared.includes('$ARGUMENTS'), 'shared skills cannot depend on Claude interpolation');
+    assert.ok(claude.includes('$ARGUMENTS'), 'Claude receives the native argument binding');
+  }
+  for (const file of readdirSync(resolve(root, '.harness/agents'))) {
+    const name = file.replace(/\.md$/, '');
+    const toml = read(`.codex/agents/${name}.toml`);
+    const prompt = JSON.parse(toml.match(/^developer_instructions = (.+)$/m)[1]);
+    assert.ok(prompt.includes('\n\n'), 'Codex receives real paragraph breaks');
+    assert.ok(!prompt.includes('\\r'), 'no literal CR escapes inside the prompt');
+    assert.match(read(`.agents/agents/${name}.md`), /^subagent: true$/m);
+    assert.match(read(`.claude/agents/${name}.md`), /^model: /m);
+  }
+});

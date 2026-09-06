@@ -1,10 +1,19 @@
 ---
-name: pr-create
-description: How to draft and open a pull request for this project. Loads when a feature branch is finished — all Behavior cases [x] via /project:work, or the human asks for a PR. Trigger on "open PR", "create pull request", "PR template", "PR body", "draft PR", "feature complete", "all cases ticked".
-type: skill
+name: "pr-create"
+description: "How to draft and open a pull request for this project. Loads when a feature branch is finished — all Behavior cases [x] via /project:work, or the human asks for a PR. Trigger on \"open PR\", \"create pull request\", \"PR template\", \"PR body\", \"draft PR\", \"feature complete\", \"all cases ticked\"."
 ---
 
+<!-- Generated from .harness/skills/pr-create/SKILL.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
+
 # PR Creation
+
+**Conductor only for mutating Git operations.** An MCP worker stays on the
+server-assigned branch and must not run this skill's branch, sync, tag, reset,
+stash, merge, push, PR, or cleanup procedures. It returns its blocker/result to
+the conductor. Before a conductor branch switch or history operation, inspect
+`list_workers()`; do not strand an active task pinned to the integration branch.
+Worker integration and worktree cleanup go through `mcp-coordination`, not the
+shell examples below. Human remote PR merges remain separate.
 
 Use this when wrapping up a `feat/*` or `fix/*` branch once the feature is complete. This skill is **automatically invoked by `/project:work`** at the end of a cycle where all Behavior cases are `[x]`. Do not wait for an explicit PR request from the human.
 
@@ -51,7 +60,7 @@ Compose the body from the artefacts above. Default skeleton (override with whate
 1. **Confirm preconditions.** Branch is `feat/*` or `fix/*`. Working tree clean. All commits pushed (`git push -u origin <branch>`).
 2. **Gather the inputs.** Read the files above.
 3. **Draft the body** following the skeleton.
-4. **Show the drafted PR body to the human** (a brief preview in the conversation), then open the PR immediately — no confirmation needed. Use `mcp__github__create_pull_request` targeting `develop` with the title in conventional-commit form (matching the lead commit on the branch). If the MCP tool is not available in the environment, fall back to `gh pr create --base develop --title "<title>" --body-file <path>`.
+4. **Show the drafted PR body to the human** (a brief preview in the conversation), then open the PR immediately — no confirmation needed. Use `the available GitHub pull-request tool` targeting `develop` with the title in conventional-commit form (matching the lead commit on the branch). If the MCP tool is not available in the environment, fall back to `gh pr create --base develop --title "<title>" --body-file <path>`.
 5. **Tell the human:** "Feature `<slug>` is complete. PR #N is open targeting `develop` — please review and merge when ready."
 6. **Log it — and commit the entry.** The cycle's commits were already made and pushed before the PR existed, so this entry has nothing to ride along with. Append it, then commit and push it on its own; otherwise the entry is lost and step 7 runs against a dirty tree.
 
@@ -76,7 +85,8 @@ Compose the body from the artefacts above. Default skeleton (override with whate
 
 ## What you do NOT do
 
-- **No merging.** Merging is always the human's call.
+- **No remote PR merging.** This is the human's call. MCP's verified local worker
+  integration happens before this skill and is not remote PR approval.
 - **No force-push.** If you need to rebase or squash, ask first.
 - **No editing the PR template** to fit the changes — fit the changes to the template, or update `docs/wiki/git-conventions.md` first (via a separate cycle) if the template is genuinely wrong.
 

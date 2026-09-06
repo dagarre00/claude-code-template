@@ -1,11 +1,16 @@
 ---
-name: wiki-ingest
-description: Direct ingest of a file or research topic into the wiki. Use /project:wiki-ingest specification.pdf to ingest a document, or /project:wiki-ingest search for exchange rates APIs to research and ingest. Focused — no lint pass, just ingest.
-argument-hint: <path/to/file> | search for <topic>
-type: command
+name: "wiki-ingest"
+description: "Direct ingest of a file or research topic into the wiki. Use /project:wiki-ingest specification.pdf to ingest a document, or /project:wiki-ingest search for exchange rates APIs to research and ingest. Focused — no lint pass, just ingest."
+argument-hint: "<path/to/file> | search for <topic>"
 ---
 
+<!-- Generated from .harness/commands/project/wiki-ingest.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
+
 # /project:wiki-ingest
+
+**Conductor only.** Follow `mcp-coordination` for every worker dispatch, status
+check, cancellation, and local integration. A worker must return a result or
+blocker instead of invoking this command. Never substitute native delegation.
 
 **Argument:** `$ARGUMENTS`
 
@@ -21,13 +26,15 @@ This is **focused ingest only** — no orphan scan, no link audit, no lint pass.
 - Working tree clean, allowing two exceptions: `docs/` may be dirty, and so may the file being ingested (a source the human just dropped anywhere in the repo counts).
 - `docs/wiki/summaries/` directory exists.
 - For file mode: the target file must exist and be readable.
-- For research mode: internet access available.
+- For research mode: internet access and coordination MCP available, with a fully
+  clean integration checkout before dispatch. File-mode dirty-source allowances
+  do not apply to worker dispatch; commit authorized sources first or stop.
 
 Any other dirt: run `human-checkpoint`.
 
 ## Sync develop (both modes)
 
-Run the guarded sync block in `.claude/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply).
+Run the guarded sync block in `.harness/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply).
 
 ## Steps — file mode
 
@@ -105,14 +112,18 @@ Triggered when the argument is a path to an existing file (e.g., `/project:wiki-
 
 Triggered when the argument is a research query (starts with "search for", "research", "find", "look up", etc. — or when the argument is not a path to an existing file).
 
-1. **Dispatch the `researcher` agent** with the research query. The agent will:
-   - Search the web
-   - Fetch relevant pages
-   - Write `docs/raw/research/<slug>.md`
+1. **Call `spawn_worker` for `researcher`** with the original query verbatim and
+   one new, non-colliding `docs/raw/research/<slug>.md` as its owned output path.
+   It searches, reads sources, writes the new raw file, and commits it locally.
+   It must not overwrite old raw sources, write wiki pages, or push.
 
-2. **Wait for the researcher to complete.** If the researcher fails (no results, all sources unreachable), report and stop.
+2. **Collect and integrate the researcher result.** Poll `check_worker_status`,
+   inspect the complete report, source citations, diff, and local commit. No
+   results or inaccessible sources means preserve the task and report a blocker.
+   Follow `mcp-coordination` for expected-SHA validation, local integration, and
+   normal cleanup. No raw file is available in the integration tree until merged.
 
-3. **Read the raw research** at `docs/raw/research/<slug>.md`.
+3. **Read the integrated raw research** at `docs/raw/research/<slug>.md`.
 
 4. **Write the summary page** at `docs/wiki/summaries/<slug>.md` following the same template as file mode (above). The `sources:` frontmatter points to the raw research file.
 

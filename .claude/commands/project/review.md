@@ -1,11 +1,16 @@
 ---
-name: review
-description: Thorough review of the codebase against the wiki. Runs the reviewer agent in a fresh session context with no developer baggage. Flags critical issues, warnings, drift, missing tests, security/perf concerns. Use periodically (~every 5 todos), never inside /project:work.
-argument-hint: [scope — e.g. "the auth module" | "security only" | "src/api/"]
-type: command
+name: "review"
+description: "Thorough review of the codebase against the wiki. Runs the reviewer agent in a fresh session context with no developer baggage. Flags critical issues, warnings, drift, missing tests, security/perf concerns. Use periodically (~every 5 todos), never inside /project:work."
+argument-hint: "[scope — e.g. \"the auth module\" | \"security only\" | \"src/api/\"]"
 ---
 
+<!-- Generated from .harness/commands/project/review.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
+
 # /project:review
+
+**Conductor only.** Follow `mcp-coordination` for every worker dispatch, status
+check, cancellation, and local integration. A worker must return a result or
+blocker instead of invoking this command. Never substitute native delegation.
 
 **Argument:** `$ARGUMENTS`
 
@@ -32,14 +37,19 @@ If any fails: run `human-checkpoint`.
 
 ## Steps
 
-1. **Sync develop.** Run the guarded sync block in `.claude/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply).
+1. **Sync develop.** Run the guarded sync block in `.harness/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply).
 
-2. **Dispatch the `reviewer` agent** with:
+2. **Call `spawn_worker` for the read-only `reviewer`** with:
    - The scope (whole repo or specific area from `$ARGUMENTS`).
    - The current `docs/wiki/wiki-todos.md` (so it sees outstanding queue items as input).
    - Explicit instruction: fresh context, no developer assumptions, verify claims independently.
 
-3. **Reviewer writes** `docs/wiki/decisions/review-YYYY-MM-DD.md` with structured findings (see reviewer agent definition).
+3. **Collect the complete report.** Poll `check_worker_status`, inspect the final
+   report/log rather than only its tail, and verify the worktree stayed unchanged.
+   Run any mutating test reproduction requested by the reviewer as conductor,
+   preserving and accounting for test residue. Collect the report before normal
+   MCP read-only cleanup. **Persist the reviewer's response** to `docs/wiki/decisions/review-YYYY-MM-DD.md`
+   using its structured report format. The reviewer itself remains read-only.
 
 4. **Process findings in the wiki.**
    - Read the report.
@@ -66,7 +76,10 @@ If any fails: run `human-checkpoint`.
    git push -u origin "$(git branch --show-current)"   # no remote → skip and note (git-conventions § Cadence)
    ```
 
-   Dirt outside `docs/wiki/` is not automatically yours: if it matches the reviewer's report (suite-written files the reviewer missed), restore those paths; anything you cannot account for is another session's live work — stop and run `human-checkpoint` naming the paths (behavioral rule 21).
+   Dirt outside `docs/wiki/` is not automatically yours. Preserve unexpected
+   residue, account for exact paths and ownership, and use `human-checkpoint`
+   before any recovery that would discard work. Read-only worker residue
+   invalidates the affected review; do not hide it with automatic restoration.
 
 7. **Report to the human.** Highlight critical items only. Recommend whether the next step is `/project:work` (fix critical), `/project:interview` (spec gap), or `/project:wiki-lint` (heavy drift).
 

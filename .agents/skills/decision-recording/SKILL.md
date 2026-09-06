@@ -1,10 +1,17 @@
 ---
-name: decision-recording
-description: How to file an Architectural Decision Record (ADR) when making a non-trivial design choice. Use when picking between reasonable alternatives that will be hard to change later. Trigger on "ADR", "decision", "design choice", "architecture decision", "we decided", "why we picked".
-type: skill
+name: "decision-recording"
+description: "How to file an Architectural Decision Record (ADR) when making a non-trivial design choice. Use when picking between reasonable alternatives that will be hard to change later. Trigger on \"ADR\", \"decision\", \"design choice\", \"architecture decision\", \"we decided\", \"why we picked\"."
 ---
 
+<!-- Generated from .harness/skills/decision-recording/SKILL.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
+
 # Recording a Decision
+
+**Respect execution scope.** Read-only planner/review workers return recommendations
+instead of writing wiki pages. Writing workers edit only assigned owned paths and
+commit locally; conductor-owned queue/log updates are returned in the report.
+During blank-template maintenance, keep wiki/raw scaffolds blank and record
+maintenance evidence in tests and commit messages, not application data.
 
 ADRs exist for design choices a future reader will second-guess. They live in `docs/wiki/decisions/`. Each is small, dated, and irreversible-by-default: you supersede, you don't edit.
 
@@ -15,7 +22,7 @@ File one when:
 - You picked between two reasonable alternatives and the choice will shape future work.
 - A constraint forced a non-obvious answer (compliance, performance, dependency limits).
 - The implementation deviates from what the wiki previously said.
-- A `/project:review` finding requires a stance going forward.
+- A `project-review` finding requires a stance going forward.
 
 Do **not** file an ADR for:
 

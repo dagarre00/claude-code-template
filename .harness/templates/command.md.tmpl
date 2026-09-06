@@ -1,0 +1,36 @@
+---
+name: <name>
+description: "<When to invoke this command>"
+argument-hint: "[<scope or context>]"
+---
+
+# <Command title>
+
+**Conductor only.** Follow `mcp-coordination` for worker dispatch, monitoring,
+cancellation, and local integration. Workers return results or blockers instead
+of invoking this command. Missing MCP is a blocker, not native-delegation fallback.
+
+**Argument:** `{{arguments}}`
+
+<Define what the argument selects, how empty input behaves, and which steps
+consume it. Forward the argument verbatim to dispatched agents. Preconditions,
+the Red phase, and human decisions remain binding.>
+
+## Preconditions
+
+<Checks required before acting.>
+
+## Steps
+
+1. <First action that consumes the argument.>
+2. <If delegation is needed: define owned paths, use spawn_worker, collect the full
+   report through check_worker_status, and follow mcp-coordination for SHA-pinned
+   local integration. Pass ignored scratch as text, not a different checkout's path.>
+
+## Failure modes
+
+<Observable failure and recovery.>
+
+## Outputs
+
+<Artifacts and any wiki updates to include in the same commit.>

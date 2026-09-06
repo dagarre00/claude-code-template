@@ -1,12 +1,15 @@
 ---
-name: tdd-loop
-description: Red-green-refactor procedure for this project. Use when implementing any feature or bugfix, before writing any production code. Trigger on "TDD", "red phase", "green phase", "refactor", "failing test", "make test pass", "tdd loop".
-type: skill
+name: "tdd-loop"
+description: "Red-green-refactor procedure for this project. Use when implementing any feature or bugfix, before writing any production code. Trigger on \"TDD\", \"red phase\", \"green phase\", \"refactor\", \"failing test\", \"make test pass\", \"tdd loop\"."
 ---
+
+<!-- Generated from .harness/skills/tdd-loop/SKILL.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
 
 # TDD Loop
 
-Use this every time you implement code on a `feat/*` or `fix/*` branch. Nothing enforces test-first automatically — keeping the discipline is on you.
+Use this whenever you implement code, including an MCP-assigned worker branch.
+A worker reads `.harness/worker-contract.md` first and stays on its assigned
+branch and owned paths; the conductor owns integration, pushes, and PRs. Nothing enforces test-first automatically — keeping the discipline is on you.
 
 ## Read first
 
@@ -32,7 +35,8 @@ Run Red → Green → Refactor → Commit for **one** Behavior case, then start 
 
 1. Write the **smallest** code that makes the failing test pass. No future-proofing, no extra helpers, no abstractions for cases the test doesn't cover.
 2. Re-run the test command. The previously-failing tests must pass; no previously-passing test may now fail.
-3. If you broke another test, you over-reached. Revert, narrow your change, retry.
+3. If you broke another test, inspect and narrowly undo only your own edit, then
+   retry. Do not use tree-wide resets or restore unrelated files.
 
 ## Refactor
 
@@ -44,12 +48,17 @@ Only after green. Goal: improve structure without changing behavior.
 
 ## Commit
 
-Close each case before starting the next — this is the cadence `docs/wiki/git-conventions.md` specifies, and you own it, not `/project:work`.
+Close each case before starting the next — this is the cadence `docs/wiki/git-conventions.md` specifies, and you own it, not `project-work`.
 
 1. Tick the case `[~]` → `[x]` on the entity page (see "Wiki update" below).
 2. Stage that case's test, its implementation, and the entity-page edit — explicitly by path, never `git add -A`. If this case also produced a gotcha or an ADR (see *Wiki update* below), stage `docs/wiki/gotchas.md` / `docs/wiki/decisions/<slug>.md` here too — they ride in this commit and never get one of their own.
 3. Commit: `feat(<slug>): <behavior in present tense>`, one case per commit.
-4. Push (`git push -u origin "$(git branch --show-current)"`). An unpushed commit dies with the container — behavioral rule 19.
+   Include authorized wiki/log changes only within assigned owned paths; return
+   conductor-owned ledger entries in the report instead of writing outside scope.
+4. **Worker:** keep the commit local and report its SHA; never push or change
+   branches. The conductor validates and merges it through MCP, then pushes the
+   integration branch. **Conductor doing authorized direct work:** follow the
+   project's integration push convention. Local task commits are not a backup.
 5. Refactor commits are separate (`refactor(<slug>): …`). Never commit half-green code.
 
 Then start the next case at Red.
@@ -73,7 +82,13 @@ After green + any refactor:
 
 ## Two-strike rule
 
-If your second attempt on the same mechanism fails (broken green, refactor explodes, unsolvable test), stop. Tag the state (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`), then run `human-checkpoint` with both failed attempts and let the human decide. Do **not** `git reset --hard` on your own initiative — it is the one unrecoverable step in this loop, and rule 21 requires `git status --porcelain` to account for every line before any tree-wide destructive git operation: uncommitted changes you did not write are another session's live work, and the checkpoint tag does not protect them. On an approved reset, re-spec via `/project:interview`.
+If your second attempt on the same mechanism fails, stop and preserve the state.
+A worker returns both attempts, errors, current SHA, and dirty paths through
+`human-checkpoint`; it never tags, resets, stashes, or invokes project commands.
+The conductor presents the evidence to the human. Any proposed destructive
+recovery needs explicit scope and authorization; a tag protects committed history,
+not uncommitted work. After an approved change of approach, the conductor supplies
+updated instructions or a new plan rather than having the worker improvise.
 
 ## Anti-patterns
 

@@ -1,10 +1,17 @@
 ---
-name: wiki-update
-description: How to structure a wiki page under the Obsidian LLM-wiki standard — placement/dedup before creating, canonical templates, facet vocabulary, link ontology — and how to route discoveries (gotchas / ADRs / cross-page cleanup). Use when creating or restructuring any docs/wiki/ page, or deciding whether a discovery belongs inline or in the maintainer queue. Trigger on "new entity page", "new concept page", "wiki page structure", "frontmatter", "wikilink property", "aliases", "inline vs maintainer", "wiki-todos queue", "found a pattern", "found a contradiction".
-type: skill
+name: "wiki-update"
+description: "How to structure a wiki page under the Obsidian LLM-wiki standard — placement/dedup before creating, canonical templates, facet vocabulary, link ontology — and how to route discoveries (gotchas / ADRs / cross-page cleanup). Use when creating or restructuring any docs/wiki/ page, or deciding whether a discovery belongs inline or in the maintainer queue. Trigger on \"new entity page\", \"new concept page\", \"wiki page structure\", \"frontmatter\", \"wikilink property\", \"aliases\", \"inline vs maintainer\", \"wiki-todos queue\", \"found a pattern\", \"found a contradiction\"."
 ---
 
+<!-- Generated from .harness/skills/wiki-update/SKILL.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
+
 # Wiki Update — Standard, Templates, Routing
+
+**Respect execution scope.** Read-only planner/review workers return recommendations
+instead of writing wiki pages. Writing workers edit only assigned owned paths and
+commit locally; conductor-owned queue/log updates are returned in the report.
+During blank-template maintenance, keep wiki/raw scaffolds blank and record
+maintenance evidence in tests and commit messages, not application data.
 
 The wiki follows the **Obsidian LLM-wiki standard**. This skill is the **single source of truth** for that standard; the non-negotiable invariants are also stated as behavioral rule 18. Routine ticks (`[ ]` → `[~]` → `[x]`, checking off a todo, appending a log line) are documented in `tdd-loop`. This skill covers: **placement**, the **templates**, the **facet/ontology tables**, and **inline-vs-maintainer routing**.
 
@@ -66,7 +73,7 @@ Edge cases, when it does NOT apply, unresolved tensions, open contradictions,
 
 The two axes coexist: *depth* (progressive disclosure) is the body sections (Essence → Model → Detail → Boundaries); the *semantic level* is the `abstraction` facet. They're independent — the same page has both. In frontmatter, wikilinks are quoted and solitary (one `"[[page]]"` per list element); in the body they're plain `[[wikilinks]]`.
 
-**`[infra]` extension:** a concept page backing an `[infra]` todo (`/project:work` step 1) additionally carries a `## Behavior` section of verifiable operational assertions, with the same `[ ]`/`[~]`/`[x]` states as an entity page. That section is valid there — the lint pass must not flag it as off-template.
+**`[infra]` extension:** a concept page backing an `[infra]` todo (`project-work` step 1) additionally carries a `## Behavior` section of verifiable operational assertions, with the same `[ ]`/`[~]`/`[x]` states as an entity page. That section is valid there — the lint pass must not flag it as off-template.
 
 ## Entity page template (`docs/wiki/entities/<slug>.md`) — project extension
 
@@ -124,7 +131,7 @@ Behavior plays the role of Model (the spec is the mental model); Implementation 
 
 ## Design-system page template (`docs/wiki/design-system.md`) — project extension, conditional
 
-**Only for projects with a UI surface.** `/project:init` creates this page when it detects one (web, mobile, desktop, TUI); a library, CLI, or service project never gets it. Do not create it speculatively — an empty design system on a backend project is the noise progressive disclosure exists to prevent.
+**Only for projects with a UI surface.** `project-init` creates this page when it detects one (web, mobile, desktop, TUI); a library, CLI, or service project never gets it. Do not create it speculatively — an empty design system on a backend project is the noise progressive disclosure exists to prevent.
 
 **The page asserts; the code holds the values.** Literal hex/px/ms live in the project's token file — this page owns the *role names*, the *step counts*, and the *checkable constraints* every UI commit must satisfy. That split is deliberate: token tables hand-maintained in markdown rot within weeks, but "`text` on `bg` is ≥ 7:1" and "there are exactly seven type steps" are assertions a test can verify against the code. Write constraints, not copies.
 
@@ -312,7 +319,7 @@ Operational ledgers (`log.md`, `todos.md`, `wiki-todos.md`, `gotchas.md`, `comma
 | `contradicts` | ↔ explicit conflict | **Reconciliation flag.** Any unresolved `contradicts` goes to the decision queue. |
 | `supersedes` / `superseded_by` | decision ↔ decision | Project extension: a superseded ADR must carry `status: superseded` and a `superseded_by` link. |
 
-A gap is a hole in the graph relative to this schema — computable by `/project:wiki-lint` as a Bases/Dataview query — never "what feels missing". Don't fill gaps with invented prose: `status: stub` + `open_questions`, or ask the human.
+A gap is a hole in the graph relative to this schema — computable by `project-wiki-lint` as a Bases/Dataview query — never "what feels missing". Don't fill gaps with invented prose: `status: stub` + `open_questions`, or ask the human.
 
 ## Inline vs maintainer routing
 
@@ -329,4 +336,5 @@ You — the `developer` — own **small, in-scope** wiki edits and make them in 
 - Mass cross-link cleanup, migration of legacy pages to this standard.
 - Any change that needs reading 5+ pages to do safely.
 
-**Discovery quick routing**: project pitfall → `gotcha-recording`. Design fork → `decision-recording`. Repeated pattern → wiki-todos line. **Never** dispatch the wiki-maintainer from another agent.
+**Discovery quick routing**: project pitfall → `gotcha-recording`. Design fork → `decision-recording`. Repeated pattern → wiki-todos line. Workers never dispatch the wiki-maintainer. Only the conductor may dispatch it
+through MCP after an explicit human maintenance request or `project-wiki-lint`.

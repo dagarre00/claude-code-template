@@ -1,6 +1,12 @@
 # For the Human
 
-This is the template for an agentic-development project. The agent (Claude Code) does the work; you steer.
+Examples below use Claude Code's `/project:<name>` spelling. In Codex use
+`$project-<name>`; in Antigravity CLI use `/project-<name>`. All three read the
+same canonical workflow. See [harness setup](docs/harnesses.md) and the generated command catalog in
+[AGENTS.md](AGENTS.md).
+
+
+This is the template for an agentic-development project. The agent in your chosen harness does the work; you steer.
 
 ## Mental model
 
@@ -8,7 +14,7 @@ Three layers, each owned by a different actor:
 
 1. **Raw sources** (`docs/raw/`) — you drop interviews, articles, transcripts here. **Immutable.** Agents read but never modify.
 2. **Wiki** (`docs/wiki/`) — the living spec. **Agents own this.** Code that disagrees with the wiki is the bug. You browse it in Obsidian.
-3. **Schema** (`CLAUDE.md`, `.claude/`) — how the agents operate. You and the agent evolve this together.
+3. **Schema** (`AGENTS.md`, `.harness/`) — how the agents operate. You and the agent evolve this together.
 
 ## Day-to-day workflow
 
@@ -32,10 +38,10 @@ Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the age
 ## What the agent does on its own
 
 - **Reads the wiki** before any code change.
-- **Plans complex work.** When a todo is tagged `[complex]` or batched (2+ todos), `/project:work` dispatches the `planner` agent (on Opus) to write a stepwise plan before testing. Plans live transiently at `.claude/handoff/<slug>-plan.md` (gitignored scratch).
+- **Plans complex work.** When a todo is tagged `[complex]` or batched (2+ todos), `/project:work` dispatches the `planner` agent (reasoning profile) to write a stepwise plan before testing. Plans live transiently at `.harness/handoff/<slug>-plan.md` (gitignored scratch).
 - **Commits one Behavior case at a time.** Test + implementation + wiki tick, committed and pushed per case — so `git bisect` works, any single case can be reverted, and review diffs stay small.
 - **Writes failing tests first** (Red), confirms they fail for the right reason, then implements (Green), then refactors — all in one `developer` agent (which follows the planner's plan when there is one).
-- **Gets a second opinion on risky work.** On `[complex]` or batched cycles, `/project:work` points an `adversary` agent (Opus, none of the developer's context) at the diff. It raises numbered findings and may not touch the code. **Findings become todos, not immediate fixes** — except a `critical`/`major`, which **stops and asks you** fix-now or queue; nothing is ever fixed without you saying so. A saturated P0 queue (10 open items) stops and tells you the queue itself is the problem. Every answer lands in a commit — `git log --grep="adversary round"` shows every past review. Simple one-todo cycles skip this; run `/project:adversary` yourself when you want it anyway.
+- **Gets a second opinion on risky work.** On `[complex]` or batched cycles, `/project:work` points an `adversary` agent (reasoning profile, none of the developer's context) at the diff. It raises numbered findings and may not touch the code. **Findings become todos, not immediate fixes** — except a `critical`/`major`, which **stops and asks you** fix-now or queue; nothing is ever fixed without you saying so. A saturated P0 queue (10 open items) stops and tells you the queue itself is the problem. Every answer lands in a commit — `git log --grep="adversary round"` shows every past review. Simple one-todo cycles skip this; run `/project:adversary` yourself when you want it anyway.
 - **Updates the wiki in the same commit** as the code — entity pages, requirements, log.
 - **Asks you when it's stuck.** Two-strike rule: two failed attempts on the same approach → stop and ask. On retry, it overwrites the plan with a fundamentally different approach rather than tweaking.
 
@@ -43,7 +49,7 @@ Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the age
 
 ## What it does NOT do without you
 
-- Merge PRs, or push to `develop` / `main` directly.
+- Merge PRs or commit application code directly to `develop` / `main`. Maintenance documentation follows the separate wiki commit convention.
 - Force-push or rewrite published history.
 - Decide between two reasonable design alternatives (it presents both with a recommendation and waits).
 - Run `/project:review` mid-`/project:work` — the *periodic* audit is never in-loop. (The per-change `adversary` is a different, read-only role and does run there — see above.)
@@ -56,7 +62,7 @@ The agent ships with a small set of skills, agents, and commands. As the project
 
 Examples:
 
-- "We need a skill for adding database migrations in this project." → agent creates `.claude/skills/database-migrations/SKILL.md` via `update-toolkit`.
+- "We need a skill for adding database migrations in this project." → agent creates `.harness/skills/database-migrations/SKILL.md` via `update-toolkit` and regenerates native copies.
 - "We need a repeatable entry point for release prep." → agent adds a `/project:release` command via `update-toolkit`.
 
 ## Anti-patterns to avoid

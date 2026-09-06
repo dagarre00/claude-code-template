@@ -1,15 +1,23 @@
 ---
-name: init
-description: Detect project state, interview for requirements, scaffold docs/wiki, update CLAUDE.md with project parameters. Run once at project start, or to recover from a broken wiki layout.
-argument-hint: [context — e.g. "review the legacy files" | "stack is Django + Postgres"]
-type: command
+name: "init"
+description: "Detect project state, interview for requirements, scaffold docs/wiki, personalize canonical project context, and regenerate all harness entry points. Run at project start or to recover wiki layout."
+argument-hint: "[context — e.g. \"review the legacy files\" | \"stack is Django + Postgres\"]"
 ---
+
+<!-- Generated from .harness/commands/project/init.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
 
 # /project:init
 
+**Conductor only.** Follow `mcp-coordination` for every worker dispatch, status
+check, cancellation, and local integration. A worker must return a result or
+blocker instead of invoking this command. Never substitute native delegation.
+
 **Argument:** `$ARGUMENTS`
 
-You are initializing this project. This command detects state, interviews the human for requirements, scaffolds the wiki with real answers (not placeholders), and rewrites `CLAUDE.md` to be lean and project-specific.
+You are initializing the adopting project. Detect its state, interview for its requirements,
+scaffold the wiki with real answers, personalize `.harness/project.md`, and regenerate
+the native entry points. Never treat template maintenance or its generator tests as the
+adopting application's requirements or test suite.
 
 If the argument is non-empty, treat it as **context that steers the init**, not as a separate task. Resolve it before step 3 and fold it into the pre-interview scan:
 
@@ -22,7 +30,9 @@ If the argument is empty, run the full procedure below. If it names a path that 
 ## Preconditions
 
 - The current directory is the project root.
-- `CLAUDE.md` and `.claude/` exist (the schema is on disk).
+- `.harness/instructions.md`, `.harness/project.md`, `.harness/settings.json`, and
+  `scripts/sync-harness.mjs` exist. MCP setup is needed before worker dispatch,
+  but missing setup does not authorize rewriting role settings or installing CLIs.
 
 ## Steps
 
@@ -30,17 +40,26 @@ If the argument is empty, run the full procedure below. If it names a path that 
 
 Run `git status`.
 
-- If not a git repo — the **expected state** when starting from this template (the quick start erases the cloned `.git` so the project begins its own history):
+- If not a git repo (for example, an extracted template archive):
   1. `git init -b main` — always pass `-b main`; a bare `git init` may create `master` depending on the machine's `init.defaultBranch`.
   2. **Keep the template's shipped `.gitignore`** — it carries entries the workflow relies on (the plan scratch, `settings.local.json`, `docs/.obsidian/`). Append stack-specific entries (Node, Python, OS, IDE) to it; never replace it.
-  3. Stage everything including dotfiles (`git add -A`) and commit `chore: initial commit` on `main` — the template's `.claude/`, `CLAUDE.md`, and `docs/` must all land in that first commit.
+  3. Inspect all untracked files and stage authorized template/project paths
+     explicitly, including dotfiles. Exclude secrets, local settings, and runtime
+     state. Commit `chore: initial commit` on `main`; never blanket-stage unknown files.
   4. If the human has a remote URL, `git remote add origin <url>`; otherwise continue without one — every later push step is skipped and noted in the report until a remote exists.
-- If on `main` with uncommitted changes: stop and run `human-checkpoint`. Ask whether to commit, stash, or discard.
-- If on a feature branch: warn; don't switch.
+- If a repository already exists, preserve its history and configured remote.
+  Record the active branch; account for every uncommitted path before writing.
+  Unknown changes or ambiguous ownership mean a human checkpoint, not automatic
+  stashing/discarding.
+- On a feature branch, stay there. Before any branch switch, inspect existing MCP
+  tasks so their pinned integration branch is not stranded.
 
 ### 2. Stack detection
 
-Look for: `pyproject.toml`, `package.json`, `Cargo.toml`, `go.mod`, `Gemfile`, `composer.json`, `pom.xml`, `build.gradle`, `Dockerfile`, etc. Note what you find.
+Look for application manifests: `pyproject.toml`, `package.json`, `Cargo.toml`,
+`go.mod`, `Gemfile`, `composer.json`, `pom.xml`, `build.gradle`, `Dockerfile`, etc.
+Do not infer the application stack from the template's coordination server,
+its nested dependencies, or its maintenance tests. Note actual application evidence.
 
 Look for a test command in `pyproject.toml` / `package.json` scripts / `Makefile`. Record it.
 
@@ -78,7 +97,7 @@ Ask only about topics that are **missing** or **partial** from the pre-interview
 10. **Non-functional** — perf targets, security requirements, observability, compliance.
 11. **Design intention** — **ask only if the project has a UI surface** (web, mobile, desktop, TUI). Three questions, no more: what should it feel like (three adjectives), what must it never feel like, and is there an existing design system / component library to adopt. Deeper token work is not an init topic — it goes to `/project:interview the design system` once the stack is real.
 
-Open a transcript at `docs/raw/interviews/YYYY-MM-DD-init.md` **before** asking the first question (skip creating it if no questions are needed). Stream Q-by-Q and A-by-A: write the question to disk, ask, write the answer to disk on receipt — never batch. Same enforcement as `/project:interview` (see operating rule #7 in `.claude/commands/project/interview.md`).
+Open a transcript at `docs/raw/interviews/YYYY-MM-DD-init.md` **before** asking the first question (skip creating it if no questions are needed). Stream Q-by-Q and A-by-A: write the question to disk, ask, write the answer to disk on receipt — never batch. Same enforcement as `/project:interview` (see operating rule #7 in `.harness/commands/project/interview.md`).
 
 Stop conditions:
 
@@ -135,13 +154,23 @@ Every page gets correct frontmatter per the Obsidian LLM-wiki standard (see the 
 
 If the human declines the bootstrap, leave `commands.md ## Test` as `<TBD>` and say plainly in the report that `/project:work` will refuse to start until a test command runs.
 
-### 6. Rewrite CLAUDE.md
+### 6. Personalize canonical project context and regenerate
 
-**Re-run guard first.** If `CLAUDE.md` is already project-specific — it no longer opens with the template's "Project Schema" framing, or its command/agent tables carry rows the template doesn't ship (added later via `update-toolkit`) — do **not** overwrite it: stop and run `human-checkpoint` offering rewrite / merge the new parameters in / skip this step. A blind rewrite from the template discards every toolkit row the project has added since.
+Read `.harness/project.md`. If it already contains project facts, merge confirmed
+updates into it, preserving custom constraints; ask only when conflicting facts
+need a decision. Never overwrite established project context with the skeleton.
 
-Otherwise, rewrite `CLAUDE.md` to be lean and project-specific. Drop the template framing — this is now a real project. **Use [`.claude/templates/CLAUDE.md.tmpl`](../../templates/CLAUDE.md.tmpl) as the exact skeleton:** copy it to `CLAUDE.md` and fill every `<placeholder>` (project name, vision, stack, test command) from the interview answers. Do not re-derive the section list — the template already carries it (Identity, Operating principles, Three layers, Wiki layout, Commands, Agent routing, North star).
+For a blank project, fill `.harness/project.md` using
+[the project skeleton](../../../.harness/templates/project.md.tmpl). Use only facts from the
+pre-scan and interview. Keep the shared procedures in `.harness/instructions.md`
+and the command/agent definitions intact; the generator owns the catalogs.
+Preserve `.harness/settings.json` and any adopting-project role overrides. Change
+engine/model/reasoning settings only when the human requests or confirms them.
 
-The template deliberately points at `.claude/rules/behavioral.md` for the binding rule list instead of duplicating it — keep that pointer; do not paste a "Golden rules" block back in. The result should be under ~120 lines. Every section earns its place — if a section doesn't help an agent operate, cut it.
+Run `node scripts/sync-harness.mjs`, then `node scripts/sync-harness.mjs --check`.
+This updates `AGENTS.md`, the importing `CLAUDE.md`, and every native adapter.
+Do not edit generated files. Do not fill the wiki with this template's migration
+history or choose Node.js as the application stack merely because the generator uses it.
 
 ### 7. Log it
 
@@ -152,7 +181,7 @@ Append to `docs/wiki/log.md`:
 
 - Stack: <stack>
 - Test command: <command>
-- Interview transcript: [YYYY-MM-DD-init](../raw/interviews/YYYY-MM-DD-init.md) (omit if no questions were needed)
+- Interview transcript: [YYYY-MM-DD-init](../../../.harness/commands/raw/interviews/YYYY-MM-DD-init.md) (omit if no questions were needed)
 - Pages created: <count>
 - ADRs: <count>
 - Next: run `/project:work` to pick up the first todo.
@@ -160,29 +189,34 @@ Append to `docs/wiki/log.md`:
 
 ### 8. Commit
 
-Stage and commit everything created or modified, then push:
+Inspect `git status` and stage only the paths this initialization created or
+changed, including canonical sources, the generated manifest and all regenerated
+native outputs. Include approved application skeleton files from step 5a. Do not
+stage unrelated files or user-local settings. Commit on the **current authorized
+branch**, not a hard-coded main branch:
 
 ```bash
-# Include any skeleton files created in step 5a (manifest, lockfile, empty test dir).
-git add docs/ CLAUDE.md <manifest-and-skeleton-paths>
-git commit -m "chore(init): scaffold wiki, CLAUDE.md, and runnable test command"
-git push -u origin main
-```
-
-If the repo has no remote yet, skip the push and note it in the report.
-
-### 8a. Create the `develop` branch
-
-`/project:work` always starts and ends on `develop`. If it doesn't exist yet, create it from `main` and push:
-
-```bash
-git checkout -b develop
+git add <explicit-initialization-paths>
+git commit -m "chore(init): scaffold wiki and canonical project context"
 if git remote get-url origin >/dev/null 2>&1; then
-  git push -u origin develop
+  git push -u origin "$(git branch --show-current)"
 fi
 ```
 
-If `develop` already exists (locally or on the remote), check it out instead of recreating it.
+No remote means local-only work; say so. If no files changed, do not manufacture
+an empty initialization commit.
+
+### 8a. Establish develop only for a new project
+
+On first initialization from main, ensure `develop` exists before the first work
+cycle. With a clean checkout and no active tasks, create it from the initialized
+main commit when absent, or explicitly track the existing remote develop branch.
+Never replace an existing branch or silently merge divergent histories. Push it
+when a remote is configured.
+
+On a rerun from an active feature/fix/chore branch, stay there; do not create
+develop from that feature or switch away merely because initialization finished.
+The conductor's `feature-branching` procedure handles the next work cycle.
 
 ### 9. Report
 
@@ -195,7 +229,8 @@ Print:
 
 ## Failure modes
 
-- If git is broken (no remote, divergent main): stop and run `human-checkpoint`.
+- If Git state is ambiguous or histories diverge: stop and run `human-checkpoint`.
+  No remote is supported; report local-only commits rather than treating it as broken.
 - If you can't detect a stack: ask in the interview. Don't guess.
 - If a wiki page exists with conflicting frontmatter: append to `docs/wiki/wiki-todos.md`, don't auto-fix.
 - If the human won't answer interview questions: scaffold with what you have; mark the rest `<TBD>`.

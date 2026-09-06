@@ -1,10 +1,19 @@
 ---
-name: git-recovery
-description: Emergency and advanced git operations, and merge/rebase conflict resolution. Stash, cherry-pick, bisect, blame, undo a commit, recover lost work, clean up a branch, resolve conflicts. Trigger on "stash", "cherry-pick", "bisect", "git blame", "lost commit", "undo commit", "recover", "clean up branch", "drop commit", "reflog", "merge conflict", "rebase conflict", "CONFLICT (content)", "<<<<<<", "resolve conflict", "git merge failed", "git rebase failed".
-type: skill
+name: "git-recovery"
+description: "Emergency and advanced git operations, and merge/rebase conflict resolution. Stash, cherry-pick, bisect, blame, undo a commit, recover lost work, clean up a branch, resolve conflicts. Trigger on \"stash\", \"cherry-pick\", \"bisect\", \"git blame\", \"lost commit\", \"undo commit\", \"recover\", \"clean up branch\", \"drop commit\", \"reflog\", \"merge conflict\", \"rebase conflict\", \"CONFLICT (content)\", \"<<<<<<\", \"resolve conflict\", \"git merge failed\", \"git rebase failed\"."
 ---
 
+<!-- Generated from .harness/skills/git-recovery/SKILL.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
+
 # Git Recovery & Advanced Operations
+
+**Conductor only for mutating Git operations.** An MCP worker stays on the
+server-assigned branch and must not run this skill's branch, sync, tag, reset,
+stash, merge, push, PR, or cleanup procedures. It returns its blocker/result to
+the conductor. Before a conductor branch switch or history operation, inspect
+`list_workers()`; do not strand an active task pinned to the integration branch.
+Worker integration and worktree cleanup go through `mcp-coordination`, not the
+shell examples below. Human remote PR merges remain separate.
 
 ## Stash — pause mid-task cleanly
 
@@ -28,9 +37,14 @@ git stash drop stash@{0}
 ```
 
 **Rules:**
+- Use these recovery commands only after confirming their exact target and human
+  authorization where required. They are examples, not blanket approval.
+- Preserve failed MCP worktrees and conflict diagnostics until their disposition
+  is decided. Do not abort or reset a worker merge just to unblock cleanup.
 - Never stash across a branch switch and forget about it. Always pop before the next session.
 - If the stash is more than one session old, pop it, commit the state, and resume properly.
-- `feature-branching` prefers a checkpoint-tagged `wip:` commit over a stash — when in doubt, checkpoint-tag and reset.
+- When in doubt, preserve the state and ask. Tags preserve committed history only;
+  neither a tag nor a worktree makes uncommitted deletion recoverable.
 
 ## Cherry-pick — bring a single commit across branches
 
@@ -125,14 +139,13 @@ git merge origin/develop   # resolve conflicts per commit (see below), then re-r
 git push
 ```
 
-Merging, not rebasing, is the routine sync: sessions share branches, and a rebase rewrites pushed history another session may hold. Rebase + `--force-with-lease` only with explicit human approval (`human-checkpoint`); bare `--force` never.
+Merging, not rebasing, is the routine sync: other sessions can still hold published history, and a rebase rewrites pushed history another session may hold. Rebase + `--force-with-lease` only with explicit human approval (`human-checkpoint`); bare `--force` never.
 
 ## Delete a branch
 
 ```bash
 # After merge — delete local
 git branch -d feat/<slug>      # safe: refuses if unmerged
-git branch -D feat/<slug>      # force delete (use only when sure)
 
 # Delete remote
 git push origin --delete feat/<slug>
@@ -188,14 +201,17 @@ git rebase --continue      # after rebase — do NOT commit manually
 git cherry-pick --continue # after cherry-pick
 ```
 
-### 6 — Abort if in doubt
+### 6 — Preserve ambiguity and request direction
 
-Rather than commit a guess when the human is unavailable:
+Do not commit a guess. Preserve conflict diagnostics and the worktree, then ask
+for direction. An abort can overwrite conflict-resolution work, so use it only
+when its exact effects and authorization are clear:
 
 ```bash
 git merge --abort   # or git rebase --abort / git cherry-pick --abort
 ```
 
-Then tag a checkpoint and use `human-checkpoint`.
+A worker never runs these commands. A conductor reports the outcome through
+`human-checkpoint`; do not remove the task worktree until its result is resolved.
 
 **Conflict anti-patterns:** committing conflict markers (always grep first); accepting "theirs" blindly (each side may hold correct logic); rebasing a shared branch (merge instead — see "Sync a feature branch" above). Merge develop in early and often to keep the conflict surface small.

@@ -1,18 +1,30 @@
 ---
-name: adversarial-review
-description: How to run and answer an adversarial diff review in this project — dispatching the read-only adversary, the mailbox file format, the six-category sweep, severity vocabulary, and the triage protocol for each finding. Use when finishing a [complex] or batched cycle, or whenever a change needs a second set of eyes before commit. Trigger on "adversarial review", "second model", "review the diff", "findings", "mailbox", "triage findings", "red team the change", "before I call it done".
-type: skill
+name: "adversarial-review"
+description: "How to run and answer an adversarial diff review in this project — dispatching the read-only adversary, the mailbox file format, the six-category sweep, severity vocabulary, and the triage protocol for each finding. Use when finishing a [complex] or batched cycle, or whenever a change needs a second set of eyes before commit. Trigger on \"adversarial review\", \"second model\", \"review the diff\", \"findings\", \"mailbox\", \"triage findings\", \"red team the change\", \"before I call it done\"."
 ---
+
+<!-- Generated from .harness/skills/adversarial-review/SKILL.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
 
 # Adversarial Review — Dispatch, Mailbox, Triage
 
-Runs over the commits just landed. A read-only `adversary` (Opus, fresh context) reads them and writes numbered findings to a scratch mailbox; every one is triaged and the dispositions are recorded **in the commits that answer them**.
+Runs over the commits just landed. A read-only `adversary` (reasoning profile,
+fresh context) returns numbered findings. Its caller writes the scratch mailbox;
+every finding is triaged and dispositions are recorded in the answering commits.
 
 **Who triages.** The word "author" below means whoever is driving the cycle, and the split is fixed: the **`developer`** supplies the technical judgement on each finding (is it real, does an invariant rule it out, what would the fix touch) and makes any approved fix, failing test first. The **dispatching command** — `/project:work` step 7a, or `/project:adversary` — owns the `human-checkpoint` for `critical`/`major`, the todo lines, and the round-closing commit. A sub-agent cannot hold the conversation with the human, so the checkpoint never belongs to the `developer`; and the `developer` has the code context the orchestrator lacks, so the judgement never belongs to the orchestrator alone.
 
 **A review files work, it does not do work.** The default disposition is a todo in `docs/wiki/todos.md` — findings are not fixed in the cycle that surfaced them. The one exception is a `critical` or `major`, which is put to the human via `human-checkpoint`: they decide whether it is fixed now or queued like the rest. This keeps a review from silently reordering the work queue, and keeps one review from becoming an open-ended fix-and-re-review loop.
 
 **Review small.** The single biggest driver of a review that never converges is a review scope that is too large: a big diff yields many findings, the fixes enlarge the diff, and the next round finds more. Since the `developer` commits per Behavior case (`tdd-loop`), scope each review to one case or a few closely-related ones. If you are reaching round 3, the unit was too big — split it, don't keep reviewing it.
+
+## Execution boundary
+
+The conductor dispatches and integrates through `mcp-coordination`. Read-only
+adversaries use only the sweep/report sections of this skill and return their
+findings; they do not persist mailboxes or triage commits. A developer worker
+recommends dispositions and implements explicitly approved fixes locally, without
+spawning reviewers, editing conductor-owned queues, pushing, or cleaning scratch.
+The conductor owns all coordination and human decisions below.
 
 ## Read first
 
@@ -22,32 +34,38 @@ Runs over the commits just landed. A read-only `adversary` (Opus, fresh context)
 ## When it fires
 
 - **Automatically:** `/project:work` step 7a, when the todo is tagged `[complex]` or 2+ todos are batched — the same trigger that dispatched the `planner`.
-- **On demand:** `/project:adversary`, for any branch or dirty tree.
+- **On demand:** `/project:adversary`, for a committed diff. Dirty content must be explicitly checkpointed
+  before dispatch because workers start from committed HEAD.
 - **Never:** as a substitute for Red (behavioral rule 2) or for the periodic `/project:review`.
 
 ## Steps
 
 1. **Fix the review scope, and keep it small.** The developer commits per case, so the scope is a commit range — typically `git diff <sha-before-the-cases>...HEAD`, covering one case or a few closely-related ones. Not the whole branch, and not the whole cycle if the cycle was large. Nothing landed → skip and say so.
 
-2. **Pick the mailbox path.** `.claude/handoff/<slug>-findings.md`. Gitignored scratch, same lifecycle as the plan file — it is a working surface for one review, not a record. `mkdir -p .claude/handoff` if needed. Use exactly that name: the ignore glob matches only names ending in `-findings.md`, so a suffixed variant surfaces as untracked and fails the clean-tree gate at the end of the cycle.
+2. **Pick the mailbox path.** `.harness/handoff/<slug>-findings.md`. Gitignored scratch, conductor-owned like the optional plan copy — it is a working surface for one review, not a record. `mkdir -p .harness/handoff` if needed. Keep the name task-specific and confirm the scratch directory is ignored; never delete another task's mailbox.
 
-3. **Dispatch the `adversary`** with *only*:
+3. **Use MCP `spawn_worker` for `adversary`** with *only*:
    - the commit range from step 1,
    - the entity slug(s) and the Behavior case IDs that range covers,
-   - the mailbox path to write,
    - the test command from `docs/wiki/commands.md`.
 
    **Do not pass** the plan file, your reasoning, the developer's transcript, or a summary of what the change "is supposed to do" beyond the Behavior case IDs. Every sentence of author framing you leak costs you the independence you are paying for.
 
-4. **Read the mailbox.** If it is empty or the adversary reports no findings, it must still state what it checked — an unexplained pass is a failed review, so re-dispatch once with that instruction.
+4. **Collect the full report and persist the mailbox.** Poll `check_worker_status`,
+   inspect the complete output (not only a tail), and verify no writes. Collect it
+   before normal read-only cleanup through `mcp-coordination`.
+   Write the adversary's returned report verbatim
+   to the mailbox path. The adversary must not write that file itself. If it is
+   empty or reports no findings, it must still state what it checked; otherwise
+   re-dispatch once with that instruction.
 
 5. **Triage every finding** — see the protocol below. Note each disposition in the mailbox as you work; it is your scratchpad for step 6. Default is **Filed as a todo**, not fixed. Sort the findings by severity first: if any is `critical` or `major`, run one `human-checkpoint` covering all of them and get an explicit answer before touching code. Everything `minor` and below goes straight to the queue.
 
 6. **Commit the dispositions — this is the record** (behavioral rule 20). Any approved fix is its own commit; the todo lines and the round summary land together:
 
    ```bash
-   git add <fixed-files>                                           # approved criticals/majors only
-   git commit -m "fix(<slug>): reject empty token — adversary F1"
+   # Approved fixes are already locally committed by the developer worker
+   # and integrated through MCP; do not recommit them here.
    git add docs/wiki/todos.md docs/wiki/log.md
    git add docs/wiki/gotchas.md docs/wiki/decisions/<adr-slug>.md   # only if the triage wrote one — see Wiki update below
    git commit -m "$(cat <<'MSG'
@@ -76,15 +94,16 @@ Runs over the commits just landed. A read-only `adversary` (Opus, fresh context)
 
    Bring to the checkpoint: the count and how much of it is `[adversary]`-filed versus human-filed, the oldest three entries with their age, and a recommendation. The realistic options are to drain P0 before more feature work, to re-grade entries that are not truly P0, or to pause adversarial review until the queue recovers. Do not pick for them, and do not let the count silently keep climbing.
 
-7. **Re-dispatch only if something was fixed.** With findings filed rather than fixed, most rounds change no code and there is nothing to re-review — the review is done at step 6, and the queue owns the rest. If an approved fix did land, dispatch once over **the fix commits only** (`git diff <sha-before-fixes>...HEAD`), never the original range: re-reading the whole thing is what manufactures fresh findings each round. It confirms the fix, contests rejections once, and stops.
+7. **Re-dispatch only if something was fixed.** With findings filed rather than fixed, most rounds change no code and there is nothing to re-review — the review is done at step 6, and the queue owns the rest. If an approved fix did land and was integrated through MCP, dispatch once over **the fix commits only** (`git diff <sha-before-fixes>...HEAD`), never the original range: re-reading the whole thing is what manufactures fresh findings each round. It confirms the fix, contests rejections once, and stops.
 
 8. **Stop condition — two rounds, then resize.** If findings survive round two, do **not** open round three. The usual cause is that the reviewed unit was too big, so the remedy is to split it: pick the smallest coherent piece, review that alone, and repeat. A disagreement about a specific `critical`/`major` goes back to the same `human-checkpoint` that gated it — record the outcome as that finding's disposition.
 
-9. **Clean up.** Delete `.claude/handoff/<slug>-findings.md` and any plan scratch. Both are gitignored and nothing needs saving from them — the dispositions are in the commits and the work is in `todos.md`.
+9. **Clean up.** Delete `.harness/handoff/<slug>-findings.md` and any plan scratch. Both are gitignored and nothing needs saving from them — the dispositions are in the commits and the work is in `todos.md`.
 
 ## Mailbox format
 
-Gitignored scratch, written by the adversary and deleted at step 9. It only has to survive long enough for you to triage from it, so keep it plain — the durable version of each finding is the one-line disposition you write into the commit.
+Gitignored scratch, written by the conductor from the returned report and removed
+only after dispositions are durable. It only has to survive long enough for you to triage from it, so keep it plain — the durable version of each finding is the one-line disposition you write into the commit.
 
 ```markdown
 # Findings — <slug>
@@ -188,9 +207,17 @@ Todo line format — one per finding, so the queue is traceable back to the revi
 - A finding whose rejection encodes a design stance → `decision-recording`, inline, same commit.
 - `/project:work` records the round in `log.md` as counts only (`Adversary: N findings — Fi filed, Fx fixed, R rejected`). The counts are an index; the dispositions themselves are in the commits, reachable with `git log --grep="adversary round"`. Do not write a separate review report; that is `/project:review`'s artifact, not this one's.
 
-## Swapping in an external reviewer
+## Choose a reviewer engine
 
-Cross-vendor independence is stronger than a second context on the same family. To use an external agent CLI (Codex or similar) as the adversary, keep the mailbox contract identical and replace step 3 with a non-interactive invocation of that CLI in the repo root, briefed with the agent's own prompt plus: *"You are read-only: review and discuss only; do not edit files, commit, push, or reset the tree. Run `git rev-parse HEAD` and `git status` first and anchor every finding to that commit. Write findings as a numbered list to `<mailbox path>`."* Everything downstream — triage, re-review, stop condition — is unchanged. This project does not ship that dependency.
+Cross-vendor independence can strengthen a second context. Inspect
+`get_settings()` and configure the adversary's approved engine/model/reasoning
+in `.harness/settings.json`, or pass a human-approved override to
+`spawn_worker`. Keep the same bounded scope, read-only role, and returned-report
+contract regardless of engine. Never launch another CLI in the integration
+checkout or add a competing shell orchestration path. If an engine is unavailable,
+report the blocker instead of silently changing provider. If the selected model
+matches the developer's, disclose reduced model independence while keeping fresh
+context.
 
 ## Anti-patterns
 

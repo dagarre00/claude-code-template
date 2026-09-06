@@ -1,86 +1,115 @@
 ---
-name: update-toolkit
-description: How to add, modify, or retire an agent, a skill, or a slash command in this project — the meta skill that evolves the agent's own toolkit. Use when the workflow needs a new specialist role, a new how-to procedure, or a new repeatable entry point; when an existing one drifts; or when one is unused. Trigger on "new agent", "add agent", "modify agent", "agent role", "new skill", "add skill", "modify skill", "skill drift", "missing how-to", "new command", "add command", "slash command", "modify command".
-type: skill
+name: "update-toolkit"
+description: "Add, change, or retire canonical commands, skills, and agent roles, then regenerate Claude Code, Codex, and Antigravity CLI adapters. Use whenever the project workflow or agent toolkit changes."
 ---
 
-# Updating the Toolkit — Agents, Skills, Commands
+<!-- Generated from .harness/skills/update-toolkit/SKILL.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
 
-This project's agents, skills, and commands are not fixed — the agent evolves them as the project grows. This skill is the procedure for all three. **First decide which artifact you actually need**, then follow the matching section.
+# Update the toolkit
 
-## Decide first: which artifact?
+Author under `.harness/`; the generator delivers native formats. Read
+`docs/harnesses.md`, the existing artifact, and two similar canonical artifacts.
+Do not edit generated files, even when a harness opens its discovered copy.
 
-- **Skill** = a procedure the agent runs, auto-loaded by task content. "Always do these steps when…". Lives in `.claude/skills/<name>/SKILL.md`. This is almost always the right answer for new domain knowledge (progressive disclosure — domain knowledge belongs in skills the developer loads, not in new agents).
-- **Command** = a human-invoked, named entry point that orchestrates work (branch, dispatch agents, touch the wiki). "The human types `/foo`". Lives in `.claude/commands/project/<name>.md`. Commands stay thin — heavy lifting lives in agents and skills.
-- **Agent** = a distinct role with its own context scope or conflicting invariants. **Default to no.** Only create one when the task needs a genuinely different scope of context (e.g. fresh-context audit vs in-loop implementation) or strict invariants that conflict with an existing agent ("never write code" + "always write code"). "The developer needs to know more about databases" is a **skill**, not an agent.
-- **Wiki page** (not this skill) = knowledge the agent reads, not a procedure it runs. "Facts about the system" → a `docs/wiki/concepts/` page.
+If running as an MCP worker, first read `.harness/worker-contract.md`. Toolkit
+writes and regenerated outputs must be in your owned scope. Commit locally and
+return the result; do not execute conductor-only commands, push, or integrate.
 
-Read 2–3 existing files of the target kind before writing, to mirror tone, length, and structure.
+## Choose the artifact
 
----
+- Procedure loaded on demand: `.harness/skills/<name>/SKILL.md`.
+- Human-invoked orchestration: `.harness/commands/project/<name>.md`.
+- A role requiring distinct context or conflicting invariants: `.harness/agents/<name>.md`.
+- Shared session instructions: `.harness/instructions.md`; project facts:
+  `.harness/project.md`; binding constraints: `.harness/rules/behavioral.md`.
+- Worker runtime contract: `.harness/worker-contract.md`; orchestration procedure:
+  `.harness/skills/mcp-coordination/SKILL.md`.
+- Engine/profile settings and per-role overrides: `.harness/settings.json`.
+- Knowledge about the application: a wiki page, using `wiki-update`.
 
-## Skills
+Prefer a skill for domain knowledge. Keep one developer responsible for the TDD
+cycle. Do not add domain agents that duplicate that responsibility.
 
-### Add a skill
+## Add or modify a skill
 
-1. **Frontmatter.** `name` (kebab-case), `type: skill`, and a precise `description` — this is everything, because Claude Code uses it to auto-load. Bad: "skill for backend". Good: "Use when adding an HTTP endpoint. Trigger on 'add endpoint', 'new route', 'API handler'."
-2. **Body = procedure, not explanation.** Structure: 1–2 sentence opening (when it fires, what it produces) → **Read first** (wiki pages/files to load) → **Steps** (numbered, executable) → **Wiki update** (pages to touch when done) → **Anti-patterns** (this project's footguns).
-3. **Placement.** Every skill is a directory with a `SKILL.md` entrypoint: `.claude/skills/<name>/SKILL.md`. A flat `.claude/skills/<name>.md` or a grouping subfolder (`.claude/skills/meta/<name>/SKILL.md`) is **silently ignored** — the skill never loads and nothing tells you why. Supporting files (templates, scripts) live next to `SKILL.md`.
-4. **Test the trigger.** Could a real session task contain the `description`'s words? If not, rewrite.
-5. **Cross-link.** If the skill points at a wiki page that doesn't exist yet, file a `docs/wiki/wiki-todos.md` line.
-6. **Commit** `feat: add <name> skill — <one-line reason>`.
+1. Use lowercase kebab-case `name` matching the directory and a precise
+   `description`. Metadata is one scalar per line; quote descriptions using JSON
+   string syntax (valid YAML). No multiline YAML values, nested fields, or `type`.
+2. Write a procedure: entry reads → executable steps → wiki updates →
+   project-specific pitfalls. Do not explain general concepts.
+3. Place templates, scripts, and other resources beside `SKILL.md`. Scripts and
+   binary resources are copied byte-for-byte; Markdown is rendered per harness.
+   Prefer paths rooted at the repository in prose. Relative Markdown links resolve
+   from the canonical source and are rebased by the generator.
+4. Follow the verification and commit procedure below. Reserve names beginning
+   `project-` for generated command skills; do not create colliding names.
 
-### The "how-to not what-is" rule
+## Add or modify a command
 
-If a paragraph could appear in a textbook chapter on the topic, **delete it**. Assume the LLM knows the topic; tell it how *this project* handles it. Bad: "TDD means writing a test first, seeing it fail…". Good: "Write one failing test per Behavior case, run `<test-command>`, confirm it fails for the right reason, then write the smallest code to pass."
+1. Copy `.harness/templates/command.md.tmpl` to
+   `.harness/commands/project/<name>.md`. Fill `name`, `description`, and
+   `argument-hint` with single-line values. The filename must match `name`.
+2. Preserve the canonical argument token shown in the template. Specify what the
+   argument selects, its empty-input behavior, and which steps consume it. Forward
+   the user's context verbatim to subagents. Never insert it into shell code.
+3. For cross-command references, copy the canonical command-token syntax from
+   `.harness/commands/project/work.md` with the referenced command's name.
+   Do not hard-code a harness invocation in portable procedures.
+4. Keep commands conductor-only. Delegate through the coordination MCP tools and
+   `mcp-coordination`; never add native subagent dispatch or shell-spawn fallbacks.
+   State preconditions, orchestration steps, failure handling, and outputs.
+   Heavy procedures belong in skills. The generator builds the native command
+   catalog automatically from the canonical files; no hand-maintained root table.
+5. Follow the verification and commit procedure below.
 
-### Modify / retire a skill
+## Add or modify an agent
 
-- **Modify:** read the whole skill first; if the trigger changes, update `description` first; verify referenced wiki pages still exist. Commit `refactor: <name> skill — <reason>`.
-- **Retire:** grep `.claude/` and `docs/wiki/` for references, delete the `.claude/skills/<name>/` directory, append to `docs/wiki/log.md`, commit `chore: retire <name> skill`.
+1. Add `.harness/agents/<name>.md` with single-line `name`, `description`,
+   `profile` (`reasoning`, `balanced`, or `fast`), and `access`
+   (`read-only` or `write`). The filename must match `name`.
+2. Body: role → entry reads → procedure → output contract → prohibited actions.
+   Read-only agents return their output to the caller, which persists it; do not
+   grant write tools merely to create a mailbox or report.
+3. Keep provider model names and native tool names out of the role body.
+   Configure them once in `.harness/settings.json`: engine profile mappings in
+   `engines[engine].models` / `effort`, role overrides in `roles[role]`. The
+   default engine inherits the conductor CLI. Native generated roles and MCP
+   dispatch consume this same configuration; do not maintain parallel settings.
+   Check official docs and runtime/native discovery when changing mappings.
+4. Do not claim hard isolation from prompt instructions alone. Codex read-only
+   agents receive a read-only sandbox default; parent policy can override it.
+   Claude/Antigravity read-only tool lists include shell access for git inspection;
+   their instruction and permission rules must still prohibit shell writes.
+5. Apply `.harness/worker-contract.md` to every role. Planners and review roles
+   return full reports without writes; writing roles commit scoped output locally.
+   No worker dispatches, pushes, opens PRs, or cleans up a worktree.
+   Check role descriptions for overlapping routing. Regeneration emits the catalog
+   and all native role definitions.
 
----
+## Retire an artifact
 
-## Commands
+Search canonical sources and documentation for references. Remove or update those
+references and remove only the canonical artifact. Run synchronization: it deletes
+only formerly generated files recorded in its manifest, preserving unrelated files.
+If an output has manual edits, first reconcile them into the source. Never delete a
+whole generated directory to retire one asset.
 
-### Add a command
+## Verify and commit
 
-1. **Frontmatter.** `name` (kebab-case), `type: command`, one-line `description` (shown in listings), and `argument-hint` — a bracketed sketch of the free-text context the command accepts (`[scope — e.g. "the auth module" | "security only"]`). **Every command takes an argument.** A command that ignores what the human typed after its name silently drops their instruction.
-2. **Bind the argument in the body.** Directly under the H1, write `**Argument:** \`$ARGUMENTS\`` followed by a short block saying what the argument does to this command: which step it overrides, the two or three shapes it can take (scope / fact / constraint), what happens when it's empty, and what it can never bypass (preconditions, Red phase, human checkpoints). Then wire it into the step it actually changes — a `$ARGUMENTS` echo with no step consuming it is decoration. Commands that dispatch an agent pass the argument through verbatim, so the sub-agent inherits the same scope.
-3. **Body = the procedure the orchestrator follows:** **Preconditions** (check first) → **Steps** (numbered; one action each — pick todo, branch, dispatch agent) → **Failure modes** → **Wiki updates** → **Human checkpoints** (where it pauses).
-4. **Placement.** `.claude/commands/project/<name>.md`. The sub-folder is the namespace: `commands/project/work.md` → `/project:work`; a flat `commands/<name>.md` → `/<name>`. Keep new ones under `project:` unless you deliberately want un-namespaced.
-5. **Update `CLAUDE.md`** — add a row to the Slash commands table, including the argument the command accepts.
-6. **Update `docs/wiki/commands.md`** if the human can run shell pieces of it.
-7. **Commit** `feat: add /<name> command — <reason>`.
-
-### Modify / retire a command
-
-- **Modify:** re-read the file; if preconditions/output contract change, update `description` and the CLAUDE.md row. If the argument's meaning changes, update `argument-hint`, the `**Argument:**` block, and the step that consumes it together — a hint that no longer matches the behaviour is worse than none. Commit `refactor: /<name> — <reason>`.
-- **Retire:** grep `.claude/` for references, delete the file, remove the CLAUDE.md row, append to `docs/wiki/log.md`, commit `chore: retire /<name>`.
-
----
-
-## Agents
-
-### Add an agent
-
-1. **Frontmatter.** `name`, `type: agent`, `model` (`sonnet` default / `opus` reasoning-heavy / `haiku` cheap mechanical), `tools:` allowlist **or** `disallowedTools:` denylist (grant only what the role needs; omit both for all tools), and a precise `description` matched against task content. Bad: "helps with code". Good: "Fresh-context auditor: reviews code against the wiki in a fresh session context, flags drift and missing tests."
-2. **Body in order:** role statement (1–2 sentences) → **Entry checklist** (files to read first, always including relevant wiki pages) → Procedure → wiki updates the agent must make → **What you do NOT do** (invariants; make conflicts with other agents explicit).
-3. **Update `CLAUDE.md`** — add a row to the Agent routing table.
-4. **Verify routing.** Re-read every agent's `description`; if two could match the same task, tighten them.
-5. **Commit** `feat: add <name> agent` referencing the requirement that justified it.
-
-### Modify / retire an agent
-
-- **Modify:** read the file end-to-end; if the role changes, update `description` (the routing key) first; update "What you do NOT do" if invariants shift. Commit `refactor: <name> agent — <reason>`.
-- **Retire:** confirm no command references it (`grep -r "<agent-name>" .claude/commands/`), delete the file, remove the CLAUDE.md row, append to `docs/wiki/log.md`, commit `chore: retire <name> agent`.
-
----
-
-## Anti-patterns (all three)
-
-- **Domain agents.** No "backend agent", no "frontend agent" — that's what skills are for.
-- **What-is content.** Never explain what testing/refactoring/migrations *are*. Tell the agent the procedure for this project.
-- **Long bodies.** Agents are read every dispatch, commands on every invocation — every paragraph costs context. Commands orchestrate; if a command body *teaches a procedure* (how to write tests, how to structure a page), lift that into a skill. The shipped core commands run long because they orchestrate multi-agent cycles; a new command approaching their size deserves the same scrutiny.
-- **Generic descriptions.** "Helps with code" loads/routes on everything — useless. Be specific about the trigger.
-- **Duplicate procedures / invariants.** Two skills with the same steps → merge. A new agent that also writes tests or production code splits a cycle meant to live in the `developer` — reconsider whether it should be a skill.
+1. Run `node scripts/sync-harness.mjs`. It validates all inputs before writing.
+   A manual-edit conflict means preserve the edited output, merge the intended
+   change into its canonical source, and regenerate. Use `--force` only when the
+   managed output's current contents are already preserved or deliberately disposable.
+2. Run `node scripts/sync-harness.mjs --check` and
+   `node --test tests/harness.test.mjs`. Inspect every failure. Check the rendered
+   instruction and actual native discovery for changed harness interfaces.
+3. Stage the changed canonical paths, `.harness/generated.json`, and all changed
+   native outputs (`AGENTS.md`, `CLAUDE.md`, `.claude/commands/`,
+   `.claude/skills/`, `.claude/agents/`, `.agents/skills/`, `.agents/agents/`,
+   `.codex/agents/`). Stage paths deliberately; preserve unrelated user settings.
+4. In an initialized application, include required wiki updates and log entry in
+   the same commit. While maintaining this blank template, preserve the wiki/raw
+   scaffolds and record validation in the commit message instead.
+5. Commit with the project's conventional format. Workers commit locally and
+   return SHAs; the conductor integrates through MCP and pushes the integration
+   branch according to project conventions.

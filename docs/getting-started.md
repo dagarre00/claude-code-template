@@ -1,8 +1,14 @@
 # Getting Started
 
-A worked walkthrough from a fresh fork of this template to a first shipped feature. Read this once end-to-end before opening Claude Code so the loop makes sense — then refer back as needed.
+Examples below use Claude Code's `/project:<name>` spelling. In Codex use
+`$project-<name>`; in Antigravity CLI use `/project-<name>`. All three read the
+same canonical workflow. See [harness setup](harnesses.md) and the generated command catalog in
+[AGENTS.md](../AGENTS.md).
 
-> If you've never seen the schema, read [`CLAUDE.md`](../CLAUDE.md) first (it's the agent's view of the rules) and [`HUMAN.md`](../HUMAN.md) next (the human's-eye view).
+
+A worked walkthrough from a fresh fork of this template to a first shipped feature. Read this once end-to-end before opening your chosen harness so the loop makes sense — then refer back as needed.
+
+> If you've never seen the schema, read [`AGENTS.md`](../AGENTS.md) first (it's the agent's view of the rules) and [`HUMAN.md`](../HUMAN.md) next (the human's-eye view).
 
 # First-time setup
 
@@ -11,19 +17,19 @@ A worked walkthrough from a fresh fork of this template to a first shipped featu
 ```bash
 git clone <this-template> my-project
 cd my-project
-rm -rf .git                             # drop the template's history — your project starts fresh
+ # Prefer GitHub's Use this template, or extract a source archive for a new history.
 git init -b main                        # optional: /project:init does this for you if you skip it
 git remote add origin <your-new-repo>   # optional now; without a remote, pushes are skipped until you add one
 ```
 
-Erasing `.git` is the intended flow: the template's commit history is about building the template, not your project. Everything that matters carries over as files — the blank wiki skeletons, the `.claude/` schema, and the docs all land in your project's own initial commit.
+Use GitHub's **Use this template** or extract a source archive to start with your own history. The blank wiki scaffolds and generated native files carry over. If you clone instead, keep or deliberately replace that history according to your project's needs.
 
 Optional but recommended:
 
 - Replace `LICENSE` if MIT isn't right for you.
 - Open `docs/wiki/` in [Obsidian](https://obsidian.md/) as a vault — that's your read-only-ish view of the agent's memory.
 
-Then start Claude Code:
+Then start your preferred CLI (`claude`, `codex`, or `agy`):
 
 ```bash
 claude
@@ -31,7 +37,7 @@ claude
 
 ## 1. `/project:init` — scaffold the wiki
 
-Inside Claude Code, run:
+For example, in Claude Code, run:
 
 ```
 /project:init
@@ -95,12 +101,12 @@ Re-run `/project:agent-scout` after a major `/project:interview` that adds a new
 
 `/project:work` picks the top item from `todos.md` (or batches consecutive todos sharing context), opens a `feat/<slug>` branch, and dispatches the single `developer` agent through one full cycle:
 
-1. **Plan (conditional).** If the todo is flagged `[complex]` or a batch of 2+ todos was proposed, `/project:work` dispatches the `planner` agent (on Opus) first; it writes a stepwise plan to `.claude/handoff/<slug>-plan.md` (gitignored scratch) that the developer then follows. A single simple todo skips planning.
+1. **Plan (conditional).** If the todo is flagged `[complex]` or a batch of 2+ todos was proposed, `/project:work` dispatches the `planner` agent (reasoning profile) first; it writes a stepwise plan to `.harness/handoff/<slug>-plan.md` (gitignored scratch) that the developer then follows. A single simple todo skips planning.
 2. **Red.** The developer reads the matching `entities/<slug>.md#Behavior` cases, writes one failing test per case, runs the suite, and confirms the tests fail for the right reason (missing implementation — not a typo or import error). It marks each case `[ ]` → `[~]`.
 3. **Green.** The developer writes the minimal code to make the tests pass.
 4. **Refactor.** The developer cleans up while keeping tests green.
 5. **Wiki update.** The developer ticks the entity-page Behavior cases `[~]` → `[x]`, updates the Implementation/Tests sections, and appends to `log.md`. Larger cross-page cleanup it can't safely do inline is queued in `wiki-todos.md` for the wiki-maintainer.
-6. **Adversarial review (conditional).** Same trigger as the plan — `[complex]` or a 2+ batch. `/project:work` dispatches the `adversary` agent (Opus, none of the developer's context) at the diff and tells it to find what's wrong. It writes numbered findings to `.claude/handoff/<slug>-findings.md` and may not touch the code. The developer answers each one — **filed as a todo** (the default), fixed, or rejected with a reason. Findings are not fixed in the cycle that surfaced them; they go into `docs/wiki/todos.md` at a priority set by severity. A `critical` or `major` is the exception: it goes to you via a human checkpoint, and you decide fix-now or queue. Because most rounds fix nothing, there is usually nothing to re-review and the review is one pass. Each disposition is written into the commit that answers it, which is the durable record (behavioral rule 20) — `git log --grep="adversary round"` reads it back. A simple single todo skips this; you can run `/project:adversary` yourself instead.
+6. **Adversarial review (conditional).** Same trigger as the plan — `[complex]` or a 2+ batch. `/project:work` dispatches the `adversary` agent (reasoning profile, none of the developer's context) at the diff and tells it to find what's wrong. The caller writes its returned findings to `.harness/handoff/<slug>-findings.md` and may not touch the code. The developer answers each one — **filed as a todo** (the default), fixed, or rejected with a reason. Findings are not fixed in the cycle that surfaced them; they go into `docs/wiki/todos.md` at a priority set by severity. A `critical` or `major` is the exception: it goes to you via a human checkpoint, and you decide fix-now or queue. Because most rounds fix nothing, there is usually nothing to re-review and the review is one pass. Each disposition is written into the commit that answers it, which is the durable record (behavioral rule 20) — `git log --grep="adversary round"` reads it back. A simple single todo skips this; you can run `/project:adversary` yourself instead.
 7. **Commit.** Already done — the `developer` commits and pushes each Behavior case as it goes (test + implementation + wiki tick), and review fixes are their own commits. `/project:work` verifies the suite and the commit granularity, then adds just the log entry (see [git-conventions.md](wiki/git-conventions.md)).
 
 If a step fails twice on the same approach, the **two-strike rule** fires — the developer stops, you tag a checkpoint and reset, and re-spec.
@@ -154,7 +160,7 @@ The developer plans **first** if the todo is tagged `[complex]` or a batch of 2+
 
 ## Scenario: Adding a complex feature
 
-Some features are too big to attack directly — they cross files, need careful sequencing, or have non-obvious tradeoffs. The `planner` (on Opus) decomposes them before the developer tests.
+Some features are too big to attack directly — they cross files, need careful sequencing, or have non-obvious tradeoffs. The `planner` (reasoning profile) decomposes them before the developer tests.
 
 1. **Define it.** `/project:interview` as usual. The Behavior cases on the entity page are still the contract.
 2. **Mark the todo `[complex]`.** Edit `docs/wiki/todos.md`:
@@ -165,15 +171,15 @@ Some features are too big to attack directly — they cross files, need careful 
 
    The `[complex]` tag is what `/project:work` keys off to dispatch the `planner` before testing.
 
-3. **Run `/project:work`.** With `[complex]` set (or a 2+ batch), `/project:work` first dispatches the `planner` (on Opus), which writes a plan (following the `plan-writing` skill) to `.claude/handoff/billing-invoices-plan.md` — goal, approach, ordered steps, risks, out-of-scope. `/project:work` sanity-checks it, then dispatches the `developer`, which reads the plan and drives the same Red → Green → refactor → wiki → commit flow as a simple feature, following the plan's step order.
-4. **Where the plan lives.** `.claude/handoff/<slug>-plan.md`. The file is gitignored — plans are transient scratch `/project:work` clears when the cycle is done. The wiki holds the spec (what); the plan is how-to for one cycle. Because it isn't committed, a container recycle loses it — but so does it lose the rest of the uncommitted cycle, so `/project:work` simply restarts the still-open todo and re-dispatches the planner to regenerate the plan from the Behavior cases.
+3. **Run `/project:work`.** With `[complex]` set (or a 2+ batch), `/project:work` first dispatches the `planner` (reasoning profile), which writes a plan (following the `plan-writing` skill) to `.harness/handoff/billing-invoices-plan.md` — goal, approach, ordered steps, risks, out-of-scope. `/project:work` sanity-checks it, then dispatches the `developer`, which reads the plan and drives the same Red → Green → refactor → wiki → commit flow as a simple feature, following the plan's step order.
+4. **Where the plan lives.** `.harness/handoff/<slug>-plan.md`. The file is gitignored — plans are transient scratch `/project:work` clears when the cycle is done. The wiki holds the spec (what); the plan is how-to for one cycle. Because it isn't committed, a container recycle loses it — but so does it lose the rest of the uncommitted cycle, so `/project:work` simply restarts the still-open todo and re-dispatches the planner to regenerate the plan from the Behavior cases.
 5. **Two-strike interaction.** If the developer fails twice on the same mechanism, it stops, tags a checkpoint, and presents both failed attempts. On an authorized retry, `/project:work` re-dispatches the `planner` to overwrite the plan with a fundamentally different shape — naming the failed approach and the new one in the `## Approach` section. You never silently retry the same plan.
 
 ## Scenario: Batching multiple small todos
 
 When you have several related todos, running them in one cycle is often cheaper than three separate branches and PRs. A batch shares a **branch, a plan, and a PR — not a commit.** The per-case cadence is unchanged: each Behavior case still lands as its own commit.
 
-**Batch when** (all three — the [`feature-branching`](../.claude/skills/feature-branching/SKILL.md) skill owns this rule):
+**Batch when** (all three — the [`feature-branching`](../.harness/skills/feature-branching/SKILL.md) skill owns this rule):
 
 - The todos share the same entity (`auth-login: case A`, `auth-login: case B`, `auth-login: case C`).
 - The later ones depend on the earlier ones (an API handler isn't useful until both its query parser and response serializer exist).
@@ -282,7 +288,7 @@ When the agent realises a procedural gap, it shouldn't bury that knowledge in an
 
 1. **The agent notices.** During `/project:work`, the developer hits a recurring task (e.g. "this is the third time I've had to author a Postgres migration; there's no skill for it"). It pauses via `human-checkpoint` and proposes creating one via the `update-toolkit` skill.
 2. **You approve.** Confirm the skill name and one-line description, or push back if the gap is really a wiki update.
-3. **The agent writes it.** `update-toolkit` produces `.claude/skills/database-migrations/SKILL.md` with frontmatter (precise `description` so future tasks auto-load it) and a procedural body — _how_ to do migrations in this project, not _what_ migrations are.
+3. **The agent writes it.** `update-toolkit` produces `.harness/skills/database-migrations/SKILL.md` and regenerates the native skill copies with frontmatter (precise `description` so future tasks auto-load it) and a procedural body — _how_ to do migrations in this project, not _what_ migrations are.
 4. **It auto-loads next time.** On the next task that matches the skill's `description` trigger, the developer loads the skill without you having to ask. This is the progressive-disclosure principle in action.
 
 `update-toolkit` is the one meta skill for all three artifact kinds — it has a section for skills, one for commands, and one for agents (used when the gap is a genuinely distinct role, not just a procedure).
@@ -353,13 +359,13 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 | Reviewer scope unclear                             | Re-run `/project:review` with an explicit scope argument (e.g. `/project:review security only`)                            |
 | `wiki-todos.md` is huge                            | Run `/project:wiki-lint`                                                                                                  |
 | Developer keeps retrying the same failing approach | Two-strike rule should fire — it stops after the second failure and asks you                                              |
-| Plan looks wrong                                   | Edit `.claude/handoff/<slug>-plan.md`, or just tell the developer the approach to take                                    |
+| Plan looks wrong                                   | Edit `.harness/handoff/<slug>-plan.md`, or just tell the developer the approach to take                                    |
 | Adversary found nothing and said only "looks good" | An unexplained pass is a failed review — it owes you a `**Checked:**` line per category. Re-dispatch demanding it          |
 | Adversary and developer keep going back and forth  | Two rounds is the cap — it should stop and ask you with both positions stated                                             |
 
 # The mental model in one paragraph
 
-The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD; the `developer` agent runs the cycle (with the `planner` on Opus decomposing `[complex]` or batched todos first), and the wiki is updated in the same commit as the code. On risky cycles a read-only `adversary` (also Opus, with none of the developer's context) attacks the commits the developer just landed, before the PR opens, and every finding it raises is answered in writing. When in doubt, the agent stops and asks rather than guessing. Periodic `/project:review` and `/project:wiki-lint` keep both layers honest.
+The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD; the `developer` agent runs the cycle (with the `planner` using the reasoning profile decomposing `[complex]` or batched todos first), and the wiki is updated in the same commit as the code. On risky cycles a read-only `adversary` (also a reasoning profile, with none of the developer's context) attacks the commits the developer just landed, before the PR opens, and every finding it raises is answered in writing. When in doubt, the agent stops and asks rather than guessing. Periodic `/project:review` and `/project:wiki-lint` keep both layers honest.
 
 # Anti-patterns
 
@@ -370,16 +376,16 @@ The wiki is the project's source of truth — code that disagrees with it is the
 - **Letting `wiki-todos.md` pile up.** When it's long, run `/project:wiki-lint`.
 - **Running the same failed approach a third time.** The two-strike rule exists for a reason — pivot or re-spec.
 - **Letting findings pass unanswered.** Filing three findings and quietly ignoring two turns review into theatre. Each one gets a disposition in writing — filed as a todo, fixed under your approval, or rejected with a reason.
-- **Treating a plan as a spec.** Plans live in `.claude/handoff/` and are transient scratch. The wiki holds the spec. If the plan needs to change, edit the plan; if the contract needs to change, run `/project:interview`.
+- **Treating a plan as a spec.** Plans live in `.harness/handoff/` and are transient scratch. The wiki holds the spec. If the plan needs to change, edit the plan; if the contract needs to change, run `/project:interview`.
 
 # Related
 
-- [`CLAUDE.md`](../CLAUDE.md) — the schema (agent's view)
+- [`AGENTS.md`](../AGENTS.md) — the schema (agent's view)
 - [`HUMAN.md`](../HUMAN.md) — the human's-eye view of the workflow
 - [`docs/wiki/git-conventions.md`](wiki/git-conventions.md) — branching and commit format
 - [`docs/wiki/commands.md`](wiki/commands.md) — working shell commands
-- [`.claude/agents/planner.md`](../.claude/agents/planner.md) — the planner agent definition (Opus)
-- [`.claude/agents/developer.md`](../.claude/agents/developer.md) — the developer agent definition
-- [`.claude/agents/adversary.md`](../.claude/agents/adversary.md) — the read-only diff reviewer (Opus)
-- [`.claude/skills/plan-writing/SKILL.md`](../.claude/skills/plan-writing/SKILL.md) — how plans are structured
-- [`.claude/skills/adversarial-review/SKILL.md`](../.claude/skills/adversarial-review/SKILL.md) — sweep order, severity vocabulary, triage protocol
+- [`.harness/agents/planner.md`](../.harness/agents/planner.md) — the planner agent definition (reasoning profile)
+- [`.harness/agents/developer.md`](../.harness/agents/developer.md) — the developer agent definition
+- [`.harness/agents/adversary.md`](../.harness/agents/adversary.md) — the read-only diff reviewer (reasoning profile)
+- [`.harness/skills/plan-writing/SKILL.md`](../.harness/skills/plan-writing/SKILL.md) — how plans are structured
+- [`.harness/skills/adversarial-review/SKILL.md`](../.harness/skills/adversarial-review/SKILL.md) — sweep order, severity vocabulary, triage protocol

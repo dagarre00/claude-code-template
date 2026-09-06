@@ -1,10 +1,17 @@
 ---
-name: spec-writing
-description: How to write entity Behavior cases that produce good tests. Use when adding a new entity page, refining behavior during /project:interview, or splitting a vague case into testable ones. Trigger on "behavior cases", "spec", "entity behavior", "acceptance criteria", "what does this entity do".
-type: skill
+name: "spec-writing"
+description: "How to write entity Behavior cases that produce good tests. Use when adding a new entity page, refining behavior during project-interview, or splitting a vague case into testable ones. Trigger on \"behavior cases\", \"spec\", \"entity behavior\", \"acceptance criteria\", \"what does this entity do\"."
 ---
 
+<!-- Generated from .harness/skills/spec-writing/SKILL.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
+
 # Writing Behavior Cases
+
+**Respect execution scope.** Read-only planner/review workers return recommendations
+instead of writing wiki pages. Writing workers edit only assigned owned paths and
+commit locally; conductor-owned queue/log updates are returned in the report.
+During blank-template maintenance, keep wiki/raw scaffolds blank and record
+maintenance evidence in tests and commit messages, not application data.
 
 Behavior cases on an entity page are the spec. The `developer` translates them directly into failing tests. If your case is vague, your test is vague, your code is vague. Sharp cases → sharp tests → narrow code.
 

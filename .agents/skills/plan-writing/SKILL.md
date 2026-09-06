@@ -1,12 +1,15 @@
 ---
-name: plan-writing
-description: How to write an implementation plan for a complex or batched todo in this project. Loads when the planner agent runs, or when the human asks for "a plan", "decomposition", "breakdown", "implementation strategy", "sequencing".
-type: skill
+name: "plan-writing"
+description: "How to write an implementation plan for a complex or batched todo in this project. Loads when the planner agent runs, or when the human asks for \"a plan\", \"decomposition\", \"breakdown\", \"implementation strategy\", \"sequencing\"."
 ---
+
+<!-- Generated from .harness/skills/plan-writing/SKILL.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
 
 # Plan Writing
 
-Use this as the `planner` every time you draft a plan for a `[complex]` todo or a batched cycle, before any test is written. Output is one markdown file at `.Codex/handoff/<slug>-plan.md` (gitignored scratch). You write the plan; the `developer` executes it.
+Use this as the `planner` every time you draft a plan for a `[complex]` todo or a batched cycle, before any test is written. Output is the complete Markdown plan in your final response. You are read-only:
+do not create scratch or wiki files. The conductor collects the report through
+MCP and passes its full text to the developer.
 
 ## Read first
 
@@ -19,7 +22,8 @@ Use this as the `planner` every time you draft a plan for a `[complex]` todo or 
 
 ## Plan structure
 
-Write the plan to `.Codex/handoff/<slug>-plan.md` using this exact template:
+Return the plan using this template; do not wrap the entire response in an outer
+code fence or replace its content with a file path:
 
 ```
 # Plan: <slug>
@@ -39,9 +43,12 @@ Write the plan to `.Codex/handoff/<slug>-plan.md` using this exact template:
 2. <action> (touches: file/dir)
 3. <action> (touches: file/dir)
 
-## Files to touch (estimate)
+## Owned paths and dependencies (estimate)
 - path/to/file.py — change description
 - path/to/other.py — change description
+- tests/... and docs/wiki/entities/... — verification/spec updates
+- Shared ledgers/interfaces — specify conductor ownership or sequential execution
+- Dependencies — which committed result must be integrated before this work starts
 
 ## Risks / unknowns
 - <risk> → mitigation
@@ -61,7 +68,13 @@ Each step should be small enough that **a single test can drive it**. If a step 
 
 ## Where it lives
 
-`.Codex/handoff/<slug>-plan.md`. One plan per branch. `*-plan.md` is `.gitignore`'d, so plans are transient scratch and never reach the remote. Overwrite on retry rather than versioning; `/project:work` clears it when the cycle is done. **Because the plan is not committed, it does not survive a container recycle** — but the work does: the developer commits and pushes per Behavior case, so a recycle loses at most the case in flight. Re-dispatching the planner regenerates the plan from the entity page's Behavior cases, which are the authoritative contract, and the remaining unticked cases are the resume point.
+The authoritative deliverable is your complete returned report, captured in the
+task's runtime output. The conductor may persist a copy at
+`.harness/handoff/<slug>-plan.md`; that ignored file is not copied into worktrees.
+The conductor forwards the full plan text to the developer. Runtime logs and
+local worker commits are not an off-device backup; only the conductor pushes
+verified integration commits. If a session ends, inspect existing task status
+before regenerating a plan or duplicating active work.
 
 ## Handoff to the developer
 
@@ -69,13 +82,13 @@ You do not write tests or code — the `developer` does, reading your plan first
 
 ## Update on retry
 
-When re-dispatched after a failed `developer` attempt (two-strike rule — behavioral rule 5), **overwrite the plan with a fundamentally different approach**. Do not tweak. In the new `## Approach` section, explicitly name the prior approach, why it failed, and why the new approach should succeed. Keep `## Behavior cases covered` identical; only the sequencing and shape change.
+When re-dispatched after a failed `developer` attempt (two-strike rule — behavioral rule 5), **return a new complete plan with a fundamentally different approach**. Do not tweak. In the new `## Approach` section, explicitly name the prior approach, why it failed, and why the new approach should succeed. Keep `## Behavior cases covered` identical; only the sequencing and shape change.
 
 ## Anti-patterns
 
 - **Pseudocode in steps.** Steps name the action and the file target, not the implementation. The `developer` chooses the code at the Green step.
-- **Inventing requirements.** If a Behavior case is missing or ambiguous, escalate via `human-checkpoint` and recommend `/project:interview`. Never write a plan that assumes behavior the entity page does not list.
-- **Editing entity pages.** Plans are how, not what. Spec changes go through `/project:interview` and `spec-writing`.
+- **Inventing requirements.** If a Behavior case is missing or ambiguous, escalate via `human-checkpoint` and recommend `project-interview`. Never write a plan that assumes behavior the entity page does not list.
+- **Editing entity pages.** Plans are how, not what. Spec changes go through `project-interview` and `spec-writing`.
 - **Cross-entity batching without a precedent.** If the batch crosses architectural boundaries (e.g. backend + frontend in one cycle) and no prior cycle did so, stop and ask the human.
 - **Skipping the risks section.** "No risks" is rarely true on a complex todo. If you genuinely see none, state why — usually it means the scope is small enough that it shouldn't have been flagged `[complex]`.
 - **Step count > Behavior case count by a large margin.** A blow-up usually means scope creep snuck in. Re-check `## Out of scope`.
