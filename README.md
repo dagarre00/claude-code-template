@@ -36,8 +36,18 @@ node --test tests/harness.test.mjs
 ```
 
 Node.js 22 or newer is needed for template maintenance, independently of your
-application's stack. No npm dependencies or installation are required. CI checks
-for drift on Windows and Linux.
+application's stack. The generator and its tests above need no npm dependencies.
+The coordination MCP server that dispatches workers does — one time, install and
+register it:
+
+```text
+npm ci --prefix tools/coordination-mcp
+node scripts/configure-mcp.mjs
+```
+
+`tools/coordination-mcp/node_modules/` is gitignored, so a fresh clone needs that
+`npm ci` before any `/project:*` workflow can dispatch a worker. CI checks for
+drift on Windows and Linux.
 
 | Edit | Purpose |
 | --- | --- |
@@ -46,7 +56,7 @@ for drift on Windows and Linux.
 | `.harness/commands/project/` | Human-invoked workflows |
 | `.harness/skills/` | Procedures and supporting files |
 | `.harness/agents/` | Portable roles, model profiles, access intent |
-| `.harness/adapters.json` | Native model and tool mappings |
+| `.harness/settings.json` | Engine/model/effort defaults, per-role overrides, worker limits |
 
 Generated outputs include `AGENTS.md`, the importing `CLAUDE.md`, Claude's
 commands/skills/agents, shared `.agents/skills`, Antigravity's `.agents/agents`,

@@ -25,4 +25,4 @@ Most entity pages come out of `/project:interview`. Before creating one, run the
 
 ## Naming
 
-Files: `<slug>.md` in kebab-case, no illegal characters (`* " \ / < > : | ? # ^ [ ]`). The slug is what the branch name uses (`feat/<slug>`), what the plan scratch uses (`.claude/handoff/<slug>-plan.md`), and what the tests reference. Pick once, keep it stable.
+Files: `<slug>.md` in kebab-case, no illegal characters (`* " \ / < > : | ? # ^ [ ]`). The slug is what the branch name uses (`feat/<slug>`), what the plan scratch uses (`.harness/handoff/<slug>-plan.md`), and what the tests reference. Pick once, keep it stable.

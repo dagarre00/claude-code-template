@@ -82,6 +82,24 @@ test('read-only reports survive cleanup; restarted supervisors recover completed
   assert.equal(restarted.kill(worker.task_id).state,'cleaned');
 });
 
+test('roles() lists every agent from frontmatter, sorted, with {{cmd:}} expanded, and names a malformed role file loudly',t=>{
+  const {root,manager}=fixture(t);
+  const roles=manager.roles();
+  assert.deepEqual(roles.map(r=>r.name),[...roles.map(r=>r.name)].sort((a,b)=>a.localeCompare(b)));
+  assert.deepEqual(Object.keys(roles[0]).sort(),['access','description','name','profile']);
+  const developer=roles.find(r=>r.name==='developer');
+  assert.equal(developer.profile,'balanced');
+  assert.equal(developer.access,'write');
+  assert.ok(!developer.description.includes('{{cmd:'),'macro must be expanded');
+  assert.ok(developer.description.includes('project-work'),'{{cmd:work}} expands to project-work');
+  assert.ok(!developer.description.startsWith('"') && !developer.description.endsWith('"'),'surrounding quotes must be stripped');
+  const adversary=roles.find(r=>r.name==='adversary');
+  assert.equal(adversary.profile,'reasoning');
+  assert.equal(adversary.access,'read-only');
+  writeFileSync(resolve(root,'.harness/agents/broken.md'),'---\nname: broken\ndescription: "Bad role"\nprofile: nonsense\naccess: write\n---\n');
+  assert.throws(()=>manager.roles(),/broken\.md/);
+});
+
 test('validation failure retains merged branch and allows a safe retry',t=>{
   const {root,manager}=fixture(t);
   const settingsPath=resolve(root,'.harness/settings.json');

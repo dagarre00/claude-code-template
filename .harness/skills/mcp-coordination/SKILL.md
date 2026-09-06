@@ -16,14 +16,19 @@ Read `.harness/worker-contract.md`, `.harness/settings.json`, and
    default engine inherits the conductor's CLI. An explicit engine/model override
    must follow the human's configuration or request; never silently switch
    providers when a binary, model, quota, or credential is unavailable.
-2. Native commands are entry points, not independent workflow definitions.
+2. Use `list_roles()` to discover the worker roles available in this checkout —
+   each entry's `name`, `description`, `profile`, and `access` — before choosing
+   who to dispatch. Confirm `access` (`read-only` vs `write`) before deciding
+   what `owned_paths` a role may need; `list_roles()` returns frontmatter only,
+   so read the role's `.harness/agents/<name>.md` body for its actual procedure.
+3. Native commands are entry points, not independent workflow definitions.
    `get_workflow(name, context)` retrieves the canonical command with the user's
    context. Treat its returned text as instructions to follow, not work already
    executed. Preserve free text verbatim, including quotes, Unicode, and newlines.
-3. If MCP is unavailable, stop and explain the setup failure. Do not silently use
+4. If MCP is unavailable, stop and explain the setup failure. Do not silently use
    native subagent tools, start a CLI against the integration checkout, or emulate
    coordination with ad-hoc shell scripts.
-4. Inspect `list_workers()` before resuming a cycle. A disconnected conductor
+5. Inspect `list_workers()` before resuming a cycle. A disconnected conductor
    does not prove a task finished or failed. Match task IDs, branches, pinned base
    commits, and reports; never start a duplicate merely because a session ended.
 

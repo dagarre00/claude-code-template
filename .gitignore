@@ -1,7 +1,6 @@
 # Claude Code
 .claude/settings.local.json
 .claude/tmp/
-.harness/handoff/
 .harness/tmp/
 .codex/config.local.toml
 .agents/settings.local.json
@@ -33,9 +32,9 @@ Thumbs.db
 #
 # The third file is the handoff brief (`llm-handoff` skill): a prompt for an
 # external agent, not repo content. That agent deletes it when its cycle ends.
-.claude/handoff/*-plan.md
-.claude/handoff/*-findings.md
-.claude/handoff/*-handoff.md
+.harness/handoff/*-plan.md
+.harness/handoff/*-findings.md
+.harness/handoff/*-handoff.md
 
 # Obsidian per-user vault config (users open the vault themselves)
 docs/.obsidian/

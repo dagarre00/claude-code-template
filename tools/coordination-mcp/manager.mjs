@@ -117,6 +117,24 @@ export class Manager {
     if (!['stdout','stderr'].includes(stream) || !Number.isSafeInteger(offset) || offset<0) throw new Error('Invalid log cursor');
     return tail(resolve(this.taskDir(id),`${stream}.log`),24000,offset);
   }
+  roles() {
+    const dir=resolve(this.root,'.harness/agents');
+    return readdirSync(dir).filter(file=>file.endsWith('.md')).map(file=>{
+      const name=file.replace(/\.md$/,'');
+      const role=readFileSync(resolve(dir,file),'utf8').replace(/\r\n/g,'\n');
+      const profile=role.match(/^profile: (.+)$/m)?.[1];
+      const access=role.match(/^access: (.+)$/m)?.[1];
+      // Malformed metadata must be visible, not silently dropped from the catalog:
+      // fail loudly and name the offending file rather than excluding it quietly.
+      if (!['reasoning','balanced','fast'].includes(profile) || !['read-only','write'].includes(access)) {
+        throw new Error(`Invalid role metadata in .harness/agents/${file}`);
+      }
+      let description=role.match(/^description: (.+)$/m)?.[1] ?? '';
+      if (description.startsWith('"') && description.endsWith('"')) description=description.slice(1,-1);
+      description=description.replace(/\{\{cmd:([a-z-]+)\}\}/g,'project-$1');
+      return {name,description,profile,access};
+    }).sort((a,b)=>a.name.localeCompare(b.name));
+  }
   spawn(input) {
     return this.lock(()=>{
       const settings=loadSettings(this.root);

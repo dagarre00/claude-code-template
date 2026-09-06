@@ -1,13 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, cpSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { configure } from '../scripts/configure-mcp.mjs';
+import { copyRecursiveSync } from './helpers/copy-recursive.mjs';
 test('machine-local MCP setup is idempotent and preserves other servers and Codex settings',t=>{
+  // Non-ASCII-plus-space prefix is deliberate: it exercises path quoting. Use
+  // copyRecursiveSync (not fs.cpSync) — see tests/helpers/copy-recursive.mjs.
   const root=mkdtempSync(resolve(tmpdir(),'mcp setup café '));
   t.after(()=>rmSync(root,{recursive:true,force:true}));
-  cpSync(resolve(import.meta.dirname,'../.harness'),resolve(root,'.harness'),{recursive:true});
+  copyRecursiveSync(resolve(import.meta.dirname,'../.harness'),resolve(root,'.harness'));
   mkdirSync(resolve(root,'.codex'));
   const prefix='model = "user-model"\n# keep my comment\n[mcp_servers.existing]\ncommand = "keep"\n';
   writeFileSync(resolve(root,'.codex/config.toml'),prefix);

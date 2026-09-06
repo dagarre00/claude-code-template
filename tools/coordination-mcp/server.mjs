@@ -28,11 +28,13 @@ export function createServer(root,engine,options) {
   };
   register('get_workflow','Read a canonical project command, with verbatim free-text context.',{name:z.string(),context:z.string().max(100000).optional()},workflow,true);
   register('list_workers','List durable task state for this integration checkout.',{},()=>manager.list(),true);
+  register('list_roles','List available worker roles parsed from .harness/agents/*.md frontmatter: name, description, profile (reasoning|balanced|fast), and access (read-only|write). Call before spawn_worker to discover valid role values.',{},()=>manager.roles(),true);
   register('check_worker_status','Read process outcome, log tail, commit range, and current SHAs.',taskId,({task_id})=>manager.status(task_id),true);
   register('read_worker_log','Read complete report/log in byte-cursor pages; retained after cleanup.',{...taskId,stream:z.enum(['stdout','stderr']).default('stdout'),offset:z.number().int().nonnegative().default(0)},({task_id,stream,offset})=>manager.log(task_id,stream,offset),true);
   if (!manager.worker) {
-    register('spawn_worker','Launch one bounded CLI task in a fresh worktree from committed HEAD. Requires a clean integration checkout and explicit write ownership. Returns immediately; inspect report before merge.',{
-      role:z.string(),cli_engine:z.enum(['claude','codex','antigravity']).optional(),instructions:z.string().min(1).max(100000),
+    register('spawn_worker','Launch one bounded CLI task in a fresh worktree from committed HEAD. Requires a clean integration checkout and explicit write ownership. Call list_roles first to discover valid role values. Returns immediately; inspect report before merge.',{
+      role:z.string().describe('Role name from list_roles (e.g. "developer"). Call list_roles to see valid values, descriptions, profiles, and access levels.'),
+      cli_engine:z.enum(['claude','codex','antigravity']).optional(),instructions:z.string().min(1).max(100000),
       owned_paths:z.array(z.string()).optional(),model_override:z.string().optional(),thinking_budget:z.string().optional()
     },input=>manager.spawn(input));
     register('kill_worker','Request cancellation of the owned process tree. Retains branch, worktree, and logs; poll until stopped.',taskId,({task_id})=>manager.kill(task_id));
