@@ -204,7 +204,7 @@ and `spawn_worker` resolve to.
 | `list_workers()` | read-only | anyone | Durable task state for this integration checkout. |
 | `check_worker_status(task_id)` | read-only | anyone | Process outcome, log tail, commit range, current SHAs. |
 | `read_worker_log(task_id, stream?, offset?)` | read-only | anyone | Full report/log, paged by byte offset; retained after cleanup. |
-| `list_roles()` | read-only | anyone | **New.** No parameters. Returns an array, sorted by `name` ascending, of `{ name, description, profile, access }` sourced from the frontmatter of `.harness/agents/*.md`. `profile` is one of `reasoning\|balanced\|fast`; `access` is one of `read-only\|write`; `{{cmd:x}}` inside a description is expanded to `project-x`. Use it to discover available worker roles and each one's access level before calling `spawn_worker`. |
+| `list_roles()` | read-only | anyone | No parameters. Returns an array, sorted by `name` ascending, of `{ name, description, profile, access, engine, model, effort }`. The first four come from the frontmatter of `.harness/agents/*.md`: `profile` is one of `reasoning\|balanced\|fast`, `access` is one of `read-only\|write`, and `{{cmd:x}}` inside a description is expanded to `project-x`. The last three are **resolved**, not merely configured — they are what the role would actually run with right now, after applying `.harness/settings.json` role overrides and `defaultEngine`, so configuration is verifiable without spawning a worker. Use it to discover available roles and their access before calling `spawn_worker`. |
 | `spawn_worker(role, cli_engine?, instructions, owned_paths?, model_override?, thinking_budget?)` | write | conductor only | Launches one bounded CLI task in a fresh worktree from committed HEAD. |
 | `kill_worker(task_id)` | write | conductor only | Requests cancellation of the owned process tree; preserves branch/worktree/logs. |
 | `merge_and_cleanup_worker(task_id, expected_target_sha, expected_worker_sha)` | write | conductor only | SHA-pinned local integration of a reviewed, successful worker, then cleanup of its worktree/branch. |
@@ -219,6 +219,44 @@ independent of anything its prompt tells it.
 Two MCP resources are also registered: `harness://settings` (the same JSON
 `get_settings` returns) and `harness://instructions`
 (`.harness/instructions.md` verbatim).
+
+### Where a worker's files live
+
+| Path | Contents | Why there |
+| --- | --- | --- |
+| `<repo>/.worktrees/<task_id>` | The worker's Git worktree — the only place it edits | **Must not be inside `.git/`.** Agent CLIs refuse to write anywhere under the git directory, so a worktree placed there silently makes every write role undeliverable: the worker reports the write as denied and produces no commits. |
+| `.git/coordination/tasks/<task_id>` | `task.json`, `prompt.txt`, `stdout.log`, `stderr.log`, `result.json`, `phase.json`, `heartbeat` | Metadata and logs only. No CLI is ever spawned here, so the write restriction does not apply, and keeping it in `.git` keeps it out of the working tree. |
+
+`.worktrees/` must be ignored, or it dirties the integration checkout that both
+`spawn_worker` and `merge_and_cleanup_worker` require to be clean. The server
+writes that rule into `.git/info/exclude` itself on every dispatch rather than
+trusting the project's `.gitignore`, so the control plane stays correct in an
+adopting repository that rewrote or replaced that file. The template's
+`.gitignore` also lists it, for human readers.
+
+### Write permissions for Claude workers
+
+`--permission-mode acceptEdits` covers file edits and read-only shell commands,
+but a *mutating* shell command still routes to a permission prompt — and
+`--permission-prompts none` denies anything that would prompt. A write worker
+that cannot run `git add` and `git commit` produces no deliverable commits, which
+`merge_and_cleanup_worker` then rejects outright.
+
+Write roles therefore receive an explicit `--allowedTools` grant from
+`engines.claude.writeAllowedTools` in `.harness/settings.json`, defaulting to the
+git verbs the worker contract requires. Edit that list to widen or narrow it — for
+example to add the project's test runner. `workerCommand` rejects any rule
+matching `dangerous` or `bypassPermissions`.
+
+Read-only roles receive **no** `--allowedTools` grant: `plan` mode already permits
+the `git diff` / `git log` reads a review depends on. Measured behaviour:
+
+| Permission mode | Read-only shell | File write | Mutating git |
+| --- | --- | --- | --- |
+| `acceptEdits` (write roles) | allowed | allowed | denied **unless** granted via `writeAllowedTools` |
+| `plan` (read-only roles) | allowed | n/a | n/a |
+| `dontAsk` | allowed | denied | denied |
+| `default` | denied | denied | denied |
 
 ## 8. Model and reasoning-effort mapping
 
@@ -248,10 +286,34 @@ effort = spawn_worker's thinking_budget
          ?? settings.engines[engine].effort[profile]
 ```
 
-`settings.roles` is the per-role override map (empty by default — every role
-uses its engine's profile default until a project adds an entry). Both engine
-defaults and role overrides live once in `.harness/settings.json`; nothing
-else maintains a parallel copy.
+`settings.roles` is the per-role override map. All six roles ship pre-populated
+with explicit `null` slots, so changing a model means editing an existing line
+rather than inventing a structure:
+
+```json
+"roles": {
+  "adversary": {
+    "engine": null,
+    "models": { "claude": "opus", "codex": null, "antigravity": null },
+    "effort":  { "claude": "high", "codex": null, "antigravity": null }
+  }
+}
+```
+
+`null` means "inherit" at every level: `engine: null` falls back to
+`defaultEngine`, and a `null` model or effort falls back to the engine's profile
+default. Only the three keys `engine`, `models`, and `effort` are accepted, and
+the inner maps are keyed by engine name.
+
+`loadSettings` validates this map and **fails loudly** on a malformed entry —
+writing `model` where the schema says `models`, an unknown engine key, an
+unknown engine value, or a non-object role. That matters because the failure
+mode it replaces was silent: a typo left the worker running the default model
+while the file claimed otherwise, visible only as a surprising bill or a weaker
+review. Call `list_roles()` to read back the resolved values.
+
+Both engine defaults and role overrides live once in `.harness/settings.json`;
+nothing else maintains a parallel copy.
 
 Shipped engine defaults:
 
@@ -339,6 +401,36 @@ a pre-existing unrelated MCP server and a pre-existing Codex config comment,
 and asserts registration is idempotent, leaves the unrelated server and
 comment untouched, and throws on an unowned `coordination` entry rather than
 overwriting it.
+
+## 11. Open items — verified for Claude, not yet for Codex or Antigravity
+
+The dispatch loop has been exercised end to end against **Claude only**: spawn →
+isolated worktree → real CLI → file write → local commit → SHA-pinned merge →
+validation → worktree and branch cleanup → clean integration tree. The items
+below are unverified and should be closed before relying on the other engines.
+
+- **Does Codex's `workspace-write` sandbox share the `.git` write restriction?**
+  The defect that made Claude write workers undeliverable (§7, *Where a worker's
+  files live*) was a CLI-level refusal to write under `.git`. Codex was
+  rate-limited during testing, so the equivalent probe never ran. Repeat it:
+  dispatch a `developer` worker with `cli_engine: "codex"` and confirm it both
+  writes and commits.
+- **Does Codex need an equivalent of `writeAllowedTools`?** Codex uses
+  `approval_policy="never"` with an OS-level sandbox rather than Claude's
+  permission layer, so it may already permit `git commit` inside the workspace —
+  or may deny it the same way. Unverified.
+- **Codex pins no models.** All three profiles are `null`, so every Codex worker
+  inherits the CLI default and the `reasoning`/`balanced`/`fast` distinction is
+  lost. This also weakens behavioural rule 12, which prefers a *different* model
+  for adversarial review: with Codex inheriting, a Codex-dispatched adversary may
+  silently run the same model as the author. Fill in
+  `engines.codex.models` once the intended IDs are confirmed.
+- **Antigravity is unexercised.** Its flags are unit-tested in
+  `config.test.mjs`, but no real `agy` worker has been dispatched.
+- **`readOnlyTools` is dead configuration.** `engines.claude.readOnlyTools` and
+  `engines.antigravity.readOnlyTools` are present in `.harness/settings.json` but
+  read nowhere in `workerCommand()`; read-only isolation comes from `plan` /
+  `--sandbox` instead. Either wire them or delete them.
 
 ## Related
 
