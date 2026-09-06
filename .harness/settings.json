@@ -4,14 +4,54 @@
   "maxWorkers": 3,
   "workerTimeoutSeconds": 1800,
   "validation": [],
-  "roles": {},
+  "roles": {
+    "adversary": {
+      "engine": null,
+      "models": { "claude": null, "codex": null, "antigravity": null },
+      "effort": { "claude": null, "codex": null, "antigravity": null }
+    },
+    "developer": {
+      "engine": null,
+      "models": { "claude": null, "codex": null, "antigravity": null },
+      "effort": { "claude": null, "codex": null, "antigravity": null }
+    },
+    "planner": {
+      "engine": null,
+      "models": { "claude": null, "codex": null, "antigravity": null },
+      "effort": { "claude": null, "codex": null, "antigravity": null }
+    },
+    "researcher": {
+      "engine": null,
+      "models": { "claude": null, "codex": null, "antigravity": null },
+      "effort": { "claude": null, "codex": null, "antigravity": null }
+    },
+    "reviewer": {
+      "engine": null,
+      "models": { "claude": null, "codex": null, "antigravity": null },
+      "effort": { "claude": null, "codex": null, "antigravity": null }
+    },
+    "wiki-maintainer": {
+      "engine": null,
+      "models": { "claude": null, "codex": null, "antigravity": null },
+      "effort": { "claude": null, "codex": null, "antigravity": null }
+    }
+  },
   "engines": {
     "claude": {
       "executable": "claude",
       "models": { "reasoning": "opus", "balanced": "sonnet", "fast": "haiku" },
       "effort": { "reasoning": "high", "balanced": "medium", "fast": "low" },
       "readOnlyTools": ["Read", "Glob", "Grep", "Bash"],
-      "writePermissionMode": "acceptEdits"
+      "writePermissionMode": "acceptEdits",
+      "writeAllowedTools": [
+        "Bash(git add:*)",
+        "Bash(git commit:*)",
+        "Bash(git status:*)",
+        "Bash(git diff:*)",
+        "Bash(git log:*)",
+        "Bash(git rev-parse:*)",
+        "Bash(git show:*)"
+      ]
     },
     "codex": {
       "executable": "codex",

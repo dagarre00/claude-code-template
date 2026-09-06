@@ -70,8 +70,12 @@ test('list_roles makes the worker catalog discoverable without out-of-band instr
   assert.deepEqual(roles.map(role => role.name),
     ['adversary', 'developer', 'planner', 'researcher', 'reviewer', 'wiki-maintainer']);
   for (const role of roles) {
-    assert.deepEqual(Object.keys(role).sort(), ['access', 'description', 'name', 'profile']);
+    assert.deepEqual(Object.keys(role).sort(),
+      ['access', 'description', 'effort', 'engine', 'model', 'name', 'profile']);
     assert.ok(['reasoning', 'balanced', 'fast'].includes(role.profile));
+    // Resolved, not merely configured: the conductor can see what a role will
+    // actually run without spawning a worker to find out.
+    assert.ok(['claude', 'codex', 'antigravity'].includes(role.engine), `${role.name} resolves an engine`);
     assert.ok(['read-only', 'write'].includes(role.access));
     assert.ok(role.description.length > 0, `${role.name} needs a description to be selectable`);
     // A leaked macro or stray YAML quote would reach the conductor verbatim.
@@ -82,6 +86,12 @@ test('list_roles makes the worker catalog discoverable without out-of-band instr
   assert.equal(byName.adversary.access, 'read-only');
   assert.equal(byName.adversary.profile, 'reasoning');
   assert.equal(byName.developer.access, 'write');
+  // defaultEngine is "inherit", so every role follows the conductor's own CLI
+  // until a per-role override in .harness/settings.json says otherwise.
+  assert.equal(byName.developer.engine, 'claude');
+  assert.equal(byName.adversary.model, 'opus');
+  assert.equal(byName.developer.model, 'sonnet');
+  assert.equal(byName.researcher.model, 'haiku');
   // spawn_worker must point at this catalog rather than expecting prior knowledge.
   const { tools } = await client.listTools();
   const spawn = tools.find(tool => tool.name === 'spawn_worker');

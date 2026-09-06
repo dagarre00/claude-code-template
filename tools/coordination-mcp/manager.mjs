@@ -1,11 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import { closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, readSync,
   readdirSync, realpathSync, renameSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
-import { resolve, relative, isAbsolute, sep } from 'node:path';
+import { resolve, relative, isAbsolute, dirname, sep } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { loadSettings, workerCommand } from './config.mjs';
 
 const engines = ['claude','codex','antigravity'];
+// Worktrees must NOT live under .git: agent CLIs refuse to write anywhere inside
+// the git directory, which silently made every write role undeliverable. Task
+// metadata and logs stay in .git/coordination — nothing spawns a CLI there.
+const workspaceRoot = '.worktrees';
 const idPattern = /^[a-f0-9-]{36}$/;
 const slug = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 export function json(path) { return JSON.parse(readFileSync(path,'utf8')); }
@@ -64,6 +68,19 @@ export class Manager {
     this.engine=engine; this.worker=worker; this.launch=launch;
     this.common=realpathSync(git(this.root,['rev-parse','--path-format=absolute','--git-common-dir']));
     this.storage=contained(this.common,resolve(this.common,'coordination'));
+    this.workspaces=contained(this.root,resolve(this.root,workspaceRoot));
+  }
+  // The workspace root sits in the integration checkout, so it must be ignored or
+  // it dirties the tree that spawn/merge both require to be clean. Guaranteeing it
+  // here rather than trusting the project's .gitignore keeps the control plane
+  // correct in any adopting repository, including one that rewrote that file.
+  exclude() {
+    const path=contained(this.common,resolve(this.common,'info','exclude'));
+    mkdirSync(dirname(path),{recursive:true});
+    const current=existsSync(path)?readFileSync(path,'utf8'):'';
+    const entry=`/${workspaceRoot}/`;
+    if (current.split(/\r?\n/).includes(entry)) return;
+    writeFileSync(path,current+(current && !current.endsWith('\n')?'\n':'')+entry+'\n');
   }
   assertConductor() {
     if (this.worker) throw new Error('Workers cannot mutate coordination state or recursively delegate');
@@ -85,8 +102,8 @@ export class Manager {
     contained(this.common,this.storage);
     const task=json(resolve(this.taskDir(id),'task.json'));
     if (task.task_id!==id || task.integration_root!==this.root
-      || task.workspace!==resolve(this.storage,'workspaces',id) || task.branch!==`worker/${id}`) throw new Error('Task ownership mismatch');
-    contained(this.storage,task.workspace);
+      || task.workspace!==resolve(this.workspaces,id) || task.branch!==`worker/${id}`) throw new Error('Task ownership mismatch');
+    contained(this.workspaces,task.workspace);
     return task;
   }
   list() {
@@ -119,6 +136,9 @@ export class Manager {
   }
   roles() {
     const dir=resolve(this.root,'.harness/agents');
+    // Resolve the engine/model/effort each role would actually run with, so the
+    // configuration is verifiable without spawning a worker to find out.
+    const settings=loadSettings(this.root);
     return readdirSync(dir).filter(file=>file.endsWith('.md')).map(file=>{
       const name=file.replace(/\.md$/,'');
       const role=readFileSync(resolve(dir,file),'utf8').replace(/\r\n/g,'\n');
@@ -132,7 +152,10 @@ export class Manager {
       let description=role.match(/^description: (.+)$/m)?.[1] ?? '';
       if (description.startsWith('"') && description.endsWith('"')) description=description.slice(1,-1);
       description=description.replace(/\{\{cmd:([a-z-]+)\}\}/g,'project-$1');
-      return {name,description,profile,access};
+      const configured=settings.roles[name]?.engine ?? settings.defaultEngine;
+      const engine=configured==='inherit'?this.engine:configured;
+      const command=workerCommand(settings,{engine,role:name,profile,access,workspace:this.workspaces});
+      return {name,description,profile,access,engine,model:command.model,effort:command.effort};
     }).sort((a,b)=>a.name.localeCompare(b.name));
   }
   spawn(input) {
@@ -150,7 +173,8 @@ export class Manager {
       if (access==='write' && !owned.length) throw new Error('Write workers require explicit owned_paths');
       const engine=input.cli_engine ?? settings.roles[input.role]?.engine ?? settings.defaultEngine;
       const resolvedEngine=engine==='inherit'?this.engine:engine;
-      const id=randomUUID(), workspace=contained(this.storage,resolve(this.storage,'workspaces',id));
+      this.exclude();
+      const id=randomUUID(), workspace=contained(this.workspaces,resolve(this.workspaces,id));
       const command=workerCommand(settings,{...input,engine:resolvedEngine,profile,access,workspace});
       const active=this.list().filter(t=>['running','interrupted'].includes(t.state));
       if (active.length>=settings.maxWorkers) throw new Error('Worker concurrency limit reached');

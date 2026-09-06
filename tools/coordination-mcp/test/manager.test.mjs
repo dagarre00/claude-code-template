@@ -86,7 +86,7 @@ test('roles() lists every agent from frontmatter, sorted, with {{cmd:}} expanded
   const {root,manager}=fixture(t);
   const roles=manager.roles();
   assert.deepEqual(roles.map(r=>r.name),[...roles.map(r=>r.name)].sort((a,b)=>a.localeCompare(b)));
-  assert.deepEqual(Object.keys(roles[0]).sort(),['access','description','name','profile']);
+  assert.deepEqual(Object.keys(roles[0]).sort(),['access','description','effort','engine','model','name','profile']);
   const developer=roles.find(r=>r.name==='developer');
   assert.equal(developer.profile,'balanced');
   assert.equal(developer.access,'write');
@@ -111,4 +111,24 @@ test('validation failure retains merged branch and allows a safe retry',t=>{
   assert.ok(existsSync(worker.workspace));
   settings.validation=[];writeFileSync(settingsPath,JSON.stringify(settings));git(root,'add','.harness/settings.json');git(root,'commit','-m','fixture validation repair');
   assert.equal(integrate(manager,worker.task_id,root).state,'cleaned');
+});
+
+// Regression: worktrees used to live under .git/coordination/workspaces/<id>.
+// Every unit test passed because they inject a fake launch, but a real Claude
+// worker could not write a single file there — the CLI refuses to write anywhere
+// under .git, so all three write roles were silently undeliverable. Verified
+// empirically: identical flags, same repo, worktree outside .git succeeds.
+test('worker worktrees live outside the git directory, where CLI write guards allow edits', t=>{
+  const {root,manager}=fixture(t);
+  const worker=manager.spawn(task);
+  const common=resolve(git(root,'rev-parse','--path-format=absolute','--git-common-dir'));
+  const normalise=path=>resolve(path).replaceAll('\\','/').toLowerCase();
+  assert.ok(!normalise(worker.workspace).startsWith(normalise(common)+'/'),
+    `workspace ${worker.workspace} must not be inside the git dir ${common}`);
+  assert.ok(normalise(worker.workspace).startsWith(normalise(root)+'/'),'workspace stays inside the repo');
+  assert.ok(existsSync(resolve(worker.workspace,'.git')),'worktree is a real checkout');
+  // The workspace root must be ignored, or it would dirty the integration
+  // checkout and manager.spawn refuses to dispatch against a dirty tree.
+  assert.equal(git(root,'status','--porcelain=v1','--untracked-files=all'),'','integration checkout stays clean');
+  assert.equal(git(root,'check-ignore','.worktrees'),'.worktrees');
 });

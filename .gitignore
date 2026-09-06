@@ -2,6 +2,10 @@
 .claude/settings.local.json
 .claude/tmp/
 .harness/tmp/
+# Coordination worker worktrees. Kept OUT of .git/ because agent CLIs refuse to
+# write inside the git directory. The server also writes this rule to
+# .git/info/exclude, so the control plane stays correct if this file is edited.
+.worktrees/
 .codex/config.local.toml
 .agents/settings.local.json
 CLAUDE.local.md

@@ -18,6 +18,27 @@ export function loadSettings(root) {
       if (!(profile in engine.models) || !(profile in engine.effort)) throw new Error(`Missing profile: ${name}/${profile}`);
     }
   }
+  // Role overrides are the knob humans actually turn, so a typo here must fail
+  // loudly. Silently ignoring "model" for "models" would leave a worker running
+  // the default model while its configuration claims otherwise.
+  for (const [name, role] of Object.entries(settings.roles)) {
+    if (!role || typeof role !== 'object' || Array.isArray(role)) throw new Error(`Invalid role config: ${name}`);
+    for (const key of Object.keys(role)) {
+      if (!['engine','models','effort'].includes(key)) {
+        throw new Error(`Unknown key "${key}" in role ${name}; expected engine, models, or effort`);
+      }
+    }
+    if (role.engine != null && !['inherit','claude','codex','antigravity'].includes(role.engine)) {
+      throw new Error(`Invalid engine for role ${name}: ${role.engine}`);
+    }
+    for (const field of ['models','effort']) {
+      if (role[field] == null) continue;
+      if (typeof role[field] !== 'object' || Array.isArray(role[field])) throw new Error(`Role ${name}.${field} must be an object keyed by engine`);
+      for (const key of Object.keys(role[field])) {
+        if (!['claude','codex','antigravity'].includes(key)) throw new Error(`Unknown engine "${key}" in role ${name}.${field}`);
+      }
+    }
+  }
   for (const command of settings.validation) {
     if (!Array.isArray(command) || !command.length || command.some(x=>typeof x !== 'string' || /[\0\r\n]/.test(x))) {
       throw new Error('Validation commands must be nonempty argv arrays');
@@ -44,6 +65,19 @@ export function workerCommand(settings, task) {
     args = ['--print','--agent',role,'--no-session-persistence','--strict-mcp-config',
       '--permission-mode',readOnly?'plan':mode,'--permission-prompts','none',
       '--disallowedTools','Agent,Task'];
+    // acceptEdits covers file edits and read-only shell, but mutating commands
+    // still route to a prompt — and --permission-prompts none denies those. A
+    // write worker that cannot `git add`/`git commit` produces no deliverable,
+    // which merge_and_cleanup_worker then rejects. Read-only roles need nothing
+    // here: plan mode already permits the git reads a review depends on.
+    if (!readOnly) {
+      const allowed = config.writeAllowedTools ?? [];
+      if (!Array.isArray(allowed) || allowed.some(rule => typeof rule !== 'string' || !rule.trim() || /[\0\r\n]/.test(rule))) {
+        throw new Error('writeAllowedTools must be an array of nonempty single-line rules');
+      }
+      if (allowed.some(rule => /dangerous|bypassPermissions/i.test(rule))) throw new Error('writeAllowedTools must not grant permission bypass');
+      if (allowed.length) args.push('--allowedTools',...allowed);
+    }
   } else if (engine === 'codex') {
     args = ['exec','--ephemeral','--color','never','--cd',workspace,
       '--sandbox',readOnly?'read-only':'workspace-write','-c','approval_policy="never"',
