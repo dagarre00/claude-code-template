@@ -427,10 +427,14 @@ below are unverified and should be closed before relying on the other engines.
   `engines.codex.models` once the intended IDs are confirmed.
 - **Antigravity is unexercised.** Its flags are unit-tested in
   `config.test.mjs`, but no real `agy` worker has been dispatched.
-- **`readOnlyTools` is dead configuration.** `engines.claude.readOnlyTools` and
-  `engines.antigravity.readOnlyTools` are present in `.harness/settings.json` but
-  read nowhere in `workerCommand()`; read-only isolation comes from `plan` /
-  `--sandbox` instead. Either wire them or delete them.
+- **`readOnlyTools` applies to the native path only — do not delete it.**
+  `engines.claude.readOnlyTools` and `engines.antigravity.readOnlyTools` are read
+  by the *generator*, not by `workerCommand()`: `sync-harness.mjs:165` and `:170`
+  emit them as the `tools:` frontmatter of the generated read-only agent files
+  (this is what restricts `.claude/agents/adversary.md` to Read/Glob/Grep/Bash).
+  MCP-dispatched workers get their read-only isolation from `plan` /
+  `--sandbox` instead, so the two paths enforce the same intent by different
+  means. Removing the key would silently widen the native agents' tool access.
 
 ## Related
 
