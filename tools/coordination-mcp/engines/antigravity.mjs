@@ -9,8 +9,15 @@ export default {
   // ~32K Windows limit for anything realistic. stream-json takes the prompt from
   // stdin instead, with no size limit, so --print is given an empty value.
   promptFormat: 'stream-json',
-  buildArgs({ settings, role, readOnly, workspace, model, effort }) {
-    const args = ['--add-dir', workspace, '--agent', role, '--sandbox',
+  // No --agent flag. Selecting a named agent made agy refuse every write, even
+  // for a write role with an explicit write-tool allowlist, and `agy agents`
+  // lists nothing from .agents/agents, so the definition does not appear to be
+  // picked up as intended. The role is not lost: the manager already prepends the
+  // worker contract and the full canonical role body to every prompt, for every
+  // engine. --mode alone carries the access distinction, verified directly:
+  // plan refuses the write, accept-edits performs it.
+  buildArgs({ settings, readOnly, workspace, model, effort }) {
+    const args = ['--add-dir', workspace, '--sandbox',
       '--mode', readOnly ? 'plan' : 'accept-edits',
       '--print-timeout', `${settings.workerTimeoutSeconds}s`,
       '--input-format', 'stream-json', '--output-format', 'stream-json'];
