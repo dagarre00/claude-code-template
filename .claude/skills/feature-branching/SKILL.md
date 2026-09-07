@@ -58,14 +58,14 @@ Code mutations branch **before the first write** (behavioral rule 19). Living do
 
 | Command                | Branch                             | Created before          |
 | ---------------------- | ---------------------------------- | ----------------------- |
-| `/project:work`        | `feat/<slug>`                      | the failing test        |
-| `/project:interview`   | none (direct on `develop` or active `feat/*`) | —                       |
-| `/project:wiki-ingest` | none (direct on `develop` or active `feat/*`) | —                       |
-| `/project:agent-scout` | none (direct on `develop` or active `feat/*`) | —                       |
-| `/project:wiki-lint`   | none (direct on `develop` or active `feat/*`) | —                       |
-| `/project:review`      | none (direct on `develop` or active `feat/*`) | —                       |
-| `/project:handoff`     | none (direct on `develop` or active `feat/*`) | —                       |
-| `/project:adversary`   | none (existing `feat/*`/`fix/*`/`chore/*`; `develop` only for the release review) | — |
+| `project-work`        | `feat/<slug>`                      | the failing test        |
+| `project-interview`   | none (direct on `develop` or active `feat/*`) | —                       |
+| `project-wiki-ingest` | none (direct on `develop` or active `feat/*`) | —                       |
+| `project-agent-scout` | none (direct on `develop` or active `feat/*`) | —                       |
+| `project-wiki-lint`   | none (direct on `develop` or active `feat/*`) | —                       |
+| `project-review`      | none (direct on `develop` or active `feat/*`) | —                       |
+| `project-handoff`     | none (direct on `develop` or active `feat/*`) | —                       |
+| `project-adversary`   | none (existing `feat/*`/`fix/*`/`chore/*`; `develop` only for the release review) | — |
 
 The maintenance commands sync via the canonical guarded block in [`sync-develop.md`](../../../.harness/skills/feature-branching/sync-develop.md) (next to this skill) — one copy, referenced everywhere.
 
@@ -73,7 +73,7 @@ In every case the rule is the same: **code changes branch from `develop`.** Alre
 
 ## Batching todos
 
-Two todos share a branch when **all** are true: same entity page, second depends on first, splitting produces a meaningless intermediate commit. Otherwise — separate branches. Batches of 2+ also trigger the `planner` — it returns a plan through MCP (via `plan-writing`) that the conductor forwards inline to the `developer` (see `/project:work` step 4).
+Two todos share a branch when **all** are true: same entity page, second depends on first, splitting produces a meaningless intermediate commit. Otherwise — separate branches. Batches of 2+ also trigger the `planner` — it returns a plan through MCP (via `plan-writing`) that the conductor forwards inline to the `developer` (see `project-work` step 4).
 
 ## Mid-task pause
 
@@ -95,7 +95,7 @@ git merge origin/develop     # resolve conflicts per git-recovery skill
 git push
 ```
 
-Never rebase a pushed branch as routine sync: other sessions may hold the integration branch (behavioral rule 21, `/project:work` step 2's divergence guard), and a rebase rewrites history another session may hold. Rebase + `--force-with-lease` is an exception that needs explicit human approval via `human-checkpoint`; bare `--force` is never used.
+Never rebase a pushed branch as routine sync: other sessions may hold the integration branch (behavioral rule 21, `project-work` step 2's divergence guard), and a rebase rewrites history another session may hold. Rebase + `--force-with-lease` is an exception that needs explicit human approval via `human-checkpoint`; bare `--force` is never used.
 
 ## Commit cadence
 
@@ -118,7 +118,7 @@ Never rebase a pushed branch as routine sync: other sessions may hold the integr
    ```
 
 5. Push: `git push -u origin <branch>`.
-6. **Auto-PR (invoked by `/project:work`):** follow `pr-create` skill to draft and open the PR targeting `develop`, then `git checkout develop`.
+6. **Auto-PR (invoked by `project-work`):** follow `pr-create` skill to draft and open the PR targeting `develop`, then `git checkout develop`.
 7. Only after confirming the human actually merged the remote PR and no task
    still depends on this integration branch, perform authorized feature-branch
    cleanup. Worker branches/worktrees are cleaned by MCP, not this block:

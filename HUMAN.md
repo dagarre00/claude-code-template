@@ -1,8 +1,10 @@
 # For the Human
 
-Examples below use Claude Code's `/project:<name>` spelling. In Codex use
-`$project-<name>`; in Antigravity CLI use `/project-<name>`. All three read the
-same canonical workflow. See [harness setup](docs/harnesses.md) and the generated command catalog in
+Commands are MCP prompts, not per-CLI files, so `project-<name>` means the same
+thing in Claude Code, Codex, and Antigravity. Ask for one in plain conversation
+("run project-work") or invoke the prompt directly where your CLI lists them —
+Claude Code spells that `/mcp__coordination__project-work`. See
+[harness setup](docs/harnesses.md) and the generated command catalog in
 [AGENTS.md](AGENTS.md).
 
 
@@ -20,15 +22,15 @@ Three layers, each owned by a different actor:
 
 | You want to…                                      | You run…                                  |
 | ------------------------------------------------- | ----------------------------------------- |
-| Start a new project                               | `/project:init` then `/project:interview` |
-| Configure agents/skills for your stack after init | `/project:agent-scout`                    |
-| Add a new feature                                 | `/project:interview`                      |
-| Move forward on todos                             | `/project:work`                           |
-| Get a second model to attack the current diff     | `/project:adversary`                      |
-| Audit the project                                 | `/project:review`                         |
-| Check the wiki is healthy                         | `/project:wiki-lint`                      |
-| Ingest a doc or research a topic                  | `/project:wiki-ingest`                    |
-| Package a todo for an outside agent               | `/project:handoff`                        |
+| Start a new project                               | `project-init` then `project-interview` |
+| Configure agents/skills for your stack after init | `project-agent-scout`                    |
+| Add a new feature                                 | `project-interview`                      |
+| Move forward on todos                             | `project-work`                           |
+| Get a second model to attack the current diff     | `project-adversary`                      |
+| Audit the project                                 | `project-review`                         |
+| Check the wiki is healthy                         | `project-wiki-lint`                      |
+| Ingest a doc or research a topic                  | `project-wiki-ingest`                    |
+| Package a todo for an outside agent               | `project-handoff`                        |
 | See where you are                                 | `git status` / `git log --oneline`        |
 | Tag before a risky change                         | `git tag checkpoint-<stamp>`              |
 | Recover from a bad attempt                        | `git reset --hard <checkpoint-tag>`       |
@@ -38,23 +40,23 @@ Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the age
 ## What the agent does on its own
 
 - **Reads the wiki** before any code change.
-- **Plans complex work.** When a todo is tagged `[complex]` or batched (2+ todos), `/project:work` dispatches the `planner` agent (reasoning profile) to write a stepwise plan before testing. Plans live transiently at `.harness/handoff/<slug>-plan.md` (gitignored scratch).
+- **Plans complex work.** When a todo is tagged `[complex]` or batched (2+ todos), `project-work` dispatches the `planner` agent (reasoning profile) to write a stepwise plan before testing. Plans live transiently at `.harness/handoff/<slug>-plan.md` (gitignored scratch).
 - **Commits one Behavior case at a time.** Test + implementation + wiki tick, committed and pushed per case — so `git bisect` works, any single case can be reverted, and review diffs stay small.
 - **Writes failing tests first** (Red), confirms they fail for the right reason, then implements (Green), then refactors — all in one `developer` agent (which follows the planner's plan when there is one).
-- **Gets a second opinion on risky work.** On `[complex]` or batched cycles, `/project:work` points an `adversary` agent (reasoning profile, none of the developer's context) at the diff. It raises numbered findings and may not touch the code. **Findings become todos, not immediate fixes** — except a `critical`/`major`, which **stops and asks you** fix-now or queue; nothing is ever fixed without you saying so. A saturated P0 queue (10 open items) stops and tells you the queue itself is the problem. Every answer lands in a commit — `git log --grep="adversary round"` shows every past review. Simple one-todo cycles skip this; run `/project:adversary` yourself when you want it anyway.
+- **Gets a second opinion on risky work.** On `[complex]` or batched cycles, `project-work` points an `adversary` agent (reasoning profile, none of the developer's context) at the diff. It raises numbered findings and may not touch the code. **Findings become todos, not immediate fixes** — except a `critical`/`major`, which **stops and asks you** fix-now or queue; nothing is ever fixed without you saying so. A saturated P0 queue (10 open items) stops and tells you the queue itself is the problem. Every answer lands in a commit — `git log --grep="adversary round"` shows every past review. Simple one-todo cycles skip this; run `project-adversary` yourself when you want it anyway.
 - **Updates the wiki in the same commit** as the code — entity pages, requirements, log.
 - **Asks you when it's stuck.** Two-strike rule: two failed attempts on the same approach → stop and ask. On retry, it overwrites the plan with a fundamentally different approach rather than tweaking.
 
-- **Opens the PR when the feature is done.** Once every Behavior case on the entity page is `[x]`, `/project:work` opens a PR to `develop` on its own and hands it to you. It never merges.
+- **Opens the PR when the feature is done.** Once every Behavior case on the entity page is `[x]`, `project-work` opens a PR to `develop` on its own and hands it to you. It never merges.
 
 ## What it does NOT do without you
 
 - Merge PRs or commit application code directly to `develop` / `main`. Maintenance documentation follows the separate wiki commit convention.
 - Force-push or rewrite published history.
 - Decide between two reasonable design alternatives (it presents both with a recommendation and waits).
-- Run `/project:review` mid-`/project:work` — the *periodic* audit is never in-loop. (The per-change `adversary` is a different, read-only role and does run there — see above.)
+- Run `project-review` mid-`project-work` — the *periodic* audit is never in-loop. (The per-change `adversary` is a different, read-only role and does run there — see above.)
 - Let a reviewing agent of either kind edit your code. Both raise findings only.
-- Auto-invoke the wiki-maintainer. Wiki health passes (`/project:wiki-lint`) are explicitly triggered by you.
+- Auto-invoke the wiki-maintainer. Wiki health passes (`project-wiki-lint`) are explicitly triggered by you.
 
 ## How to evolve the template
 
@@ -63,11 +65,11 @@ The agent ships with a small set of skills, agents, and commands. As the project
 Examples:
 
 - "We need a skill for adding database migrations in this project." → agent creates `.harness/skills/database-migrations/SKILL.md` via `update-toolkit` and regenerates native copies.
-- "We need a repeatable entry point for release prep." → agent adds a `/project:release` command via `update-toolkit`.
+- "We need a repeatable entry point for release prep." → agent adds a `project-release` command via `update-toolkit`.
 
 ## Anti-patterns to avoid
 
 - **Editing `docs/wiki/` by hand.** You can, but it confuses the agent — the wiki is its persistent memory. Prefer asking the agent to make the change.
 - **Editing `docs/raw/` after the fact.** Never. Append new sources instead.
-- **Skipping `/project:interview`** on a new feature. The Behavior cases are what produce sharp tests; without them, the TDD loop starves.
-- **Letting `docs/wiki/wiki-todos.md` pile up.** When it's long, run `/project:wiki-lint`.
+- **Skipping `project-interview`** on a new feature. The Behavior cases are what produce sharp tests; without them, the TDD loop starves.
+- **Letting `docs/wiki/wiki-todos.md` pile up.** When it's long, run `project-wiki-lint`.

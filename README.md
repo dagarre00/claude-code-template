@@ -9,11 +9,18 @@ skills load as needed; independent agents plan and review complex changes.
 Use GitHub's **Use this template** or extract a source archive into a new project.
 Open that directory with `claude`, `codex`, or `agy`.
 
-| Claude Code | Codex | Antigravity CLI |
-| --- | --- | --- |
-| `/project:init` | `$project-init` | `/project-init` |
-| `/project:interview the login feature` | `$project-interview the login feature` | `/project-interview the login feature` |
-| `/project:work` | `$project-work` | `/project-work` |
+Commands are MCP prompts served by the coordination server, so **one name works in
+every CLI** — there are no per-harness command files to keep in step:
+
+| Ask the conductor for | Or invoke the prompt |
+| --- | --- |
+| "run project-init" | `project-init` |
+| "run project-interview for the login feature" | `project-interview` |
+| "run project-work" | `project-work` |
+
+Where a CLI surfaces MCP prompts as slash commands, Claude Code spells them
+`/mcp__coordination__project-work`. Plain conversation works everywhere: the
+conductor calls `get_workflow("work")` and follows what it returns.
 
 Initialization detects the adopting project's stack, asks for missing facts,
 fills the blank wiki scaffolds, verifies an application test command, and
@@ -46,7 +53,7 @@ node scripts/configure-mcp.mjs
 ```
 
 `tools/coordination-mcp/node_modules/` is gitignored, so a fresh clone needs that
-`npm ci` before any `/project:*` workflow can dispatch a worker. CI checks for
+`npm ci` before any `project-*` workflow can dispatch a worker. CI checks for
 drift on Windows and Linux.
 
 | Edit | Purpose |

@@ -27,8 +27,19 @@ test('invalid canonical input fails before changing any generated file', t => {
   assert.throws(()=>sync(dir),/name.*path|filename/i);
   assert.deepEqual(readFileSync(resolve(dir,'AGENTS.md')),before);
   unlinkSync(added);
-  writeFileSync(source,original+'\n{{typo:unresolved}}\n');
+  // Command bodies are no longer expanded into files — the server expands them at
+  // dispatch — so the unresolved-token guard now applies to the artifacts that
+  // are generated: agents, skills, rules, and the shared instructions.
+  const agent = resolve(dir,'.harness/agents/developer.md');
+  const agentOriginal = readFileSync(agent,'utf8');
+  writeFileSync(agent,agentOriginal+'\n{{typo:unresolved}}\n');
   assert.throws(()=>sync(dir),/Unresolved token/);
+  assert.deepEqual(readFileSync(resolve(dir,'AGENTS.md')),before);
+  writeFileSync(agent,agentOriginal);
+  // A command whose argument contract is broken must still fail at sync time,
+  // even though nothing is generated from it.
+  writeFileSync(source,original.replace('{{arguments}}','removed'));
+  assert.throws(()=>sync(dir),/argument contract/i);
   assert.deepEqual(readFileSync(resolve(dir,'AGENTS.md')),before);
 });
 
@@ -50,13 +61,13 @@ test('manifest paths and symlink destinations cannot escape the fixture', t => {
 
 test('check detects missing, changed, and obsolete output without writing', t => {
   const dir = fixture(t);
-  const target = resolve(dir,'.claude/commands/project/work.md');
+  const target = resolve(dir,'.claude/skills/tdd-loop/SKILL.md');
   writeFileSync(target,'manual change\n');
   unlinkSync(resolve(dir,'.codex/agents/developer.toml'));
   unlinkSync(resolve(dir,'.harness/agents/researcher.md'));
   const manifest = readFileSync(resolve(dir,'.harness/generated.json'));
   const drift = sync(dir,{check:true});
-  assert.ok(drift.includes('.claude/commands/project/work.md'));
+  assert.ok(drift.includes('.claude/skills/tdd-loop/SKILL.md'));
   assert.ok(drift.includes('.codex/agents/developer.toml'));
   assert.ok(drift.includes('.agents/agents/researcher.md'));
   assert.equal(readFileSync(target,'utf8'),'manual change\n');
@@ -89,6 +100,11 @@ test('add, update, and retire assets while preserving local files and binary res
   rmSync(source,{recursive:true});
   sync(dir);
   assert.ok(!existsSync(resolve(dir,'.agents/skills/example/SKILL.md')));
+  // Retiring the last file in a directory must prune the directory too. An empty
+  // `example/` still looks like a skill to anything walking the tree.
+  for (const harness of ['.claude','.agents']) {
+    assert.ok(!existsSync(resolve(dir,harness,'skills/example')),`${harness} skill husk is pruned`);
+  }
   assert.equal(readFileSync(local,'utf8'),'{"custom":true}\n');
   assert.equal(readFileSync(custom,'utf8'),'personal skill\n');
   assert.deepEqual(sync(dir,{check:true}),[]);
@@ -97,14 +113,25 @@ test('add, update, and retire assets while preserving local files and binary res
 test('native harness entry points carry the canonical instructions', () => {
   assert.match(read('AGENTS.md'), /Generated from \.harness\//);
   assert.match(read('CLAUDE.md'), /^@AGENTS\.md$/m);
+  // Commands generate nothing: they are MCP prompts, served by the coordination
+  // server from .harness/commands/project. Assert the absence, so reintroducing
+  // native command files (and the per-harness invocation split they forced) is a
+  // test failure rather than a silent regression.
   for (const file of readdirSync(resolve(root, '.harness/commands/project'))) {
     const name = file.replace(/\.md$/, '');
-    const shared = read(`.agents/skills/project-${name}/SKILL.md`);
-    const claude = read(`.claude/commands/project/${name}.md`);
-    assert.match(shared, new RegExp(`name: ["']?project-${name}`));
-    assert.match(shared, /user.*(?:context|argument)/i);
-    assert.ok(!shared.includes('$ARGUMENTS'), 'shared skills cannot depend on Claude interpolation');
-    assert.ok(claude.includes('$ARGUMENTS'), 'Claude receives the native argument binding');
+    assert.ok(!existsSync(resolve(root,`.claude/commands/project/${name}.md`)), `no native command file for ${name}`);
+    assert.ok(!existsSync(resolve(root,`.agents/skills/project-${name}/SKILL.md`)), `no skill wrapper for ${name}`);
+    // The catalog is the only place a command name is published to agents.
+    assert.ok(read('AGENTS.md').includes(`project-${name}`), `${name} is listed in the command catalog`);
+  }
+  assert.match(read('AGENTS.md'), /Commands are MCP prompts/);
+  assert.match(read('AGENTS.md'), /get_workflow/);
+  // Skills remain generated for every harness: Claude reads .claude/skills,
+  // Codex and Antigravity both read .agents/skills.
+  for (const dir of readdirSync(resolve(root, '.harness/skills'))) {
+    for (const harness of ['.claude','.agents']) {
+      assert.ok(existsSync(resolve(root,harness,'skills',dir,'SKILL.md')), `${harness} carries the ${dir} skill`);
+    }
   }
   for (const file of readdirSync(resolve(root, '.harness/agents'))) {
     const name = file.replace(/\.md$/, '');

@@ -9,7 +9,7 @@ description: "How to make a UI change in this project against docs/wiki/design-s
 
 `docs/wiki/design-system.md` **asserts**; the project's token file **holds the values**. That split only survives if every UI commit verifies it — otherwise the page becomes decoration within a few cycles. This skill is that verification.
 
-Not a stack skill. It says nothing about React, Tailwind, or SwiftUI — those belong in a `frontend-impl` skill that `/project:agent-scout` recommends once the stack is real. This is the project-level procedure that sits above whatever the stack is.
+Not a stack skill. It says nothing about React, Tailwind, or SwiftUI — those belong in a `frontend-impl` skill that `project-agent-scout` recommends once the stack is real. This is the project-level procedure that sits above whatever the stack is.
 
 ## Precondition
 

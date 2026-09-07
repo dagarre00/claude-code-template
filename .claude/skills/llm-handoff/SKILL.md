@@ -73,7 +73,7 @@ the bounded task and no author's rationale for an independent review role.
 
 The worker returns full results, per-case SHAs, Red/Green evidence, changed
 paths, and remaining blockers. Follow `mcp-coordination` to inspect, integrate
-with expected target/worker SHAs, and verify. Follow `/project:work` for required
+with expected target/worker SHAs, and verify. Follow `project-work` for required
 independent review and the feature PR; the worker does neither itself.
 
 Do not remove a failed worktree, discard partial work, or infer completion from

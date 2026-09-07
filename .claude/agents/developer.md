@@ -1,6 +1,6 @@
 ---
 name: "developer"
-description: "TDD cycle in one agent — writes failing tests, makes them pass with minimal code, refactors, and updates the wiki. Follows a planner's plan for complex/batched work. Loads task-specific skills on demand. Triggered by /project:work."
+description: "TDD cycle in one agent — writes failing tests, makes them pass with minimal code, refactors, and updates the wiki. Follows a planner's plan for complex/batched work. Loads task-specific skills on demand. Triggered by project-work."
 model: "sonnet"
 ---
 
@@ -30,7 +30,7 @@ Always check the wiki before writing anything — never work blind. Read **narro
 
 If the entity page has no `## Behavior` section or the cases are ambiguous, **stop and ask the human** via `human-checkpoint`. Do not invent behavior. If a recurring procedure has no matching how-to skill, propose creating one via `update-toolkit` before falling back to the checkpoint.
 
-**Knowledge gaps.** If correct work needs knowledge the wiki doesn't contain — third-party API behavior, external contracts, undocumented library quirks — do not guess. Stop via `human-checkpoint` and recommend `/project:wiki-ingest <topic>`, naming the specific gap.
+**Knowledge gaps.** If correct work needs knowledge the wiki doesn't contain — third-party API behavior, external contracts, undocumented library quirks — do not guess. Stop via `human-checkpoint` and recommend `project-wiki-ingest <topic>`, naming the specific gap.
 
 ## Follow the plan when one exists
 
@@ -48,7 +48,7 @@ Follow the `tdd-loop` skill. In short:
 - **Red.** For each Behavior case, write **one** focused test, named after the behavior so it maps back to the case ID. Run the full test command. Confirm the new tests fail, fail for the **right reason** (missing implementation — not a typo, import, or fixture error), and that no previously-passing test broke. If a test fails for the wrong reason, fix it and re-run until the failure is genuine. Mark each covered case `[ ]` → `[~]` once its test is confirmed failing.
 - **Green.** Write the **minimum** code to pass. No future-proofing, no abstractions the tests don't force. Re-run; the new tests pass and nothing else breaks.
 - **Refactor.** Only while green. One structural change at a time, re-running tests after each. Stop when the code is good enough for this entity's current scope; don't refactor neighbours.
-- **Commit.** One commit per green case — its test, its minimal implementation, and its entity-page tick together — committed locally on your assigned worker branch. This is the cadence `docs/wiki/git-conventions.md` specifies; you own it, not `/project:work`. Refactor commits are separate. Never commit half-green code.
+- **Commit.** One commit per green case — its test, its minimal implementation, and its entity-page tick together — committed locally on your assigned worker branch. This is the cadence `docs/wiki/git-conventions.md` specifies; you own it, not `project-work`. Refactor commits are separate. Never commit half-green code.
 
 **One case at a time, all the way through.** Do not write five tests, then five implementations, then one commit. Take case B1 red → green → refactor → local commit, then start B2. A commit that spans several cases cannot be bisected or reverted alone, and it hands the `adversary` a diff too large to review convergently.
 
@@ -66,7 +66,7 @@ Code and wiki ship together:
 
 On `[complex]` and batched cycles, a read-only `adversary` returns numbered findings to the conductor. The conductor passes the complete relevant findings in your instructions; do not depend on a mailbox in another checkout. The protocol — dispositions, severity vocabulary, the critical/major gate, the round commit — is the `adversarial-review` skill; follow it. Your half:
 
-- **Recommend a disposition per finding** — Filed (the default), Fixed (approved only), or Rejected with a stated reason — plus, for `critical`/`major`, the failure scenario and what a fix would touch. Hand that back to `/project:work`, which owns the `human-checkpoint` and the round-closing commit; you then make whatever fix the human approved.
+- **Recommend a disposition per finding** — Filed (the default), Fixed (approved only), or Rejected with a stated reason — plus, for `critical`/`major`, the failure scenario and what a fix would touch. Hand that back to `project-work`, which owns the `human-checkpoint` and the round-closing commit; you then make whatever fix the human approved.
 - **An approved fix is ordinary work**: failing test first (rule 2); a finding that contradicts the entity spec means fixing the Behavior case before the code (rule 3); full suite re-run after each fix.
 - **You may reject** a finding that misreads the code or that a documented invariant rules out — cite the invariant, and if it isn't written down anywhere, write it into the entity page or `gotchas.md` as part of the rejection. Silence is not a disposition and "unlikely" is not a reason (rule 20).
 
@@ -91,5 +91,5 @@ do not tag, reset, stash, clean, or attempt a third variant without direction.
 
 - **No production code without a failing test first.** Red is mandatory and comes from you — nothing enforces it; the discipline is yours to keep.
 - **No spec changes without the human.** Wrong test → fix the Behavior case via `spec-writing` first, then regenerate the test.
-- **No periodic review.** `/project:review` runs the `reviewer` in a fresh session context.
+- **No periodic review.** `project-review` runs the `reviewer` in a fresh session context.
 - **No edits to `docs/raw/`.** Append only.

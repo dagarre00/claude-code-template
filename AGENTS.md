@@ -175,21 +175,23 @@ Hard constraints from real failures. These override default agent inclinations.
 
 When a new failure pattern emerges that's broader than a project-specific quirk (i.e. it's a discipline issue, not a domain detail), append it here as a numbered rule. Project-specific failures go in `docs/wiki/gotchas.md`.
 
-## Native command catalog
+## Command catalog
 
-Each command accepts trailing free-text context. Logical IDs in shared procedures name the corresponding entry below.
+Commands are MCP prompts served by the coordination server, not generated files, so one name works in every harness. Each accepts trailing free-text context. Logical IDs in shared procedures name the corresponding entry below.
 
-| Claude Code | Codex | Antigravity CLI |
+Invoke a command as the MCP prompt `/mcp__coordination__<name>`, or call `get_workflow("<short name>", context)` and follow the body it returns.
+
+| Command | Prompt name | Short name for `get_workflow` |
 | --- | --- | --- |
-| `/project:adversary` | `$project-adversary` | `/project-adversary` |
-| `/project:agent-scout` | `$project-agent-scout` | `/project-agent-scout` |
-| `/project:handoff` | `$project-handoff` | `/project-handoff` |
-| `/project:init` | `$project-init` | `/project-init` |
-| `/project:interview` | `$project-interview` | `/project-interview` |
-| `/project:review` | `$project-review` | `/project-review` |
-| `/project:wiki-ingest` | `$project-wiki-ingest` | `/project-wiki-ingest` |
-| `/project:wiki-lint` | `$project-wiki-lint` | `/project-wiki-lint` |
-| `/project:work` | `$project-work` | `/project-work` |
+| Point a read-only second model at the current change. | `project-adversary` | `adversary` |
+| Post-init survey that reads the wiki and recommends specific agents and skills tailored to this project's stack, domain, and external services. | `project-agent-scout` | `agent-scout` |
+| Package scoped work as a self-contained execution brief for a later MCP worker. | `project-handoff` | `handoff` |
+| Detect project state, interview for requirements, scaffold docs/wiki, personalize canonical project context, and regenerate all harness entry points. | `project-init` | `init` |
+| Grill-me-relentlessly Q&A to define a plan, a feature, or fill requirements. | `project-interview` | `interview` |
+| Thorough review of the codebase against the wiki. | `project-review` | `review` |
+| Direct ingest of a file or research topic into the wiki. | `project-wiki-ingest` | `wiki-ingest` |
+| Periodic wiki health check. | `project-wiki-lint` | `wiki-lint` |
+| Conductor-only TDD workflow. | `project-work` | `work` |
 
 ## Native agent catalog
 

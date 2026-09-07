@@ -2,7 +2,7 @@
 // Canonical instructions are data; this program never executes their contents.
 import { createHash } from 'node:crypto';
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSync,
-  unlinkSync, writeFileSync } from 'node:fs';
+  rmdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadSettings, engineNames } from '../tools/coordination-mcp/config.mjs';
@@ -87,12 +87,16 @@ export function render(root) {
     outputs.set(path, content);
   }
 
-  function expand(body, source, target, harness) {
+  function expand(body, source, target) {
     body = body.replace(/\{\{cmd:([a-z-]+)\}\}/g, (_, name) => {
       if (!names.has(name)) throw new Error(`Unknown command ${name} in ${source}`);
-      return harness === 'claude' ? `/project:${name}` : `project-${name}`;
-    }).replaceAll('{{arguments}}', harness === 'claude' ? '$ARGUMENTS'
-      : 'user-provided context following this skill invocation (empty if omitted)');
+      // Commands are MCP prompts rather than generated files, so a single name
+      // serves every engine and there is no per-harness invocation flavour.
+      return `project-${name}`;
+    });
+    // {{arguments}} is a command-body macro only, and command bodies are never
+    // generated — the server expands it in get_workflow. Anything reaching here
+    // with that token is a source error, caught by the unresolved-token check.
     // Uppercase placeholders belong to the external-handoff template and must
     // survive until that workflow fills them; lowercase tokens are compiler syntax.
     if (/\{\{[a-z][^\n]*?\}\}/.test(body)) throw new Error(`Unresolved token: ${source}`);
@@ -107,45 +111,46 @@ export function render(root) {
     });
   }
 
-  const intro = expand(read(root, '.harness/instructions.md'), '.harness/instructions.md', 'AGENTS.md', 'shared');
+  const intro = expand(read(root, '.harness/instructions.md'), '.harness/instructions.md', 'AGENTS.md');
   const rules = walk(root, '.harness/rules').map(path =>
-    expand(read(root,path).replace(/^---\n[\s\S]*?\n---\n/, ''), path, 'AGENTS.md', 'shared')).join('\n');
-  const catalog = '\n## Native command catalog\n\nEach command accepts trailing free-text context. '
+    expand(read(root,path).replace(/^---\n[\s\S]*?\n---\n/, ''), path, 'AGENTS.md')).join('\n');
+  const catalog = '\n## Command catalog\n\nCommands are MCP prompts served by the coordination server, '
+    + 'not generated files, so one name works in every harness. Each accepts trailing free-text context. '
     + 'Logical IDs in shared procedures name the corresponding entry below.\n\n'
-    + '| Claude Code | Codex | Antigravity CLI |\n| --- | --- | --- |\n'
-    + commands.map(c => `| \`/project:${c.meta.name}\` | \`$project-${c.meta.name}\` | \`/project-${c.meta.name}\` |`).join('\n')
+    + 'Invoke a command as the MCP prompt `/mcp__coordination__<name>`, or call '
+    + '`get_workflow("<short name>", context)` and follow the body it returns.\n\n'
+    + '| Command | Prompt name | Short name for `get_workflow` |\n| --- | --- | --- |\n'
+    + commands.map(c => `| ${c.meta.description.split('.')[0]}. | \`project-${c.meta.name}\` | \`${c.meta.name}\` |`).join('\n')
     + '\n\n## Native agent catalog\n\n'
-    + agents.map(a => `- \`${a.meta.name}\` (${a.meta.profile}): ${expand(a.meta.description,a.path,'AGENTS.md','shared')}`).join('\n') + '\n';
-  const project = expand(read(root, '.harness/project.md'), '.harness/project.md', 'AGENTS.md', 'shared');
+    + agents.map(a => `- \`${a.meta.name}\` (${a.meta.profile}): ${expand(a.meta.description,a.path,'AGENTS.md')}`).join('\n') + '\n';
+  const project = expand(read(root, '.harness/project.md'), '.harness/project.md', 'AGENTS.md');
   emit('AGENTS.md', marker('.harness/') + '\n' + project + '\n' + intro + '\n' + rules + catalog);
   emit('CLAUDE.md', marker('.harness/instructions.md') + '\n@AGENTS.md\n');
 
+  // Commands generate no native files. They are served at runtime by the
+  // coordination server, which registers one MCP prompt per command and returns
+  // the same body through get_workflow. The contract is still validated here so
+  // a malformed command fails at sync time rather than at dispatch.
   for (const command of commands) {
-    const {name,description} = command.meta;
     if (!command.meta['argument-hint'] || !command.body.includes('{{arguments}}')) {
       throw new Error(`Command lacks argument contract: ${command.path}`);
-    }
-    for (const [harness,target] of [['claude',`.claude/commands/project/${name}.md`],
-      ['shared',`.agents/skills/project-${name}/SKILL.md`]]) {
-      const meta = { name: harness === 'claude' ? name : `project-${name}`,
-        description: expand(description,command.path,target,harness) };
-      if (harness === 'claude') meta['argument-hint'] = command.meta['argument-hint'];
-      emit(target, yaml(meta,expand(command.body,command.path,target,harness),command.path));
     }
   }
 
   for (const path of skills) {
     const suffix = path.slice('.harness/skills/'.length);
-    for (const [harness,target] of [['claude',`.claude/skills/${suffix}`],['shared',`.agents/skills/${suffix}`]]) {
+    // Two discovery roots, identical content: Claude Code reads .claude/skills,
+    // while Codex and Antigravity both read .agents/skills.
+    for (const target of [`.claude/skills/${suffix}`,`.agents/skills/${suffix}`]) {
       if (path.endsWith('/SKILL.md')) {
         const skill = document(root,path);
         if (suffix !== `${skill.meta.name}/SKILL.md` || names.has(skill.meta.name.replace(/^project-/,'')) && skill.meta.name.startsWith('project-')) {
           throw new Error(`Skill name/path collision: ${path}`);
         }
-        emit(target,yaml({name:skill.meta.name,description:expand(skill.meta.description,path,target,harness)},
-          expand(skill.body,path,target,harness),path));
+        emit(target,yaml({name:skill.meta.name,description:expand(skill.meta.description,path,target)},
+          expand(skill.body,path,target),path));
       } else if (promptFile(path)) {
-        emit(target,marker(path)+'\n'+expand(read(root,path),path,target,harness));
+        emit(target,marker(path)+'\n'+expand(read(root,path),path,target));
       } else {
         emit(target,readFileSync(inside(root,path)));
       }
@@ -165,7 +170,7 @@ export function render(root) {
     // An engine with no nativeAgent (MCP-only) simply generates nothing.
     const helpers = {
       source: agent.path,
-      expand: (text,target,harness) => expand(text,agent.path,target,harness),
+      expand: (text,target) => expand(text,agent.path,target),
       yaml: (meta,body) => yaml(meta,body,agent.path),
     };
     for (const engineName of engineNames) {
@@ -205,7 +210,17 @@ export function sync(root, { check = false, force = false } = {}) {
   if (check) return [...changes.map(c=>c.path),...(manifestChanged?['.harness/generated.json']:[])];
   // All inputs, destinations, and conflicts have been checked before any write.
   for (const change of changes) {
-    if (change.wanted === undefined) unlinkSync(change.full);
+    if (change.wanted === undefined) {
+      unlinkSync(change.full);
+      // Removing a generated file can empty its directory — a retired command, or
+      // a renamed skill. Prune the husk: an empty `project-work/` still looks like
+      // a skill directory to anything walking the tree. rmdirSync refuses a
+      // non-empty directory, so this can never remove anything still in use, and
+      // it stops at the repository root.
+      for (let dir = dirname(change.full); relative(root,dir) && !relative(root,dir).startsWith('..'); dir = dirname(dir)) {
+        try { rmdirSync(dir); } catch { break; }
+      }
+    }
     else { mkdirSync(dirname(change.full),{recursive:true}); writeFileSync(change.full,change.wanted); }
   }
   if (manifestChanged) writeFileSync(manifestPath,manifest);

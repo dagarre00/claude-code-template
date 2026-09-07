@@ -32,11 +32,10 @@ without `--force`.
 | `.harness/project.md` | folded into `AGENTS.md` | Project identity block, verbatim after macro expansion. |
 | `.harness/instructions.md` | folded into `AGENTS.md` | Shared operating instructions. |
 | `.harness/rules/*.md` | folded into `AGENTS.md` | Frontmatter stripped; bodies concatenated in filename order. Currently one file, `behavioral.md`. |
-| *(built inline, no source file)* | `AGENTS.md` § Native command catalog | Table of `/project:<name>` / `$project-<name>` / `/project-<name>`, generated from the command list. |
+| *(built inline, no source file)* | `AGENTS.md` § Command catalog | One row per command: summary, MCP prompt name `project-<name>`, and the short name `get_workflow` takes. Generated from the command list. |
 | *(built inline, no source file)* | `AGENTS.md` § Native agent catalog | One bullet per agent: name, profile, expanded description. |
 | `.harness/instructions.md` (marker only) | `CLAUDE.md` | Fixed two-line file: a DO-NOT-EDIT marker plus a literal `@AGENTS.md` — Claude Code's own import syntax. This is the **only** generated file that uses a native `@` import. |
-| `.harness/commands/project/<name>.md` | `.claude/commands/project/<name>.md` | Claude Code slash command. Frontmatter: `name`, `description`, `argument-hint`. |
-| `.harness/commands/project/<name>.md` | `.agents/skills/project-<name>/SKILL.md` | Shared "command-as-skill" format read natively by Antigravity CLI and exposed to Codex as an MCP prompt (see §3). |
+| `.harness/commands/project/<name>.md` | *(nothing generated)* | Commands produce **no** native files in any harness. The coordination server registers one MCP prompt per command and serves the same body through `get_workflow` (see §3). The generator still validates each command's `argument-hint` and `{{arguments}}` contract at sync time. |
 | `.harness/skills/<name>/SKILL.md` (+ sibling files) | `.claude/skills/<name>/SKILL.md` and `.agents/skills/<name>/SKILL.md` | Procedure skills. Non-`SKILL.md` siblings (e.g. `TEMPLATE.md`, `sync-develop.md`) are copied byte-for-byte to both trees; `.md`/`.toml`/`.tmpl` siblings get the DO-NOT-EDIT marker and macro expansion, everything else is copied raw. |
 | `.harness/agents/<name>.md` | `.claude/agents/<name>.md` | Claude Code subagent. Frontmatter: `name`, `description`, `model`; read-only agents also get `tools: [...]` from `engines.claude.readOnlyTools`. |
 | `.harness/agents/<name>.md` | `.agents/agents/<name>.md` | Antigravity CLI subagent. Frontmatter adds `subagent: true`, `mainAgent: true`, `commandExecutionPolicy: "sandbox"`; read-only agents get `tools: [...]` from `engines.antigravity.readOnlyTools`. |
@@ -55,40 +54,53 @@ a name/path-collision error.
 | | Claude Code | Codex | Antigravity CLI |
 | --- | --- | --- | --- |
 | Root instructions | `CLAUDE.md` (imports `AGENTS.md` via `@AGENTS.md`) | `AGENTS.md` directly (native discovery — no generated pointer file exists for Codex) | `AGENTS.md` directly (native discovery — same as Codex) |
-| Human-invoked commands | `.claude/commands/project/*.md`, one file per command, native slash-command directory | No native command file at all — served by the coordination MCP server as a registered **prompt** (see §3) | `.agents/skills/project-*/SKILL.md`, invoked through Antigravity's skill loader |
-| Reusable procedures | `.claude/skills/<name>/SKILL.md` | *(none — Codex has no skill-loading mechanism in this template; procedure text reaches Codex workers only via `developer_instructions` in their agent TOML, or the shared skill files a Codex-driven conductor reads directly off disk)* | `.agents/skills/<name>/SKILL.md` |
+| Human-invoked commands | *(no native files in any harness)* — all three are served by the coordination MCP server as registered **prompts** (see §3) | same | same |
+| Reusable procedures | `.claude/skills/<name>/SKILL.md` | `.agents/skills/<name>/SKILL.md` — Codex discovers skills from `$CWD/.agents/skills`, then parent directories, then `$REPO_ROOT/.agents/skills`, then `$HOME/.agents/skills` ([Codex skills docs](https://learn.chatgpt.com/docs/build-skills)). The same generated tree serves Codex and Antigravity. | `.agents/skills/<name>/SKILL.md` |
 | Agent/role definitions | `.claude/agents/<name>.md` (Markdown + YAML frontmatter) | `.codex/agents/<name>.toml` (TOML) | `.agents/agents/<name>.md` (Markdown + YAML frontmatter) |
 | Read-only enforcement | `tools:` allowlist (`Read, Glob, Grep, Bash`) in agent frontmatter | `sandbox_mode = "read-only"` in the agent TOML, plus `--sandbox read-only` at dispatch | `tools:` allowlist (`view_file, grep_search, list_dir, run_command`) in agent frontmatter |
 | MCP client config | `.mcp.json` (repo root, gitignored) | `.codex/config.toml`, managed block (gitignored) | `.agents/mcp_config.json` (gitignored) |
 
 ## 3. Invocation catalog
 
-Every canonical command in `.harness/commands/project/` gets three spellings.
-`AGENTS.md` § Native command catalog is generated from this same list — it is
-not hand-maintained.
+Commands generate **no native files in any harness**. `tools/coordination-mcp/server.mjs`
+registers one MCP **prompt** per file in `.harness/commands/project/`, named
+`project-<name>`, and `get_workflow(name, context)` returns the same body on
+demand. One name therefore works everywhere, and there is no per-harness
+invocation spelling to keep in step.
 
-| Command | Claude Code | Codex | Antigravity CLI |
-| --- | --- | --- | --- |
-| adversary | `/project:adversary` | `$project-adversary` | `/project-adversary` |
-| agent-scout | `/project:agent-scout` | `$project-agent-scout` | `/project-agent-scout` |
-| handoff | `/project:handoff` | `$project-handoff` | `/project-handoff` |
-| init | `/project:init` | `$project-init` | `/project-init` |
-| interview | `/project:interview` | `$project-interview` | `/project-interview` |
-| review | `/project:review` | `$project-review` | `/project-review` |
-| wiki-ingest | `/project:wiki-ingest` | `$project-wiki-ingest` | `/project-wiki-ingest` |
-| wiki-lint | `/project:wiki-lint` | `$project-wiki-lint` | `/project-wiki-lint` |
-| work | `/project:work` | `$project-work` | `/project-work` |
+`AGENTS.md` § Command catalog is generated from this same list — it is not
+hand-maintained.
 
-**Why Codex's spelling has no matching native file.** Unlike Claude Code and
-Antigravity, this template ships no `.codex/` command file. Instead,
-`tools/coordination-mcp/server.mjs` registers one MCP **prompt** per file in
-`.harness/commands/project/`, named `project-<name>`, whose text is the same
-expanded command body `get_workflow` returns. Codex's `$name` prompt picker is
-what turns that MCP registration into the `$project-<name>` spelling — the
-command only works once the coordination MCP server is configured and running
-(§6). Claude Code and Antigravity have working native files independent of
-MCP being up; only the actual dispatch (via `spawn_worker`, `get_workflow`,
-etc.) always requires MCP for all three.
+| Command | MCP prompt | `get_workflow` short name |
+| --- | --- | --- |
+| adversary | `project-adversary` | `adversary` |
+| agent-scout | `project-agent-scout` | `agent-scout` |
+| handoff | `project-handoff` | `handoff` |
+| init | `project-init` | `init` |
+| interview | `project-interview` | `interview` |
+| review | `project-review` | `review` |
+| wiki-ingest | `project-wiki-ingest` | `wiki-ingest` |
+| wiki-lint | `project-wiki-lint` | `wiki-lint` |
+| work | `project-work` | `work` |
+
+**How a human invokes one.** Ask the conductor in plain conversation ("run
+project-work"); it calls `get_workflow("work", "…")` and follows the returned
+body. Where a CLI surfaces MCP prompts as slash commands, they can also be
+picked directly — Claude Code spells that `/mcp__coordination__project-work`,
+and Codex exposes registered prompts through its `$name` picker.
+
+**This makes commands depend on MCP being up.** Before this change, Claude Code
+and Antigravity had native command files that worked without the server. They no
+longer do, which matches the operating rule already stated in `AGENTS.md`: all
+project commands are conductor-only, and if MCP is unavailable the conductor
+reports the blocker rather than improvising. Configure the server first (§6).
+
+**Why commands went MCP-only.** Native command files duplicated the canonical
+body into two more places per command and forced the generator to carry a
+per-harness invocation flavour (`/project:x` versus `project-x`, plus differing
+argument macros). Codex already worked this way, proving the path; extending it
+to the other two removed 18 generated files and the last flavour split, so a new
+engine needs no command work at all.
 
 ## 4. File inclusion and prompt expansion
 
@@ -96,10 +108,10 @@ etc.) always requires MCP for all three.
   It is hard-coded in the generator, not produced by macro expansion. No other
   generated or canonical file uses `@`-import syntax, and none should be
   authored to rely on one.
-- **`{{cmd:<name>}}`.** Expands to `/project:<name>` when rendering for Claude
-  Code, or `project-<name>` for every other target (Antigravity skills, Codex
-  TOML, `AGENTS.md` itself). Referencing an undefined command name is a build
-  error.
+- **`{{cmd:<name>}}`.** Expands to `project-<name>` everywhere. Because commands
+  are MCP prompts rather than per-harness files, one spelling serves every
+  target, and the generator has no per-harness invocation flavour at all.
+  Referencing an undefined command name is a build error.
 - **`{{arguments}}`.** Expands to Claude Code's own placeholder token
   `$ARGUMENTS` for Claude output, or to the literal sentence
   `user-provided context following this skill invocation (empty if omitted)`
@@ -369,7 +381,8 @@ install. The **coordination MCP server** is not: `tools/coordination-mcp/`
 depends on `@modelcontextprotocol/sdk` and `zod`
 (`tools/coordination-mcp/package.json`), and its `node_modules/` is gitignored.
 A fresh clone needs one `npm ci` before the MCP server (and therefore
-`spawn_worker`, `get_workflow`, and every `/project:*` workflow) will run.
+`spawn_worker`, `get_workflow`, and every `project-*` workflow) will run.
+Because commands are MCP prompts, none of them work until the server is up.
 
 Setup sequence for a new adopter:
 
@@ -444,19 +457,21 @@ characters and bypass tokens, so an adapter is verified rather than trusted.
 
 ### What still needs a per-engine edit
 
-Two places remain engine-aware, and neither collapses into a common shape:
+One place remains engine-aware, and it does not collapse into a common shape:
 
-- **`scripts/sync-harness.mjs`** (lines ~93-139) emits *commands and skills* in
-  two flavours, `claude` and `shared`, differing in invocation syntax
-  (`/project:x` vs `project-x`) and argument macro. Codex generates none of these
-  at all — it reaches commands through MCP prompts. A new engine needs a flavour
-  choice here only if it discovers commands from disk.
 - **`scripts/configure-mcp.mjs`** registers the MCP server per client: JSON
   merge for `.mcp.json` and `.agents/mcp_config.json`, a marker-delimited block
-  for `.codex/config.toml`. A new client needs its own registration format.
+  for `.codex/config.toml`. A new client needs its own registration format,
+  because the config file formats genuinely differ.
 
-Native *agent* files are already pluggable via the optional `nativeAgent` hook,
-so an MCP-only engine needs no generator change whatsoever.
+Everything else is already pluggable. Commands generate nothing, so they need no
+per-engine work at all. Native *agent* files go through the optional
+`nativeAgent` hook on the adapter. Skills render once and are written to the two
+discovery roots that exist — `.claude/skills` for Claude Code, `.agents/skills`
+for Codex and Antigravity — with identical content and no per-harness flavour.
+
+An MCP-only engine therefore needs no generator change whatsoever: one adapter
+module, one registry line, one settings block.
 
 ## 12. Open items — verified for Claude, not yet for Codex or Antigravity
 

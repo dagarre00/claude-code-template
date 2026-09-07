@@ -7,7 +7,7 @@ branch; they return a blocker to the conductor. Before this block, confirm the
 integration checkout is clean and `list_workers()` has no active task that a
 branch switch would strand. Worker merges use `mcp-coordination`, not this block.
 
-The maintenance commands (`/project:interview`, `/project:review`, `/project:wiki-lint`, `/project:wiki-ingest`, `/project:agent-scout`, `/project:handoff`) run this before doing anything else. **Already on a `feat/*`/`fix/*` branch?** Stay there — living wiki edits ride the active branch (behavioral rule 19) — and skip this block.
+The maintenance commands (`project-interview`, `project-review`, `project-wiki-lint`, `project-wiki-ingest`, `project-agent-scout`, `project-handoff`) run this before doing anything else. **Already on a `feat/*`/`fix/*` branch?** Stay there — living wiki edits ride the active branch (behavioral rule 19) — and skip this block.
 
 ```bash
 if [ "$(git branch --show-current)" = "main" ]; then

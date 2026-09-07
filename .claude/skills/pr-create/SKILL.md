@@ -1,6 +1,6 @@
 ---
 name: "pr-create"
-description: "How to draft and open a pull request for this project. Loads when a feature branch is finished — all Behavior cases [x] via /project:work, or the human asks for a PR. Trigger on \"open PR\", \"create pull request\", \"PR template\", \"PR body\", \"draft PR\", \"feature complete\", \"all cases ticked\"."
+description: "How to draft and open a pull request for this project. Loads when a feature branch is finished — all Behavior cases [x] via project-work, or the human asks for a PR. Trigger on \"open PR\", \"create pull request\", \"PR template\", \"PR body\", \"draft PR\", \"feature complete\", \"all cases ticked\"."
 ---
 
 <!-- Generated from .harness/skills/pr-create/SKILL.md; DO NOT EDIT. Run node scripts/sync-harness.mjs. -->
@@ -15,7 +15,7 @@ the conductor. Before a conductor branch switch or history operation, inspect
 Worker integration and worktree cleanup go through `mcp-coordination`, not the
 shell examples below. Human remote PR merges remain separate.
 
-Use this when wrapping up a `feat/*` or `fix/*` branch once the feature is complete. This skill is **automatically invoked by `/project:work`** at the end of a cycle where all Behavior cases are `[x]`. Do not wait for an explicit PR request from the human.
+Use this when wrapping up a `feat/*` or `fix/*` branch once the feature is complete. This skill is **automatically invoked by `project-work`** at the end of a cycle where all Behavior cases are `[x]`. Do not wait for an explicit PR request from the human.
 
 ## Read first
 

@@ -1,8 +1,10 @@
 # Getting Started
 
-Examples below use Claude Code's `/project:<name>` spelling. In Codex use
-`$project-<name>`; in Antigravity CLI use `/project-<name>`. All three read the
-same canonical workflow. See [harness setup](harnesses.md) and the generated command catalog in
+Commands are MCP prompts, not per-CLI files, so `project-<name>` means the same
+thing in Claude Code, Codex, and Antigravity. Ask for one in plain conversation
+("run project-work") or invoke the prompt directly where your CLI lists them —
+Claude Code spells that `/mcp__coordination__project-work`. See
+[harness setup](harnesses.md) and the generated command catalog in
 [AGENTS.md](../AGENTS.md).
 
 
@@ -18,7 +20,7 @@ A worked walkthrough from a fresh fork of this template to a first shipped featu
 git clone <this-template> my-project
 cd my-project
  # Prefer GitHub's Use this template, or extract a source archive for a new history.
-git init -b main                        # optional: /project:init does this for you if you skip it
+git init -b main                        # optional: project-init does this for you if you skip it
 git remote add origin <your-new-repo>   # optional now; without a remote, pushes are skipped until you add one
 ```
 
@@ -35,12 +37,12 @@ Then start your preferred CLI (`claude`, `codex`, or `agy`):
 claude
 ```
 
-## 1. `/project:init` — scaffold the wiki
+## 1. `project-init` — scaffold the wiki
 
 For example, in Claude Code, run:
 
 ```
-/project:init
+project-init
 ```
 
 What this does:
@@ -48,15 +50,15 @@ What this does:
 - Verifies the wiki layout in `docs/wiki/`.
 - Detects whether the repo has a stack already (language, package files) and seeds `architecture.md#Stack` and `commands.md` with the detection.
 - Initializes git if missing.
-- **Interviews you inline** — if `requirements.md` and `architecture.md` are empty or missing, `/project:init` runs its own interview pass to fill them. It only asks about topics that are missing or partial; if both files are already fully populated it skips the interview entirely and goes straight to scaffolding.
-- **Bootstraps a runnable test command** — on a greenfield repo the test command you named in the interview doesn't run yet: nothing is installed and there's no test directory. `/project:init` asks permission, then creates the bare minimum (dependency manifest, empty `tests/`, empty source dir), installs, and runs the command to confirm it exits cleanly on an empty suite. No application code, no example test. This matters because `/project:work` cannot produce a genuine Red phase against a command that errors out — a test that fails because `pytest` isn't installed is not a failing test.
+- **Interviews you inline** — if `requirements.md` and `architecture.md` are empty or missing, `project-init` runs its own interview pass to fill them. It only asks about topics that are missing or partial; if both files are already fully populated it skips the interview entirely and goes straight to scaffolding.
+- **Bootstraps a runnable test command** — on a greenfield repo the test command you named in the interview doesn't run yet: nothing is installed and there's no test directory. `project-init` asks permission, then creates the bare minimum (dependency manifest, empty `tests/`, empty source dir), installs, and runs the command to confirm it exits cleanly on an empty suite. No application code, no example test. This matters because `project-work` cannot produce a genuine Red phase against a command that errors out — a test that fails because `pytest` isn't installed is not a failing test.
 
-After `/project:init`, the wiki is fully scaffolded with real content and the TDD loop is executable. You do **not** need to run `/project:interview` separately after a fresh init — only use it later when adding a new feature or deepening the spec.
+After `project-init`, the wiki is fully scaffolded with real content and the TDD loop is executable. You do **not** need to run `project-interview` separately after a fresh init — only use it later when adding a new feature or deepening the spec.
 
-## 2. `/project:interview` — add a feature or deepen the spec
+## 2. `project-interview` — add a feature or deepen the spec
 
 ```
-/project:interview
+project-interview
 ```
 
 Run this when requirements change or you're adding a major feature — not as a mandatory step after init. The agent grills you until the spec is sharp enough to write tests against. It asks for:
@@ -76,10 +78,10 @@ Outputs:
 - Updates to `requirements.md`, `architecture.md`, and one `entities/<slug>.md` per major feature.
 - Initial entries in `todos.md`.
 
-## 3. `/project:agent-scout` — configure your toolkit
+## 3. `project-agent-scout` — configure your toolkit
 
 ```
-/project:agent-scout
+project-agent-scout
 ```
 
 After the interview fills in real requirements and architecture, run this once to discover which agents and skills your project actually needs. The template ships with a stack-agnostic baseline; `agent-scout` reads your wiki and recommends the gap-fillers — things like `backend-impl`, `database-impl`, `stripe-impl`, or an `auth-impl` skill for the `developer` to auto-load when relevant.
@@ -91,42 +93,42 @@ What it does:
 - Produces a prioritized report with trigger descriptions, wiki citations, and procedure outlines for each recommendation.
 - **Does not create anything automatically.** It presents the list; you approve what to build. Approved items are created via the `update-toolkit` skill.
 
-Re-run `/project:agent-scout` after a major `/project:interview` that adds a new stack layer or external service.
+Re-run `project-agent-scout` after a major `project-interview` that adds a new stack layer or external service.
 
-## 4. `/project:work` — first feature, TDD-style
+## 4. `project-work` — first feature, TDD-style
 
 ```
-/project:work
+project-work
 ```
 
-`/project:work` picks the top item from `todos.md` (or batches consecutive todos sharing context), opens a `feat/<slug>` branch, and dispatches the single `developer` agent through one full cycle:
+`project-work` picks the top item from `todos.md` (or batches consecutive todos sharing context), opens a `feat/<slug>` branch, and dispatches the single `developer` agent through one full cycle:
 
-1. **Plan (conditional).** If the todo is flagged `[complex]` or a batch of 2+ todos was proposed, `/project:work` dispatches the `planner` agent (reasoning profile) first; it writes a stepwise plan to `.harness/handoff/<slug>-plan.md` (gitignored scratch) that the developer then follows. A single simple todo skips planning.
+1. **Plan (conditional).** If the todo is flagged `[complex]` or a batch of 2+ todos was proposed, `project-work` dispatches the `planner` agent (reasoning profile) first; it writes a stepwise plan to `.harness/handoff/<slug>-plan.md` (gitignored scratch) that the developer then follows. A single simple todo skips planning.
 2. **Red.** The developer reads the matching `entities/<slug>.md#Behavior` cases, writes one failing test per case, runs the suite, and confirms the tests fail for the right reason (missing implementation — not a typo or import error). It marks each case `[ ]` → `[~]`.
 3. **Green.** The developer writes the minimal code to make the tests pass.
 4. **Refactor.** The developer cleans up while keeping tests green.
 5. **Wiki update.** The developer ticks the entity-page Behavior cases `[~]` → `[x]`, updates the Implementation/Tests sections, and appends to `log.md`. Larger cross-page cleanup it can't safely do inline is queued in `wiki-todos.md` for the wiki-maintainer.
-6. **Adversarial review (conditional).** Same trigger as the plan — `[complex]` or a 2+ batch. `/project:work` dispatches the `adversary` agent (reasoning profile, none of the developer's context) at the diff and tells it to find what's wrong. The caller writes its returned findings to `.harness/handoff/<slug>-findings.md` and may not touch the code. The developer answers each one — **filed as a todo** (the default), fixed, or rejected with a reason. Findings are not fixed in the cycle that surfaced them; they go into `docs/wiki/todos.md` at a priority set by severity. A `critical` or `major` is the exception: it goes to you via a human checkpoint, and you decide fix-now or queue. Because most rounds fix nothing, there is usually nothing to re-review and the review is one pass. Each disposition is written into the commit that answers it, which is the durable record (behavioral rule 20) — `git log --grep="adversary round"` reads it back. A simple single todo skips this; you can run `/project:adversary` yourself instead.
-7. **Commit.** Already done — the `developer` commits and pushes each Behavior case as it goes (test + implementation + wiki tick), and review fixes are their own commits. `/project:work` verifies the suite and the commit granularity, then adds just the log entry (see [git-conventions.md](wiki/git-conventions.md)).
+6. **Adversarial review (conditional).** Same trigger as the plan — `[complex]` or a 2+ batch. `project-work` dispatches the `adversary` agent (reasoning profile, none of the developer's context) at the diff and tells it to find what's wrong. The caller writes its returned findings to `.harness/handoff/<slug>-findings.md` and may not touch the code. The developer answers each one — **filed as a todo** (the default), fixed, or rejected with a reason. Findings are not fixed in the cycle that surfaced them; they go into `docs/wiki/todos.md` at a priority set by severity. A `critical` or `major` is the exception: it goes to you via a human checkpoint, and you decide fix-now or queue. Because most rounds fix nothing, there is usually nothing to re-review and the review is one pass. Each disposition is written into the commit that answers it, which is the durable record (behavioral rule 20) — `git log --grep="adversary round"` reads it back. A simple single todo skips this; you can run `project-adversary` yourself instead.
+7. **Commit.** Already done — the `developer` commits and pushes each Behavior case as it goes (test + implementation + wiki tick), and review fixes are their own commits. `project-work` verifies the suite and the commit granularity, then adds just the log entry (see [git-conventions.md](wiki/git-conventions.md)).
 
 If a step fails twice on the same approach, the **two-strike rule** fires — the developer stops, you tag a checkpoint and reset, and re-spec.
 
-## 5. `/project:review` — every ~5 todos
+## 5. `project-review` — every ~5 todos
 
 ```
-/project:review
+project-review
 ```
 
-Runs the `reviewer` agent in a fresh session context with no developer baggage. It audits code against the wiki and flags drift, missing tests, security/perf concerns. Critical and Warning findings become prioritized items in `todos.md` (they turn into the next `/project:work` cycles); Drift findings go to `wiki-todos.md` for the maintainer. The audit report and todo updates commit directly to `develop`.
+Runs the `reviewer` agent in a fresh session context with no developer baggage. It audits code against the wiki and flags drift, missing tests, security/perf concerns. Critical and Warning findings become prioritized items in `todos.md` (they turn into the next `project-work` cycles); Drift findings go to `wiki-todos.md` for the maintainer. The audit report and todo updates commit directly to `develop`.
 
-This is **not** part of `/project:work` — it's periodic, run on demand or roughly every 5 todos.
+This is **not** part of `project-work` — it's periodic, run on demand or roughly every 5 todos.
 
-Don't confuse it with `/project:adversary`. Both are read-only and both run without the author's context, but they answer different questions: the `adversary` reads **one diff before it ships** and hunts for defects in it; the `reviewer` reads **the whole repo after things have shipped** and hunts for drift between the wiki and the code. Diff-scoped review never sees a problem in code it didn't touch, and a whole-repo audit arrives too late to stop the commit.
+Don't confuse it with `project-adversary`. Both are read-only and both run without the author's context, but they answer different questions: the `adversary` reads **one diff before it ships** and hunts for defects in it; the `reviewer` reads **the whole repo after things have shipped** and hunts for drift between the wiki and the code. Diff-scoped review never sees a problem in code it didn't touch, and a whole-repo audit arrives too late to stop the commit.
 
-## 6. `/project:wiki-lint` — every few cycles
+## 6. `project-wiki-lint` — every few cycles
 
 ```
-/project:wiki-lint
+project-wiki-lint
 ```
 
 Dispatches the `wiki-maintainer` to process the `wiki-todos.md` queue, find orphans, broken `[[wiki-links]]`, stale claims, and contradictions, and compact `gotchas.md`/`log.md` when they overflow. Returns the wiki to a clean state.
@@ -141,7 +143,7 @@ Once the project is bootstrapped, you'll cycle through the same handful of workf
 
 A new user story landed. You want it specified, tested, and shipped.
 
-1. **Define it.** Run `/project:interview`. Tell the agent which feature you want to add. The agent walks you through user stories, acceptance criteria, and Behavior cases. It updates `requirements.md` and creates or extends `docs/wiki/entities/<slug>.md`.
+1. **Define it.** Run `project-interview`. Tell the agent which feature you want to add. The agent walks you through user stories, acceptance criteria, and Behavior cases. It updates `requirements.md` and creates or extends `docs/wiki/entities/<slug>.md`.
 2. **Confirm the todo.** When the interview ends, open `docs/wiki/todos.md`. The new feature should appear as one or more unticked items, e.g.:
 
    ```markdown
@@ -151,10 +153,10 @@ A new user story landed. You want it specified, tested, and shipped.
 
    If it's missing, the interview didn't close the loop — ask the agent to add the todo before moving on.
 
-3. **Run `/project:work`.** It picks the top todo, opens `feat/auth-login`, and dispatches the `developer`. The developer reads `entities/auth-login.md#Behavior`, writes failing tests, and confirms Red.
+3. **Run `project-work`.** It picks the top todo, opens `feat/auth-login`, and dispatches the `developer`. The developer reads `entities/auth-login.md#Behavior`, writes failing tests, and confirms Red.
 4. **The same agent implements.** It writes the minimum code to turn Red into Green, then refactors. There's no handoff to another agent — one developer owns the whole cycle.
 5. **Wiki updates land in the same commit.** The developer ticks the Behavior cases on the entity page, checks the todo off in `docs/wiki/todos.md` (shipped work lives in git history — there's no `completed.md`), and appends a one-line log entry. Code changed but no wiki page touched is drift — the same-commit rule is the safety net.
-6. **Commit.** The developer commits and pushes each Behavior case as it lands (test + implementation + entity-page update). `/project:work` verifies the suite and adds only the cycle log entry (see [git-conventions.md](wiki/git-conventions.md)).
+6. **Commit.** The developer commits and pushes each Behavior case as it lands (test + implementation + entity-page update). `project-work` verifies the suite and adds only the cycle log entry (see [git-conventions.md](wiki/git-conventions.md)).
 
 The developer plans **first** if the todo is tagged `[complex]` or a batch of 2+ todos is being run together. For a single simple todo, planning is skipped — straight to Red.
 
@@ -162,18 +164,18 @@ The developer plans **first** if the todo is tagged `[complex]` or a batch of 2+
 
 Some features are too big to attack directly — they cross files, need careful sequencing, or have non-obvious tradeoffs. The `planner` (reasoning profile) decomposes them before the developer tests.
 
-1. **Define it.** `/project:interview` as usual. The Behavior cases on the entity page are still the contract.
+1. **Define it.** `project-interview` as usual. The Behavior cases on the entity page are still the contract.
 2. **Mark the todo `[complex]`.** Edit `docs/wiki/todos.md`:
 
    ```markdown
    - [ ] [complex] billing-invoices: generate monthly invoice PDF with line items
    ```
 
-   The `[complex]` tag is what `/project:work` keys off to dispatch the `planner` before testing.
+   The `[complex]` tag is what `project-work` keys off to dispatch the `planner` before testing.
 
-3. **Run `/project:work`.** With `[complex]` set (or a 2+ batch), `/project:work` first dispatches the `planner` (reasoning profile), which writes a plan (following the `plan-writing` skill) to `.harness/handoff/billing-invoices-plan.md` — goal, approach, ordered steps, risks, out-of-scope. `/project:work` sanity-checks it, then dispatches the `developer`, which reads the plan and drives the same Red → Green → refactor → wiki → commit flow as a simple feature, following the plan's step order.
-4. **Where the plan lives.** `.harness/handoff/<slug>-plan.md`. The file is gitignored — plans are transient scratch `/project:work` clears when the cycle is done. The wiki holds the spec (what); the plan is how-to for one cycle. Because it isn't committed, a container recycle loses it — but so does it lose the rest of the uncommitted cycle, so `/project:work` simply restarts the still-open todo and re-dispatches the planner to regenerate the plan from the Behavior cases.
-5. **Two-strike interaction.** If the developer fails twice on the same mechanism, it stops, tags a checkpoint, and presents both failed attempts. On an authorized retry, `/project:work` re-dispatches the `planner` to overwrite the plan with a fundamentally different shape — naming the failed approach and the new one in the `## Approach` section. You never silently retry the same plan.
+3. **Run `project-work`.** With `[complex]` set (or a 2+ batch), `project-work` first dispatches the `planner` (reasoning profile), which writes a plan (following the `plan-writing` skill) to `.harness/handoff/billing-invoices-plan.md` — goal, approach, ordered steps, risks, out-of-scope. `project-work` sanity-checks it, then dispatches the `developer`, which reads the plan and drives the same Red → Green → refactor → wiki → commit flow as a simple feature, following the plan's step order.
+4. **Where the plan lives.** `.harness/handoff/<slug>-plan.md`. The file is gitignored — plans are transient scratch `project-work` clears when the cycle is done. The wiki holds the spec (what); the plan is how-to for one cycle. Because it isn't committed, a container recycle loses it — but so does it lose the rest of the uncommitted cycle, so `project-work` simply restarts the still-open todo and re-dispatches the planner to regenerate the plan from the Behavior cases.
+5. **Two-strike interaction.** If the developer fails twice on the same mechanism, it stops, tags a checkpoint, and presents both failed attempts. On an authorized retry, `project-work` re-dispatches the `planner` to overwrite the plan with a fundamentally different shape — naming the failed approach and the new one in the `## Approach` section. You never silently retry the same plan.
 
 ## Scenario: Batching multiple small todos
 
@@ -191,11 +193,11 @@ When you have several related todos, running them in one cycle is often cheaper 
 - Any one of them could ship and merge without the others.
 - The total work is large enough that the branch's diff becomes hard to review — a batch is 2–3 todos, not a milestone.
 
-**How `/project:work` handles it:**
+**How `project-work` handles it:**
 
-1. `/project:work` reads the top 1–3 todos. If they share an entity and context, it proposes a batch and asks you to confirm via `human-checkpoint`.
-2. You confirm. `/project:work` flags the cycle as a batch and dispatches the `planner` first (any batch of 2+ triggers a plan).
-3. The developer takes the cases **one at a time**: Red → Green → refactor → tick → commit → push for B3, then the same for B4, then B5. It does *not* write all the tests first and drive them green together — a commit spanning several cases breaks `git bisect`, makes a single case unrevertable, and hands the `adversary` a diff too large to converge on. `/project:work` step 6 checks the granularity and sends a lump back as a defect.
+1. `project-work` reads the top 1–3 todos. If they share an entity and context, it proposes a batch and asks you to confirm via `human-checkpoint`.
+2. You confirm. `project-work` flags the cycle as a batch and dispatches the `planner` first (any batch of 2+ triggers a plan).
+3. The developer takes the cases **one at a time**: Red → Green → refactor → tick → commit → push for B3, then the same for B4, then B5. It does *not* write all the tests first and drive them green together — a commit spanning several cases breaks `git bisect`, makes a single case unrevertable, and hands the `adversary` a diff too large to converge on. `project-work` step 6 checks the granularity and sends a lump back as a defect.
 4. One commit per case, each named for its own behavior — `feat(auth-login): add rate limiting`, then `feat(auth-login): lock out after five failed attempts`. The batch is named in the branch and the PR, never folded into one commit.
 5. Each case's entity-page tick (`[~]` → `[x]`) rides in that case's own commit, alongside its test and implementation.
 6. Because the batch dispatched the `planner`, it also triggers the adversarial review at step 7a.
@@ -204,7 +206,7 @@ When you have several related todos, running them in one cycle is often cheaper 
 
 The reviewer is fresh eyes on the codebase. It catches drift the developer can't see because the developer wrote both the spec and the code.
 
-**When to fire `/project:review`:**
+**When to fire `project-review`:**
 
 - Roughly every 5 completed todos.
 - Before a release.
@@ -213,23 +215,23 @@ The reviewer is fresh eyes on the codebase. It catches drift the developer can't
 
 **What happens:**
 
-1. `/project:review` syncs `develop` and dispatches the reviewer agent in a fresh session context — no prior developer context, fresh read of every entity page and the code that implements it.
+1. `project-review` syncs `develop` and dispatches the reviewer agent in a fresh session context — no prior developer context, fresh read of every entity page and the code that implements it.
 2. Reviewer runs the test suite itself. Trusts nothing.
 3. Findings land in `docs/wiki/decisions/review-YYYY-MM-DD.md` — structured by severity (Critical / Warning / Drift / Missing ADR).
 
 **Processing the report:**
 
 1. Read `docs/wiki/decisions/review-YYYY-MM-DD.md`.
-2. For each Critical / Warning, file a TODO in `docs/wiki/todos.md` with priority. These become the next `/project:work` cycles.
-3. For each Drift item, append to `docs/wiki/wiki-todos.md` for the next `/project:wiki-lint`.
-4. For each Missing ADR, queue an ADR for the next `/project:work` cycle to file via the `decision-recording` skill.
+2. For each Critical / Warning, file a TODO in `docs/wiki/todos.md` with priority. These become the next `project-work` cycles.
+3. For each Drift item, append to `docs/wiki/wiki-todos.md` for the next `project-wiki-lint`.
+4. For each Missing ADR, queue an ADR for the next `project-work` cycle to file via the `decision-recording` skill.
 5. Append a log entry summarising counts, then commit and push directly to `develop`.
 
 ## Scenario: Filing a hotfix on production code
 
 A bug in shipped behavior needs a fix. Same TDD discipline as a feature — just a `fix/` prefix.
 
-1. **Branch.** `/project:work` opens `fix/<slug>` (not `feat/<slug>`) because the matching entity already exists; you're correcting a regression. The same test-first discipline applies on `fix/*`.
+1. **Branch.** `project-work` opens `fix/<slug>` (not `feat/<slug>`) because the matching entity already exists; you're correcting a regression. The same test-first discipline applies on `fix/*`.
 2. **Regression test first.** The developer writes a test that **reproduces the bug** — assertion fails on the current code. This becomes a new Behavior case on the entity page, e.g.:
 
    ```markdown
@@ -266,8 +268,8 @@ Sometimes an approach just doesn't work. The two-strike rule keeps you from grin
 1. **First failure.** The developer's attempt doesn't make Red turn Green (or it makes the new tests pass but breaks existing tests it can't reconcile). It rethinks and tries a second time.
 2. **Second failure.** On the second failure on the same mechanism, the developer stops and calls `human-checkpoint`. It does **not** try a third time on the same approach.
 3. **Your decision.** The agent presents the two attempts, what failed, and at least one fundamentally different approach to consider. Options:
-   - **Reset and re-spec.** Tag the failed state for postmortem, reset to the last green commit, then `/project:interview` to sharpen the Behavior cases. This is the right call when the spec was too vague to test against.
-   - **Authorize a different approach.** If the spec is fine but the implementation strategy was wrong, tell the agent which alternative to take. If the todo is `[complex]`, `/project:work` re-dispatches the `planner` to overwrite the prior plan with the new shape before retrying.
+   - **Reset and re-spec.** Tag the failed state for postmortem, reset to the last green commit, then `project-interview` to sharpen the Behavior cases. This is the right call when the spec was too vague to test against.
+   - **Authorize a different approach.** If the spec is fine but the implementation strategy was wrong, tell the agent which alternative to take. If the todo is `[complex]`, `project-work` re-dispatches the `planner` to overwrite the prior plan with the new shape before retrying.
 
 4. **Checkpoint and reset mechanics** (plain git — there's no bespoke command):
 
@@ -286,7 +288,7 @@ Sometimes an approach just doesn't work. The two-strike rule keeps you from grin
 
 When the agent realises a procedural gap, it shouldn't bury that knowledge in an agent prompt — it should ship a new skill.
 
-1. **The agent notices.** During `/project:work`, the developer hits a recurring task (e.g. "this is the third time I've had to author a Postgres migration; there's no skill for it"). It pauses via `human-checkpoint` and proposes creating one via the `update-toolkit` skill.
+1. **The agent notices.** During `project-work`, the developer hits a recurring task (e.g. "this is the third time I've had to author a Postgres migration; there's no skill for it"). It pauses via `human-checkpoint` and proposes creating one via the `update-toolkit` skill.
 2. **You approve.** Confirm the skill name and one-line description, or push back if the gap is really a wiki update.
 3. **The agent writes it.** `update-toolkit` produces `.harness/skills/database-migrations/SKILL.md` and regenerates the native skill copies with frontmatter (precise `description` so future tasks auto-load it) and a procedural body — _how_ to do migrations in this project, not _what_ migrations are.
 4. **It auto-loads next time.** On the next task that matches the skill's `description` trigger, the developer loads the skill without you having to ask. This is the progressive-disclosure principle in action.
@@ -302,7 +304,7 @@ A new spec PDF, an article, or research output needs to enter the agent's knowle
    - **File mode** for a document you already have:
 
      ```
-     /project:wiki-ingest docs/raw/specs/payments-v2.pdf
+     project-wiki-ingest docs/raw/specs/payments-v2.pdf
      ```
 
      The agent reads the file (PDFs page by page), derives a slug, and writes `docs/wiki/summaries/payments-v2.md` — frontmatter, summary, key claims, open questions, contradictions with existing pages.
@@ -310,13 +312,13 @@ A new spec PDF, an article, or research output needs to enter the agent's knowle
    - **Research mode** when you don't have a document yet:
 
      ```
-     /project:wiki-ingest search for exchange rate APIs with sub-cent precision
+     project-wiki-ingest search for exchange rate APIs with sub-cent precision
      ```
 
-     `/project:wiki-ingest` dispatches the `researcher` agent, which searches and fetches, then writes `docs/raw/research/<slug>.md`. The ingest command then produces the matching `summaries/<slug>.md`.
+     `project-wiki-ingest` dispatches the `researcher` agent, which searches and fetches, then writes `docs/raw/research/<slug>.md`. The ingest command then produces the matching `summaries/<slug>.md`.
 
-3. **Cross-linking.** The ingest greps the wiki for related terms and adds `[[summaries/<slug>]]` references on overlapping entity and concept pages — that's what makes the summary reachable, since there's no central index. Contradictions get flagged by setting the `contradicts:` frontmatter property on **both** pages and describing the conflict in each page's `## Boundaries` section — never silently resolved. An unresolved `contradicts` is exactly what the next `/project:wiki-lint` reconciliation pass picks up.
-4. **`/project:wiki-lint` afterwards.** Heavy ingest tends to create new cross-references and the occasional orphan. Run `/project:wiki-lint` when several summaries have landed.
+3. **Cross-linking.** The ingest greps the wiki for related terms and adds `[[summaries/<slug>]]` references on overlapping entity and concept pages — that's what makes the summary reachable, since there's no central index. Contradictions get flagged by setting the `contradicts:` frontmatter property on **both** pages and describing the conflict in each page's `## Boundaries` section — never silently resolved. An unresolved `contradicts` is exactly what the next `project-wiki-lint` reconciliation pass picks up.
+4. **`project-wiki-lint` afterwards.** Heavy ingest tends to create new cross-references and the occasional orphan. Run `project-wiki-lint` when several summaries have landed.
 
 ## Scenario: Checking project state mid-session
 
@@ -328,9 +330,9 @@ git log --oneline -10      # recent commits
 git tag -l 'checkpoint-*'  # checkpoints you can reset to
 ```
 
-For the work queue, open `docs/wiki/todos.md` (top items are next) and `docs/wiki/log.md` (recent activity). If `docs/wiki/wiki-todos.md` has more than ~10 pending lines, it's time for `/project:wiki-lint`.
+For the work queue, open `docs/wiki/todos.md` (top items are next) and `docs/wiki/log.md` (recent activity). If `docs/wiki/wiki-todos.md` has more than ~10 pending lines, it's time for `project-wiki-lint`.
 
-Check state at session start, after a long break, or before deciding whether to `/project:work`, `/project:review`, or `/project:wiki-lint`.
+Check state at session start, after a long break, or before deciding whether to `project-work`, `project-review`, or `project-wiki-lint`.
 
 # Quick reference
 
@@ -338,15 +340,15 @@ Check state at session start, after a long break, or before deciding whether to 
 
 | Command                | When                                                                          |
 | ---------------------- | ----------------------------------------------------------------------------- |
-| `/project:init`        | Once at project start (includes its own interview pass for an empty wiki)     |
-| `/project:interview`   | When adding a new feature or deepening the spec after init                    |
-| `/project:agent-scout` | Once after init+interview; again after a major feature adds a new stack layer |
-| `/project:work`        | Main loop — most days you live in `/project:work`                             |
-| `/project:adversary`   | Any change you're about to call done that `/project:work` didn't gate         |
-| `/project:review`      | Periodic (every ~5 todos), before a release, after several merges             |
-| `/project:wiki-lint`   | When `wiki-todos.md` piles up or after heavy ingest                           |
-| `/project:wiki-ingest` | When you have a new external doc, or to commission web research               |
-| `/project:handoff`     | When delegating execution of a well-specified todo to an external agent       |
+| `project-init`        | Once at project start (includes its own interview pass for an empty wiki)     |
+| `project-interview`   | When adding a new feature or deepening the spec after init                    |
+| `project-agent-scout` | Once after init+interview; again after a major feature adds a new stack layer |
+| `project-work`        | Main loop — most days you live in `project-work`                             |
+| `project-adversary`   | Any change you're about to call done that `project-work` didn't gate         |
+| `project-review`      | Periodic (every ~5 todos), before a release, after several merges             |
+| `project-wiki-lint`   | When `wiki-todos.md` piles up or after heavy ingest                           |
+| `project-wiki-ingest` | When you have a new external doc, or to commission web research               |
+| `project-handoff`     | When delegating execution of a well-specified todo to an external agent       |
 
 Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `git reset --hard <tag>` to recover, `git status` / `git log` to see where you are — use plain git, not bespoke commands.
 
@@ -354,10 +356,10 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 
 | Symptom                                            | Look at                                                                                                                   |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `/project:work` refuses to start (test command)    | `commands.md ## Test` is `<TBD>` or errors out — re-run `/project:init` step 5a to bootstrap a runnable command            |
-| Developer won't start (no Behavior cases)          | Entity page missing or `## Behavior` empty — run `/project:interview` first                                               |
-| Reviewer scope unclear                             | Re-run `/project:review` with an explicit scope argument (e.g. `/project:review security only`)                            |
-| `wiki-todos.md` is huge                            | Run `/project:wiki-lint`                                                                                                  |
+| `project-work` refuses to start (test command)    | `commands.md ## Test` is `<TBD>` or errors out — re-run `project-init` step 5a to bootstrap a runnable command            |
+| Developer won't start (no Behavior cases)          | Entity page missing or `## Behavior` empty — run `project-interview` first                                               |
+| Reviewer scope unclear                             | Re-run `project-review` with an explicit scope argument (e.g. `project-review security only`)                            |
+| `wiki-todos.md` is huge                            | Run `project-wiki-lint`                                                                                                  |
 | Developer keeps retrying the same failing approach | Two-strike rule should fire — it stops after the second failure and asks you                                              |
 | Plan looks wrong                                   | Edit `.harness/handoff/<slug>-plan.md`, or just tell the developer the approach to take                                    |
 | Adversary found nothing and said only "looks good" | An unexplained pass is a failed review — it owes you a `**Checked:**` line per category. Re-dispatch demanding it          |
@@ -365,18 +367,18 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 
 # The mental model in one paragraph
 
-The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD; the `developer` agent runs the cycle (with the `planner` using the reasoning profile decomposing `[complex]` or batched todos first), and the wiki is updated in the same commit as the code. On risky cycles a read-only `adversary` (also a reasoning profile, with none of the developer's context) attacks the commits the developer just landed, before the PR opens, and every finding it raises is answered in writing. When in doubt, the agent stops and asks rather than guessing. Periodic `/project:review` and `/project:wiki-lint` keep both layers honest.
+The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `project-interview` to populate the spec. You run `project-work` to ship features under TDD; the `developer` agent runs the cycle (with the `planner` using the reasoning profile decomposing `[complex]` or batched todos first), and the wiki is updated in the same commit as the code. On risky cycles a read-only `adversary` (also a reasoning profile, with none of the developer's context) attacks the commits the developer just landed, before the PR opens, and every finding it raises is answered in writing. When in doubt, the agent stops and asks rather than guessing. Periodic `project-review` and `project-wiki-lint` keep both layers honest.
 
 # Anti-patterns
 
-- **Skipping `/project:interview` on a new feature.** The Behavior cases on entity pages are what produce sharp tests; without them, the TDD loop starves.
+- **Skipping `project-interview` on a new feature.** The Behavior cases on entity pages are what produce sharp tests; without them, the TDD loop starves.
 - **Editing `docs/wiki/` by hand without telling the agent.** You can, but you'll fight the agent's memory. Prefer asking it to make the change.
 - **Editing `docs/raw/` after the fact.** Never. Append new sources instead.
-- **Committing on `main`.** Always branch first (`/project:work` handles this).
-- **Letting `wiki-todos.md` pile up.** When it's long, run `/project:wiki-lint`.
+- **Committing on `main`.** Always branch first (`project-work` handles this).
+- **Letting `wiki-todos.md` pile up.** When it's long, run `project-wiki-lint`.
 - **Running the same failed approach a third time.** The two-strike rule exists for a reason — pivot or re-spec.
 - **Letting findings pass unanswered.** Filing three findings and quietly ignoring two turns review into theatre. Each one gets a disposition in writing — filed as a todo, fixed under your approval, or rejected with a reason.
-- **Treating a plan as a spec.** Plans live in `.harness/handoff/` and are transient scratch. The wiki holds the spec. If the plan needs to change, edit the plan; if the contract needs to change, run `/project:interview`.
+- **Treating a plan as a spec.** Plans live in `.harness/handoff/` and are transient scratch. The wiki holds the spec. If the plan needs to change, edit the plan; if the contract needs to change, run `project-interview`.
 
 # Related
 

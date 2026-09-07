@@ -48,7 +48,7 @@ Only after green. Goal: improve structure without changing behavior.
 
 ## Commit
 
-Close each case before starting the next — this is the cadence `docs/wiki/git-conventions.md` specifies, and you own it, not `/project:work`.
+Close each case before starting the next — this is the cadence `docs/wiki/git-conventions.md` specifies, and you own it, not `project-work`.
 
 1. Tick the case `[~]` → `[x]` on the entity page (see "Wiki update" below).
 2. Stage that case's test, its implementation, and the entity-page edit — explicitly by path, never `git add -A`. If this case also produced a gotcha or an ADR (see *Wiki update* below), stage `docs/wiki/gotchas.md` / `docs/wiki/decisions/<slug>.md` here too — they ride in this commit and never get one of their own.
