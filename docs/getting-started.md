@@ -76,15 +76,16 @@ Outputs:
 /project:work
 ```
 
-`/project:work` picks the top item from `todos.md` (or batches consecutive todos sharing context), opens a `feat/<slug>` branch, and dispatches the single `developer` agent through one full cycle:
+`/project:work` picks the top item from `todos.md` (or batches consecutive todos sharing context), opens a `feat/<slug>` branch, and drives one full cycle:
 
-1. **Plan (conditional).** If the todo is flagged `[complex]` or a batch of 2+ todos was proposed, `/project:work` dispatches the `planner` agent (on Opus) first; it writes a stepwise plan to `.handoff/<slug>-plan.md` (gitignored scratch) that the developer then follows. A single simple todo skips planning.
-2. **Red.** The developer reads the matching `entities/<slug>.md#Behavior` cases, writes one failing test per case, runs the suite, and confirms the tests fail for the right reason (missing implementation — not a typo or import error). It marks each case `[ ]` → `[~]`.
-3. **Green.** The developer writes the minimal code to make the tests pass.
-4. **Refactor.** The developer cleans up while keeping tests green.
-5. **Wiki update.** The developer ticks the entity-page Behavior cases `[~]` → `[x]`, updates the Implementation/Tests sections, and appends to `log.md`. Larger cross-page cleanup it can't safely do inline is queued in `wiki-todos.md` for the wiki-maintainer.
-6. **Adversarial review (conditional).** Same trigger as the plan — `[complex]` or a 2+ batch. `/project:work` dispatches the `adversary` agent (Opus, none of the developer's context) at the diff and tells it to find what's wrong. It writes numbered findings to `.handoff/<slug>-findings.md` and may not touch the code. The developer answers each one — **filed as a todo** (the default), fixed, or rejected with a reason. Findings are not fixed in the cycle that surfaced them; they go into `docs/wiki/todos.md` at a priority set by severity. A `critical` or `major` is the exception: it goes to you via a human checkpoint, and you decide fix-now or queue. Because most rounds fix nothing, there is usually nothing to re-review and the review is one pass. Each disposition is written into the commit that answers it, which is the durable record (behavioral rule 20) — `git log --grep="adversary round"` reads it back. A simple single todo skips this; you can run `/project:adversary` yourself instead.
-7. **Commit.** Already done — the `developer` commits and pushes each Behavior case as it goes (test + implementation + wiki tick), and review fixes are their own commits. `/project:work` verifies the suite and the commit granularity, then adds just the log entry (see [git-conventions.md](wiki/git-conventions.md)).
+1. **Plan (conditional).** If the todo is flagged `[complex]` or a batch of 2+ todos was proposed, `/project:work` dispatches the `planner` agent first; it writes a stepwise plan to `.handoff/<slug>-plan.md` (gitignored scratch) that the developer then follows. A single simple todo skips planning.
+2. **Pre-flight review.** Before any test exists, `/project:work` dispatches the read-only `plan-adversary` at the brief — the plan on a `[complex]` or batched cycle, the todo line and whatever you typed after `/project:work` on a simple one. It hunts the defects that cost a whole cycle: a Behavior case no step covers, a step with no assertion that could fail first, a hidden prerequisite, an instruction that admits two readings. It writes nothing; findings come back in its report. Each one is **applied** to the brief (the default — the fix is a paragraph at this stage), **escalated** to a human checkpoint recommending `/project:interview` when the spec itself is the problem, or **rejected** with a reason. This runs on **every** cycle, not just complex ones: a one-line todo is where an unstated assumption travels furthest. The dispositions land in the cycle's `log.md` entry, which is the committed record for a review that happened before any commit existed.
+3. **Red.** The developer reads the matching `entities/<slug>.md#Behavior` cases, writes one failing test per case, runs the suite, and confirms the tests fail for the right reason (missing implementation — not a typo or import error). It marks each case `[ ]` → `[~]`.
+4. **Green.** The developer writes the minimal code to make the tests pass.
+5. **Refactor.** The developer cleans up while keeping tests green.
+6. **Wiki update.** The developer ticks the entity-page Behavior cases `[~]` → `[x]`, updates the Implementation/Tests sections, and appends to `log.md`. Larger cross-page cleanup it can't safely do inline is queued in `wiki-todos.md` for the wiki-maintainer.
+7. **Adversarial review (conditional).** Same trigger as the plan — `[complex]` or a 2+ batch. `/project:work` dispatches the `adversary` agent (a second model, none of the developer's context) at the diff and tells it to find what's wrong. It returns numbered findings in its report and may not touch the code — being read-only, it could not write a scratch file even if asked. The developer answers each one — **filed as a todo** (the default), fixed, or rejected with a reason. Findings are not fixed in the cycle that surfaced them; they go into `docs/wiki/todos.md` at a priority set by severity. A `critical` or `major` is the exception: it goes to you via a human checkpoint, and you decide fix-now or queue. Because most rounds fix nothing, there is usually nothing to re-review and the review is one pass. Each disposition is written into the commit that answers it, which is the durable record (behavioral rule 20) — `git log --grep="adversary round"` reads it back. A simple single todo skips this; you can run `/project:adversary` yourself instead.
+8. **Commit.** Already done — the `developer` commits and pushes each Behavior case as it goes (test + implementation + wiki tick), and review fixes are their own commits. `/project:work` verifies the suite and the commit granularity, then adds just the log entry (see [git-conventions.md](wiki/git-conventions.md)).
 
 If a step fails twice on the same approach, the **two-strike rule** fires — the developer stops, you tag a checkpoint and reset, and re-spec.
 
@@ -139,7 +140,7 @@ The developer plans **first** if the todo is tagged `[complex]` or a batch of 2+
 
 ## Scenario: Adding a complex feature
 
-Some features are too big to attack directly — they cross files, need careful sequencing, or have non-obvious tradeoffs. The `planner` (on Opus) decomposes them before the developer tests.
+Some features are too big to attack directly — they cross files, need careful sequencing, or have non-obvious tradeoffs. The `planner` decomposes them before the developer tests.
 
 1. **Define it.** `/project:interview` as usual. The Behavior cases on the entity page are still the contract.
 2. **Mark the todo `[complex]`.** Edit `docs/wiki/todos.md`:
@@ -150,7 +151,7 @@ Some features are too big to attack directly — they cross files, need careful 
 
    The `[complex]` tag is what `/project:work` keys off to dispatch the `planner` before testing.
 
-3. **Run `/project:work`.** With `[complex]` set (or a 2+ batch), `/project:work` first dispatches the `planner` (on Opus), which writes a plan (following the `plan-writing` skill) to `.handoff/billing-invoices-plan.md` — goal, approach, ordered steps, risks, out-of-scope. `/project:work` sanity-checks it, then dispatches the `developer`, which reads the plan and drives the same Red → Green → refactor → wiki → commit flow as a simple feature, following the plan's step order.
+3. **Run `/project:work`.** With `[complex]` set (or a 2+ batch), `/project:work` first dispatches the `planner`, which writes a plan (following the `plan-writing` skill) to `.handoff/billing-invoices-plan.md` — goal, approach, ordered steps, risks, out-of-scope. `/project:work` sanity-checks it, then dispatches the `developer`, which reads the plan and drives the same Red → Green → refactor → wiki → commit flow as a simple feature, following the plan's step order.
 4. **Where the plan lives.** `.handoff/<slug>-plan.md`. The file is gitignored — plans are transient scratch `/project:work` clears when the cycle is done. The wiki holds the spec (what); the plan is how-to for one cycle. Because it isn't committed, a container recycle loses it — but so does it lose the rest of the uncommitted cycle, so `/project:work` simply restarts the still-open todo and re-dispatches the planner to regenerate the plan from the Behavior cases.
 5. **Two-strike interaction.** If the developer fails twice on the same mechanism, it stops, tags a checkpoint, and presents both failed attempts. On an authorized retry, `/project:work` re-dispatches the `planner` to overwrite the plan with a fundamentally different shape — naming the failed approach and the new one in the `## Approach` section. You never silently retry the same plan.
 
@@ -342,7 +343,7 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 
 # The mental model in one paragraph
 
-The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD; the `developer` agent runs the cycle (with the `planner` on Opus decomposing `[complex]` or batched todos first), and the wiki is updated in the same commit as the code. On risky cycles a read-only `adversary` (also Opus, with none of the developer's context) attacks the commits the developer just landed, before the PR opens, and every finding it raises is answered in writing. When in doubt, the agent stops and asks rather than guessing. Periodic `/project:review` and `/project:wiki` health passes keep both layers honest.
+The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD; the `developer` agent runs the cycle (with the `planner` decomposing `[complex]` or batched todos first, and the `plan-adversary` attacking that brief before a single test is written), and the wiki is updated in the same commit as the code. On risky cycles a read-only `adversary` (a second model, with none of the developer's context) attacks the commits the developer just landed, before the PR opens, and every finding it raises is answered in writing. When in doubt, the agent stops and asks rather than guessing. Periodic `/project:review` and `/project:wiki` health passes keep both layers honest.
 
 # Anti-patterns
 
@@ -361,8 +362,9 @@ The wiki is the project's source of truth — code that disagrees with it is the
 - [`README.md`](../README.md) — the workflow in brief, and the agent's authority boundary
 - [`docs/wiki/git-conventions.md`](wiki/git-conventions.md) — branching and commit format
 - [`docs/wiki/commands.md`](wiki/commands.md) — working shell commands
-- [`.agents/roles/planner.md`](../.agents/roles/planner.md) — the planner agent definition (Opus)
+- [`.agents/roles/planner.md`](../.agents/roles/planner.md) — the planner agent definition
+- [`.agents/roles/plan-adversary.md`](../.agents/roles/plan-adversary.md) — the pre-implementation reviewer
 - [`.agents/roles/developer.md`](../.agents/roles/developer.md) — the developer agent definition
-- [`.agents/roles/adversary.md`](../.agents/roles/adversary.md) — the read-only diff reviewer (Opus)
+- [`.agents/roles/adversary.md`](../.agents/roles/adversary.md) — the read-only diff reviewer
 - [`.agents/skills/plan-writing/SKILL.md`](../.agents/skills/plan-writing/SKILL.md) — how plans are structured
 - [`.agents/skills/adversarial-review/SKILL.md`](../.agents/skills/adversarial-review/SKILL.md) — sweep order, severity vocabulary, triage protocol

@@ -64,6 +64,17 @@ build_worker_prompt  # role + rules + contract + the skills the command declares
 
 Run the returned `command`, read the report, commit the worker's owned paths yourself, then `remove_worktree`. The server never spawns, commits, merges or pushes — you keep all of that, and a failed worker is debugged by re-running a command line you can read.
 
+**Which model runs which role.** `.agents/config.json` is the only place model choice lives — a role declares a `profile` (`reasoning` / `balanced` / `fast`), never a model. `engines.<engine>.models.<profile>` sets each CLI's default; `roles.<role>.engine` pins a role to one CLI, and `roles.<role>.models.<engine>` / `.effort.<engine>` pin the exact model and effort for it. As shipped, three roles are pinned across all three CLIs and the rest follow whichever CLI is conducting:
+
+| Role | Engine | Model | Effort |
+| --- | --- | --- | --- |
+| `planner` | claude | `claude-opus-5` | high |
+| `developer` | agy | `gemini-3.8-flash` | medium |
+| `plan-adversary` | agy | `gemini-3.8-flash` | high |
+| `adversary` | codex | `gpt-6-astra` | medium |
+
+Pinning roles to agy is the one trade-off worth naming: agy enforces neither the leaf-worker rule nor read-only below the prompt, and its workers need a one-time user-global permission grant before they can run a command at all. Every dispatch says so in its `warnings`; the setup is in [`docs/engine-setup.md`](docs/engine-setup.md).
+
 **Workers get no ambient context.** Each engine is launched with its own project-file discovery switched off, so the composed prompt is the whole of what the worker sees. Verified by dispatching the same self-test to all three:
 
 | | rule 1 quoted | skills received | AGENTS.md loaded | rule count |
@@ -73,6 +84,16 @@ Run the returned `command`, read the report, commit the worker's owned paths you
 | agy (reads no repo files) | ✅ | `tdd-loop` only | no | 16 of 22 |
 
 Conductor-only rules — branch, commit, push, open a PR — are withheld from workers, because the worker contract forbids git and handing it both would be a contradiction. 22 rules become 16.
+
+**What each engine can enforce, and what it only promises.** Context suppression is not the only guarantee a worker prompt makes, and the three CLIs do not honour the rest equally:
+
+| | leaf worker | read-only | running commands |
+| --- | --- | --- | --- |
+| claude | process (`--disallowedTools Agent,Task`) | process (no approval surface for edits) | allowlisted from `workerCommands` |
+| codex | process (`agents.enabled=false`) | process (OS sandbox) | free inside the sandbox |
+| agy | **prompt only** | **prompt only** | allowlisted, needs one-time user-global setup |
+
+`build_worker_prompt` returns a `warnings` entry for every box in that table it cannot back, so a conductor is told per dispatch rather than having to remember this. **A worker cannot run anything that is not in `workerCommands`** (`.agents/config.json`), and on agy that list also has to be mirrored into a user-global settings file or its workers return an empty response with exit code 0. One page, all of it: [`docs/engine-setup.md`](docs/engine-setup.md).
 
 One caveat worth knowing: a worker's own account of its context is unreliable. agy first claimed it *had* been given AGENTS.md; asked instead to quote a withheld rule and name a command from the catalog, it correctly answered `ABSENT` to both. Test with questions only the real thing could answer.
 
@@ -102,7 +123,8 @@ CLAUDE.md            # generated from .agents/ — imports AGENTS.md
 - **Skills are how-to, not what-is.** No skill explains "what TDD is" — they explain "how this project does TDD."
 - **Spec → Test → Code.** Entity Behavior cases → failing tests → minimal implementation.
 - **Wiki ships with code.** Code edits and wiki edits happen in the same commit.
-- **A second model reads the diff.** Risky cycles get an `adversary` on Opus with none of the author's context, told to find what's wrong. It raises findings; it never fixes them. Every finding gets a written disposition.
+- **A second model reads the brief, before any code exists.** Every cycle starts by putting the plan — or the todo itself, on a simple one — through a read-only `plan-adversary`: a Behavior case no step covers, a step that cannot fail Red on its own, an instruction with two live readings. Findings are applied to the brief, escalated to `/project:interview`, or rejected in writing.
+- **A second model reads the diff.** Risky cycles get an `adversary` on a second model with none of the author's context, told to find what's wrong. It raises findings; it never fixes them. Every finding gets a written disposition.
 - **Human in the loop.** When the agent can't decide from the wiki, it stops and asks — never silently improvises.
 - **Dynamic config.** The `update-toolkit` meta skill lets the agent evolve its own agents, skills, and commands as the project grows.
 
