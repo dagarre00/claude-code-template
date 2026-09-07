@@ -33,15 +33,13 @@ without `--force`.
 | `.harness/instructions.md` | folded into `AGENTS.md` | Shared operating instructions. |
 | `.harness/rules/*.md` | folded into `AGENTS.md` | Frontmatter stripped; bodies concatenated in filename order. Currently one file, `behavioral.md`. |
 | *(built inline, no source file)* | `AGENTS.md` § Command catalog | One row per command: summary, MCP prompt name `project-<name>`, and the short name `get_workflow` takes. Generated from the command list. |
-| *(built inline, no source file)* | `AGENTS.md` § Native agent catalog | One bullet per agent: name, profile, expanded description. |
+| *(built inline, no source file)* | `AGENTS.md` § Agent catalog | One bullet per agent: name, profile, expanded description. The only place role names are published as text; `list_roles` is the runtime equivalent. |
 | `.harness/instructions.md` (marker only) | `CLAUDE.md` | Fixed two-line file: a DO-NOT-EDIT marker plus a literal `@AGENTS.md` — Claude Code's own import syntax. This is the **only** generated file that uses a native `@` import. |
 | `.harness/commands/project/<name>.md` | *(nothing generated)* | Commands produce **no** native files in any harness. The coordination server registers one MCP prompt per command and serves the same body through `get_workflow` (see §3). The generator still validates each command's `argument-hint` and `{{arguments}}` contract at sync time. |
 | `.harness/skills/<name>/SKILL.md` (+ sibling files) | `.claude/skills/<name>/SKILL.md` and `.agents/skills/<name>/SKILL.md` | Procedure skills. Non-`SKILL.md` siblings (e.g. `TEMPLATE.md`, `sync-develop.md`) are copied byte-for-byte to both trees; `.md`/`.toml`/`.tmpl` siblings get the DO-NOT-EDIT marker and macro expansion, everything else is copied raw. |
-| `.harness/agents/<name>.md` | `.claude/agents/<name>.md` | Claude Code subagent. Frontmatter: `name`, `description`, `model`; read-only agents also get `tools: [...]` from `engines.claude.readOnlyTools`. |
-| `.harness/agents/<name>.md` | `.agents/agents/<name>.md` | Antigravity CLI subagent. Frontmatter adds `subagent: true`, `mainAgent: true`, `commandExecutionPolicy: "sandbox"`; read-only agents get `tools: [...]` from `engines.antigravity.readOnlyTools`. |
-| `.harness/agents/<name>.md` | `.codex/agents/<name>.toml` | Codex agent profile (TOML, not Markdown). Fields: `name`, `description`, `model_reasoning_effort`, `developer_instructions` (the agent body); `model` only if one is configured; `sandbox_mode = "read-only"` only for read-only agents. |
+| `.harness/agents/<name>.md` | *(nothing generated)* | Agents produce **no** native files. `manager.spawn` prepends the worker contract and this file's body to every prompt, for every engine, and the permission mode carries read-only isolation — so a per-engine agent file would only deliver the role a second time. `profile`/`access` are still validated at sync time and feed the `AGENTS.md` catalog. |
 | `.harness/worker-contract.md` | *(not generated — read directly)* | Workers read this file at its canonical path regardless of engine; it is not copied or rendered per-harness. |
-| `.harness/settings.json` | *(not rendered into prompt text — consumed by code)* | Read by both the generator (`adapters = settings.engines`) and the MCP server/config module at dispatch time. See §8. |
+| `.harness/settings.json` | *(not rendered into prompt text — consumed by code)* | Validated by the generator and read by the MCP server/config module at dispatch time. See §8. |
 | `.harness/templates/command.md.tmpl` | *(authoring aid, not generated)* | Starting point when hand-writing a new `.harness/commands/project/<name>.md`; the generator never reads it directly. |
 
 Every command file must define `argument-hint` and use `{{arguments}}` in its
@@ -56,8 +54,8 @@ a name/path-collision error.
 | Root instructions | `CLAUDE.md` (imports `AGENTS.md` via `@AGENTS.md`) | `AGENTS.md` directly (native discovery — no generated pointer file exists for Codex) | `AGENTS.md` directly (native discovery — same as Codex) |
 | Human-invoked commands | *(no native files in any harness)* — all three are served by the coordination MCP server as registered **prompts** (see §3) | same | same |
 | Reusable procedures | `.claude/skills/<name>/SKILL.md` | `.agents/skills/<name>/SKILL.md` — Codex discovers skills from `$CWD/.agents/skills`, then parent directories, then `$REPO_ROOT/.agents/skills`, then `$HOME/.agents/skills` ([Codex skills docs](https://learn.chatgpt.com/docs/build-skills)). The same generated tree serves Codex and Antigravity. | `.agents/skills/<name>/SKILL.md` |
-| Agent/role definitions | `.claude/agents/<name>.md` (Markdown + YAML frontmatter) | `.codex/agents/<name>.toml` (TOML) | `.agents/agents/<name>.md` (Markdown + YAML frontmatter) |
-| Read-only enforcement | `tools:` allowlist (`Read, Glob, Grep, Bash`) in agent frontmatter | `sandbox_mode = "read-only"` in the agent TOML, plus `--sandbox read-only` at dispatch | `tools:` allowlist (`view_file, grep_search, list_dir, run_command`) in agent frontmatter |
+| Agent/role definitions | *(no native files in any harness)* — the role body is prepended to the worker's prompt by `manager.spawn` | same | same |
+| Read-only enforcement | `--permission-mode plan`, measured to refuse writes even when `Write` and `Edit` are explicitly allowed | `--sandbox read-only` | `--mode plan`, measured to refuse the write that `--mode accept-edits` performs |
 | MCP client config | `.mcp.json` (repo root, gitignored) | `.codex/config.toml`, managed block (gitignored) | `.agents/mcp_config.json` (gitignored) |
 
 ## 3. Invocation catalog
@@ -433,7 +431,6 @@ To add an engine:
      buildArgs({ config, settings, role, access, readOnly, workspace, model, effort }) {
        return [/* argv */];                     // never a shell string
      },
-     nativeAgent(ctx) { /* optional */ },       // omit if the CLI is MCP-only
    };
    ```
 
@@ -464,9 +461,9 @@ One place remains engine-aware, and it does not collapse into a common shape:
   for `.codex/config.toml`. A new client needs its own registration format,
   because the config file formats genuinely differ.
 
-Everything else is already pluggable. Commands generate nothing, so they need no
-per-engine work at all. Native *agent* files go through the optional
-`nativeAgent` hook on the adapter. Skills render once and are written to the two
+Everything else is already pluggable. Commands and agents generate nothing, so
+they need no per-engine work at all — a worker learns its role from the prompt
+the manager builds. Skills render once and are written to the two
 discovery roots that exist — `.claude/skills` for Claude Code, `.agents/skills`
 for Codex and Antigravity — with identical content and no per-harness flavour.
 
@@ -526,17 +523,6 @@ below are unverified and should be closed before relying on the other engines.
   Do **not** reach for `--dangerously-skip-permissions`, which agy's own error
   message suggests: `workerCommand` rejects any argv containing a bypass token,
   deliberately.
-- **`readOnlyTools` applies to the native path only — do not delete it.**
-  `engines.claude.readOnlyTools` and `engines.antigravity.readOnlyTools` are read
-  by the *generator*, not by `workerCommand()`: `sync-harness.mjs:165` and `:170`
-  emit them as the `tools:` frontmatter of the generated read-only agent files
-  (this is what restricts `.claude/agents/adversary.md` to Read/Glob/Grep/Bash).
-  MCP-dispatched workers get their read-only isolation from `plan` /
-  `--sandbox` instead, so the two paths enforce the same intent by different
-  means. Removing the key would silently widen the native agents' tool access.
-
-## Related
-
 - [`README.md`](../README.md) — quick start and the "change the workflow once" summary.
 - [`HUMAN.md`](../HUMAN.md) — day-to-day workflow from the human's side.
 - [`getting-started.md`](getting-started.md) — full worked walkthrough.

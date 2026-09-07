@@ -72,8 +72,8 @@ they are not a security sandbox.
 
 ## Change the workflow once
 
-The editable source is **`.harness/`**. Skills and agent definitions are
-generated and committed, so a fresh checkout has them without running anything.
+The editable source is **`.harness/`**. Skills are generated and committed, so a
+fresh checkout has them without running anything.
 
 ```text
 node scripts/sync-harness.mjs
@@ -93,9 +93,11 @@ CI runs all of these on Windows and Linux.
 | `.harness/agents/` | Portable roles, model profiles, access intent |
 | `.harness/settings.json` | Engine/model/effort defaults, per-role overrides, worker limits |
 
-Generated outputs are `AGENTS.md`, the importing `CLAUDE.md`, skills for both
-discovery roots (`.claude/skills` for Claude Code, `.agents/skills` for Codex and
-Antigravity), and agent definitions for each engine. Commands generate nothing.
+Generated outputs are just `AGENTS.md`, the importing `CLAUDE.md`, and skills for
+both discovery roots (`.claude/skills` for Claude Code, `.agents/skills` for Codex
+and Antigravity) — 36 files in total. Commands and agents generate nothing: the
+coordination server serves commands as MCP prompts, and every worker receives its
+role because `manager.spawn` prepends the canonical role body to the prompt.
 Do not edit generated copies: the generator detects manual edits, updates
 registered files, and removes retired outputs — pruning empty directories —
 while preserving unrelated settings and files.
@@ -110,8 +112,8 @@ actually resolves to.
 Everything engine-specific lives in one module per engine under
 `tools/coordination-mcp/engines/`. The control plane carries no engine names.
 
-1. Write `engines/<name>.mjs` exporting `{ name, efforts, buildArgs }`, plus an
-   optional `nativeAgent` emitter if that CLI reads agent files from disk.
+1. Write `engines/<name>.mjs` exporting `{ name, efforts, buildArgs }` — and
+   nothing else, since commands and agents generate no files to emit.
 2. Register it in `engines/index.mjs` — one import, one array entry.
 3. Add an `engines.<name>` block to `.harness/settings.json`.
 

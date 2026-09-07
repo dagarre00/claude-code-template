@@ -5,8 +5,7 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSy
   rmdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadSettings, engineNames } from '../tools/coordination-mcp/config.mjs';
-import { engines as engineAdapters } from '../tools/coordination-mcp/engines/index.mjs';
+import { loadSettings } from '../tools/coordination-mcp/config.mjs';
 
 const defaultRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const normalize = s => typeof s === 'string' ? s.replace(/\r\n/g, '\n') : s;
@@ -69,8 +68,7 @@ function yaml(meta, body, source) {
 
 export function render(root) {
   const outputs = new Map();
-  const settings = loadSettings(root);
-  const adapters = settings.engines;
+  loadSettings(root); // Validates engines and role overrides before any write.
   function namedDocument(path) {
     const doc = document(root,path);
     if (posix.basename(path) !== `${doc.meta.name}.md`) throw new Error(`Name does not match filename: ${path}`);
@@ -121,7 +119,7 @@ export function render(root) {
     + '`get_workflow("<short name>", context)` and follow the body it returns.\n\n'
     + '| Command | Prompt name | Short name for `get_workflow` |\n| --- | --- | --- |\n'
     + commands.map(c => `| ${c.meta.description.split('.')[0]}. | \`project-${c.meta.name}\` | \`${c.meta.name}\` |`).join('\n')
-    + '\n\n## Native agent catalog\n\n'
+    + '\n\n## Agent catalog\n\n'
     + agents.map(a => `- \`${a.meta.name}\` (${a.meta.profile}): ${expand(a.meta.description,a.path,'AGENTS.md')}`).join('\n') + '\n';
   const project = expand(read(root, '.harness/project.md'), '.harness/project.md', 'AGENTS.md');
   emit('AGENTS.md', marker('.harness/') + '\n' + project + '\n' + intro + '\n' + rules + catalog);
@@ -157,30 +155,18 @@ export function render(root) {
     }
   }
 
+  // Agents generate no native files. Every worker receives its role because the
+  // manager prepends .harness/agents/<name>.md to the prompt, for every engine;
+  // read-only isolation comes from the permission mode, not from a tools:
+  // allowlist. The metadata is still validated here so a malformed role fails at
+  // sync time rather than at dispatch, and it feeds the AGENTS.md catalog above.
   for (const agent of agents) {
-    const {name,description,profile,access} = agent.meta;
+    const {profile,access} = agent.meta;
     if (!['reasoning','balanced','fast'].includes(profile) || !['read-only','write'].includes(access)) {
       throw new Error(`Invalid agent profile/access: ${agent.path}`);
     }
-    const startup = 'Read AGENTS.md and its included behavioral rules before acting.\n\n';
-    const roleSettings = settings.roles[name] ?? {};
-    const modelFor = engine => roleSettings.models?.[engine] ?? adapters[engine].models[profile];
-    const effortFor = engine => roleSettings.effort?.[engine] ?? adapters[engine].effort[profile];
-    // Each engine owns its own native file format; the loop owns none of them.
-    // An engine with no nativeAgent (MCP-only) simply generates nothing.
-    const helpers = {
-      source: agent.path,
-      expand: (text,target) => expand(text,agent.path,target),
-      yaml: (meta,body) => yaml(meta,body,agent.path),
-    };
-    for (const engineName of engineNames) {
-      const native = engineAdapters[engineName].nativeAgent;
-      if (!native) continue;
-      const output = native({name,description,profile,access,body:agent.body,startup,
-        modelFor,effortFor,config:adapters[engineName],helpers});
-      if (output) emit(output.path,output.content);
-    }
   }
+
   return outputs;
 }
 

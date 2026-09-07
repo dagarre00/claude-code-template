@@ -27,15 +27,15 @@ test('invalid canonical input fails before changing any generated file', t => {
   assert.throws(()=>sync(dir),/name.*path|filename/i);
   assert.deepEqual(readFileSync(resolve(dir,'AGENTS.md')),before);
   unlinkSync(added);
-  // Command bodies are no longer expanded into files — the server expands them at
-  // dispatch — so the unresolved-token guard now applies to the artifacts that
-  // are generated: agents, skills, rules, and the shared instructions.
-  const agent = resolve(dir,'.harness/agents/developer.md');
-  const agentOriginal = readFileSync(agent,'utf8');
-  writeFileSync(agent,agentOriginal+'\n{{typo:unresolved}}\n');
+  // Neither command nor agent bodies are expanded into files any more, so the
+  // unresolved-token guard applies to what is still generated: skills, rules,
+  // and the shared instructions folded into AGENTS.md.
+  const skill = resolve(dir,'.harness/skills/tdd-loop/SKILL.md');
+  const skillOriginal = readFileSync(skill,'utf8');
+  writeFileSync(skill,skillOriginal+'\n{{typo:unresolved}}\n');
   assert.throws(()=>sync(dir),/Unresolved token/);
   assert.deepEqual(readFileSync(resolve(dir,'AGENTS.md')),before);
-  writeFileSync(agent,agentOriginal);
+  writeFileSync(skill,skillOriginal);
   // A command whose argument contract is broken must still fail at sync time,
   // even though nothing is generated from it.
   writeFileSync(source,original.replace('{{arguments}}','removed'));
@@ -52,9 +52,9 @@ test('manifest paths and symlink destinations cannot escape the fixture', t => {
   writeFileSync(manifestPath,original);
   const outside = mkdtempSync(resolve(tmpdir(),'harness-outside-'));
   t.after(()=>rmSync(outside,{recursive:true,force:true}));
-  const agentsDir = resolve(dir,'.codex/agents');
-  rmSync(agentsDir,{recursive:true});
-  symlinkSync(outside,agentsDir,'junction');
+  const generatedDir = resolve(dir,'.claude/skills');
+  rmSync(generatedDir,{recursive:true});
+  symlinkSync(outside,generatedDir,'junction');
   assert.throws(()=>sync(dir,{force:true}),/Symlink/);
   assert.deepEqual(readdirSync(outside),[]);
 });
@@ -63,13 +63,13 @@ test('check detects missing, changed, and obsolete output without writing', t =>
   const dir = fixture(t);
   const target = resolve(dir,'.claude/skills/tdd-loop/SKILL.md');
   writeFileSync(target,'manual change\n');
-  unlinkSync(resolve(dir,'.codex/agents/developer.toml'));
-  unlinkSync(resolve(dir,'.harness/agents/researcher.md'));
+  unlinkSync(resolve(dir,'.agents/skills/tdd-loop/SKILL.md'));
+  rmSync(resolve(dir,'.harness/skills/gotcha-recording'),{recursive:true});
   const manifest = readFileSync(resolve(dir,'.harness/generated.json'));
   const drift = sync(dir,{check:true});
-  assert.ok(drift.includes('.claude/skills/tdd-loop/SKILL.md'));
-  assert.ok(drift.includes('.codex/agents/developer.toml'));
-  assert.ok(drift.includes('.agents/agents/researcher.md'));
+  assert.ok(drift.includes('.claude/skills/tdd-loop/SKILL.md'), 'manual edit is drift');
+  assert.ok(drift.includes('.agents/skills/tdd-loop/SKILL.md'), 'missing output is drift');
+  assert.ok(drift.includes('.claude/skills/gotcha-recording/SKILL.md'), 'retired output is drift');
   assert.equal(readFileSync(target,'utf8'),'manual change\n');
   assert.deepEqual(readFileSync(resolve(dir,'.harness/generated.json')),manifest);
   assert.throws(()=>sync(dir),/Manual edit/);
@@ -133,13 +133,19 @@ test('native harness entry points carry the canonical instructions', () => {
       assert.ok(existsSync(resolve(root,harness,'skills',dir,'SKILL.md')), `${harness} carries the ${dir} skill`);
     }
   }
+  // Agents generate nothing either: the manager prepends the canonical role body
+  // to every worker prompt, and the permission mode carries read-only isolation,
+  // so a per-engine agent file would only duplicate the role.
   for (const file of readdirSync(resolve(root, '.harness/agents'))) {
     const name = file.replace(/\.md$/, '');
-    const toml = read(`.codex/agents/${name}.toml`);
-    const prompt = JSON.parse(toml.match(/^developer_instructions = (.+)$/m)[1]);
-    assert.ok(prompt.includes('\n\n'), 'Codex receives real paragraph breaks');
-    assert.ok(!prompt.includes('\\r'), 'no literal CR escapes inside the prompt');
-    assert.match(read(`.agents/agents/${name}.md`), /^subagent: true$/m);
-    assert.match(read(`.claude/agents/${name}.md`), /^model: /m);
+    for (const path of [`.claude/agents/${name}.md`,`.agents/agents/${name}.md`,`.codex/agents/${name}.toml`]) {
+      assert.ok(!existsSync(resolve(root,path)), `no generated agent file at ${path}`);
+    }
+    assert.ok(read('AGENTS.md').includes(`\`${name}\``), `${name} is listed in the agent catalog`);
   }
+  // Only skills and the two root documents are generated now.
+  assert.deepEqual(
+    [...new Set(Object.keys(JSON.parse(read('.harness/generated.json')).files)
+      .map(p => p.startsWith('.') ? p.split('/').slice(0,2).join('/') : p))].sort(),
+    ['.agents/skills','.claude/skills','AGENTS.md','CLAUDE.md']);
 });

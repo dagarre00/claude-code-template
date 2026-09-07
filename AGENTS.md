@@ -33,21 +33,22 @@ Edit `.harness/project.md` for project identity and `.harness/instructions.md` f
 shared operating instructions, plus `.harness/rules/`, `.harness/commands/project/`,
 `.harness/skills/`, `.harness/agents/`, `.harness/templates/`, and
 `.harness/worker-contract.md`. Engine, model, reasoning, and role overrides live
-once in `.harness/settings.json`; both MCP and native adapters consume it.
+once in `.harness/settings.json`, which the coordination server reads at dispatch.
 After any edit, run
 `node scripts/sync-harness.mjs`, then `node scripts/sync-harness.mjs --check` and
 `node --test tests/harness.test.mjs`. Commit source and generated outputs together.
-Never edit `AGENTS.md`, `CLAUDE.md`, `.claude/commands/`, `.claude/skills/`,
-`.claude/agents/`, `.agents/skills/`, `.agents/agents/`, or `.codex/agents/` directly.
+Never edit `AGENTS.md`, `CLAUDE.md`, `.claude/skills/`, or `.agents/skills/`
+directly. Commands and agents generate no files at all: the server serves
+commands as MCP prompts, and a worker's role is prepended to its prompt.
 Do not replace user-owned settings files. See `docs/harnesses.md` for the mapping.
 
 ## Workflow and delegation
 
 The interactive conductor uses the coordination MCP server for every worker
 dispatch, status check, cancellation, and local integration. Read and follow
-`.harness/skills/mcp-coordination/SKILL.md`. Native agents are compatibility entry
-points; do not use native delegation as a second orchestration path. All project
-commands are conductor-only. If MCP is unavailable, report the blocker.
+`.harness/skills/mcp-coordination/SKILL.md`. There is no native delegation path:
+no agent files are generated, so MCP dispatch is the only way to run a worker.
+All project commands are conductor-only. If MCP is unavailable, report the blocker.
 
 One developer owns Spec → Red → Green → Refactor → wiki update. The conductor
 dispatches a read-only planner before complex/batched work and an independent
@@ -169,7 +170,7 @@ Hard constraints from real failures. These override default agent inclinations.
 
 22. **A filed backlog needs a consumer, or filing is just deletion with extra steps.** Rule 20 makes filing the default, so `minor` findings accumulate by design (`nit` findings are never filed — the adversary tallies them and they end there). Two computable guards: `FINDINGS_MAX` caps the open `[adversary]` backlog (`docs/wiki/todos.md § Filed-findings backlog`), and `project-wiki-lint` re-triages it every pass — re-grading, merging duplicates, closing what later work fixed. A finding that sat unread through five cycles had the wrong severity, not too short a queue.
 
-23. **MCP is the worker control plane.** The conductor follows `mcp-coordination` for spawn, status, cancellation, and SHA-pinned local integration. Workers obey `.harness/worker-contract.md`: no recursive dispatch, branch changes, pushes, PRs, merges, resets, stashes, tags, or cleanup. A native agent invocation does not exempt a worker from this contract. Serialize overlapping ownership and merge dependencies before dispatching dependents. On failure, preserve worktrees and logs; never force-clean to manufacture success.
+23. **MCP is the worker control plane.** The conductor follows `mcp-coordination` for spawn, status, cancellation, and SHA-pinned local integration. Workers obey `.harness/worker-contract.md`: no recursive dispatch, branch changes, pushes, PRs, merges, resets, stashes, tags, or cleanup. The toolkit generates no native agent files, so MCP dispatch is the only way to run a worker; a host CLI's own subagent tooling is not a second path. Serialize overlapping ownership and merge dependencies before dispatching dependents. On failure, preserve worktrees and logs; never force-clean to manufacture success.
 
 ## Adding rules
 
@@ -193,7 +194,7 @@ Invoke a command as the MCP prompt `/mcp__coordination__<name>`, or call `get_wo
 | Periodic wiki health check. | `project-wiki-lint` | `wiki-lint` |
 | Conductor-only TDD workflow. | `project-work` | `work` |
 
-## Native agent catalog
+## Agent catalog
 
 - `adversary` (reasoning): Read-only diff hunter. Returns numbered findings to the caller for its mailbox; never edits, commits, or pushes. Dispatched by project-work for complex/batched cycles or project-adversary. Distinct from the periodic reviewer.
 - `developer` (balanced): TDD cycle in one agent — writes failing tests, makes them pass with minimal code, refactors, and updates the wiki. Follows a planner's plan for complex/batched work. Loads task-specific skills on demand. Triggered by project-work.

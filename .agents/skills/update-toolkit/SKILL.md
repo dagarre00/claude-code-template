@@ -42,7 +42,7 @@ cycle. Do not add domain agents that duplicate that responsibility.
    Prefer paths rooted at the repository in prose. Relative Markdown links resolve
    from the canonical source and are rebased by the generator.
 4. Follow the verification and commit procedure below. Reserve names beginning
-   `project-` for generated command skills; do not create colliding names.
+   `project-` for commands; do not create a skill that collides with one.
 
 ## Add or modify a command
 
@@ -58,8 +58,11 @@ cycle. Do not add domain agents that duplicate that responsibility.
 4. Keep commands conductor-only. Delegate through the coordination MCP tools and
    `mcp-coordination`; never add native subagent dispatch or shell-spawn fallbacks.
    State preconditions, orchestration steps, failure handling, and outputs.
-   Heavy procedures belong in skills. The generator builds the native command
-   catalog automatically from the canonical files; no hand-maintained root table.
+   Heavy procedures belong in skills. Commands generate no native files: the
+   coordination server registers one MCP prompt per canonical command and serves
+   the same body through `get_workflow`, so a new command is reachable as soon as
+   the server restarts. The generator builds the `AGENTS.md` catalog from the
+   canonical files; no hand-maintained root table.
 5. Follow the verification and commit procedure below.
 
 ## Add or modify an agent
@@ -73,18 +76,21 @@ cycle. Do not add domain agents that duplicate that responsibility.
 3. Keep provider model names and native tool names out of the role body.
    Configure them once in `.harness/settings.json`: engine profile mappings in
    `engines[engine].models` / `effort`, role overrides in `roles[role]`. The
-   default engine inherits the conductor CLI. Native generated roles and MCP
-   dispatch consume this same configuration; do not maintain parallel settings.
-   Check official docs and runtime/native discovery when changing mappings.
-4. Do not claim hard isolation from prompt instructions alone. Codex read-only
-   agents receive a read-only sandbox default; parent policy can override it.
-   Claude/Antigravity read-only tool lists include shell access for git inspection;
-   their instruction and permission rules must still prohibit shell writes.
+   default engine inherits the conductor CLI. Confirm the result with
+   `list_roles`, which returns the engine, model, and effort each role resolves
+   to. Check official docs when changing mappings.
+4. Do not claim hard isolation from prompt instructions alone. Read-only roles
+   are enforced by the engine's permission mode (`plan` for Claude and
+   Antigravity, `--sandbox read-only` for Codex) and, decisively, by the server
+   refusing to integrate a read-only worker that produced commits. Instruction
+   text alone guarantees nothing.
 5. Apply `.harness/worker-contract.md` to every role. Planners and review roles
    return full reports without writes; writing roles commit scoped output locally.
    No worker dispatches, pushes, opens PRs, or cleans up a worktree.
-   Check role descriptions for overlapping routing. Regeneration emits the catalog
-   and all native role definitions.
+   Check role descriptions for overlapping routing. Agents generate no native
+   files: `manager.spawn` prepends this body to the worker's prompt, so a new
+   role is dispatchable as soon as the file exists. Regeneration only refreshes
+   the `AGENTS.md` catalog.
 
 ## Retire an artifact
 
@@ -104,9 +110,8 @@ whole generated directory to retire one asset.
    `node --test tests/harness.test.mjs`. Inspect every failure. Check the rendered
    instruction and actual native discovery for changed harness interfaces.
 3. Stage the changed canonical paths, `.harness/generated.json`, and all changed
-   native outputs (`AGENTS.md`, `CLAUDE.md`, `.claude/commands/`,
-   `.claude/skills/`, `.claude/agents/`, `.agents/skills/`, `.agents/agents/`,
-   `.codex/agents/`). Stage paths deliberately; preserve unrelated user settings.
+   native outputs (`AGENTS.md`, `CLAUDE.md`, `.claude/skills/`,
+   `.agents/skills/`). Stage paths deliberately; preserve unrelated user settings.
 4. In an initialized application, include required wiki updates and log entry in
    the same commit. While maintaining this blank template, preserve the wiki/raw
    scaffolds and record validation in the commit message instead.

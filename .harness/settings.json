@@ -7,41 +7,96 @@
   "roles": {
     "adversary": {
       "engine": null,
-      "models": { "claude": null, "codex": null, "antigravity": null },
-      "effort": { "claude": null, "codex": null, "antigravity": null }
+      "models": {
+        "claude": null,
+        "codex": null,
+        "antigravity": null
+      },
+      "effort": {
+        "claude": null,
+        "codex": null,
+        "antigravity": null
+      }
     },
     "developer": {
       "engine": null,
-      "models": { "claude": null, "codex": null, "antigravity": null },
-      "effort": { "claude": null, "codex": null, "antigravity": null }
+      "models": {
+        "claude": null,
+        "codex": null,
+        "antigravity": null
+      },
+      "effort": {
+        "claude": null,
+        "codex": null,
+        "antigravity": null
+      }
     },
     "planner": {
       "engine": null,
-      "models": { "claude": null, "codex": null, "antigravity": null },
-      "effort": { "claude": null, "codex": null, "antigravity": null }
+      "models": {
+        "claude": null,
+        "codex": null,
+        "antigravity": null
+      },
+      "effort": {
+        "claude": null,
+        "codex": null,
+        "antigravity": null
+      }
     },
     "researcher": {
       "engine": null,
-      "models": { "claude": null, "codex": null, "antigravity": null },
-      "effort": { "claude": null, "codex": null, "antigravity": null }
+      "models": {
+        "claude": null,
+        "codex": null,
+        "antigravity": null
+      },
+      "effort": {
+        "claude": null,
+        "codex": null,
+        "antigravity": null
+      }
     },
     "reviewer": {
       "engine": null,
-      "models": { "claude": null, "codex": null, "antigravity": null },
-      "effort": { "claude": null, "codex": null, "antigravity": null }
+      "models": {
+        "claude": null,
+        "codex": null,
+        "antigravity": null
+      },
+      "effort": {
+        "claude": null,
+        "codex": null,
+        "antigravity": null
+      }
     },
     "wiki-maintainer": {
       "engine": null,
-      "models": { "claude": null, "codex": null, "antigravity": null },
-      "effort": { "claude": null, "codex": null, "antigravity": null }
+      "models": {
+        "claude": null,
+        "codex": null,
+        "antigravity": null
+      },
+      "effort": {
+        "claude": null,
+        "codex": null,
+        "antigravity": null
+      }
     }
   },
   "engines": {
     "claude": {
       "executable": "claude",
-      "models": { "reasoning": "opus", "balanced": "sonnet", "fast": "haiku" },
-      "effort": { "reasoning": "high", "balanced": "medium", "fast": "low" },
-      "readOnlyTools": ["Read", "Glob", "Grep", "Bash"],
+      "models": {
+        "reasoning": "opus",
+        "balanced": "sonnet",
+        "fast": "haiku"
+      },
+      "effort": {
+        "reasoning": "high",
+        "balanced": "medium",
+        "fast": "low"
+      },
       "writePermissionMode": "acceptEdits",
       "writeAllowedTools": [
         "Bash(git add:*)",
@@ -55,14 +110,29 @@
     },
     "codex": {
       "executable": "codex",
-      "models": { "reasoning": null, "balanced": null, "fast": null },
-      "effort": { "reasoning": "high", "balanced": "medium", "fast": "low" }
+      "models": {
+        "reasoning": null,
+        "balanced": null,
+        "fast": null
+      },
+      "effort": {
+        "reasoning": "high",
+        "balanced": "medium",
+        "fast": "low"
+      }
     },
     "antigravity": {
       "executable": "agy",
-      "models": { "reasoning": "pro", "balanced": "inherit", "fast": "flash" },
-      "effort": { "reasoning": "high", "balanced": "medium", "fast": "low" },
-      "readOnlyTools": ["view_file", "grep_search", "list_dir", "run_command"]
+      "models": {
+        "reasoning": "pro",
+        "balanced": "inherit",
+        "fast": "flash"
+      },
+      "effort": {
+        "reasoning": "high",
+        "balanced": "medium",
+        "fast": "low"
+      }
     }
   }
 }

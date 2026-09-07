@@ -24,21 +24,22 @@ Edit `.harness/project.md` for project identity and `.harness/instructions.md` f
 shared operating instructions, plus `.harness/rules/`, `.harness/commands/project/`,
 `.harness/skills/`, `.harness/agents/`, `.harness/templates/`, and
 `.harness/worker-contract.md`. Engine, model, reasoning, and role overrides live
-once in `.harness/settings.json`; both MCP and native adapters consume it.
+once in `.harness/settings.json`, which the coordination server reads at dispatch.
 After any edit, run
 `node scripts/sync-harness.mjs`, then `node scripts/sync-harness.mjs --check` and
 `node --test tests/harness.test.mjs`. Commit source and generated outputs together.
-Never edit `AGENTS.md`, `CLAUDE.md`, `.claude/commands/`, `.claude/skills/`,
-`.claude/agents/`, `.agents/skills/`, `.agents/agents/`, or `.codex/agents/` directly.
+Never edit `AGENTS.md`, `CLAUDE.md`, `.claude/skills/`, or `.agents/skills/`
+directly. Commands and agents generate no files at all: the server serves
+commands as MCP prompts, and a worker's role is prepended to its prompt.
 Do not replace user-owned settings files. See `docs/harnesses.md` for the mapping.
 
 ## Workflow and delegation
 
 The interactive conductor uses the coordination MCP server for every worker
 dispatch, status check, cancellation, and local integration. Read and follow
-`.harness/skills/mcp-coordination/SKILL.md`. Native agents are compatibility entry
-points; do not use native delegation as a second orchestration path. All project
-commands are conductor-only. If MCP is unavailable, report the blocker.
+`.harness/skills/mcp-coordination/SKILL.md`. There is no native delegation path:
+no agent files are generated, so MCP dispatch is the only way to run a worker.
+All project commands are conductor-only. If MCP is unavailable, report the blocker.
 
 One developer owns Spec → Red → Green → Refactor → wiki update. The conductor
 dispatches a read-only planner before complex/batched work and an independent

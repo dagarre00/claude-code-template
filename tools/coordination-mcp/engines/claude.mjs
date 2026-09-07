@@ -3,10 +3,16 @@
 export default {
   name: 'claude',
   efforts: ['low', 'medium', 'high', 'xhigh', 'max'],
-  buildArgs({ config, role, readOnly, model, effort }) {
+  // No --agent flag. It delivered a second copy of the role body the manager
+  // already inlines in every prompt — 8KB for developer, 10KB for
+  // wiki-maintainer, roughly doubling the instruction payload per dispatch. Its
+  // only unique contribution was the read-only `tools:` allowlist, and plan mode
+  // was measured to refuse writes even when Write and Edit are explicitly
+  // allowed, so that allowlist enforced nothing plan mode does not.
+  buildArgs({ config, readOnly, model, effort }) {
     const mode = config.writePermissionMode;
     if (!['acceptEdits', 'default', 'dontAsk'].includes(mode)) throw new Error('Unsafe/unsupported Claude permission mode');
-    const args = ['--print', '--agent', role, '--no-session-persistence', '--strict-mcp-config',
+    const args = ['--print', '--no-session-persistence', '--strict-mcp-config',
       '--permission-mode', readOnly ? 'plan' : mode, '--permission-prompts', 'none',
       '--disallowedTools', 'Agent,Task'];
     // acceptEdits covers file edits and read-only shell, but mutating commands
@@ -25,14 +31,5 @@ export default {
     if (model && model !== 'inherit') args.push('--model', model);
     if (effort) args.push('--effort', effort);
     return args;
-  },
-  // Native agent file for engines that discover roles from disk rather than over
-  // MCP. readOnlyTools is the native counterpart of plan mode: the MCP path
-  // restricts a reviewer by permission mode, this path by an explicit allowlist.
-  nativeAgent({ name, description, access, body, startup, modelFor, config, helpers }) {
-    const path = `.claude/agents/${name}.md`;
-    const meta = { name, description: helpers.expand(description, path, 'claude'), model: modelFor('claude') ?? 'inherit' };
-    if (access === 'read-only') meta.tools = config.readOnlyTools;
-    return { path, content: helpers.yaml(meta, startup + helpers.expand(body, path, 'claude')) };
-  },
+  }
 };

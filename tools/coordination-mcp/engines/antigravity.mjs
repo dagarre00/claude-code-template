@@ -29,12 +29,5 @@ export default {
     // the parser while the prompt arrives over stdin as stream-json.
     args.push('--print=');
     return args;
-  },
-  nativeAgent({ name, description, access, body, startup, modelFor, config, helpers }) {
-    const path = `.agents/agents/${name}.md`;
-    const meta = { name, description: helpers.expand(description, path, 'shared'),
-      model: modelFor('antigravity') ?? 'inherit', subagent: true, mainAgent: true, commandExecutionPolicy: 'sandbox' };
-    if (access === 'read-only') meta.tools = config.readOnlyTools;
-    return { path, content: helpers.yaml(meta, startup + helpers.expand(body, path, 'shared')) };
-  },
+  }
 };
