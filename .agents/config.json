@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "defaultEngine": "inherit",
+  "workerTimeoutSeconds": 1800,
+  "roles": {
+    "adversary": { "engine": null, "models": {}, "effort": {} },
+    "developer": { "engine": null, "models": {}, "effort": {} },
+    "planner": { "engine": null, "models": {}, "effort": {} },
+    "researcher": { "engine": null, "models": {}, "effort": {} },
+    "reviewer": { "engine": null, "models": {}, "effort": {} },
+    "wiki-maintainer": { "engine": null, "models": {}, "effort": {} }
+  },
+  "engines": {
+    "claude": {
+      "executable": "claude",
+      "models": { "reasoning": "opus", "balanced": "sonnet", "fast": "haiku" },
+      "effort": { "reasoning": "high", "balanced": "medium", "fast": "low" }
+    },
+    "codex": {
+      "executable": "codex",
+      "models": { "reasoning": null, "balanced": null, "fast": null },
+      "effort": { "reasoning": "high", "balanced": "medium", "fast": "low" }
+    },
+    "antigravity": {
+      "executable": "agy",
+      "models": { "reasoning": "pro", "balanced": "inherit", "fast": "flash" },
+      "effort": { "reasoning": "high", "balanced": "medium", "fast": "low" }
+    }
+  }
+}
