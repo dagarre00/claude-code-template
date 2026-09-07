@@ -4,6 +4,11 @@ import { engines as adapters, engineNames } from './engines/index.mjs';
 
 export { engineNames };
 
+// Some CLIs cannot deliver a committed result at all. Checked where a role meets
+// an engine, so the refusal names both rather than surfacing as a merge failure
+// after the model has already been paid for.
+export const supportsWriteRoles = engine => adapters[engine]?.writeRoles !== false;
+
 export function loadSettings(root) {
   const settings = JSON.parse(readFileSync(resolve(root,'.harness/settings.json'),'utf8'));
   if (settings.version !== 1 || !['inherit',...engineNames].includes(settings.defaultEngine)

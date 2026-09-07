@@ -14,7 +14,7 @@ function fixture(t) {
   writeFileSync(resolve(root,'sample.txt'),'base\n');
   git(root,'init','-b','integration'); git(root,'config','core.autocrlf','false'); git(root,'config','user.email','fixture@example.invalid'); git(root,'config','user.name','Fixture');
   git(root,'add','.'); git(root,'commit','-m','fixture');
-  const manager = new Manager(root,'codex',{launch(taskDir) {
+  const manager = new Manager(root,'claude',{launch(taskDir) {
     writeFileSync(resolve(taskDir,'result.json'),JSON.stringify({state:'completed',exit_code:0,finished_at:new Date().toISOString()}));
     writeFileSync(resolve(taskDir,'stdout.log'),'REPORT fixture output\n');
   }});
@@ -131,4 +131,17 @@ test('worker worktrees live outside the git directory, where CLI write guards al
   // checkout and manager.spawn refuses to dispatch against a dirty tree.
   assert.equal(git(root,'status','--porcelain=v1','--untracked-files=all'),'','integration checkout stays clean');
   assert.equal(git(root,'check-ignore','.worktrees'),'.worktrees');
+});
+
+// Codex edits files but cannot commit them: its workspace-write sandbox protects
+// .git (openai/codex#18918 on Windows, #27418 for linked worktrees, both open).
+// A write worker that produces no commits is rejected at integration anyway, so
+// refuse the dispatch up front, before the model has been paid for.
+test('a write role is refused on an engine whose sandbox cannot commit', t=>{
+  const {root,manager}=fixture(t);
+  assert.throws(()=>manager.spawn({...task,cli_engine:'codex'}),/cannot run write role/i);
+  // Read-only roles are unaffected: they never needed to commit.
+  const reviewer=manager.spawn({role:'adversary',cli_engine:'codex',instructions:'Review.',owned_paths:[]});
+  assert.equal(reviewer.engine,'codex');
+  assert.equal(git(root,'status','--porcelain=v1','--untracked-files=all'),'','refusal left no residue');
 });

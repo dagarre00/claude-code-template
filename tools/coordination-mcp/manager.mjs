@@ -3,7 +3,7 @@ import { closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, re
   readdirSync, realpathSync, renameSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { resolve, relative, isAbsolute, dirname, sep } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
-import { loadSettings, workerCommand, engineNames } from './config.mjs';
+import { loadSettings, workerCommand, engineNames, supportsWriteRoles } from './config.mjs';
 
 // Worktrees must NOT live under .git: agent CLIs refuse to write anywhere inside
 // the git directory, which silently made every write role undeliverable. Task
@@ -173,6 +173,9 @@ export class Manager {
       const engine=input.cli_engine ?? settings.roles[input.role]?.engine ?? settings.defaultEngine;
       const resolvedEngine=engine==='inherit'?this.engine:engine;
       this.exclude();
+      if (access==='write' && !supportsWriteRoles(resolvedEngine)) {
+        throw new Error(`Engine ${resolvedEngine} cannot run write role "${input.role}": its sandbox protects .git, so a worker edits files but cannot commit them. Dispatch write roles to another engine, or use ${resolvedEngine} for read-only roles.`);
+      }
       const id=randomUUID(), workspace=contained(this.workspaces,resolve(this.workspaces,id));
       const command=workerCommand(settings,{...input,engine:resolvedEngine,profile,access,workspace});
       const active=this.list().filter(t=>['running','interrupted'].includes(t.state));

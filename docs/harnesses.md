@@ -470,23 +470,46 @@ for Codex and Antigravity — with identical content and no per-harness flavour.
 An MCP-only engine therefore needs no generator change whatsoever: one adapter
 module, one registry line, one settings block.
 
-## 12. Open items — verified for Claude, not yet for Codex or Antigravity
+## 12. Engine status — what has actually been dispatched
 
-The dispatch loop has been exercised end to end against **Claude only**: spawn →
-isolated worktree → real CLI → file write → local commit → SHA-pinned merge →
-validation → worktree and branch cleanup → clean integration tree. The items
-below are unverified and should be closed before relying on the other engines.
+The full loop — spawn → isolated worktree → real CLI → file write → local commit
+→ SHA-pinned merge → validation → worktree and branch cleanup → clean tree — has
+been exercised against **Claude**. The other two were dispatched for real as
+well; what they can and cannot do is recorded below.
 
-- **Does Codex's `workspace-write` sandbox share the `.git` write restriction?**
-  The defect that made Claude write workers undeliverable (§7, *Where a worker's
-  files live*) was a CLI-level refusal to write under `.git`. Codex was
-  rate-limited during testing, so the equivalent probe never ran. Repeat it:
-  dispatch a `developer` worker with `cli_engine: "codex"` and confirm it both
-  writes and commits.
-- **Does Codex need an equivalent of `writeAllowedTools`?** Codex uses
-  `approval_policy="never"` with an OS-level sandbox rather than Claude's
-  permission layer, so it may already permit `git commit` inside the workspace —
-  or may deny it the same way. Unverified.
+| Engine | Read-only roles | Write roles |
+| --- | --- | --- |
+| Claude | verified | verified end to end |
+| Codex | verified | **not supported** — refused at dispatch (see below) |
+| Antigravity | not yet exercised | blocked on a user-global allow-rule (see below) |
+
+- **Codex runs read-only roles only, and the server enforces it.** A real Codex
+  worker reads, runs shell commands, and writes files, but **cannot commit**: its
+  `workspace-write` sandbox protects `.git`, so `git add` fails with
+  `Unable to create .git/worktrees/<id>/index.lock: Permission denied` and Codex
+  emits a diff instead — its own answer is `codex apply` on the host. A write
+  worker with no commits is rejected at integration anyway, so `manager.spawn`
+  now refuses the dispatch up front and names the engine and role.
+
+  This is deliberate upstream behaviour, not a misconfiguration: a writable
+  `.git/hooks` would let an agent plant a hook that executes *outside* the
+  sandbox the next time a human runs git. The documented escape — pointing
+  `sandbox_workspace_write.writable_roots` at `.git` — does not help this project,
+  and both blockers are open with no fix:
+  [openai/codex#18918](https://github.com/openai/codex/issues/18918) (since
+  Codex 0.122.0, Windows applies DENY ACLs to `.git` inside `writable_roots`) and
+  [openai/codex#27418](https://github.com/openai/codex/issues/27418) (the sandbox
+  force-protects the resolved gitdir of a **linked worktree** even with explicit
+  write permission). The second applies on Linux too, and this project always
+  dispatches into linked worktrees, so this is not a Windows-only limitation.
+  Both were reproduced here, including in a standalone clone with `.git` inside
+  the workspace, which failed identically.
+
+  Codex is a good fit for `planner`, `adversary`, and `reviewer` — verified
+  working, and it satisfies behavioural rule 12's preference for a different
+  model reviewing the author's work. If Codex write workers are ever wanted, the
+  approach that respects the sandbox is to have the runner commit the worker's
+  owned paths after a successful exit, rather than granting `.git` write access.
 - **Codex pins no models.** All three profiles are `null`, so every Codex worker
   inherits the CLI default and the `reasoning`/`balanced`/`fast` distinction is
   lost. This also weakens behavioural rule 12, which prefers a *different* model

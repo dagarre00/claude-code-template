@@ -6,6 +6,19 @@ export default {
   name: 'codex',
   efforts: ['minimal', 'low', 'medium', 'high', 'xhigh'],
   terminal: '-',
+  // Read-only roles only. The workspace-write sandbox deliberately protects .git
+  // — a writable .git/hooks would let an agent plant a hook that runs outside the
+  // sandbox the next time a human uses git — so a Codex worker edits files but
+  // cannot commit, and a write worker with no commits is rejected at integration.
+  // Verified here: the worker wrote its file, then failed with
+  // `Unable to create .git/worktrees/<id>/index.lock: Permission denied`, and
+  // emitted a diff instead. Codex's own answer is `codex apply` on the host.
+  // The documented escape (writable_roots pointing at .git) does not help us:
+  // openai/codex#18918 has Windows applying DENY ACLs to .git inside
+  // writable_roots, and openai/codex#27418 has the sandbox force-protecting the
+  // resolved gitdir of a linked worktree even with explicit permission. Both are
+  // open, and this project always dispatches into linked worktrees.
+  writeRoles: false,
   buildArgs({ readOnly, workspace, model, effort }) {
     const args = ['exec', '--ephemeral', '--color', 'never', '--cd', workspace,
       '--sandbox', readOnly ? 'read-only' : 'workspace-write', '-c', 'approval_policy="never"',
