@@ -18,7 +18,19 @@ The argument **selects the work** and overrides the default "take the top todo" 
 
 An argument never bypasses the preconditions, the Red phase, or the entity-page check — it only chooses *what* the cycle covers. If it's empty, take the top todo as usual.
 
-You orchestrate one TDD cycle (or a small batch). You do **not** write tests or production code directly — you dispatch the `planner` (only for complex or batched work) and then the `developer`, which commits each Behavior case as it lands. You verify their output, add the log entry, and — once the entity's Behavior cases are all complete — open a PR back to `develop`.
+You orchestrate one TDD cycle (or a small batch). You do **not** write tests or production code directly — you dispatch the `planner` (only for complex or batched work) and then the `developer`. You verify their output, commit it, add the log entry, and — once the entity's Behavior cases are all complete — open a PR back to `develop`.
+
+## How you dispatch
+
+Every dispatch goes through the workflow MCP server. You are the conductor, so you may dispatch as many times as the cycle needs; a dispatched worker never dispatches anything itself.
+
+1. `prepare_worktree` → an isolated checkout at committed HEAD on its own `worker/<id>` branch. Requires a clean checkout, so commit or set aside your own changes first.
+2. `build_worker_prompt` with the `role`, the `instructions`, the `workspace` from step 1, and — for a write role — `owned_paths` and a `commit_message`. Narrow `skills` to what that worker actually needs: this command declares nine, and sending all of them costs about 88KB against roughly 36KB for a realistic dispatch.
+3. Run the returned `command` verbatim. It already enters the worktree and pipes the prompt.
+4. Read the worker's report. **The worker delivers files and never runs git** — so for a write role, you stage its `owned_paths` in the worktree, commit with the message you passed, and merge the branch.
+5. `remove_worktree` when the work is integrated. It refuses if the checkout is dirty or the branch holds unmerged commits, so a refusal means read before you retry — never force it.
+
+If `build_worker_prompt` returns `warnings`, read them: they say what that engine cannot enforce below the prompt, which is your call to weigh, not a blocker.
 
 ## Preconditions
 
@@ -36,7 +48,7 @@ If any precondition fails: stop and run `human-checkpoint`.
 
 ## Resuming an interrupted cycle
 
-The `developer` commits and pushes after each green case, so a container recycle loses at most the case in flight. Re-run `/project:work`: `git fetch origin feat/<slug>` recovers everything already pushed, and the remaining Behavior cases are still `[ ]`/`[~]` on the entity page, which is the resume point.
+You commit and push after each green case, so a container recycle loses at most the case in flight — plus whatever sits uncommitted in a worker's worktree, which is why you commit between cases rather than at the end. Re-run `/project:work`: `git fetch origin feat/<slug>` recovers everything already pushed, and the remaining Behavior cases are still `[ ]`/`[~]` on the entity page, which is the resume point.
 
 If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-limit pause within the same container, tree intact), don't restart — re-dispatch the `developer` with the same scope; it reads the working tree and continues from where it stopped.
 
@@ -73,15 +85,18 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
    - The Behavior case IDs to cover this cycle.
    - The test command from `docs/wiki/commands.md`.
 
-   The planner writes `.handoff/<slug>-plan.md` (gitignored scratch) and does nothing else — no branch, no tests, no code. **Sanity-check the plan it produces:** confirm the steps cover the listed Behavior cases and the scope hasn't drifted. If it's wrong, send it back once (a second failure means re-spec via `/project:interview`). For a single simple todo, **skip planning** — go straight to step 5.
+   The planner is a **read-only** role: it writes no files at all and returns the complete plan in its report. Save that report to `.handoff/<slug>-plan.md` yourself (gitignored scratch) if you want it on disk — worktrees do not share scratch, so the developer gets the plan **inline in its instructions**, never as a path to read. **Sanity-check the plan:** confirm the steps cover the listed Behavior cases and the scope hasn't drifted. If it's wrong, send it back once (a second failure means re-spec via `/project:interview`). For a single simple todo, **skip planning** — go straight to step 5.
 
 5. **Dispatch the `developer`** with this scope:
    - The entity slug and the branch name.
    - The Behavior case IDs to cover this cycle.
    - The test command from `docs/wiki/commands.md`.
-   - The path to the plan at `.handoff/<slug>-plan.md` **if one was written** in step 4 — the developer follows its step order unless reality forces a noted deviation.
+   - The full text of the plan from step 4 **if one was made**, pasted inline — the developer follows its step order unless reality forces a noted deviation.
+   - `owned_paths` covering the source, tests and the entity page it must update, and a `commit_message` for the case.
 
-   The developer runs the loop **once per Behavior case**: Red (failing test, confirmed failing for the right reason) → Green (minimum code) → refactor → tick the case → commit → push, then the next case. It owns committing; you do not bundle its work afterwards (`docs/wiki/git-conventions.md`, Cadence).
+   The developer runs the loop **once per Behavior case**: Red (failing test, confirmed failing for the right reason) → Green (minimum code) → refactor → tick the case. It leaves the result as files and runs no git at all.
+
+   **You commit, once per Behavior case** (`docs/wiki/git-conventions.md`, Cadence). Dispatch one case at a time and commit between them: that is what keeps the history per-case rather than one lump, and it is now your job because the worker cannot do it. Anything the worker changed outside its `owned_paths` is a defect — read it before deciding, and never widen ownership after the fact to make it commit cleanly.
 
 6. **Verify Red, Green, and granularity yourself.** Run the full test command: the new tests exist and the whole suite is green with no regression. Then run `git log --oneline develop..HEAD` and confirm the commits are per-case, not one lump — a single commit covering several Behavior cases is a defect to send back, because it breaks bisect and inflates the review diff. If the developer's output doesn't hold up, send it back with notes (one redo; a second failure on the same mechanism is the two-strike rule — see Failure modes).
 
@@ -111,7 +126,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 
    The counts are an index, not the record. The per-finding claims and rejection reasons are in the commits themselves — `git log --grep="adversary round"`.
 
-9. **Commit the log entry and push.** The implementation is already committed and pushed, case by case, by the `developer`; the adversary dispositions likewise. All that is left is the log:
+9. **Commit the log entry and push.** You already committed the implementation case by case in step 5, and the adversary dispositions likewise. All that is left is the log:
 
    ```bash
    git add docs/wiki/log.md
