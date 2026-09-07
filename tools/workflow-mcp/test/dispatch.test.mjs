@@ -72,6 +72,22 @@ test('writes the prompt and the exact stdin bytes, and returns a runnable comman
   });
 });
 
+// Claude Code has no --cd flag: it works in the process's working directory. So
+// a command that does not change directory first would run the worker against
+// the conductor's own checkout, which is the one thing the worktree exists to
+// prevent. The returned command must be runnable exactly as given.
+test('the returned command runs in the worktree, not the conductor checkout', () => {
+  withRepo(root => {
+    const workspace = resolve(root, '.worktrees/x');
+    for (const cli_engine of ['claude', 'codex', 'antigravity']) {
+      const result = prepareDispatch(root, { ...base, cli_engine, conductorEngine: 'claude', workspace });
+      assert.equal(result.cwd, workspace);
+      assert.ok(result.command.includes(workspace) || result.command.includes(workspace.replaceAll('\\', '/')),
+        `${cli_engine} command does not enter the worktree`);
+    }
+  });
+});
+
 test('antigravity gets NDJSON on stdin while the readable prompt stays plain', () => {
   withRepo(root => {
     const result = prepareDispatch(root, { ...base, conductorEngine: 'claude', cli_engine: 'antigravity',

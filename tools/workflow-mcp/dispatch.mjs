@@ -58,8 +58,15 @@ export function prepareDispatch(root, input = {}) {
     model: command.model,
     effort: command.effort,
     workspace,
+    // Run the process here. Claude Code has no --cd flag and works in the
+    // process's working directory, so a command that did not enter the worktree
+    // would run the worker against the conductor's own checkout — exactly what
+    // the worktree exists to prevent. Codex (--cd) and agy (--add-dir) are told
+    // as well, but the working directory is what makes all three agree.
+    cwd: workspace,
     prompt_file,
     stdin_file,
-    command: `${quote(command.executable)} ${command.args.map(quote).join(' ')} < ${quote(stdin_file)}`
+    command: `cd ${quote(workspace)} && ${quote(command.executable)} `
+      + `${command.args.map(quote).join(' ')} < ${quote(stdin_file)}`
   };
 }

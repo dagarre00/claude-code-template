@@ -1,11 +1,12 @@
 # Agentic Development Template
 
-A Claude Code template for building software with an LLM agent as the developer. Wiki-driven, spec + TDD, progressive disclosure.
+A template for building software with an LLM agent as the developer, across Claude Code, Codex and Antigravity. Wiki-driven, spec + TDD, progressive disclosure.
 
-## Two ideas
+## Three ideas
 
 1. **The wiki is the spec.** `docs/wiki/` is the source of truth for what the project does and how it's built. Code that disagrees with the wiki is the bug.
 2. **Progressive disclosure beats specialized agents.** A single `developer` agent runs the whole TDD cycle, loading task-specific skills on demand. Skills are short, procedural, project-specific — never abstract explanations.
+3. **One canonical source, no copies.** The workflow lives in `.agents/` and every CLI reads it there. Workers get one composed prompt and no ambient project context, so the same workflow behaves the same whichever CLI runs it.
 
 ## Quick start
 
@@ -31,6 +32,30 @@ Inside Claude Code:
 ```
 
 Open `docs/wiki/` in Obsidian on the side. That's your view of the agent's knowledge.
+
+## Running work on another CLI
+
+The conductor — usually Claude Code — delegates through the workflow MCP server in `tools/workflow-mcp`. It is a prompt factory, not a process supervisor: it composes the worker's prompt from `.agents/` and hands back a command you run.
+
+```
+prepare_worktree     # isolated checkout at committed HEAD, on its own worker/<id> branch
+build_worker_prompt  # role + rules + contract + the skills the command declares
+                     # -> { command, cwd, prompt_file, stdin_file, prompt_bytes }
+```
+
+Run the returned `command`, read the report, commit the worker's owned paths yourself, then `remove_worktree`. The server never spawns, commits, merges or pushes — you keep all of that, and a failed worker is debugged by re-running a command line you can read.
+
+**Workers get no ambient context.** Each engine is launched with its own project-file discovery switched off, so the composed prompt is the whole of what the worker sees. Verified by dispatching the same self-test to all three:
+
+| | rule 1 quoted | skills received | AGENTS.md loaded | rule count |
+| --- | --- | --- | --- | --- |
+| claude (`--safe-mode`) | ✅ | `tdd-loop` only | no | — |
+| codex (`project_doc_max_bytes=0`) | ✅ | `tdd-loop` only | no | — |
+| agy (reads no repo files) | ✅ | `tdd-loop` only | no | 16 of 22 |
+
+Conductor-only rules — branch, commit, push, open a PR — are withheld from workers, because the worker contract forbids git and handing it both would be a contradiction. 22 rules become 16.
+
+One caveat worth knowing: a worker's own account of its context is unreliable. agy first claimed it *had* been given AGENTS.md; asked instead to quote a withheld rule and name a command from the catalog, it correctly answered `ABSENT` to both. Test with questions only the real thing could answer.
 
 For a worked walkthrough — `/project:init` → `/project:interview` → `/project:work` end-to-end with explanations — see [`docs/getting-started.md`](docs/getting-started.md).
 
