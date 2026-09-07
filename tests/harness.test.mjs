@@ -143,9 +143,24 @@ test('native harness entry points carry the canonical instructions', () => {
     }
     assert.ok(read('AGENTS.md').includes(`\`${name}\``), `${name} is listed in the agent catalog`);
   }
-  // Only skills and the two root documents are generated now.
+  // Only skills, the two root documents, and the worker-scoped instructions.
   assert.deepEqual(
     [...new Set(Object.keys(JSON.parse(read('.harness/generated.json')).files)
       .map(p => p.startsWith('.') ? p.split('/').slice(0,2).join('/') : p))].sort(),
-    ['.agents/skills','.claude/skills','AGENTS.md','CLAUDE.md']);
+    ['.agents/skills','.claude/skills','.harness/worker-instructions.md','AGENTS.md','CLAUDE.md']);
+
+  // The worker document is AGENTS.md minus everything a worker may not act on.
+  // It exists because that half is not free: measured at 4805 tokens per Codex
+  // dispatch. Both halves come from one source, so they cannot drift apart.
+  const worker = read('.harness/worker-instructions.md'), agents = read('AGENTS.md');
+  assert.ok(worker.length < agents.length / 2, 'the worker subset is materially smaller');
+  for (const conductorOnly of ['## Command catalog','## Agent catalog','## Workflow and delegation',
+    '## Canonical authoring','MCP is the worker control plane','Two-strike pivot','Scoped context for sub-agents']) {
+    assert.ok(agents.includes(conductorOnly), `AGENTS.md keeps ${conductorOnly}`);
+    assert.ok(!worker.includes(conductorOnly), `the worker never receives ${conductorOnly}`);
+  }
+  for (const shared of ['Tests before implementation','Never modify tests to make them pass',
+    'A dirty tree you did not dirty','Wiki-first, code-second','## Wiki map']) {
+    assert.ok(worker.includes(shared), `the worker still receives ${shared}`);
+  }
 });

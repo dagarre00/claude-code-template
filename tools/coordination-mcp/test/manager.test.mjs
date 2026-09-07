@@ -261,6 +261,27 @@ test('every engine accepts write roles and delivers them the same way: the super
     git(root,'worktree','remove','--force',worker.workspace);
     git(root,'branch','-D',worker.branch);
   }
+  // An engine launched without project-file discovery must be handed the
+  // worker-scoped subset — and one that still reads AGENTS.md must not, or the
+  // saving becomes a duplication. Codex is the engine that can be suppressed.
+  const promptFor=engine=>{
+    const worker=manager.spawn({...task,cli_engine:engine});
+    const text=readFileSync(resolve(dir(worker.task_id),'prompt.txt'),'utf8');
+    git(root,'worktree','remove','--force',worker.workspace);
+    git(root,'branch','-D',worker.branch);
+    return text;
+  };
+  const suppressed=promptFor('codex'), discovers=promptFor('claude');
+  assert.match(suppressed,/# Behavioral Rules/,'a worker that cannot read AGENTS.md is given the rules it needs');
+  assert.match(suppressed,/Tests before implementation/);
+  assert.match(suppressed,/A dirty tree you did not dirty/);
+  // The half a worker must never act on stays out, on top of being unusable to it.
+  assert.doesNotMatch(suppressed,/## Command catalog/);
+  assert.doesNotMatch(suppressed,/## Agent catalog/);
+  assert.doesNotMatch(suppressed,/MCP is the worker control plane/);
+  assert.doesNotMatch(discovers,/# Behavioral Rules/,'claude reads AGENTS.md itself; sending it twice is the opposite of a saving');
+  assert.ok(suppressed.length>discovers.length);
+
   // Read-only roles produce no commit at all, so there is no subject to set.
   const reviewer=manager.spawn({role:'adversary',cli_engine:'codex',instructions:'Review.',owned_paths:[]});
   assert.equal(reviewer.commit,null);

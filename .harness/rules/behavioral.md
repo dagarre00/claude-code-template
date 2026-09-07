@@ -1,6 +1,7 @@
 ---
 name: behavioral-rules
 description: "Hard behavioral constraints for all agents. Loaded at session start."
+conductor-only: 5, 10, 12, 19, 20, 22, 23
 ---
 
 # Behavioral Rules

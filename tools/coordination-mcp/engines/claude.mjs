@@ -14,6 +14,11 @@ export default {
     if (!['acceptEdits', 'default', 'dontAsk'].includes(mode)) throw new Error('Unsafe/unsupported Claude permission mode');
     const args = ['--print', '--no-session-persistence', '--strict-mcp-config',
       '--permission-mode', readOnly ? 'plan' : mode, '--permission-prompts', 'none',
+      // Every dispatch runs in a differently-named worktree, and that path sits in
+      // the system prompt as cwd — so without this the cached prefix breaks on
+      // every single dispatch. Moving the per-machine sections into the first user
+      // message makes the system prompt identical across workers and cacheable.
+      '--exclude-dynamic-system-prompt-sections',
       '--disallowedTools', 'Agent,Task'];
     // acceptEdits covers file edits and read-only shell, but mutating commands
     // still route to a prompt — and --permission-prompts none denies those. This

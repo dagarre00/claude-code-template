@@ -27,6 +27,7 @@ the agent workflow. Generated harness files are delivery artifacts.
    evidence in tests and commit messages. Project initialization fills these pages
    only from the adopting project's facts and the human's answers.
 
+<!-- conductor-only:start -->
 ## Canonical authoring
 
 Edit `.harness/project.md` for project identity and `.harness/instructions.md` for
@@ -76,6 +77,8 @@ target and worker SHAs. The conductor owns pushing the integration branch and
 opening feature PRs; the human owns remote PR merges. Worktrees prevent ordinary
 file collisions but are **not security sandboxes**: permissions still apply and
 the Git store and credentials may be shared.
+
+<!-- conductor-only:end -->
 
 ## Files and shell commands
 

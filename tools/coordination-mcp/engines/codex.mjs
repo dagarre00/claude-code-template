@@ -11,6 +11,11 @@ export default {
   // engines that forced the supervisor-commits convention — evidence and the
   // upstream issues are in docs/harnesses.md §12. Nothing is needed here: the
   // runner commits for every engine, so this adapter grants no git access.
+  //
+  // Codex is the one engine that can be told to skip project-file discovery, so
+  // the manager gives its workers the worker-scoped instruction subset instead of
+  // the whole conductor-facing AGENTS.md.
+  suppressesProjectDocs: true,
   buildArgs({ readOnly, workspace, model, effort }) {
     const args = ['exec', '--ephemeral', '--color', 'never', '--cd', workspace,
       '--sandbox', readOnly ? 'read-only' : 'workspace-write', '-c', 'approval_policy="never"',
@@ -20,7 +25,13 @@ export default {
       // ("invalid transport in mcp_servers.coordination"), killing every worker
       // before it starts. Clearing it also cuts the worker off from every other
       // MCP server, which is what a bounded task should have anyway.
-      '-c', 'agents.enabled=false', '-c', 'mcp_servers={}'];
+      '-c', 'agents.enabled=false', '-c', 'mcp_servers={}',
+      // AGENTS.md is written for the conductor: command catalog, agent catalog,
+      // dispatch and integration rules — none of which a worker may act on, all
+      // of which it pays for. Measured on an identical prompt in this repository:
+      // 10004 tokens with project docs, 5199 without. The manager prepends the
+      // worker-scoped subset instead, which is why suppressesProjectDocs is set.
+      '-c', 'project_doc_max_bytes=0'];
     if (model && model !== 'inherit') args.push('--model', model);
     if (effort) args.push('-c', `model_reasoning_effort=${JSON.stringify(effort)}`);
     args.push('-'); // Reads the prompt from stdin; must stay the final argument.

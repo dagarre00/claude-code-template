@@ -3,7 +3,7 @@ import { closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, re
   readdirSync, realpathSync, renameSync, rmSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { resolve, relative, isAbsolute, dirname, sep } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
-import { loadSettings, workerCommand, engineNames, isSafeRepoPath } from './config.mjs';
+import { loadSettings, workerCommand, engineNames, isSafeRepoPath, suppressesProjectDocs } from './config.mjs';
 
 // Worktrees must NOT live under .git: agent CLIs refuse to write anywhere inside
 // the git directory, which silently made every write role undeliverable. Task
@@ -266,7 +266,13 @@ export class Manager {
           + ' Anything you changed outside owned_paths is committed by nobody and fails integration, so keep'
           + ' every edit inside your scope. Report changed paths, verification commands and their results, and'
           + ' any blockers; leaving work unfinished is a blocker, leaving it uncommitted is expected.';
-      const prompt=readFileSync(resolve(this.root,'.harness/worker-contract.md'),'utf8')
+      // Ordered most-stable first, so the shared prefix a prompt cache can reuse
+      // across dispatches runs as long as possible: the project instructions and
+      // the role body are byte-identical for every worker of this role, and only
+      // the assignment at the end differs.
+      const prompt=(suppressesProjectDocs(resolvedEngine)
+          ? readFileSync(resolve(this.root,'.harness/worker-instructions.md'),'utf8')+'\n\n---\n\n' : '')
+        +readFileSync(resolve(this.root,'.harness/worker-contract.md'),'utf8')
         +'\n\n## Canonical role\n\n'+role.replace(/\{\{cmd:([a-z-]+)\}\}/g,'project-$1')+delivery
         +'\n\n## Assignment\n\n'+JSON.stringify({task_id:id,workspace,branch:task.branch,base_sha,owned_paths:owned,instructions:input.instructions},null,2);
       writeFileSync(resolve(dir,'prompt.txt'),prompt);

@@ -35,7 +35,8 @@
     ".claude/skills/tdd-loop/SKILL.md": "fe273166ba5c9fe613a027d38048d3e1845e50aa3617b73f26467cedc62c8d27",
     ".claude/skills/update-toolkit/SKILL.md": "cb2431d145f0a1ad51f9c3bdf910f70447dc9aaf2bb4315780b53384b3200672",
     ".claude/skills/wiki-update/SKILL.md": "96093f19109a63b4b70c551251a563e401543f16b08f9071273bd854840dbbd3",
-    "AGENTS.md": "59c1a849638e30dea338623a665a58f2d12471de0db5ff81b910d67151708e6e",
+    ".harness/worker-instructions.md": "cbc0ddcf096289999252701adbcdb65e4f2450ffa13ce5d1b1fc17a56f0f48cd",
+    "AGENTS.md": "440fcf95c3ed434fc39618efcbd32af6181b1f2f9ad5110eee0f12d4cc79a1dc",
     "CLAUDE.md": "142c5ac3b3d277b53d67f6c783281bbc32bedd635a719458157dd393ccfdaee5"
   }
 }

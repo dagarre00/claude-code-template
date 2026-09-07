@@ -112,6 +112,30 @@ export function render(root) {
   const intro = expand(read(root, '.harness/instructions.md'), '.harness/instructions.md', 'AGENTS.md');
   const rules = walk(root, '.harness/rules').map(path =>
     expand(read(root,path).replace(/^---\n[\s\S]*?\n---\n/, ''), path, 'AGENTS.md')).join('\n');
+
+  // A dispatched worker cannot dispatch, integrate, push, open a PR, or edit
+  // .harness/ — so every word about those is context it pays for and must not act
+  // on. Measured: AGENTS.md costs a Codex worker 4805 tokens per dispatch (10004
+  // vs 5199 on an identical prompt with project docs suppressed). Engines that can
+  // be told to skip project-file discovery get this instead, and the manager
+  // prepends it; see the `suppressesProjectDocs` adapter flag.
+  const conductorBlock = /<!-- conductor-only:start -->\n[\s\S]*?<!-- conductor-only:end -->\n/g;
+  const audience = document(root, '.harness/rules/behavioral.md').meta['conductor-only'] ?? '';
+  const conductorRules = new Set(audience.split(',').map(n => n.trim()).filter(Boolean));
+  // Links are rebased against the repository root, not this file's directory: the
+  // body is injected into a prompt whose worker is running at the worktree root,
+  // so root-relative is what actually resolves for the reader.
+  const workerRules = walk(root, '.harness/rules').map(path =>
+    expand(read(root,path).replace(/^---\n[\s\S]*?\n---\n/, ''), path, 'AGENTS.md')
+      .split(/\n(?=\d+\. \*\*)/)
+      .filter(part => !conductorRules.has(part.match(/^(\d+)\. /)?.[1]))
+      .join('\n')).join('\n');
+  // A number that matches no rule is a stale audience list quietly widening what
+  // workers read, so fail rather than let it drift.
+  const numbered = new Set((rules.match(/^(\d+)\. \*\*/gm) ?? []).map(m => m.match(/\d+/)[0]));
+  for (const number of conductorRules) {
+    if (!numbered.has(number)) throw new Error(`conductor-only names rule ${number}, which does not exist`);
+  }
   const catalog = '\n## Command catalog\n\nCommands are MCP prompts served by the coordination server, '
     + 'not generated files, so one name works in every harness. Each accepts trailing free-text context. '
     + 'Logical IDs in shared procedures name the corresponding entry below.\n\n'
@@ -124,6 +148,11 @@ export function render(root) {
   const project = expand(read(root, '.harness/project.md'), '.harness/project.md', 'AGENTS.md');
   emit('AGENTS.md', marker('.harness/') + '\n' + project + '\n' + intro + '\n' + rules + catalog);
   emit('CLAUDE.md', marker('.harness/instructions.md') + '\n@AGENTS.md\n');
+  // No command or agent catalog: a worker may invoke neither. No conductor rules,
+  // no authoring instructions, and nothing about dispatch or integration.
+  emit('.harness/worker-instructions.md', marker('.harness/') + '\n' + project + '\n'
+    + expand(read(root,'.harness/instructions.md').replace(conductorBlock,''),'.harness/instructions.md','AGENTS.md')
+    + '\n' + workerRules);
 
   // Commands generate no native files. They are served at runtime by the
   // coordination server, which registers one MCP prompt per command and returns
@@ -170,7 +199,7 @@ export function render(root) {
   return outputs;
 }
 
-const managed = path => ['AGENTS.md','CLAUDE.md'].includes(path)
+const managed = path => ['AGENTS.md','CLAUDE.md','.harness/worker-instructions.md'].includes(path)
   || /^(?:\.claude\/(?:agents|skills|commands\/project)|\.agents\/(?:agents|skills)|\.codex\/agents)\/.+/.test(path);
 
 export function sync(root, { check = false, force = false } = {}) {
