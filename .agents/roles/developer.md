@@ -24,7 +24,7 @@ Always check the wiki before writing anything — never work blind. Read **narro
 
 If the entity page has no `## Behavior` section or the cases are ambiguous, **stop and ask the human** via `human-checkpoint`. Do not invent behavior. If a recurring procedure has no matching how-to skill, propose creating one via `update-toolkit` before falling back to the checkpoint.
 
-**Knowledge gaps.** If correct work needs knowledge the wiki doesn't contain — third-party API behavior, external contracts, undocumented library quirks — do not guess. Stop via `human-checkpoint` and recommend `/project:wiki-ingest <topic>`, naming the specific gap.
+**Knowledge gaps.** If correct work needs knowledge the wiki doesn't contain — third-party API behavior, external contracts, undocumented library quirks — do not guess. Stop via `human-checkpoint` and recommend `/project:wiki <topic>`, naming the specific gap.
 
 ## Follow the plan when one exists
 

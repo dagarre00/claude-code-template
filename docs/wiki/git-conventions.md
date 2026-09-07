@@ -13,15 +13,13 @@ updated: 2026-08-30
 # Git Conventions
 
 > [!abstract] Essence
-> Branching and commit conventions for this project. Mirrors the [feature-branching skill](../../.agents/skills/feature-branching/SKILL.md) — updated when the team adopts a new flow; mirror changes into the skill.
+> The naming and format **vocabulary** this project commits by. *When* to branch and which command branches at all is procedure, and lives in the [feature-branching skill](../../.agents/skills/feature-branching/SKILL.md) — this page does not restate it.
 
-## Integration and branching model
-
-`develop` is the primary integration branch; `main` is the release branch.
-- **Code modifications (`feat/*`, `fix/*`, `refactor/*`, `perf/*`)** must always be built on a dedicated branch cut from `develop` and merged via PR. No direct code commits on `develop`.
-- **Living documentation & operations (`docs/wiki/`, `docs/raw/`, `.agents/` config)**: maintenance commands (`/project:wiki-lint`, `/project:review`, `/project:wiki-ingest`, `/project:interview`, `/project:adversary`) commit and push directly to `develop` when standing on `develop` (or stay on the active `feat/*`/`fix/*`/`chore/*` branch if mid-feature). This keeps the living knowledge base fast and responsive without PR fatigue for documentation.
-
-The branching rules and command tables are defined in the [feature-branching skill](../../.agents/skills/feature-branching/SKILL.md).
+`develop` is the primary integration branch; `main` is the release branch. Code
+branches from `develop` and merges via PR; living documentation commits directly.
+The per-command table for that split is in the
+[feature-branching skill](../../.agents/skills/feature-branching/SKILL.md), and the
+rule behind it is `.agents/rules.md` #19.
 
 ## Branch naming
 

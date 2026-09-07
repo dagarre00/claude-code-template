@@ -25,11 +25,32 @@ Inside Claude Code:
 /project:work        # pick the top todo, branch, run TDD (Red → Green → Refactor → wiki)
 /project:adversary   # point a read-only second model at the diff; findings only
 /project:review      # periodic audit in a fresh session context
-/project:wiki-lint   # periodic wiki health check
-/project:wiki-ingest # direct ingest of a file or research query into wiki
+/project:wiki        # ingest a source (with an argument) or run the health pass (without)
 ```
 
+Six commands, and that is the whole surface. What each one does in detail is in
+the generated [`AGENTS.md`](AGENTS.md) catalog — the single place they are
+described, so this list stays a menu rather than a second spec to keep in sync.
+For a worked walkthrough, see [`docs/getting-started.md`](docs/getting-started.md).
+
 Open `docs/wiki/` in Obsidian on the side. That's your view of the agent's knowledge.
+
+## What the agent decides alone
+
+It reads the wiki before any code change, writes the failing test first, commits
+one Behavior case at a time (test + implementation + wiki tick together, so
+`git bisect` works and any case can be reverted alone), updates the wiki in the
+same commit as the code, and opens the PR once every Behavior case on the entity
+page is `[x]`.
+
+It stops and asks you before: merging a PR, pushing to `develop` or `main`
+directly, force-pushing or rewriting published history, choosing between two
+reasonable design alternatives, resetting after a two-strike failure, or fixing
+a `critical`/`major` adversary finding. Findings become todos by default —
+nothing is fixed on a reviewer's say-so alone. Neither reviewing role may edit
+code: both raise findings only, and the periodic `/project:review` never runs
+inside `/project:work`. The wiki-maintainer is never auto-invoked; health passes
+are yours to trigger.
 
 ## Running work on another CLI
 
@@ -55,27 +76,26 @@ Conductor-only rules — branch, commit, push, open a PR — are withheld from w
 
 One caveat worth knowing: a worker's own account of its context is unreliable. agy first claimed it *had* been given AGENTS.md; asked instead to quote a withheld rule and name a command from the catalog, it correctly answered `ABSENT` to both. Test with questions only the real thing could answer.
 
-For a worked walkthrough — `/project:init` → `/project:interview` → `/project:work` end-to-end with explanations — see [`docs/getting-started.md`](docs/getting-started.md).
-
 ## What's in the box
 
 ```
 .agents/             # THE canonical source — read by every CLI, never duplicated
-├── agents/          # planner (reasoning), developer, adversary (reasoning), reviewer, wiki-maintainer, researcher
+├── roles/           # planner (reasoning), developer, adversary (reasoning), reviewer, wiki-maintainer, researcher
+│                    #   deliberately NOT agents/ — no plugin loader scans it, so a role
+│                    #   can only be dispatched through the MCP, never as a native subagent
 ├── skills/          # process skills (TDD, branching, plan-writing, adversarial-review, wiki-update, …) + update-toolkit meta skill
-├── commands/        # /project:init, /project:interview, /project:work, /project:adversary, /project:review, /project:wiki-lint, /project:wiki-ingest
+├── commands/        # the six /project:* commands
 ├── rules.md         # behavioral constraints
 └── .claude-plugin/  # makes this directory a Claude Code plugin named "project"
 tools/workflow-mcp/  # the MCP: composes worker prompts, prepares worktrees, generates the root files
 docs/
 ├── raw/             # immutable source documents (interviews, articles, transcripts)
 └── wiki/            # LLM-owned knowledge base (entities, concepts, decisions, summaries, log, …)
-AGENTS.md            # generated from .agents/ — the schema, read first
+AGENTS.md            # generated from .agents/ — the schema and command catalog, read first
 CLAUDE.md            # generated from .agents/ — imports AGENTS.md
-HUMAN.md             # the human's-eye view of how this works
 ```
 
-**One directory, three CLIs.** Claude Code loads `.agents/` as a plugin (skills, commands **and** agents) via `.claude/settings.json`; Codex reads `.agents/skills/` natively plus the generated `AGENTS.md`. Antigravity reads no repo files at all, so it runs purely on the prompt the MCP composes — which is why nothing here is ever copied per-CLI.
+**One directory, three CLIs.** Claude Code loads `.agents/` as a plugin — skills and commands, but *not* roles — via `.claude/settings.json`; Codex reads `.agents/skills/` natively plus the generated `AGENTS.md`. Antigravity reads no repo files at all, so it runs purely on the prompt the MCP composes — which is why nothing here is ever copied per-CLI.
 
 ## Philosophy
 

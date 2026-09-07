@@ -17,11 +17,11 @@ updated: 2026-07-21
 
 ## Filing
 
-`/project:wiki-ingest` produces these for individual sources; the `wiki-maintainer` catches stragglers during `/project:wiki-lint`. Both run the placement check first — if the source's concept already has a page, they update it instead of duplicating.
+`/project:wiki <source>` produces these one at a time; its argument-free health pass has the `wiki-maintainer` catch stragglers in a batch. Both run the placement check first — if the source's concept already has a page, they update it instead of duplicating.
 
 ## Page shape
 
-Use the summary template in `/project:wiki-ingest` (`.agents/commands/wiki-ingest.md`): Obsidian-standard frontmatter (`type: summary`, `sources:` pointing at the raw path, `contradicts`, `open_questions`), then `> [!abstract] Essence`, `## Summary`, `## Key claims` (each claim ← its raw source), `## Boundaries`, `## Updates to the wiki`.
+Use the summary template in `/project:wiki` (`.agents/commands/wiki.md`): Obsidian-standard frontmatter (`type: summary`, `sources:` pointing at the raw path, `contradicts`, `open_questions`), then `> [!abstract] Essence`, `## Summary`, `## Key claims` (each claim ← its raw source), `## Boundaries`, `## Updates to the wiki`.
 
 ## Why these aren't the source
 

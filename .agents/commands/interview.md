@@ -96,26 +96,9 @@ If dirty: run `human-checkpoint`.
 
 2. **Sanity check via wiki-update skill.** Obsidian links, frontmatter, entity-page structure.
 
-3. **Log it.** Append to `docs/wiki/log.md`:
+3. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `interview`, fields `Transcript: [YYYY-MM-DD-<slug>](../raw/interviews/YYYY-MM-DD-<slug>.md)`, `Updated: <pages>`, `New todos: <count>`, `ADRs: <count>`. Stage `docs/wiki/` and `docs/raw/interviews/`; subject `docs(wiki): interview — <slug>`.
 
-   ```markdown
-   ## [YYYY-MM-DD HH:MM] interview — <slug>
-
-   - Transcript: [YYYY-MM-DD-<slug>](../raw/interviews/YYYY-MM-DD-<slug>.md)
-   - Updated: <pages>
-   - New todos: <count>
-   - ADRs: <count>
-   ```
-
-4. **Commit and push** directly to `develop` (or active branch, behavioral rule 19):
-
-   ```bash
-   git add docs/wiki/ docs/raw/interviews/
-   git commit -m "docs(wiki): interview — <slug>"
-   git push -u origin "$(git branch --show-current)"   # no remote → skip and note (git-conventions § Cadence)
-   ```
-
-5. **Recommend the next step.** Usually `/project:work` to pick up the first new todo.
+4. **Recommend the next step.** Usually `/project:work` to pick up the first new todo.
 
 ## Anti-patterns
 

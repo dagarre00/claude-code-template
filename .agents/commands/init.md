@@ -64,7 +64,9 @@ If both files are fully populated and all topics are covered, skip the interview
 
 ### 4. Interview
 
-Ask only about topics that are **missing** or **partial** from the pre-interview scan. Follow the procedure from the `/project:interview` command. Cover these topics (in order), one question at a time, always providing your recommended answer:
+**Run `/project:interview`'s Operating rules as written** — one question at a time, each with your recommended answer, dependencies before breadth, transcript streamed to disk Q-by-Q. They are not restated here; read them from `.agents/commands/interview.md` and follow them.
+
+What is specific to init is the **agenda**: ask only about topics the pre-interview scan found **missing** or **partial**, and cover these in order:
 
 1. **Project vision** — one sentence. What does this project do and why does it exist?
 2. **Users** — who uses it? (user types, contexts)
@@ -78,7 +80,7 @@ Ask only about topics that are **missing** or **partial** from the pre-interview
 10. **Non-functional** — perf targets, security requirements, observability, compliance.
 11. **Design intention** — **ask only if the project has a UI surface** (web, mobile, desktop, TUI). Three questions, no more: what should it feel like (three adjectives), what must it never feel like, and is there an existing design system / component library to adopt. Deeper token work is not an init topic — it goes to `/project:interview the design system` once the stack is real.
 
-Open a transcript at `docs/raw/interviews/YYYY-MM-DD-init.md` **before** asking the first question (skip creating it if no questions are needed). Stream Q-by-Q and A-by-A: write the question to disk, ask, write the answer to disk on receipt — never batch. Same enforcement as `/project:interview` (see operating rule #7 in `.agents/commands/interview.md`).
+The transcript is `docs/raw/interviews/YYYY-MM-DD-init.md`, opened before the first question and streamed exactly as operating rule #7 requires. Skip creating it only if the scan left no questions to ask.
 
 Stop conditions:
 

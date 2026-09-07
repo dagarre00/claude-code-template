@@ -13,11 +13,11 @@ updated: 2026-08-05
 # Todos
 
 > [!abstract] Essence
-> Priority-ordered work queue. `/project:work` takes the top item (or a batch sharing context). When complete, items are removed — git history is the record of shipped work. Lines tagged `[wiki]` are wiki-cleanup deferrals for `/project:wiki-lint`, not `/project:work`.
+> Priority-ordered work queue. `/project:work` takes the top item (or a batch sharing context). When complete, items are removed — git history is the record of shipped work. Lines tagged `[wiki]` are wiki-cleanup deferrals for `/project:wiki`, not `/project:work`.
 
 ## Tags
 
-- `[wiki]` — wiki cleanup; `/project:wiki-lint` processes these, not `/project:work`.
+- `[wiki]` — wiki cleanup; `/project:wiki` processes these, not `/project:work`.
 - `[complex]` — decompose with the `planner` before implementing.
 - `[infra]` — deployment, CI, environment, or configuration work. Maps to a `docs/wiki/concepts/<slug>.md` page instead of an entity page (`/project:work` step 1); everything else about the cycle is unchanged, tests included.
 - `[adversary]` — filed by an adversarial review rather than by a human. Format:
@@ -59,8 +59,8 @@ The `|| true` is not decoration: `grep -c` exits 1 when the count is zero, which
 
 Unlike `P0_MAX`, this is not a saturation alarm — a long `minor` tail is normal and mostly harmless. It is a **re-triage trigger**, and exactly two things act on it:
 
-- **`/project:wiki-lint`** re-triages the whole `[adversary]` backlog on each pass: re-grade what was mis-severed, merge duplicates, close what later work already fixed. Closing a finding here needs the same one-line reason in the commit body that rejecting one needs (rule 20) — a queue pruned silently is a queue deleted.
-- **`/project:work` step 12** surfaces `/project:wiki-lint` as due once the count reaches `FINDINGS_MAX`.
+- **`/project:wiki`** re-triages the whole `[adversary]` backlog on each pass: re-grade what was mis-severed, merge duplicates, close what later work already fixed. Closing a finding here needs the same one-line reason in the commit body that rejecting one needs (rule 20) — a queue pruned silently is a queue deleted.
+- **`/project:work` step 12** surfaces `/project:wiki` as due once the count reaches `FINDINGS_MAX`.
 
 If a finding survives two re-triage passes untouched, its severity was wrong when it was filed. Close it with that as the reason, or promote it — leaving it is the only option that teaches nothing.
 

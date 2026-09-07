@@ -51,8 +51,7 @@ Code mutations branch **before the first write** (behavioral rule 19). Living do
 | ---------------------- | ---------------------------------- | ----------------------- |
 | `/project:work`        | `feat/<slug>`                      | the failing test        |
 | `/project:interview`   | none (direct on `develop` or active `feat/*`) | —                       |
-| `/project:wiki-ingest` | none (direct on `develop` or active `feat/*`) | —                       |
-| `/project:wiki-lint`   | none (direct on `develop` or active `feat/*`) | —                       |
+| `/project:wiki`        | none (direct on `develop` or active `feat/*`) | —                       |
 | `/project:review`      | none (direct on `develop` or active `feat/*`) | —                       |
 | `/project:adversary`   | none (existing `feat/*`/`fix/*`/`chore/*`; `develop` only for the release review) | — |
 

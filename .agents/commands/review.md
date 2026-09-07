@@ -47,28 +47,11 @@ If any fails: run `human-checkpoint`.
    - For each Drift item: append to `docs/wiki/wiki-todos.md` for the maintainer.
    - For each Missing ADR: queue the ADR for the next `/project:work` cycle.
 
-5. **Log it.** Append to `docs/wiki/log.md`:
+5. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `review`, fields `Report: [[decisions/review-YYYY-MM-DD]]`, `Critical: <N>, Warnings: <M>, Drift: <K>`, `New todos: <list>`. Stage `docs/wiki/`; subject `docs(review): audit YYYY-MM-DD — <N critical, M warnings, K drift>`.
 
-   ```markdown
-   ## [YYYY-MM-DD HH:MM] review
+   Run `git status --porcelain` first and read it: dirt outside `docs/wiki/` is not automatically yours. If it matches the reviewer's report (suite-written files the reviewer missed), restore those paths; anything you cannot account for is another session's live work — stop and `human-checkpoint` naming the paths (rule 21).
 
-   - Report: [[decisions/review-YYYY-MM-DD]]
-   - Critical: <N>, Warnings: <M>, Drift: <K>
-   - New todos: <list>
-   ```
-
-6. **Commit and push.** Living wiki updates commit directly on `develop` (or your active branch, behavioral rule 19):
-
-   ```bash
-   git status --porcelain   # any dirt outside docs/wiki/ must be accounted for, never blindly restored (behavioral rule 21)
-   git add docs/wiki/
-   git commit -m "docs(review): audit YYYY-MM-DD — <N critical, M warnings, K drift>"
-   git push -u origin "$(git branch --show-current)"   # no remote → skip and note (git-conventions § Cadence)
-   ```
-
-   Dirt outside `docs/wiki/` is not automatically yours: if it matches the reviewer's report (suite-written files the reviewer missed), restore those paths; anything you cannot account for is another session's live work — stop and run `human-checkpoint` naming the paths (behavioral rule 21).
-
-7. **Report to the human.** Highlight critical items only. Recommend whether the next step is `/project:work` (fix critical), `/project:interview` (spec gap), or `/project:wiki-lint` (heavy drift).
+6. **Report to the human.** Highlight critical items only. Recommend whether the next step is `/project:work` (fix critical), `/project:interview` (spec gap), or `/project:wiki` (heavy drift).
 
 ## What you do NOT do
 

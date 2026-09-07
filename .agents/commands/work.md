@@ -65,14 +65,10 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
      ```
 
      Check the candidate against `origin/develop` rather than the local mirror: if the entity page there already has its Behavior cases ticked, or `git log origin/develop --oneline --grep='<slug>'` shows the work shipped, remove the stale line from `todos.md` and take the next one. This fetch is read-only — step 2 still does the fast-forward merge. It exists so that the pick, the spec read, and any checkpoint are not spent on work that is already done.
-   - Read `docs/wiki/todos.md`. Take the top item — or, if the argument named a todo/entity/batch, take that instead. Skip any line tagged `[wiki]` — those belong to `/project:wiki-lint`, not here.
-   - **If the argument steers you off P0, check saturation first.** Taking the top item already drains P0, so no check is needed on the default path. But when an argument selects work outside `## Now (P0 — next)`, count the open P0 items:
+   - Read `docs/wiki/todos.md`. Take the top item — or, if the argument named a todo/entity/batch, take that instead. Skip any line tagged `[wiki]` — those belong to `/project:wiki`, not here.
+   - **If the argument steers you off P0, check saturation first.** Taking the top item already drains P0, so no check is needed on the default path. But when an argument selects work outside `## Now (P0 — next)`, count the open P0 items with the snippet in `docs/wiki/todos.md § P0 saturation threshold`.
 
-     ```bash
-     awk '/^## Now \(P0/{f=1;next} /^## /{f=0} f && /^- \[ \]/' docs/wiki/todos.md | wc -l
-     ```
-
-     At or above `P0_MAX` (10 — `docs/wiki/todos.md § P0 saturation threshold`), stop and run `human-checkpoint` before starting: name the count, the oldest P0 entries, and the work the argument asked for, and let the human confirm they want to skip a saturated P0. They may well say yes — the point is that it is their call, not a silent bypass.
+     At or above `P0_MAX` (10, defined in that same section), stop and run `human-checkpoint` before starting: name the count, the oldest P0 entries, and the work the argument asked for, and let the human confirm they want to skip a saturated P0. They may well say yes — the point is that it is their call, not a silent bypass.
    - If the next 1–3 todos share an entity and context, propose a batch. Confirm with the human via `human-checkpoint` if batching is non-obvious.
    - Identify the matching `docs/wiki/entities/<slug>.md`. If it doesn't exist, **stop** and recommend `/project:interview` to define the entity first.
    - **`[infra]` todos map to a concept page instead.** Deployment, CI, environment, and configuration work has no feature entity, and a loop that only accepts entity-backed todos locks it out entirely — which is how infrastructure ends up shipping outside the schema: untested, unreviewed, and unlogged. A todo tagged `[infra]` may name a `docs/wiki/concepts/<slug>.md` page, whose `## Behavior` section holds verifiable operational assertions ("a request without `X-Edge-Secret` gets 403", "CORS allows exactly these origins"). Everything else in this command is unchanged — infra work is still Red-first, still committed per case, still logged.
@@ -116,34 +112,17 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 
    For a single simple todo, **skip this step**; the human can run `/project:adversary` on demand.
 
-8. **Append to log.** `docs/wiki/log.md` — this is the one commit `/project:work` makes itself:
+8. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `work`, fields `TODO(s): <list>`, `Cases: B1, B2`, `Branch: feat/<slug>`, and `Adversary: <N> findings — <Fi> filed, <Fx> fixed, <R> rejected` (omit that line if step 7a was skipped). Stage `docs/wiki/log.md` alone; subject `docs(<slug>): log cycle`.
 
-   ```markdown
-   ## [YYYY-MM-DD HH:MM] work — <slug>
-
-   - TODO(s): <list>
-   - Cases: B1, B2
-   - Branch: feat/<slug>
-   - Adversary: <N> findings — <Fi> filed, <Fx> fixed, <R> rejected   # omit if step 7a was skipped
-   ```
-
-   The counts are an index, not the record. The per-finding claims and rejection reasons are in the commits themselves — `git log --grep="adversary round"`.
-
-9. **Commit the log entry and push.** You already committed the implementation case by case in step 5, and the adversary dispositions likewise. All that is left is the log:
-
-   ```bash
-   git add docs/wiki/log.md
-   git commit -m "docs(<slug>): log cycle"
-   git push -u origin feat/<slug>
-   ```
+   This is the **one commit `/project:work` makes itself** — the log's own commit, which is the documented exception to shipping the entry alongside its work. The implementation was already committed case by case in step 5, and the adversary dispositions likewise, so the log is genuinely all that is left.
 
    Then delete the `.handoff/<slug>-*.md` scratch — both files are gitignored and nothing needs saving from them. Confirm `git status --porcelain` prints nothing, and that `git log --oneline develop..HEAD` reads as a per-case sequence rather than one lump.
 
-10. **Check feature completion.** Re-read the entity page's `## Behavior` section.
+9. **Check feature completion.** Re-read the entity page's `## Behavior` section.
     - **All cases are `[x]`** → the feature is finished. Proceed to step 11.
     - **Some cases remain `[ ]` or `[~]`** → skip to step 12 (no PR yet).
 
-11. **Create PR and return to develop.** Feature is done — open the PR immediately:
+10. **Create PR and return to develop.** Feature is done — open the PR immediately:
     - Follow the `pr-create` skill to draft the body.
     - Open the PR targeting `develop` with `mcp__github__create_pull_request`. **If that tool is not available here** — many environments run without the GitHub MCP server — fall back to `gh pr create --base develop --title "<title>" --body-file <path>`. Don't invent a third route: if neither works, push the branch, hand the human the drafted body, and say the PR is theirs to open.
     - Append the `pr — <slug>` entry to `docs/wiki/log.md` (the PR number only exists now, so it could not ship in step 9's commit), then commit and push it. Skipping this leaves the tree dirty and the next `git checkout` either drags the change along or fails:
@@ -161,14 +140,14 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
       git checkout develop
       ```
 
-12. **Report to human.** What was done, what's next. If step 7a ran, lead with any `critical`/`major` that was filed rather than fixed — that is the one outcome the human most needs to see, and it is easy to lose among the cycle's other notes.
+11. **Report to human.** What was done, what's next. If step 7a ran, lead with any `critical`/`major` that was filed rather than fixed — that is the one outcome the human most needs to see, and it is easy to lose among the cycle's other notes.
     Then run the **maintenance cadence check**. This is the only place the periodic commands are ever surfaced, so it runs even when the cycle went perfectly — especially then, because a clean cycle is exactly when nobody thinks to lint:
 
     ```bash
     # Count each cadence independently — never one grep piped to `tail -N` over a
     # combined match set, which drops whichever kind did not run most recently.
     awk '/^## \[[^]]*\] review[[:space:]]*$/{n=0;next} /^## \[[^]]*\] work/{n++} END{print n+0}' docs/wiki/log.md            # work cycles since /project:review
-    awk '/^## \[[^]]*\] wiki-maintenance[[:space:]]*$/{n=0;next} /^## \[[^]]*\] work/{n++} END{print n+0}' docs/wiki/log.md  # work cycles since /project:wiki-lint
+    awk '/^## \[[^]]*\] wiki-maintenance[[:space:]]*$/{n=0;next} /^## \[[^]]*\] work/{n++} END{print n+0}' docs/wiki/log.md  # work cycles since /project:wiki
     grep -cE '^- \[ \] [0-9]{4}-' docs/wiki/wiki-todos.md 2>/dev/null || true                 # maintainer queue depth (dated entries only — the file's own format example is not one)
     grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null || true                   # filed findings never triaged
     ```
@@ -178,11 +157,11 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
     Suggest, naming the number that fired:
     - More todos in the same entity → keep going (run `/project:work` again from `develop` or the existing branch if still open).
     - **`/project:review` is due** — 5+ `work` entries in `log.md` since the last `review` entry, or cross-cutting work piling up.
-    - **`/project:wiki-lint` is due** — 10+ unticked entries in `wiki-todos.md`, 5+ work cycles since the last `wiki-maintenance` entry, or the `[adversary]` count at or above `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`). Its own trigger heuristics are written inside `wiki-lint.md`, which nobody opens unless they have already decided to run it — this line is what makes them reachable.
+    - **`/project:wiki` is due** — 10+ unticked entries in `wiki-todos.md`, 5+ work cycles since the last `wiki-maintenance` entry, or the `[adversary]` count at or above `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`). Its own trigger heuristics are written inside `wiki.md`, which nobody opens unless they have already decided to run it — this line is what makes them reachable.
     - **A skill is missing** — you hand-rolled a multi-step procedure this cycle that no skill covers, or the stack gained a service. A gap you improvise twice is a missing skill (behavioral rule 17); say which procedure you improvised and point at the `update-toolkit` skill, which is where a gap becomes a real skill.
     - Risky next change → tag a checkpoint first (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`).
 
-    A due command is a **recommendation, not an interruption** — say it in one line and let the human decide. But say it: an unsurfaced cadence is a dead command, and a dead `wiki-lint` is a `gotchas.md` that every future session reads and no session prunes.
+    A due command is a **recommendation, not an interruption** — say it in one line and let the human decide. But say it: an unsurfaced cadence is a dead command, and a health pass nobody runs is a `gotchas.md` that every future session reads and no session prunes.
 
 ## Failure modes
 

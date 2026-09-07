@@ -2,7 +2,7 @@
 
 A worked walkthrough from a fresh fork of this template to a first shipped feature. Read this once end-to-end before opening Claude Code so the loop makes sense — then refer back as needed.
 
-> If you've never seen the schema, read [`CLAUDE.md`](../CLAUDE.md) first (it's the agent's view of the rules) and [`HUMAN.md`](../HUMAN.md) next (the human's-eye view).
+> If you've never seen the schema, read [`README.md`](../README.md) first (what the agent decides alone, and what it asks you about) and [`AGENTS.md`](../AGENTS.md) next (the rules and command catalog the agent itself reads).
 
 # First-time setup
 
@@ -100,15 +100,17 @@ This is **not** part of `/project:work` — it's periodic, run on demand or roug
 
 Don't confuse it with `/project:adversary`. Both are read-only and both run without the author's context, but they answer different questions: the `adversary` reads **one diff before it ships** and hunts for defects in it; the `reviewer` reads **the whole repo after things have shipped** and hunts for drift between the wiki and the code. Diff-scoped review never sees a problem in code it didn't touch, and a whole-repo audit arrives too late to stop the commit.
 
-## 5. `/project:wiki-lint` — every few cycles
+## 5. `/project:wiki` — ingest a source, or run the health pass
 
 ```
-/project:wiki-lint
+/project:wiki docs/raw/specs/payments-v2.pdf   # ingest a file
+/project:wiki search for exchange rate APIs    # research, then ingest
+/project:wiki                                  # no argument: the periodic health pass
 ```
 
-Dispatches the `wiki-maintainer` to process the `wiki-todos.md` queue, find orphans, broken `[[wiki-links]]`, stale claims, and contradictions, and compact `gotchas.md`/`log.md` when they overflow. Returns the wiki to a clean state.
+The argument picks the mode. **With a source**, it writes one `summaries/<slug>.md` and cross-links it. **Without one**, it dispatches the `wiki-maintainer` to work the `wiki-todos.md` queue, re-triage the filed-findings backlog, find orphans, broken `[[wiki-links]]`, stale claims and contradictions, and compact `gotchas.md`/`log.md` when they overflow.
 
-Run when `wiki-todos.md` is piling up or after a big round of feature work.
+Ingest is per-source and on demand; the health pass is periodic — run it when `wiki-todos.md` is piling up or after a big round of feature work.
 
 # Day-to-day scenarios
 
@@ -198,7 +200,7 @@ The reviewer is fresh eyes on the codebase. It catches drift the developer can't
 
 1. Read `docs/wiki/decisions/review-YYYY-MM-DD.md`.
 2. For each Critical / Warning, file a TODO in `docs/wiki/todos.md` with priority. These become the next `/project:work` cycles.
-3. For each Drift item, append to `docs/wiki/wiki-todos.md` for the next `/project:wiki-lint`.
+3. For each Drift item, append to `docs/wiki/wiki-todos.md` for the next `/project:wiki`.
 4. For each Missing ADR, queue an ADR for the next `/project:work` cycle to file via the `decision-recording` skill.
 5. Append a log entry summarising counts, then commit and push directly to `develop`.
 
@@ -279,7 +281,7 @@ A new spec PDF, an article, or research output needs to enter the agent's knowle
    - **File mode** for a document you already have:
 
      ```
-     /project:wiki-ingest docs/raw/specs/payments-v2.pdf
+     /project:wiki docs/raw/specs/payments-v2.pdf
      ```
 
      The agent reads the file (PDFs page by page), derives a slug, and writes `docs/wiki/summaries/payments-v2.md` — frontmatter, summary, key claims, open questions, contradictions with existing pages.
@@ -287,13 +289,13 @@ A new spec PDF, an article, or research output needs to enter the agent's knowle
    - **Research mode** when you don't have a document yet:
 
      ```
-     /project:wiki-ingest search for exchange rate APIs with sub-cent precision
+     /project:wiki search for exchange rate APIs with sub-cent precision
      ```
 
-     `/project:wiki-ingest` dispatches the `researcher` agent, which searches and fetches, then writes `docs/raw/research/<slug>.md`. The ingest command then produces the matching `summaries/<slug>.md`.
+     It dispatches the `researcher` agent, which searches and fetches, then writes `docs/raw/research/<slug>.md`; the command then produces the matching `summaries/<slug>.md` from it.
 
-3. **Cross-linking.** The ingest greps the wiki for related terms and adds `[[summaries/<slug>]]` references on overlapping entity and concept pages — that's what makes the summary reachable, since there's no central index. Contradictions get flagged by setting the `contradicts:` frontmatter property on **both** pages and describing the conflict in each page's `## Boundaries` section — never silently resolved. An unresolved `contradicts` is exactly what the next `/project:wiki-lint` reconciliation pass picks up.
-4. **`/project:wiki-lint` afterwards.** Heavy ingest tends to create new cross-references and the occasional orphan. Run `/project:wiki-lint` when several summaries have landed.
+3. **Cross-linking.** The ingest greps the wiki for related terms and adds `[[summaries/<slug>]]` references on overlapping entity and concept pages — that's what makes the summary reachable, since there's no central index. Contradictions get flagged by setting the `contradicts:` frontmatter property on **both** pages and describing the conflict in each page's `## Boundaries` section — never silently resolved. An unresolved `contradicts` is exactly what the next `/project:wiki` reconciliation pass picks up.
+4. **A health pass afterwards.** Heavy ingest tends to create new cross-references and the occasional orphan. Run `/project:wiki` with no argument once several summaries have landed.
 
 ## Scenario: Checking project state mid-session
 
@@ -305,9 +307,9 @@ git log --oneline -10      # recent commits
 git tag -l 'checkpoint-*'  # checkpoints you can reset to
 ```
 
-For the work queue, open `docs/wiki/todos.md` (top items are next) and `docs/wiki/log.md` (recent activity). If `docs/wiki/wiki-todos.md` has more than ~10 pending lines, it's time for `/project:wiki-lint`.
+For the work queue, open `docs/wiki/todos.md` (top items are next) and `docs/wiki/log.md` (recent activity). If `docs/wiki/wiki-todos.md` has more than ~10 pending lines, it's time for `/project:wiki`.
 
-Check state at session start, after a long break, or before deciding whether to `/project:work`, `/project:review`, or `/project:wiki-lint`.
+Check state at session start, after a long break, or before deciding whether to `/project:work`, `/project:review`, or `/project:wiki`.
 
 # Quick reference
 
@@ -320,8 +322,8 @@ Check state at session start, after a long break, or before deciding whether to 
 | `/project:work`        | Main loop — most days you live in `/project:work`                             |
 | `/project:adversary`   | Any change you're about to call done that `/project:work` didn't gate         |
 | `/project:review`      | Periodic (every ~5 todos), before a release, after several merges             |
-| `/project:wiki-lint`   | When `wiki-todos.md` piles up or after heavy ingest                           |
-| `/project:wiki-ingest` | When you have a new external doc, or to commission web research               |
+| `/project:wiki <source>` | When you have a new external doc, or to commission web research         |
+| `/project:wiki`        | No argument: when `wiki-todos.md` piles up or after heavy ingest              |
 
 Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `git reset --hard <tag>` to recover, `git status` / `git log` to see where you are — use plain git, not bespoke commands.
 
@@ -332,7 +334,7 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 | `/project:work` refuses to start (test command)    | `commands.md ## Test` is `<TBD>` or errors out — re-run `/project:init` step 5a to bootstrap a runnable command            |
 | Developer won't start (no Behavior cases)          | Entity page missing or `## Behavior` empty — run `/project:interview` first                                               |
 | Reviewer scope unclear                             | Re-run `/project:review` with an explicit scope argument (e.g. `/project:review security only`)                            |
-| `wiki-todos.md` is huge                            | Run `/project:wiki-lint`                                                                                                  |
+| `wiki-todos.md` is huge                            | Run `/project:wiki`                                                                                                  |
 | Developer keeps retrying the same failing approach | Two-strike rule should fire — it stops after the second failure and asks you                                              |
 | Plan looks wrong                                   | Edit `.handoff/<slug>-plan.md`, or just tell the developer the approach to take                                    |
 | Adversary found nothing and said only "looks good" | An unexplained pass is a failed review — it owes you a `**Checked:**` line per category. Re-dispatch demanding it          |
@@ -340,7 +342,7 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 
 # The mental model in one paragraph
 
-The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD; the `developer` agent runs the cycle (with the `planner` on Opus decomposing `[complex]` or batched todos first), and the wiki is updated in the same commit as the code. On risky cycles a read-only `adversary` (also Opus, with none of the developer's context) attacks the commits the developer just landed, before the PR opens, and every finding it raises is answered in writing. When in doubt, the agent stops and asks rather than guessing. Periodic `/project:review` and `/project:wiki-lint` keep both layers honest.
+The wiki is the project's source of truth — code that disagrees with it is the bug. You drive `/project:interview` to populate the spec. You run `/project:work` to ship features under TDD; the `developer` agent runs the cycle (with the `planner` on Opus decomposing `[complex]` or batched todos first), and the wiki is updated in the same commit as the code. On risky cycles a read-only `adversary` (also Opus, with none of the developer's context) attacks the commits the developer just landed, before the PR opens, and every finding it raises is answered in writing. When in doubt, the agent stops and asks rather than guessing. Periodic `/project:review` and `/project:wiki` health passes keep both layers honest.
 
 # Anti-patterns
 
@@ -348,7 +350,7 @@ The wiki is the project's source of truth — code that disagrees with it is the
 - **Editing `docs/wiki/` by hand without telling the agent.** You can, but you'll fight the agent's memory. Prefer asking it to make the change.
 - **Editing `docs/raw/` after the fact.** Never. Append new sources instead.
 - **Committing on `main`.** Always branch first (`/project:work` handles this).
-- **Letting `wiki-todos.md` pile up.** When it's long, run `/project:wiki-lint`.
+- **Letting `wiki-todos.md` pile up.** When it's long, run `/project:wiki`.
 - **Running the same failed approach a third time.** The two-strike rule exists for a reason — pivot or re-spec.
 - **Letting findings pass unanswered.** Filing three findings and quietly ignoring two turns review into theatre. Each one gets a disposition in writing — filed as a todo, fixed under your approval, or rejected with a reason.
 - **Treating a plan as a spec.** Plans live in `.handoff/` and are transient scratch. The wiki holds the spec. If the plan needs to change, edit the plan; if the contract needs to change, run `/project:interview`.
@@ -356,7 +358,7 @@ The wiki is the project's source of truth — code that disagrees with it is the
 # Related
 
 - [`CLAUDE.md`](../CLAUDE.md) — the schema (agent's view)
-- [`HUMAN.md`](../HUMAN.md) — the human's-eye view of the workflow
+- [`README.md`](../README.md) — the workflow in brief, and the agent's authority boundary
 - [`docs/wiki/git-conventions.md`](wiki/git-conventions.md) — branching and commit format
 - [`docs/wiki/commands.md`](wiki/commands.md) — working shell commands
 - [`.agents/roles/planner.md`](../.agents/roles/planner.md) — the planner agent definition (Opus)

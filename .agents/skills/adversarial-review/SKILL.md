@@ -66,13 +66,9 @@ Runs over the commits just landed. A read-only `adversary` (Opus, fresh context)
 
    Every finding gets a line, including the filed ones — the todo says *what* to do, the commit says *why it was not done now*. Use `--allow-empty` if the round produced neither a fix nor a todo (everything rejected); a round that changed nothing is precisely the one whose reasons must survive. `git log --grep="adversary round"` is how a later reader audits the review.
 
-6a. **Check P0 saturation.** After staging the todo lines, count the open P0 items:
+6a. **Check P0 saturation.** After staging the todo lines, count the open P0 items with the snippet in `docs/wiki/todos.md § P0 saturation threshold` — read that section, which also defines `P0_MAX` and says why the count covers all P0 items rather than only `[adversary]` ones.
 
-   ```bash
-   awk '/^## Now \(P0/{f=1;next} /^## /{f=0} f && /^- \[ \]/' docs/wiki/todos.md | wc -l
-   ```
-
-   At or above `P0_MAX` (10 — defined in `docs/wiki/todos.md § P0 saturation threshold`), stop and run `human-checkpoint`. **The queue is the finding now, not any individual item.** Reviews are producing criticals faster than cycles retire them, and a real emergency is no longer distinguishable from the nine ahead of it.
+   At or above `P0_MAX`, stop and run `human-checkpoint`. **The queue is the finding now, not any individual item.** Reviews are producing criticals faster than cycles retire them, and a real emergency is no longer distinguishable from the nine ahead of it.
 
    Bring to the checkpoint: the count and how much of it is `[adversary]`-filed versus human-filed, the oldest three entries with their age, and a recommendation. The realistic options are to drain P0 before more feature work, to re-grade entries that are not truly P0, or to pause adversarial review until the queue recovers. Do not pick for them, and do not let the count silently keep climbing.
 
@@ -174,11 +170,7 @@ Batch the asks: one checkpoint listing every `critical`/`major` from the round, 
 | `minor`    | `## Later (P2)`                 |
 | `nit`      | *not filed* — tallied in the round commit only |
 
-Todo line format — one per finding, so the queue is traceable back to the review:
-
-```markdown
-- [ ] [adversary] <one-line claim> — <severity>/<category>, F<N> of <sha>, entity <slug>
-```
+Todo line format — one per finding, so the queue is traceable back to the review — is defined with its severity-to-section mapping in `docs/wiki/todos.md § Tags` (the `[adversary]` entry). Use it from there; do not re-derive it here.
 
 ## Wiki update
 
@@ -197,7 +189,7 @@ Cross-vendor independence is stronger than a second context on the same family. 
 - **Leaking author context into the dispatch.** Pasting the plan or "here's what I was going for" turns the adversary into a rubber stamp. The Behavior case IDs are the whole brief.
 - **Letting the adversary fix things.** It raises, you decide. A reviewer that edits erases both the decision and the record of it.
 - **Absorbing findings silently.** Filing three and ignoring two without a written reason is how a review becomes theatre.
-- **Filing as if it were disposal.** Filed findings have exactly one consumer — `/project:wiki-lint`'s re-triage pass (behavioral rule 22) — and it only runs if someone runs it. When your filing pushes the open `[adversary]` count to `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`), say so in the cycle report. A backlog that grows every round and drains never means the reviews are producing paperwork, not fixes.
+- **Filing as if it were disposal.** Filed findings have exactly one consumer — `/project:wiki`'s re-triage pass (behavioral rule 22) — and it only runs if someone runs it. When your filing pushes the open `[adversary]` count to `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`), say so in the cycle report. A backlog that grows every round and drains never means the reviews are producing paperwork, not fixes.
 - **Fixing findings because they are small.** A `minor` that takes two lines is still filed. "While I'm here" is how a review becomes an unplanned refactor, and it skips the Red-first loop.
 - **Fixing a `critical` without asking.** The gate is not paperwork — it is the human's call whether the branch stops for this. Fix without approval and you have made a scheduling decision that was not yours.
 - **Inflating severity to force a fix.** Severity drives the interruption, so grading a `minor` as `major` spends the human's attention on your preference.

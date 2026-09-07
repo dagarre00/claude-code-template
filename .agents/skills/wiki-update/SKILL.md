@@ -312,7 +312,7 @@ Operational ledgers (`log.md`, `todos.md`, `wiki-todos.md`, `gotchas.md`, `comma
 | `contradicts` | ↔ explicit conflict | **Reconciliation flag.** Any unresolved `contradicts` goes to the decision queue. |
 | `supersedes` / `superseded_by` | decision ↔ decision | Project extension: a superseded ADR must carry `status: superseded` and a `superseded_by` link. |
 
-A gap is a hole in the graph relative to this schema — computable by `/project:wiki-lint` as a Bases/Dataview query — never "what feels missing". Don't fill gaps with invented prose: `status: stub` + `open_questions`, or ask the human.
+A gap is a hole in the graph relative to this schema — computable by `/project:wiki` as a Bases/Dataview query — never "what feels missing". Don't fill gaps with invented prose: `status: stub` + `open_questions`, or ask the human.
 
 ## Inline vs maintainer routing
 

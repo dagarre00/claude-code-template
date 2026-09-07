@@ -51,33 +51,22 @@ Clean tree, nothing unshipped, and no base ref: stop and say there is nothing to
 
 4. **Re-dispatch only if a fix landed** — and then over the fix commits only (`git diff <sha-before-fixes>...HEAD`), never the original range: re-reading the whole thing is what makes each round surface new findings instead of converging. If everything was filed or rejected, no code changed and the review is already done. **Two rounds maximum** — findings surviving round two mean the unit was too big, so split it and review the pieces.
 
-5. **Log it.** Append to `docs/wiki/log.md`:
+5. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `adversary`, fields `Commit reviewed` (the sha, plus "+ dirty tree" if the working tree was in scope), `Findings: <N> (<C> critical, <M> major, <m> minor)` and `Disposition: <Fi> filed, <Fx> fixed, <R> rejected`.
 
-   ```markdown
-   ## [YYYY-MM-DD HH:MM] adversary — <slug>
-
-   - Commit reviewed: <sha> (append "+ dirty tree" if the working tree was in scope)
-   - Findings: <N> (<C> critical, <M> major, <m> minor)
-   - Disposition: <Fi> filed, <Fx> fixed, <R> rejected
-   ```
-
-   The counts are an index. The per-finding reasons are in the commits — `git log --grep="adversary round"`.
-
-6. **Commit the dispositions and push.** Each fix is its own commit naming the finding it closes; one commit then closes the round with every finding's disposition in its body (behavioral rule 19, and rule 20's record):
+   This command's commits are shaped by rule 20, so they depart from the single-commit default there. Each approved fix is its own commit naming the finding it closes, and one commit then closes the round with every finding's disposition in its body:
 
    ```bash
    git add <fixed-files>                                              # approved criticals/majors only
    git commit -m "fix(<slug>): <what changed> — adversary F1"
    git add docs/wiki/todos.md docs/wiki/log.md
    git commit -m "docs(<slug>): adversary round 1 — <N> findings, …"   # body: one line per finding
-   git push -u origin "$(git branch --show-current)"                   # no remote → skip and note (git-conventions § Cadence)
    ```
 
    Most rounds have no `fix` commit at all — that is the expected shape, not a failed review. If a round produced neither a fix nor a todo (everything rejected), make the round-closing commit `--allow-empty`: its written rejections are the only thing that has to survive.
 
-7. **Clean up.** Delete `.handoff/<slug>-findings.md` — gitignored scratch, and the dispositions are already in the commits.
+6. **Clean up.** Delete `.handoff/<slug>-findings.md` — gitignored scratch, and the dispositions are already in the commits.
 
-8. **Report.** Findings by severity, what you filed and where it sits in the queue, what you fixed under approval, and what you rejected and why. Lead with any `critical`/`major` that was filed rather than fixed. Name any rejection the human might disagree with.
+7. **Report.** Findings by severity, what you filed and where it sits in the queue, what you fixed under approval, and what you rejected and why. Lead with any `critical`/`major` that was filed rather than fixed. Name any rejection the human might disagree with.
 
 ## Failure modes
 
