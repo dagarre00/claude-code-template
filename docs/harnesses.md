@@ -244,6 +244,57 @@ trusting the project's `.gitignore`, so the control plane stays correct in an
 adopting repository that rewrote or replaced that file. The template's
 `.gitignore` also lists it, for human readers.
 
+Task records outlive their worktree — `read_worker_log` still serves a merged
+task's report — but not forever. `taskRetention` in `.harness/settings.json`
+(default 20) caps how many **cleaned** records are kept; the oldest beyond it are
+removed at the next dispatch. A failed, cancelled, conflicted or still-running
+task is never pruned, because it is evidence.
+
+### Shared build state — how a worker gets its dependencies
+
+A worktree contains tracked files and nothing else, so it has no `node_modules`,
+no `.venv`, no build cache. Measured in a fresh worktree of this repository:
+
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find package '@modelcontextprotocol/sdk'
+ℹ tests 36   ℹ pass 35   ℹ fail 1
+```
+
+A dispatched developer that cannot run the test suite cannot satisfy behavioural
+rules 2, 4 or 6. Git is not the cost here — `git worktree add` measures **190 ms**
+against a 7–26 s model call — the missing build state is.
+
+`sharedPaths` in `.harness/settings.json` names the directories to link in:
+
+```json
+"sharedPaths": ["tools/coordination-mcp/node_modules"]
+```
+
+Each is checked at dispatch, before the model is paid for: it must be a
+directory, and it must be **ignored by Git** — a tracked path would have the
+worker's real checkout replaced by a link, which Git reports as a type change and
+the merge then refuses. A path that does not exist is skipped, so a JS project
+need not disclaim `.venv`.
+
+**The link lives exactly as long as the worker does.** The runner creates it
+before spawning the CLI and removes it the moment the child exits, whatever the
+outcome, and `merge_and_cleanup_worker` unlinks defensively before removing a
+worktree in case a runner died first. Neither path ever removes a directory, only
+a link. This is not tidiness — verified directly:
+
+```
+git worktree remove --force  over a junction  ->  SHARED TARGET SURVIVED: false
+```
+
+Git follows a junction on Windows and deletes the tree behind it. A link left in
+a preserved worktree would put the integration checkout's `node_modules` one
+`--force` away from deletion.
+
+**The trade, which is real: shared means shared.** A worker that mutates a shared
+path mutates the integration checkout's copy — `npm install` inside a worker is
+not isolated. The list is for dependency directories a project treats as build
+output, not for source.
+
 ### How a worker's work becomes a commit
 
 **No worker on any engine runs git.** It writes files into its worktree; the
@@ -273,6 +324,12 @@ One dispatch is therefore one commit. Per-case history is kept by **scoping the
 dispatch**: `project-work` sends one Behavior case, integrates it, then sends the
 next. Batching cases into one worker batches them into one commit, and no
 instruction to the worker can change that.
+
+For that to actually reproduce the project's history, integration fast-forwards
+whenever it can: `merge_and_cleanup_worker` tries `--ff-only` first and falls back
+to `--no-ff` only when the integration branch moved since dispatch. Dispatching
+one case at a time therefore yields one commit per case, in order, rather than
+burying each case under a merge bubble that doubles the log.
 
 ### Why the runner does not commit *during* the run
 

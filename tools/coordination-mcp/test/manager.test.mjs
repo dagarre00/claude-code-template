@@ -14,7 +14,12 @@ function fixture(t) {
   writeFileSync(resolve(root,'sample.txt'),'base\n');
   git(root,'init','-b','integration'); git(root,'config','core.autocrlf','false'); git(root,'config','user.email','fixture@example.invalid'); git(root,'config','user.name','Fixture');
   git(root,'add','.'); git(root,'commit','-m','fixture');
-  const manager = new Manager(root,'claude',{launch(taskDir) {
+  // Say which side of the recursion guard this is, rather than inheriting it from
+  // the environment: these are conductor tests, and a suite that reads
+  // COORDINATION_WORKER from ambient state cannot run inside a dispatched worker
+  // — measured, as 10 failures of "Workers cannot mutate coordination state".
+  // The guard itself is asserted below with an explicit worker:true.
+  const manager = new Manager(root,'claude',{worker:false,launch(taskDir) {
     writeFileSync(resolve(taskDir,'result.json'),JSON.stringify({state:'completed',exit_code:0,finished_at:new Date().toISOString()}));
     writeFileSync(resolve(taskDir,'stdout.log'),'REPORT fixture output\n');
   }});
@@ -92,7 +97,7 @@ test('conflicts retain both sides and a deliberate resolved merge can finish cle
 test('read-only reports survive cleanup; restarted supervisors recover completed tasks',t=>{
   const {root,manager}=fixture(t);
   const worker=manager.spawn({role:'adversary',instructions:'Read only fixture'});
-  const restarted=new Manager(root,'claude');
+  const restarted=new Manager(root,'claude',{worker:false});
   assert.equal(restarted.list().length,1);
   assert.equal(integrate(restarted,worker.task_id,root).state,'cleaned');
   assert.match(restarted.log(worker.task_id).text,/REPORT fixture/);
