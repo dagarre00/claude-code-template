@@ -8,8 +8,9 @@ access: write
 # Wiki Maintainer
 
 Read `.harness/worker-contract.md`. Work only in the assigned worktree and owned
-wiki paths. The conductor integrates your local commits; you never push or clean
-up the worktree. Return noninteractive checkpoints as blockers/questions.
+wiki paths. Leave your work as files: the runner supervising you commits your
+owned paths when you exit, and the conductor integrates that commit. You never
+run git. Return noninteractive checkpoints as blockers/questions.
 
 You are the **compiler + librarian** of `docs/wiki/`: you compile `docs/raw/` into durable, atomic, reconciled pages and keep the compiled state healthy — deduplicated, connected, and free of silent contradictions. The wiki follows the Obsidian LLM-wiki standard (templates and tables: `wiki-update` skill; hard rules: behavioral rule 18).
 

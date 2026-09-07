@@ -20,9 +20,11 @@ branch and owned paths; the conductor owns integration, pushes, and PRs. Nothing
 
 ## One case at a time
 
-You own the whole cycle — write the test, then implement, then commit. There is no separate tester and no handoff JSON.
+You own the whole cycle — write the test, then implement, then close the case. There is no separate tester and no handoff JSON.
 
-Run Red → Green → Refactor → Commit for **one** Behavior case, then start the next. Don't batch: five tests then five implementations then one commit produces a diff that can't be bisected, can't be reverted case-by-case, and is too large for the `adversary` to review without manufacturing new findings every round.
+Run Red → Green → Refactor → Close for **one** Behavior case, then start the next. Don't batch: five tests then five implementations then one commit produces a diff that can't be bisected, can't be reverted case-by-case, and is too large for the `adversary` to review without manufacturing new findings every round.
+
+**Who commits depends on where you are running.** A conductor doing authorized direct work commits each case itself. A dispatched worker never runs git at all: it stops at green with the files in place, and its supervising runner makes the one commit for the dispatch. So a worker keeps the cadence by being *scoped* to one case, not by committing between cases — a dispatch covering five cases lands as one commit no matter how the work was sequenced.
 
 ## Red
 
@@ -46,20 +48,15 @@ Only after green. Goal: improve structure without changing behavior.
 2. Re-run the test command after each change. Stay green.
 3. Stop when the code is "good enough for this entity's current scope." Don't refactor neighboring code.
 
-## Commit
+## Close
 
 Close each case before starting the next — this is the cadence `docs/wiki/git-conventions.md` specifies, and you own it, not `project-work`.
 
 1. Tick the case `[~]` → `[x]` on the entity page (see "Wiki update" below).
-2. Stage that case's test, its implementation, and the entity-page edit — explicitly by path, never `git add -A`. If this case also produced a gotcha or an ADR (see *Wiki update* below), stage `docs/wiki/gotchas.md` / `docs/wiki/decisions/<slug>.md` here too — they ride in this commit and never get one of their own.
-3. Commit: `feat(<slug>): <behavior in present tense>`, one case per commit.
-   Include authorized wiki/log changes only within assigned owned paths; return
-   conductor-owned ledger entries in the report instead of writing outside scope.
-4. **Worker:** keep the commit local and report its SHA; never push or change
-   branches. The conductor validates and merges it through MCP, then pushes the
-   integration branch. **Conductor doing authorized direct work:** follow the
-   project's integration push convention. Local task commits are not a backup.
-5. Refactor commits are separate (`refactor(<slug>): …`). Never commit half-green code.
+2. Make sure the case's test, its implementation, and the entity-page edit are all inside your assigned owned paths. If this case also produced a gotcha or an ADR (see *Wiki update* below), `docs/wiki/gotchas.md` / `docs/wiki/decisions/<slug>.md` belong to the same case and never get a change of their own. Return conductor-owned ledger entries in the report instead of writing outside scope.
+3. **Dispatched worker:** stop here. Do not stage, commit, push, or change branches — your runner commits your owned paths when you exit successfully, under the subject the conductor chose, and an edit outside those paths cancels that commit entirely. Report the changed paths and the verification you ran.
+4. **Conductor doing authorized direct work:** stage that case explicitly by path, never `git add -A`, and commit `feat(<slug>): <behavior in present tense>`, one case per commit. Refactor commits are separate (`refactor(<slug>): …`). Then follow the project's integration push convention; local commits are not a backup.
+5. Never leave half-green code as the delivered state, whoever commits it.
 
 Then start the next case at Red.
 
@@ -94,6 +91,6 @@ updated instructions or a new plan rather than having the worker improvise.
 
 - **Modifying tests to make them pass.** Forbidden. Spec → test → code, in that order.
 - **Bulk green.** Don't try to make 5 failing tests pass with one change. One test, one change.
-- **Batching commits.** One commit at the end of the cycle instead of one per case. It breaks `git bisect`, makes a single case unrevertable, and inflates the review diff until the `adversary` can't converge on it.
+- **Batching cases.** Closing five cases in one commit instead of one per case. It breaks `git bisect`, makes a single case unrevertable, and inflates the review diff until the `adversary` can't converge on it. As a worker you cannot fix this from the inside — one dispatch is one commit — so it is the conductor's dispatch scope that has to stay narrow.
 - **Refactor before green.** Doesn't compile? Doesn't run? You're not at refactor yet.
 - **Skipping the failure-reason check.** A "failing test" that fails on import is not Red — it's a broken test.

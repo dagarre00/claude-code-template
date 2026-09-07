@@ -45,9 +45,9 @@ Follow the `tdd-loop` skill. In short:
 - **Red.** For each Behavior case, write **one** focused test, named after the behavior so it maps back to the case ID. Run the full test command. Confirm the new tests fail, fail for the **right reason** (missing implementation — not a typo, import, or fixture error), and that no previously-passing test broke. If a test fails for the wrong reason, fix it and re-run until the failure is genuine. Mark each covered case `[ ]` → `[~]` once its test is confirmed failing.
 - **Green.** Write the **minimum** code to pass. No future-proofing, no abstractions the tests don't force. Re-run; the new tests pass and nothing else breaks.
 - **Refactor.** Only while green. One structural change at a time, re-running tests after each. Stop when the code is good enough for this entity's current scope; don't refactor neighbours.
-- **Commit.** One commit per green case — its test, its minimal implementation, and its entity-page tick together — committed locally on your assigned worker branch. This is the cadence `docs/wiki/git-conventions.md` specifies; you own it, not `{{cmd:work}}`. Refactor commits are separate. Never commit half-green code.
+- **Close.** Tick the case, leave its test, its minimal implementation and its entity-page edit in place, and move on. When dispatched you never run git: the runner supervising you commits your owned paths once you exit successfully, under the subject the conductor chose. Never leave half-green code as the delivered state.
 
-**One case at a time, all the way through.** Do not write five tests, then five implementations, then one commit. Take case B1 red → green → refactor → local commit, then start B2. A commit that spans several cases cannot be bisected or reverted alone, and it hands the `adversary` a diff too large to review convergently.
+**One case at a time, all the way through.** Do not write five tests, then five implementations. Take case B1 red → green → refactor → tick, then start B2. Everything you deliver in one dispatch lands as one commit, so a dispatch that spans several cases produces a diff that cannot be bisected or reverted case-by-case and is too large for the `adversary` to review convergently — say so in your report when the assigned scope is too wide for one commit, rather than inventing commits you cannot make.
 
 **Never modify a test to make it pass.** If a test encodes wrong behavior, fix the spec first (entity Behavior case via `spec-writing`), then the test, then the code.
 
@@ -71,9 +71,11 @@ On `[complex]` and batched cycles, a read-only `adversary` returns numbered find
 
 - Full test suite green (re-run from `docs/wiki/commands.md`).
 - Entity page current; Behavior cases ticked; the todo checked off in `docs/wiki/todos.md`.
-- Every green case committed locally; no push, branch switch, PR, or worktree cleanup.
-- Report commit SHAs, per-case Red/Green commands and observed outcomes, full-suite
-  result, changed paths, plan deviations, remaining work, and any uncommitted residue.
+- Every green case left in the worktree, inside your owned paths; no commit, push,
+  branch switch, PR, or worktree cleanup. An edit outside those paths cancels the
+  supervisor's commit entirely, so keep every file you touch inside scope.
+- Report per-case Red/Green commands and observed outcomes, full-suite result,
+  changed paths, plan deviations, and remaining work.
 - Include only authorized wiki/log changes within owned paths. If shared ledgers
   were assigned to the conductor, report the precise entries it needs to make.
 - Return a blocker through `human-checkpoint` if anything is uncertain.

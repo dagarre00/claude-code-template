@@ -215,7 +215,7 @@ and `spawn_worker` resolve to.
 | `check_worker_status(task_id)` | read-only | anyone | Process outcome, log tail, commit range, current SHAs. |
 | `read_worker_log(task_id, stream?, offset?)` | read-only | anyone | Full report/log, paged by byte offset; retained after cleanup. |
 | `list_roles()` | read-only | anyone | No parameters. Returns an array, sorted by `name` ascending, of `{ name, description, profile, access, engine, model, effort }`. The first four come from the frontmatter of `.harness/agents/*.md`: `profile` is one of `reasoning\|balanced\|fast`, `access` is one of `read-only\|write`, and `{{cmd:x}}` inside a description is expanded to `project-x`. The last three are **resolved**, not merely configured — they are what the role would actually run with right now, after applying `.harness/settings.json` role overrides and `defaultEngine`, so configuration is verifiable without spawning a worker. Use it to discover available roles and their access before calling `spawn_worker`. |
-| `spawn_worker(role, cli_engine?, instructions, owned_paths?, model_override?, thinking_budget?)` | write | conductor only | Launches one bounded CLI task in a fresh worktree from committed HEAD. |
+| `spawn_worker(role, cli_engine?, instructions, owned_paths?, model_override?, thinking_budget?, commit_message?)` | write | conductor only | Launches one bounded CLI task in a fresh worktree from committed HEAD. `commit_message` is the subject the supervisor commits that worker's work under (see below); rejected for read-only roles, which produce no commit. |
 | `kill_worker(task_id)` | write | conductor only | Requests cancellation of the owned process tree; preserves branch/worktree/logs. |
 | `merge_and_cleanup_worker(task_id, expected_target_sha, expected_worker_sha)` | write | conductor only | SHA-pinned local integration of a reviewed, successful worker, then cleanup of its worktree/branch. |
 
@@ -244,24 +244,59 @@ trusting the project's `.gitignore`, so the control plane stays correct in an
 adopting repository that rewrote or replaced that file. The template's
 `.gitignore` also lists it, for human readers.
 
-### Write permissions for Claude workers
+### How a worker's work becomes a commit
+
+**No worker on any engine runs git.** It writes files into its worktree; the
+`runner.mjs` process supervising it stages the task's `owned_paths` after a clean
+exit and makes one commit. That runner is an ordinary Node process on the host,
+started by the MCP server and outside every CLI sandbox, so it can write the Git
+store that the worker itself cannot.
+
+This is one convention rather than a per-engine capability because only one of
+the three CLIs can commit at all (§12): Codex's sandbox protects `.git`, and
+Antigravity denies every unlisted shell command in headless mode. Claude could,
+and deliberately no longer does — keeping that would mean one engine delivering a
+commit history the other two cannot produce, and every downstream step having to
+know which engine ran.
+
+What the runner does, in `commitWorkerOutput`:
+
+| Situation | Outcome |
+| --- | --- |
+| Clean exit, changes inside `owned_paths` | One commit with the conductor's `commit_message` subject; `result.json` records `commit` (the SHA) and `committed_paths`. |
+| Clean exit, **anything** outside `owned_paths` | **No commit at all.** The task is `failed`, the error names the offending paths, and every change stays on disk. A partial commit would have hidden which half was refused. |
+| Clean exit, nothing changed | No commit. `merge_and_cleanup_worker` then rejects it as a write worker with no deliverable, which is accurate. |
+| Failed, cancelled, timed-out, or output-limited | No commit. The work stays uncommitted for the conductor to read. |
+| Read-only role | No commit policy exists on the task, so the runner cannot commit even if the role misbehaved. |
+
+One dispatch is therefore one commit. To keep per-case history, scope a write
+worker to one Behavior case — batching cases into one worker batches them into
+one commit, and no instruction to the worker can change that.
+
+The commit is made with the repository's own identity and hooks; the runner
+passes no `-c user.*` override and never `--no-verify`. Subjects are validated
+like any other argv value: one line, no control characters, at most 200
+characters. Omitting `commit_message` falls back to
+`chore(<role>): supervised worker <short id>`, which is a placeholder, not a
+convention — pass a real subject.
+
+### Claude worker permissions
 
 `--permission-mode acceptEdits` covers file edits and read-only shell commands,
 but a *mutating* shell command still routes to a permission prompt — and
-`--permission-prompts none` denies anything that would prompt. A write worker
-that cannot run `git add` and `git commit` produces no deliverable commits, which
-`merge_and_cleanup_worker` then rejects outright.
+`--permission-prompts none` denies anything that would prompt.
 
-Write roles therefore receive an explicit `--allowedTools` grant from
-`engines.claude.writeAllowedTools` in `.harness/settings.json`, defaulting to the
-git verbs the worker contract requires. Edit that list to widen or narrow it — for
-example to add the project's test runner. `workerCommand` rejects any rule
+`engines.claude.writeAllowedTools` in `.harness/settings.json` is the explicit
+`--allowedTools` grant for write roles. It ships **empty**: the git verbs it used
+to contain are gone with the delivery convention above. It remains the place to
+grant the mutating commands a project's write roles genuinely need — most often
+its test runner, e.g. `"Bash(npm test:*)"`. `workerCommand` rejects any rule
 matching `dangerous` or `bypassPermissions`.
 
 Read-only roles receive **no** `--allowedTools` grant: `plan` mode already permits
 the `git diff` / `git log` reads a review depends on. Measured behaviour:
 
-| Permission mode | Read-only shell | File write | Mutating git |
+| Permission mode | Read-only shell | File write | Mutating shell |
 | --- | --- | --- | --- |
 | `acceptEdits` (write roles) | allowed | allowed | denied **unless** granted via `writeAllowedTools` |
 | `plan` (read-only roles) | allowed | n/a | n/a |
@@ -472,88 +507,100 @@ module, one registry line, one settings block.
 
 ## 12. Engine status — what has actually been dispatched
 
-The full loop — spawn → isolated worktree → real CLI → file write → local commit
-→ SHA-pinned merge → validation → worktree and branch cleanup → clean tree — has
-been exercised against **Claude**. The other two were dispatched for real as
-well; what they can and cannot do is recorded below.
+The full loop — spawn → isolated worktree → real CLI → file write → supervisor
+commit → clean worktree — has been exercised against **all three engines**, each
+with a real `developer` write role dispatched from this repository.
 
-| Engine | Read-only roles | Write roles |
+| Engine | Read-only roles | Write roles | Its own shell |
+| --- | --- | --- | --- |
+| Claude | verified | verified end to end | granted per dispatch via `writeAllowedTools` |
+| Codex | verified | verified end to end | free inside the sandbox; `.git` excluded |
+| Antigravity | verified (a dispatched worker used read tools and returned its report) | verified end to end | **unavailable** without a user-global allow-rule |
+
+Each write worker was told to create one file and nothing else; each produced the
+file, ran no git, and had its work committed by its runner:
+
+| Engine | Worker output | Supervisor commit |
 | --- | --- | --- |
-| Claude | verified | verified end to end |
-| Codex | verified | **not supported** — refused at dispatch (see below) |
-| Antigravity | not yet exercised | blocked on a user-global allow-rule (see below) |
+| Claude | `tests/fixtures/e2e-claude.txt` | `30a84c3` `test(e2e): claude supervised commit` |
+| Codex | `tests/fixtures/e2e-codex.txt` | `6b876e5` `test(e2e): codex supervised commit` |
+| Antigravity | `tests/fixtures/e2e-antigravity.txt` | `7a3b05a` `test(e2e): antigravity supervised commit` |
 
-- **Codex runs read-only roles only, and the server enforces it.** A real Codex
-  worker reads, runs shell commands, and writes files, but **cannot commit**: its
-  `workspace-write` sandbox protects `.git`, so `git add` fails with
-  `Unable to create .git/worktrees/<id>/index.lock: Permission denied` and Codex
-  emits a diff instead — its own answer is `codex apply` on the host. A write
-  worker with no commits is rejected at integration anyway, so `manager.spawn`
-  now refuses the dispatch up front and names the engine and role.
+Each worker branch then held exactly one commit over its base, touching exactly
+one path inside `owned_paths`, with a clean worker checkout and an untouched
+integration checkout. The branches were deleted rather than merged, so those SHAs
+are evidence in this document, not history in this repository. Integration itself
+is covered by the unit suite, which merges a real worker branch through
+`merge_and_cleanup_worker` and asserts the guards.
 
+### Why the runner commits, per engine
+
+- **Codex cannot commit.** A real Codex worker reads, runs shell commands, and
+  writes files, but `git add` fails with
+  `Unable to create .git/worktrees/<id>/index.lock: Permission denied`, and Codex
+  emits a diff instead — its own delivery model is `codex apply` on the host.
   This is deliberate upstream behaviour, not a misconfiguration: a writable
-  `.git/hooks` would let an agent plant a hook that executes *outside* the
-  sandbox the next time a human runs git. The documented escape — pointing
-  `sandbox_workspace_write.writable_roots` at `.git` — does not help this project,
-  and both blockers are open with no fix:
-  [openai/codex#18918](https://github.com/openai/codex/issues/18918) (since
-  Codex 0.122.0, Windows applies DENY ACLs to `.git` inside `writable_roots`) and
+  `.git/hooks` would let an agent plant a hook that executes *outside* the sandbox
+  the next time a human runs git. The documented escape — pointing
+  `sandbox_workspace_write.writable_roots` at `.git` — does not help, and both
+  blockers are open with no fix:
+  [openai/codex#18918](https://github.com/openai/codex/issues/18918) (since Codex
+  0.122.0, Windows applies DENY ACLs to `.git` inside `writable_roots`) and
   [openai/codex#27418](https://github.com/openai/codex/issues/27418) (the sandbox
   force-protects the resolved gitdir of a **linked worktree** even with explicit
   write permission). The second applies on Linux too, and this project always
   dispatches into linked worktrees, so this is not a Windows-only limitation.
   Both were reproduced here, including in a standalone clone with `.git` inside
-  the workspace, which failed identically.
+  the workspace, which failed identically. With the runner committing, none of
+  this is on the critical path any more.
+- **Antigravity cannot run the terminal at all** in headless mode without a
+  user-global allow-rule (see below). A write worker that only edits files never
+  needs one — which is exactly what the verified dispatch above did.
+- **Claude can, and no longer does**, so that the delivery shape does not depend
+  on which engine ran. See §7, *How a worker's work becomes a commit*.
 
-  Codex is a good fit for `planner`, `adversary`, and `reviewer` — verified
-  working, and it satisfies behavioural rule 12's preference for a different
-  model reviewing the author's work. If Codex write workers are ever wanted, the
-  approach that respects the sandbox is to have the runner commit the worker's
-  owned paths after a successful exit, rather than granting `.git` write access.
-- **Codex pins no models.** All three profiles are `null`, so every Codex worker
-  inherits the CLI default and the `reasoning`/`balanced`/`fast` distinction is
-  lost. This also weakens behavioural rule 12, which prefers a *different* model
-  for adversarial review: with Codex inheriting, a Codex-dispatched adversary may
-  silently run the same model as the author. Fill in
-  `engines.codex.models` once the intended IDs are confirmed.
-- **Antigravity dispatches and reaches the model, but cannot run shell commands
-  without a user-global allow-rule.** A real `agy` worker now spawns, receives its
-  full prompt, and uses read tools. Three defects were fixed getting there:
-  `--print` must be the final argument (it swallows the next flag as its value);
-  the prompt must arrive as stream-json NDJSON on stdin, because `--print`'s text
-  mode would put a 10KB+ prompt on the command line; and `--agent` had to be
-  dropped, since naming an agent made agy refuse every write.
+### Codex pins no models
 
-  What remains is a genuine architectural mismatch. Claude takes per-invocation
-  `--allowedTools` and Codex takes `approval_policy="never"`, but **agy's
-  allow-rules live only in a user-global file**,
-  `~/.gemini/antigravity-cli/settings.json`, under `permissions.allow` — entries
-  look like `command(*)` or `command(npm test)`. Headless mode cannot prompt, so
-  any unlisted tool is auto-denied:
+All three profiles are `null`, so every Codex worker inherits the CLI default and
+the `reasoning`/`balanced`/`fast` distinction is lost. This also weakens
+behavioural rule 12, which prefers a *different* model for adversarial review:
+with Codex inheriting, a Codex-dispatched adversary may silently run the same
+model as the author. Fill in `engines.codex.models` once the intended IDs are
+confirmed.
 
-  ```json
-  "denied_actions": [{ "action": "command", "display_name": "RunCommand" }]
-  ```
+### Antigravity: there is no per-project place to allow a command
 
-  There is no per-dispatch equivalent, so the toolkit cannot grant this the way
-  it grants Claude's git verbs — and it should not silently edit a file that
-  governs all of a user's projects. To use Antigravity write workers, add a
-  `command(...)` rule to that file yourself, scoped as tightly as your workflow
-  allows. Note also that every dispatch creates a fresh `.worktrees/<id>` path
-  that is never in `trustedWorkspaces`; whether that independently restricts a
-  worker has not been isolated.
+`agy` gates every `run_command` on a `command(...)` rule under
+`permissions.allow`, and headless mode cannot prompt, so anything unlisted is
+auto-denied:
 
-  Do **not** reach for `--dangerously-skip-permissions`, which agy's own error
-  message suggests: `workerCommand` rejects any argv containing a bypass token,
-  deliberately.
-- [`README.md`](../README.md) — quick start and the "change the workflow once" summary.
-- [`HUMAN.md`](../HUMAN.md) — day-to-day workflow from the human's side.
-- [`getting-started.md`](getting-started.md) — full worked walkthrough.
-- [`AGENTS.md`](../AGENTS.md) — the generated schema every agent reads.
-- [`.harness/instructions.md`](../.harness/instructions.md) — canonical source for `AGENTS.md`'s shared instructions.
-- [`.harness/worker-contract.md`](../.harness/worker-contract.md) — the runtime contract every dispatched worker follows.
-- [`.harness/skills/mcp-coordination/SKILL.md`](../.harness/skills/mcp-coordination/SKILL.md) — the conductor's dispatch procedure.
-- [`.harness/skills/update-toolkit/SKILL.md`](../.harness/skills/update-toolkit/SKILL.md) — how to add or change a command/skill/agent.
-- [`scripts/sync-harness.mjs`](../scripts/sync-harness.mjs) — the generator this page describes.
-- [`scripts/configure-mcp.mjs`](../scripts/configure-mcp.mjs) — the MCP registration script this page describes.
-- [`tools/coordination-mcp/config.mjs`](../tools/coordination-mcp/config.mjs) — the model/effort resolution this page describes.
+```json
+"denied_actions": [{ "action": "command", "display_name": "RunCommand" }]
+```
+
+Those rules live **only** in the user-global
+`~/.gemini/antigravity-cli/settings.json`. Every repository-scoped alternative was
+tried against agy 1.1.27 and none of them works:
+
+| Candidate | Result |
+| --- | --- |
+| `<repo>/.agents/settings.json` with `permissions.allow` | Not read. Command still auto-denied. |
+| `~/.gemini/config/projects/<id>.json` → `settings.permissions.allow`, on the active default CLI project | Not applied. Command still auto-denied, despite the CLI's own changelog describing project configs as taking precedence over global settings. |
+| `<repo>/.agents/hooks.json`, a `PreToolUse` hook on `run_command` | **The hook loads and fires** — verified: it ran with the working directory set to `.agents/`, received the full tool call (`{"toolCall":{"name":"run_command","args":{"CommandLine":"git rev-parse --short HEAD",…}}}`) on stdin, and inherited the runner's environment. But its documented replies do not reach the permission engine: `{"decision":"allow"}`, `"allowTool": true`, and `"permissionOverrides": ["command(git)"]` were each tried, together and separately, and the call was auto-denied every time. |
+| Control: a rule already present in the user-global `settings.json` | **Passes the command gate**, proving the rule syntax and headless enforcement both work and that only the file's location is the problem. That run then hit a *second* gate, `escalate_admin`, because `--sandbox` is set — which has no per-project home either. |
+
+So the toolkit cannot grant agy the way it grants Claude's tools, and it will not
+silently edit a file that governs all of a user's projects. To use `agy` for work
+that needs a terminal — running the project's tests, for instance — add a
+`command(...)` rule to `~/.gemini/antigravity-cli/settings.json` yourself, scoped
+as tightly as your workflow allows. Without one, `agy` is best used for roles that
+read and write files: the verified write dispatch above never touched a terminal.
+
+`.agents/hooks.json` is still a real, repo-committed extension point for
+everything hooks *can* do — blocking a tool call, rewriting its arguments,
+injecting context, or keeping the loop alive. Note that a worktree is created
+from committed HEAD, so a hooks file only reaches a worker if it is tracked.
+
+One thing that was *not* a problem: agy writes its transcript and artifacts under
+`~/.gemini/antigravity-cli/brain/<conversation>`, not into the workspace, so a
+dispatched worker leaves no stray files to fail the ownership check.

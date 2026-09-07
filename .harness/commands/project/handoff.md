@@ -52,7 +52,7 @@ a brief, **not an implementation worker or PR**.
 
 ## When the result returns
 
-Follow `mcp-coordination` and `{{cmd:work}}` for per-case commit/Red evidence,
+Follow `mcp-coordination` and `{{cmd:work}}` for commit subject and Red evidence,
 scope and wiki checks, expected-SHA local integration, independent review where
 required, full verification, integration push, and eventual feature PR. The
 worker reports its output; it does not perform those conductor responsibilities.

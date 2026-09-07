@@ -112,11 +112,11 @@ Triggered when the argument is a research query (starts with "search for", "rese
 
 1. **Call `spawn_worker` for `researcher`** with the original query verbatim and
    one new, non-colliding `docs/raw/research/<slug>.md` as its owned output path.
-   It searches, reads sources, writes the new raw file, and commits it locally.
-   It must not overwrite old raw sources, write wiki pages, or push.
+   It searches, reads sources, and writes the new raw file; its runner commits
+   that file. It must not overwrite old raw sources, write wiki pages, or run git.
 
 2. **Collect and integrate the researcher result.** Poll `check_worker_status`,
-   inspect the complete report, source citations, diff, and local commit. No
+   inspect the complete report, source citations, diff, and supervisor commit. No
    results or inaccessible sources means preserve the task and report a blocker.
    Follow `mcp-coordination` for expected-SHA validation, local integration, and
    normal cleanup. No raw file is available in the integration tree until merged.

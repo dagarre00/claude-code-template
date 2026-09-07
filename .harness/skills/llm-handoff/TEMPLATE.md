@@ -90,7 +90,7 @@ progress. Do not interpret a headless session or silence as approval.
 Return the complete report to the conductor, not only a path:
 
 - Completed Behavior IDs and any remaining scope.
-- Per-case local commit SHAs and explicitly changed paths.
+- Every changed path, listed explicitly, all inside the owned paths above.
 - Red/Green commands, observed failure reasons, and final verification results.
 - Plan deviations, dependencies, uncertainty, and any unavailable verification.
 - Any dirty or untracked residue and blockers needing human direction.

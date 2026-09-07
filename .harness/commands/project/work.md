@@ -19,8 +19,8 @@ instructions. Empty input takes the top eligible todo. A scope argument does not
 bypass the spec, Red, ownership, permissions, or human checkpoints.
 
 You conduct the cycle; one developer owns tests and implementation. You inspect
-and integrate worker results, preserve per-case commits, and own remote pushes
-and PR creation. Workers never push or open PRs.
+and integrate worker results, choose the subject each dispatch is committed under,
+and own remote pushes and PR creation. Workers never commit, push, or open PRs.
 
 ## Preconditions and resume
 
@@ -37,9 +37,9 @@ and PR creation. Workers never push or open PRs.
 - On an active feature branch, resume its unfinished scope. All cases ticked and
   pushed does not mean its remote PR was merged. Confirm actual merge status
   before returning to develop or deleting that feature branch.
-- An interrupted worker may have local commits or dirty files even after its CLI
-  exited. Preserve them and inspect the task report; do not spawn a replacement
-  assuming uncommitted work will transfer. Escalate recovery when necessary.
+- An interrupted worker leaves dirty files and no commit, because only a clean
+  exit is committed for. Preserve them and inspect the task report; do not spawn a
+  replacement assuming that work will transfer. Escalate recovery when necessary.
 
 ## Steps
 
@@ -79,16 +79,21 @@ and PR creation. Workers never push or open PRs.
    Skip this step for one simple todo.
 
 5. **Dispatch the developer.** Call `spawn_worker` with role `developer`,
-   bounded instructions and explicit `owned_paths`. Include the user's original
-   context, exact Behavior IDs, test command, applicable constraints, and the
-   **full plan text** if one exists—not a path in your ignored scratch directory.
-   The developer runs Red → Green → Refactor → wiki update → local commit for
-   each case, then returns SHAs, verification evidence, changed paths, and
-   remaining work. No worker push, branch change, recursive dispatch, or cleanup.
+   bounded instructions, explicit `owned_paths`, and a `commit_message` written
+   in the project's commit convention — the runner commits the worker's work
+   under exactly that subject, so one dispatch is one commit. Scope the dispatch
+   to one Behavior case, or a few tightly related ones, when per-case history
+   matters. Include the user's original context, exact Behavior IDs, test command,
+   applicable constraints, and the **full plan text** if one exists—not a path in
+   your ignored scratch directory. The developer runs Red → Green → Refactor →
+   wiki update for each case and leaves the result as files, then returns
+   verification evidence, changed paths, and remaining work. No worker commit,
+   push, branch change, recursive dispatch, or cleanup.
 
 6. **Verify and integrate the completed worker.** Inspect status, report, diff,
-   local commits, and ownership. Confirm that Red failed for the claimed reason,
-   Green passed, and commits are per-case. An exit code alone proves none of this.
+   the supervisor commit, and ownership. Confirm that Red failed for the claimed
+   reason, Green passed, and the commit holds exactly the case's test,
+   implementation and wiki edit. An exit code alone proves none of this.
    A blocker or dirty/failed task is preserved, not silently merged.
    Follow `mcp-coordination`: record exact target/worker HEADs, call
    `merge_and_cleanup_worker` with both expected SHAs, then run the full suite
@@ -121,8 +126,8 @@ and PR creation. Workers never push or open PRs.
    commit body, not only a count. During blank-template maintenance, skip wiki
    population and record evidence in tests and commit messages instead.
 
-9. **Commit and push integration work.** Worker case commits are already
-   preserved by local integration. Commit only remaining conductor-owned updates,
+9. **Commit and push integration work.** Each worker's supervisor commit is
+   already preserved by local integration. Commit only remaining conductor-owned updates,
    with explicit path staging. Push the integration branch following the
    project's convention; workers never push their task branches. Report a missing
    remote or bounded retry failure with exact local-only SHAs. Keep reports until

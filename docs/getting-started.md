@@ -109,7 +109,7 @@ project-work
 4. **Refactor.** The developer cleans up while keeping tests green.
 5. **Wiki update.** The developer ticks the entity-page Behavior cases `[~]` → `[x]`, updates the Implementation/Tests sections, and appends to `log.md`. Larger cross-page cleanup it can't safely do inline is queued in `wiki-todos.md` for the wiki-maintainer.
 6. **Adversarial review (conditional).** Same trigger as the plan — `[complex]` or a 2+ batch. `project-work` dispatches the `adversary` agent (reasoning profile, none of the developer's context) at the diff and tells it to find what's wrong. The caller writes its returned findings to `.harness/handoff/<slug>-findings.md` and may not touch the code. The developer answers each one — **filed as a todo** (the default), fixed, or rejected with a reason. Findings are not fixed in the cycle that surfaced them; they go into `docs/wiki/todos.md` at a priority set by severity. A `critical` or `major` is the exception: it goes to you via a human checkpoint, and you decide fix-now or queue. Because most rounds fix nothing, there is usually nothing to re-review and the review is one pass. Each disposition is written into the commit that answers it, which is the durable record (behavioral rule 20) — `git log --grep="adversary round"` reads it back. A simple single todo skips this; you can run `project-adversary` yourself instead.
-7. **Commit.** Already done — the `developer` commits and pushes each Behavior case as it goes (test + implementation + wiki tick), and review fixes are their own commits. `project-work` verifies the suite and the commit granularity, then adds just the log entry (see [git-conventions.md](wiki/git-conventions.md)).
+7. **Commit.** Already done — the `developer` left its work as files and its supervising runner committed them (test + implementation + wiki tick) under the subject `project-work` chose; review fixes are their own dispatches, so their own commits. `project-work` verifies the suite and the commit granularity, then adds just the log entry and pushes (see [git-conventions.md](wiki/git-conventions.md)).
 
 If a step fails twice on the same approach, the **two-strike rule** fires — the developer stops, you tag a checkpoint and reset, and re-spec.
 
@@ -156,7 +156,7 @@ A new user story landed. You want it specified, tested, and shipped.
 3. **Run `project-work`.** It picks the top todo, opens `feat/auth-login`, and dispatches the `developer`. The developer reads `entities/auth-login.md#Behavior`, writes failing tests, and confirms Red.
 4. **The same agent implements.** It writes the minimum code to turn Red into Green, then refactors. There's no handoff to another agent — one developer owns the whole cycle.
 5. **Wiki updates land in the same commit.** The developer ticks the Behavior cases on the entity page, checks the todo off in `docs/wiki/todos.md` (shipped work lives in git history — there's no `completed.md`), and appends a one-line log entry. Code changed but no wiki page touched is drift — the same-commit rule is the safety net.
-6. **Commit.** The developer commits and pushes each Behavior case as it lands (test + implementation + entity-page update). `project-work` verifies the suite and adds only the cycle log entry (see [git-conventions.md](wiki/git-conventions.md)).
+6. **Commit.** The developer leaves each Behavior case in its worktree (test + implementation + entity-page update) and its runner commits them; `project-work` verifies the suite, adds the cycle log entry, and pushes (see [git-conventions.md](wiki/git-conventions.md)).
 
 The developer plans **first** if the todo is tagged `[complex]` or a batch of 2+ todos is being run together. For a single simple todo, planning is skipped — straight to Red.
 
@@ -173,13 +173,13 @@ Some features are too big to attack directly — they cross files, need careful 
 
    The `[complex]` tag is what `project-work` keys off to dispatch the `planner` before testing.
 
-3. **Run `project-work`.** With `[complex]` set (or a 2+ batch), `project-work` first dispatches the `planner` (reasoning profile), which writes a plan (following the `plan-writing` skill) to `.harness/handoff/billing-invoices-plan.md` — goal, approach, ordered steps, risks, out-of-scope. `project-work` sanity-checks it, then dispatches the `developer`, which reads the plan and drives the same Red → Green → refactor → wiki → commit flow as a simple feature, following the plan's step order.
+3. **Run `project-work`.** With `[complex]` set (or a 2+ batch), `project-work` first dispatches the `planner` (reasoning profile), which writes a plan (following the `plan-writing` skill) to `.harness/handoff/billing-invoices-plan.md` — goal, approach, ordered steps, risks, out-of-scope. `project-work` sanity-checks it, then dispatches the `developer`, which reads the plan and drives the same Red → Green → refactor → wiki flow as a simple feature, following the plan's step order; the commit is made for it on a clean exit.
 4. **Where the plan lives.** `.harness/handoff/<slug>-plan.md`. The file is gitignored — plans are transient scratch `project-work` clears when the cycle is done. The wiki holds the spec (what); the plan is how-to for one cycle. Because it isn't committed, a container recycle loses it — but so does it lose the rest of the uncommitted cycle, so `project-work` simply restarts the still-open todo and re-dispatches the planner to regenerate the plan from the Behavior cases.
 5. **Two-strike interaction.** If the developer fails twice on the same mechanism, it stops, tags a checkpoint, and presents both failed attempts. On an authorized retry, `project-work` re-dispatches the `planner` to overwrite the plan with a fundamentally different shape — naming the failed approach and the new one in the `## Approach` section. You never silently retry the same plan.
 
 ## Scenario: Batching multiple small todos
 
-When you have several related todos, running them in one cycle is often cheaper than three separate branches and PRs. A batch shares a **branch, a plan, and a PR — not a commit.** The per-case cadence is unchanged: each Behavior case still lands as its own commit.
+When you have several related todos, running them in one cycle is often cheaper than three separate branches and PRs. A batch shares a **branch, a plan, and a PR — not a commit.** The per-case cadence is unchanged: each Behavior case still lands as its own commit, which means its own dispatch.
 
 **Batch when** (all three — the [`feature-branching`](../.harness/skills/feature-branching/SKILL.md) skill owns this rule):
 
@@ -197,8 +197,8 @@ When you have several related todos, running them in one cycle is often cheaper 
 
 1. `project-work` reads the top 1–3 todos. If they share an entity and context, it proposes a batch and asks you to confirm via `human-checkpoint`.
 2. You confirm. `project-work` flags the cycle as a batch and dispatches the `planner` first (any batch of 2+ triggers a plan).
-3. The developer takes the cases **one at a time**: Red → Green → refactor → tick → commit → push for B3, then the same for B4, then B5. It does *not* write all the tests first and drive them green together — a commit spanning several cases breaks `git bisect`, makes a single case unrevertable, and hands the `adversary` a diff too large to converge on. `project-work` step 6 checks the granularity and sends a lump back as a defect.
-4. One commit per case, each named for its own behavior — `feat(auth-login): add rate limiting`, then `feat(auth-login): lock out after five failed attempts`. The batch is named in the branch and the PR, never folded into one commit.
+3. The cases are taken **one at a time**: Red → Green → refactor → tick for B3, then the same for B4, then B5. All the tests are never written first and driven green together — a commit spanning several cases breaks `git bisect`, makes a single case unrevertable, and hands the `adversary` a diff too large to converge on. `project-work` step 6 checks the granularity and sends a lump back as a defect.
+4. One commit per case, each named for its own behavior — `feat(auth-login): add rate limiting`, then `feat(auth-login): lock out after five failed attempts`. Because one dispatch produces exactly one commit, that means one *dispatch* per case: `project-work` sends B3, integrates it, then sends B4. The batch is named in the branch and the PR, never folded into one commit.
 5. Each case's entity-page tick (`[~]` → `[x]`) rides in that case's own commit, alongside its test and implementation.
 6. Because the batch dispatched the `planner`, it also triggers the adversarial review at step 7a.
 

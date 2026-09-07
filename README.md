@@ -63,6 +63,11 @@ from committed `HEAD`:
 | `merge_and_cleanup_worker` | SHA-pinned integration after review, then cleanup |
 | `get_settings` / `get_workflow` | Read configuration and canonical command bodies |
 
+No worker runs git. It writes files; the supervising runner stages its declared
+`owned_paths` and makes one commit, under the subject the conductor chose, only
+if the worker exited cleanly. Two of the three CLIs cannot commit at all, so this
+is one convention rather than a per-engine quirk.
+
 Guarantees are enforced at the Git layer, not by trusting a CLI's flags: a
 read-only worker that produced commits is rejected, so is a worker that wrote
 outside its declared `owned_paths` or a merge whose target moved. Workers cannot

@@ -71,8 +71,9 @@ the bounded task and no author's rationale for an independent review role.
 
 ## Collect and integrate
 
-The worker returns full results, per-case SHAs, Red/Green evidence, changed
-paths, and remaining blockers. Follow `mcp-coordination` to inspect, integrate
+The worker returns full results, Red/Green evidence, changed paths, and
+remaining blockers; its runner turns those changed paths into the single commit
+the dispatch delivers. Follow `mcp-coordination` to inspect, integrate
 with expected target/worker SHAs, and verify. Follow `project-work` for required
 independent review and the feature PR; the worker does neither itself.
 

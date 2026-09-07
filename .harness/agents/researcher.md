@@ -67,13 +67,13 @@ You research topics on the web and produce structured, citable raw research docu
    Per-source notes with specific claims, numbers, and quotes.
    ```
 
-5. **Write the raw document** to `docs/raw/research/<slug>.md`. Use a kebab-case slug derived from the topic. The file must be a new path under `docs/raw/` within your assigned ownership. Never overwrite an existing raw source or write to `docs/wiki/`. Commit that new file locally with explicit path staging; never push.
+5. **Write the raw document** to `docs/raw/research/<slug>.md`. Use a kebab-case slug derived from the topic. The file must be a new path under `docs/raw/` within your assigned ownership. Never overwrite an existing raw source or write to `docs/wiki/`. Leave it as a file: your runner commits it, and you run no git at all.
 
 6. **Report back** with:
    - The slug and file path
    - A one-paragraph summary for the human
    - The top 2-3 findings or recommendations
-   - The local commit SHA, source URLs, and any access/verification limitations
+   - Source URLs and any access/verification limitations
    - Confirmation that the raw file is ready for conductor integration, then ingest
 
 ## Constraints

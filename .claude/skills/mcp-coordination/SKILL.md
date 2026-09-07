@@ -46,14 +46,26 @@ Read `.harness/worker-contract.md`, `.harness/settings.json`, and
    shared ledgers such as `todos.md` and `log.md` count as overlapping files.
    Serialize tasks if their documentation or interfaces overlap.
 3. Call `spawn_worker` with named fields `role`, `instructions`, `owned_paths`,
-   and optional `cli_engine`, `model_override`, `thinking_budget`. Omit overrides to use canonical settings.
-   `owned_paths` applies to writable roles; read-only roles receive no write
-   ownership. Save the returned task ID, worktree path, and branch.
-4. Pass the complete planner output and other required scratch **as text** in the
+   and optional `cli_engine`, `model_override`, `thinking_budget`, `commit_message`.
+   Omit overrides to use canonical settings. `owned_paths` applies to writable
+   roles; read-only roles receive no write ownership. Save the returned task ID,
+   worktree path, and branch.
+4. **The worker writes files; its runner makes the commit.** No worker on any
+   engine runs git — two of the three cannot (`docs/harnesses.md` §12) — so the
+   supervising runner stages the worker's owned paths after a successful exit and
+   commits them once, under `commit_message`. Always pass one: it becomes a real
+   line of project history, so write the subject the change deserves, in the
+   project's commit convention. One dispatch is one commit, so scope a write
+   worker to one Behavior case (or a few tightly related ones) when per-case
+   history matters; batching cases into one worker batches them into one commit.
+   Nothing is committed for a failed, cancelled or timed-out worker, and a worker
+   that touched anything outside `owned_paths` gets no commit at all — the task
+   fails naming those paths, which is evidence to read, not ownership to widen.
+5. Pass the complete planner output and other required scratch **as text** in the
    instructions. An ignored file path in the conductor's checkout does not exist
    in the worker's worktree. Pass reviewers only the small commit range, case IDs,
    relevant spec paths, and test command—not the author's plan or reasoning.
-5. Worktrees separate checked-out files, not credentials, the Git object store,
+6. Worktrees separate checked-out files, not credentials, the Git object store,
    network access, or the OS. CLI permissions still apply; do not describe this
    arrangement as a security sandbox or grant bypass flags to avoid a blocker.
 
@@ -78,9 +90,11 @@ Read `.harness/worker-contract.md`, `.harness/settings.json`, and
 ## Verify, integrate, and clean up
 
 1. Wait for the worker to finish. Inspect its exact commit range and claimed
-   test results. For write roles, verify per-case commits and the wiki changes.
-   Read-only roles must have no writes; a dirty review is invalid, not an excuse
-   for an automatic restore.
+   test results. For write roles that is the one supervisor commit: read its diff
+   and confirm it holds the test, the implementation, and the wiki change the
+   task called for — a commit exists because the process exited zero, not because
+   the work is right. Read-only roles must have no writes; a dirty review is
+   invalid, not an excuse for an automatic restore.
 2. Record the current integration HEAD and completed worker HEAD. Call
    `merge_and_cleanup_worker(task_id, expected_target_sha, expected_worker_sha)`
    only after approving that exact result for local integration. The expected
