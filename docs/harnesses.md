@@ -38,6 +38,7 @@ without `--force`.
 | `.harness/commands/project/<name>.md` | *(nothing generated)* | Commands produce **no** native files in any harness. The coordination server registers one MCP prompt per command and serves the same body through `get_workflow` (see §3). The generator still validates each command's `argument-hint` and `{{arguments}}` contract at sync time. |
 | `.harness/skills/<name>/SKILL.md` (+ sibling files) | `.claude/skills/<name>/SKILL.md` and `.agents/skills/<name>/SKILL.md` | Procedure skills. Non-`SKILL.md` siblings (e.g. `TEMPLATE.md`, `sync-develop.md`) are copied byte-for-byte to both trees; `.md`/`.toml`/`.tmpl` siblings get the DO-NOT-EDIT marker and macro expansion, everything else is copied raw. |
 | `.harness/agents/<name>.md` | *(nothing generated)* | Agents produce **no** native files. `manager.spawn` prepends the worker contract and this file's body to every prompt, for every engine, and the permission mode carries read-only isolation — so a per-engine agent file would only deliver the role a second time. `profile`/`access` are still validated at sync time and feed the `AGENTS.md` catalog. |
+| `.harness/instructions.md` + `.harness/rules/*.md` + `.harness/project.md` | `.harness/worker-instructions.md` | The worker-scoped subset of `AGENTS.md`: everything except the command catalog, the agent catalog, and the sections and rules marked conductor-only. Prepended to the prompt for engines launched without project-file discovery. See §7. |
 | `.harness/worker-contract.md` | *(not generated — read directly)* | Workers read this file at its canonical path regardless of engine; it is not copied or rendered per-harness. |
 | `.harness/settings.json` | *(not rendered into prompt text — consumed by code)* | Validated by the generator and read by the MCP server/config module at dispatch time. See §8. |
 | `.harness/templates/command.md.tmpl` | *(authoring aid, not generated)* | Starting point when hand-writing a new `.harness/commands/project/<name>.md`; the generator never reads it directly. |
@@ -249,6 +250,57 @@ task's report — but not forever. `taskRetention` in `.harness/settings.json`
 (default 20) caps how many **cleaned** records are kept; the oldest beyond it are
 removed at the next dispatch. A failed, cancelled, conflicted or still-running
 task is never pruned, because it is evidence.
+
+### What a dispatch costs, and what was done about it
+
+Measured in this repository, on identical prompts:
+
+| | Tokens |
+| --- | --- |
+| Codex, bare prompt, project docs loaded | 10,004 |
+| Codex, bare prompt, `project_doc_max_bytes=0` | 5,199 |
+| **`AGENTS.md` per dispatch** | **4,805** |
+| Codex creating one file — before | 25,206 |
+| Codex creating one file — after | 22,348 (**−11%**) |
+
+`AGENTS.md` is 21,342 bytes, and more than half of it is material a worker is
+explicitly forbidden to act on: the command catalog (commands are conductor-only),
+the agent catalog (a worker may not dispatch), canonical authoring (a worker may
+not edit `.harness/`), the delegation workflow, and behavioural rules 5, 10, 12,
+19, 20, 22 and 23 — dispatch, integration, pushing, PRs, backlog triage.
+
+So the generator emits **`.harness/worker-instructions.md`** — 8,180 bytes — from
+the same canonical source. Audience is declared where the content lives:
+
+- `conductor-only: 5, 10, 12, 19, 20, 22, 23` in the rules frontmatter. A number
+  naming a rule that does not exist fails the sync rather than silently widening
+  what workers read.
+- `<!-- conductor-only:start -->` / `<!-- conductor-only:end -->` around whole
+  instruction sections.
+
+One source produces both documents, so they cannot drift apart.
+
+An adapter that declares `suppressesProjectDocs` is launched without project-file
+discovery and the manager prepends the subset instead. **Codex** does
+(`-c project_doc_max_bytes=0`). Claude and Antigravity still read `AGENTS.md`, and
+are deliberately *not* sent the subset — that would turn a saving into a
+duplication. Claude's `--bare` and `--safe-mode` would suppress it, but `--bare`
+forces API-key auth (breaking OAuth) and `--safe-mode` also disables skills, which
+rule 13 depends on; neither is an acceptable default.
+
+**Caching is the other half.** The worker prompt is assembled most-stable-first —
+project instructions, worker contract, role body, delivery clause, then the
+assignment — so the reusable prefix runs as long as possible; measured at 10,169
+identical bytes out of 11,065 between two dispatches of the same role. Claude
+additionally gets `--exclude-dynamic-system-prompt-sections`, because every
+dispatch runs in a differently-named worktree and that path sits in the system
+prompt as `cwd`, breaking the cached prefix on every single dispatch.
+
+What this does **not** fix: roughly 21,500 tokens of the floor is the CLI's own
+system prompt and tool definitions, before the toolkit sends anything. That is why
+a trivial dispatch still costs ~22K, and why batching tightly-coupled Behavior
+cases into one dispatch — accepting one commit for them — remains the conductor's
+call rather than something the control plane decides.
 
 ### Shared build state — how a worker gets its dependencies
 

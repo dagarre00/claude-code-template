@@ -81,9 +81,16 @@ and own remote pushes and PR creation. Workers never commit, push, or open PRs.
 5. **Dispatch the developer.** Call `spawn_worker` with role `developer`,
    bounded instructions, explicit `owned_paths`, and a `commit_message` written
    in the project's commit convention — the runner commits the worker's work
-   under exactly that subject, so one dispatch is one commit. Scope the dispatch
-   to one Behavior case, or a few tightly related ones, when per-case history
-   matters. Include the user's original context, exact Behavior IDs, test command,
+   under exactly that subject, so one dispatch is one commit.
+
+   **Default to one Behavior case per dispatch**, integrating each before the
+   next: that is what produces the bisectable per-case history, and integration
+   fast-forwards so the log stays linear. Batch several cases into one dispatch —
+   accepting that they land as one commit — only when they are so coupled that
+   splitting them would mean re-establishing the same context repeatedly. A
+   dispatch costs roughly 22K tokens before any work happens (`docs/harnesses.md`
+   §7), so that judgement is real, but it is a judgement about coupling and not a
+   licence to batch an unrelated queue into one commit. Include the user's original context, exact Behavior IDs, test command,
    applicable constraints, and the **full plan text** if one exists—not a path in
    your ignored scratch directory. The developer runs Red → Green → Refactor →
    wiki update for each case and leaves the result as files, then returns
