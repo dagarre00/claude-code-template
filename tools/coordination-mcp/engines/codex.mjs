@@ -1,24 +1,16 @@
 // Codex adapter. Isolation is an OS-level sandbox plus approval_policy, so there
-// is no per-command allowlist to grant; workspace-write already covers the git
-// mutations a write worker performs inside its worktree. Unverified — see
-// docs/harnesses.md §12.
+// is no per-command allowlist to grant; workspace-write covers the file edits a
+// write worker makes inside its worktree, but not the Git store — see `commits`.
 export default {
   name: 'codex',
   efforts: ['minimal', 'low', 'medium', 'high', 'xhigh'],
   terminal: '-',
-  // Read-only roles only. The workspace-write sandbox deliberately protects .git
-  // — a writable .git/hooks would let an agent plant a hook that runs outside the
-  // sandbox the next time a human uses git — so a Codex worker edits files but
-  // cannot commit, and a write worker with no commits is rejected at integration.
-  // Verified here: the worker wrote its file, then failed with
-  // `Unable to create .git/worktrees/<id>/index.lock: Permission denied`, and
-  // emitted a diff instead. Codex's own answer is `codex apply` on the host.
-  // The documented escape (writable_roots pointing at .git) does not help us:
-  // openai/codex#18918 has Windows applying DENY ACLs to .git inside
-  // writable_roots, and openai/codex#27418 has the sandbox force-protecting the
-  // resolved gitdir of a linked worktree even with explicit permission. Both are
-  // open, and this project always dispatches into linked worktrees.
-  writeRoles: false,
+  // Codex edits files but cannot commit them: workspace-write deliberately
+  // protects .git, so `git add` fails with `Unable to create
+  // .git/worktrees/<id>/index.lock: Permission denied`. It is one of the two
+  // engines that forced the supervisor-commits convention — evidence and the
+  // upstream issues are in docs/harnesses.md §12. Nothing is needed here: the
+  // runner commits for every engine, so this adapter grants no git access.
   buildArgs({ readOnly, workspace, model, effort }) {
     const args = ['exec', '--ephemeral', '--color', 'never', '--cd', workspace,
       '--sandbox', readOnly ? 'read-only' : 'workspace-write', '-c', 'approval_policy="never"',

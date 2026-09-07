@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 
 async function until(fn,timeout=10000) {
   const deadline=Date.now()+timeout;
@@ -33,4 +33,88 @@ test('runner passes exact stdin without shell evaluation, records exit and cance
   await until(()=>existsSync(resolve(root,'result.json')));
   assert.equal(JSON.parse(readFileSync(resolve(root,'result.json'),'utf8')).state,'cancelled');
   await until(()=>second.exitCode!==null);
+});
+
+// The delivery convention: a worker on any engine writes files and never runs
+// git, because two of the three cannot. The runner is an ordinary host process
+// outside every CLI sandbox, so it turns those files into the commit that
+// merge_and_cleanup_worker requires.
+const git=(cwd,...args)=>execFileSync('git',['-C',cwd,...args],{encoding:'utf8',windowsHide:true,stdio:['ignore','pipe','pipe']}).trim();
+function supervised(t,{script,owned=['src'],commit={message:'feat(sample): supervised delivery'}}) {
+  const dir=mkdtempSync(resolve(tmpdir(),'runner-commit-'));
+  t.after(()=>rmSync(dir,{recursive:true,force:true}));
+  const workspace=resolve(dir,'workspace');
+  mkdirSync(resolve(workspace,'src'),{recursive:true});
+  writeFileSync(resolve(workspace,'src/base.txt'),'base\n');
+  git(workspace,'init','-b','worker');
+  git(workspace,'config','core.autocrlf','false');
+  git(workspace,'config','user.email','fixture@example.invalid');
+  git(workspace,'config','user.name','Fixture');
+  git(workspace,'add','.'); git(workspace,'commit','-m','base');
+  const fake=resolve(dir,'fake.mjs');
+  writeFileSync(fake,script);
+  writeFileSync(resolve(dir,'prompt.txt'),'do the work');
+  writeFileSync(resolve(dir,'task.json'),JSON.stringify({workspace,owned_paths:owned,commit,
+    command:{executable:process.execPath,args:[fake]},timeout_seconds:20}));
+  spawn(process.execPath,[resolve(import.meta.dirname,'../runner.mjs'),dir],{windowsHide:true,stdio:'ignore'});
+  return {dir,workspace,result:async()=>{
+    await until(()=>existsSync(resolve(dir,'result.json')));
+    return JSON.parse(readFileSync(resolve(dir,'result.json'),'utf8'));
+  }};
+}
+
+test('the runner commits a successful worker\'s owned paths under the conductor\'s subject',async t=>{
+  const {workspace,result}=supervised(t,{script:
+    "import {writeFileSync} from 'node:fs';writeFileSync('src/added.txt','from the worker\\n');"
+    +"writeFileSync('src/base.txt','edited\\n');"});
+  const outcome=await result();
+  assert.equal(outcome.state,'completed');
+  assert.equal(outcome.commit,git(workspace,'rev-parse','HEAD'));
+  assert.equal(git(workspace,'log','-1','--format=%s'),'feat(sample): supervised delivery');
+  assert.deepEqual(outcome.committed_paths.sort(),['src/added.txt','src/base.txt']);
+  // A clean worktree is what merge_and_cleanup_worker insists on before it will
+  // integrate; the whole point is that the worker did not have to produce it.
+  assert.equal(git(workspace,'status','--porcelain=v1','--untracked-files=all'),'');
+});
+
+test('the runner commits nothing outside owned paths, and says which paths stopped it',async t=>{
+  const {workspace,result}=supervised(t,{script:
+    "import {writeFileSync} from 'node:fs';writeFileSync('src/added.txt','ok\\n');"
+    +"writeFileSync('elsewhere.txt','not mine\\n');"});
+  const outcome=await result();
+  assert.equal(outcome.state,'failed');
+  assert.match(outcome.error,/outside its owned scope/);
+  assert.match(outcome.error,/elsewhere\.txt/);
+  assert.equal(outcome.commit,null);
+  assert.equal(git(workspace,'rev-list','--count','HEAD'),'1','no commit was made at all');
+  // Evidence survives: a partial commit would have hidden which half was refused.
+  assert.equal(readFileSync(resolve(workspace,'elsewhere.txt'),'utf8'),'not mine\n');
+  assert.equal(readFileSync(resolve(workspace,'src/added.txt'),'utf8'),'ok\n');
+});
+
+test('a failed, cancelled or empty worker is never committed for',async t=>{
+  const failed=supervised(t,{script:
+    "import {writeFileSync} from 'node:fs';writeFileSync('src/half.txt','incomplete\\n');process.exit(3);"});
+  const outcome=await failed.result();
+  assert.equal(outcome.state,'failed');
+  assert.equal(outcome.exit_code,3);
+  assert.equal(outcome.commit,null);
+  assert.equal(git(failed.workspace,'rev-list','--count','HEAD'),'1');
+  assert.equal(readFileSync(resolve(failed.workspace,'src/half.txt'),'utf8'),'incomplete\n','work is preserved for inspection');
+  // A worker that changed nothing gets no empty commit; merge then rejects it as
+  // a write worker with no deliverable, which is the accurate outcome.
+  const idle=supervised(t,{script:'process.exit(0);'});
+  const quiet=await idle.result();
+  assert.equal(quiet.state,'completed');
+  assert.equal(quiet.commit,null);
+  assert.equal(git(idle.workspace,'rev-list','--count','HEAD'),'1');
+});
+
+test('read-only tasks carry no commit policy, so the runner cannot commit for one',async t=>{
+  const {workspace,result}=supervised(t,{commit:null,owned:[],script:
+    "import {writeFileSync} from 'node:fs';writeFileSync('src/sneaked.txt','review output\\n');"});
+  const outcome=await result();
+  assert.equal(outcome.state,'completed');
+  assert.ok(!('commit' in outcome),'no commit field is reported for a role that must not produce one');
+  assert.equal(git(workspace,'rev-list','--count','HEAD'),'1');
 });

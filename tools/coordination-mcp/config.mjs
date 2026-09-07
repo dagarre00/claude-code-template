@@ -4,10 +4,12 @@ import { engines as adapters, engineNames } from './engines/index.mjs';
 
 export { engineNames };
 
-// Some CLIs cannot deliver a committed result at all. Checked where a role meets
-// an engine, so the refusal names both rather than surfacing as a merge failure
-// after the model has already been paid for.
-export const supportsWriteRoles = engine => adapters[engine]?.writeRoles !== false;
+// No worker on any engine commits its own work. The supervising runner — an
+// ordinary host process, outside every CLI sandbox — stages the worker's owned
+// paths and commits them after a successful exit. That is a single convention
+// rather than a per-CLI capability, because two of the three engines cannot
+// commit at all (docs/harnesses.md §12) and a delivery shape that differs by
+// engine would make every downstream step engine-aware.
 
 export function loadSettings(root) {
   const settings = JSON.parse(readFileSync(resolve(root,'.harness/settings.json'),'utf8'));

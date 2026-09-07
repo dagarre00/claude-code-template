@@ -98,15 +98,7 @@
         "fast": "low"
       },
       "writePermissionMode": "acceptEdits",
-      "writeAllowedTools": [
-        "Bash(git add:*)",
-        "Bash(git commit:*)",
-        "Bash(git status:*)",
-        "Bash(git diff:*)",
-        "Bash(git log:*)",
-        "Bash(git rev-parse:*)",
-        "Bash(git show:*)"
-      ]
+      "writeAllowedTools": []
     },
     "codex": {
       "executable": "codex",

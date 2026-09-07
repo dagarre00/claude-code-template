@@ -16,10 +16,13 @@ export default {
       '--permission-mode', readOnly ? 'plan' : mode, '--permission-prompts', 'none',
       '--disallowedTools', 'Agent,Task'];
     // acceptEdits covers file edits and read-only shell, but mutating commands
-    // still route to a prompt — and --permission-prompts none denies those. A
-    // write worker that cannot `git add`/`git commit` produces no deliverable,
-    // which merge_and_cleanup_worker then rejects. Read-only roles need nothing
-    // here: plan mode already permits the git reads a review depends on.
+    // still route to a prompt — and --permission-prompts none denies those. This
+    // is where an adopting project grants the mutating commands its write roles
+    // genuinely need, such as its test runner. Git verbs are deliberately NOT
+    // here: the runner commits for every engine, so a worker that ran `git
+    // commit` would break a convention the other two engines cannot follow
+    // anyway. Read-only roles need nothing: plan mode already permits the git
+    // reads a review depends on.
     if (!readOnly) {
       const allowed = config.writeAllowedTools ?? [];
       if (!Array.isArray(allowed) || allowed.some(rule => typeof rule !== 'string' || !rule.trim() || /[\0\r\n]/.test(rule))) {

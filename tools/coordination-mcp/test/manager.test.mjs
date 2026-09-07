@@ -137,11 +137,34 @@ test('worker worktrees live outside the git directory, where CLI write guards al
 // .git (openai/codex#18918 on Windows, #27418 for linked worktrees, both open).
 // A write worker that produces no commits is rejected at integration anyway, so
 // refuse the dispatch up front, before the model has been paid for.
-test('a write role is refused on an engine whose sandbox cannot commit', t=>{
+// Rather than one delivery shape per engine, no worker commits anywhere: the
+// runner does. So a write role dispatches on every engine, and every worker is
+// told the same thing regardless of which sandbox it is behind.
+test('every engine accepts write roles and delivers them the same way: the supervisor commits', t=>{
   const {root,manager}=fixture(t);
-  assert.throws(()=>manager.spawn({...task,cli_engine:'codex'}),/cannot run write role/i);
-  // Read-only roles are unaffected: they never needed to commit.
+  const dir=id=>resolve(root,'.git/coordination/tasks',id);
+  for (const engine of ['claude','codex','antigravity']) {
+    const worker=manager.spawn({...task,cli_engine:engine,commit_message:`feat(sample): ${engine} case`});
+    assert.equal(worker.engine,engine);
+    assert.equal(worker.commit.message,`feat(sample): ${engine} case`);
+    assert.equal(JSON.parse(readFileSync(resolve(dir(worker.task_id),'task.json'),'utf8')).commit.message,
+      `feat(sample): ${engine} case`,'the runner reads the policy from task.json, not from the tool call');
+    // The canonical contract tells write roles to leave files; the dispatch
+    // repeats it with the subject the conductor chose, so no worker spends turns
+    // on git commands its sandbox would deny.
+    const prompt=readFileSync(resolve(dir(worker.task_id),'prompt.txt'),'utf8');
+    assert.match(prompt,/## Delivery/);
+    assert.match(prompt,/Do not run any git command/);
+    assert.ok(prompt.includes(`feat(sample): ${engine} case`),'the worker is told the subject it will be committed under');
+    git(root,'worktree','remove','--force',worker.workspace);
+    git(root,'branch','-D',worker.branch);
+  }
+  // Read-only roles produce no commit at all, so there is no subject to set.
   const reviewer=manager.spawn({role:'adversary',cli_engine:'codex',instructions:'Review.',owned_paths:[]});
-  assert.equal(reviewer.engine,'codex');
-  assert.equal(git(root,'status','--porcelain=v1','--untracked-files=all'),'','refusal left no residue');
+  assert.equal(reviewer.commit,null);
+  assert.ok(!readFileSync(resolve(dir(reviewer.task_id),'prompt.txt'),'utf8').includes('## Delivery'));
+  assert.throws(()=>manager.spawn({role:'adversary',instructions:'Review.',commit_message:'docs: nope'}),/read-only/i);
+  assert.throws(()=>manager.spawn({...task,commit_message:'subject\nbody'}),/single line/i);
+  assert.throws(()=>manager.spawn({...task,commit_message:'x'.repeat(201)}),/single line/i);
+  assert.equal(git(root,'status','--porcelain=v1','--untracked-files=all'),'','no dispatch or refusal dirtied the checkout');
 });

@@ -9,6 +9,11 @@ export default {
   // ~32K Windows limit for anything realistic. stream-json takes the prompt from
   // stdin instead, with no size limit, so --print is given an empty value.
   promptFormat: 'stream-json',
+  // agy cannot commit either, for a different reason than Codex: every shell
+  // command needs a `command(...)` allow-rule, headless mode auto-denies anything
+  // unlisted because it cannot prompt, and those rules live only in a user-global
+  // file (docs/harnesses.md §12). The runner commits for every engine, so a write
+  // worker here never needs the terminal at all.
   // No --agent flag. Selecting a named agent made agy refuse every write, even
   // for a write role with an explicit write-tool allowlist, and `agy agents`
   // lists nothing from .agents/agents, so the definition does not appear to be

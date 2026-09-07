@@ -69,18 +69,30 @@ function validate(settings) {
   } finally { rmSync(dir, {recursive: true, force: true}); }
 }
 
-test('claude write workers may stage and commit; read-only workers get no write grant', () => {
+// The supervising runner commits for every engine, so no worker is granted the
+// git verbs any more. Claude was the only engine that ever could: leaving that
+// grant in place would have let one CLI deliver commits the other two cannot,
+// which is exactly the per-engine delivery shape the convention removes.
+test('no engine grants a write worker the git verbs; the runner commits instead', () => {
   const settings = loadSettings(root);
-  const write = workerCommand(settings, {engine:'claude',role:'developer',profile:'balanced',access:'write',workspace:'/tmp/w'});
+  for (const engine of Object.keys(settings.engines)) {
+    const { args } = workerCommand(settings, {engine,role:'developer',profile:'balanced',access:'write',workspace:'/tmp/w'});
+    assert.ok(!/Bash\(git (add|commit)/.test(args.join(' ')), `${engine} must not grant git mutation to a worker`);
+  }
+  assert.deepEqual(settings.engines.claude.writeAllowedTools, [],
+    'the shipped grant is empty; an adopting project adds its own test runner here');
+});
+
+test('writeAllowedTools stays the extension point for the commands a project does need', () => {
+  const settings = loadSettings(root);
+  const build = engines => workerCommand({...settings,engines},
+    {engine:'claude',role:'developer',profile:'balanced',access:'write',workspace:'/tmp/w'});
+  const granted = build({...settings.engines,
+    claude: {...settings.engines.claude, writeAllowedTools: ['Bash(node --test:*)']}});
+  assert.ok(granted.args.includes('--allowedTools'));
+  assert.ok(granted.args.includes('Bash(node --test:*)'), 'a configured rule must reach the argv');
   const read = workerCommand(settings, {engine:'claude',role:'adversary',profile:'reasoning',access:'read-only',workspace:'/tmp/w'});
-  // Without this grant acceptEdits writes the files but every git mutation is
-  // denied, so the worker delivers no commits and integration rejects it.
-  assert.ok(write.args.includes('--allowedTools'));
-  assert.ok(write.args.some(arg => arg.startsWith('Bash(git add')));
-  assert.ok(write.args.some(arg => arg.startsWith('Bash(git commit')));
   assert.ok(!read.args.includes('--allowedTools'), 'plan mode already permits the git reads a review needs');
-  assert.ok(!write.args.join(' ').match(/dangerous|bypassPermissions/i));
-  const unsafe = {...settings, engines: {...settings.engines,
-    claude: {...settings.engines.claude, writeAllowedTools: ['Bash(--dangerously-skip-permissions)']}}};
-  assert.throws(() => workerCommand(unsafe, {engine:'claude',role:'developer',profile:'balanced',access:'write',workspace:'/tmp/w'}), /bypass/i);
+  assert.throws(() => build({...settings.engines,
+    claude: {...settings.engines.claude, writeAllowedTools: ['Bash(--dangerously-skip-permissions)']}}), /bypass/i);
 });

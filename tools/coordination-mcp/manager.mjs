@@ -3,7 +3,7 @@ import { closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, re
   readdirSync, realpathSync, renameSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { resolve, relative, isAbsolute, dirname, sep } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
-import { loadSettings, workerCommand, engineNames, supportsWriteRoles } from './config.mjs';
+import { loadSettings, workerCommand, engineNames } from './config.mjs';
 
 // Worktrees must NOT live under .git: agent CLIs refuse to write anywhere inside
 // the git directory, which silently made every write role undeliverable. Task
@@ -49,6 +49,16 @@ const clean = root => git(root,['status','--porcelain=v1','--untracked-files=all
 const head = root => git(root,['rev-parse','HEAD']);
 const branch = root => git(root,['symbolic-ref','--quiet','--short','HEAD']);
 const overlap = (a,b)=>a===b || a.startsWith(b+'/') || b.startsWith(a+'/');
+// Subject line for a supervisor-made commit. It ends up in the project's history
+// verbatim, so it is held to the same shape as any other argv value: one line, no
+// control characters, and short enough to read in `git log --oneline`.
+function subject(input, role, id) {
+  if (input == null) return `chore(${role}): supervised worker ${id.slice(0,8)}`;
+  if (typeof input!=='string' || !input.trim() || input.length>200 || /[\0\r\n]/.test(input)) {
+    throw new Error('commit_message must be a single line of at most 200 characters');
+  }
+  return input.trim();
+}
 function paths(input) {
   if (!Array.isArray(input)) throw new Error('owned_paths must be an array');
   return [...new Set(input.map(path=>{
@@ -123,6 +133,7 @@ export class Manager {
     const worker_sha=existsSync(task.workspace)?head(task.workspace):phase.worker_sha;
     const commits=worker_sha?git(this.root,['log','--format=%H %s',`${task.base_sha}..${worker_sha}`]):'';
     return {task_id:id,role:task.role,engine:task.engine,model:task.command.model,effort:task.command.effort,
+      commit:task.commit,
       state,workspace:task.workspace,branch:task.branch,base_sha:task.base_sha,worker_sha,
       target_sha:head(this.root),integration_branch:task.integration_branch,owned_paths:task.owned_paths,
       created_at:task.created_at,result,commits,output:tail(resolve(dir,'stdout.log')).text,
@@ -173,10 +184,12 @@ export class Manager {
       const engine=input.cli_engine ?? settings.roles[input.role]?.engine ?? settings.defaultEngine;
       const resolvedEngine=engine==='inherit'?this.engine:engine;
       this.exclude();
-      if (access==='write' && !supportsWriteRoles(resolvedEngine)) {
-        throw new Error(`Engine ${resolvedEngine} cannot run write role "${input.role}": its sandbox protects .git, so a worker edits files but cannot commit them. Dispatch write roles to another engine, or use ${resolvedEngine} for read-only roles.`);
-      }
       const id=randomUUID(), workspace=contained(this.workspaces,resolve(this.workspaces,id));
+      // One delivery convention for every CLI: the worker writes files, the
+      // supervising runner commits them. Read-only roles never get a commit —
+      // producing one is exactly what disqualifies them at merge.
+      if (access!=='write' && input.commit_message!=null) throw new Error('Read-only roles produce no commit; commit_message does not apply');
+      const commit=access==='write' ? {message:subject(input.commit_message,input.role,id)} : null;
       const command=workerCommand(settings,{...input,engine:resolvedEngine,profile,access,workspace});
       const active=this.list().filter(t=>['running','interrupted'].includes(t.state));
       if (active.length>=settings.maxWorkers) throw new Error('Worker concurrency limit reached');
@@ -185,12 +198,22 @@ export class Manager {
       const integration_branch=branch(this.root), base_sha=head(this.root);
       const dir=this.taskDir(id);
       mkdirSync(dir,{recursive:true});
-      const task={task_id:id,role:input.role,profile,access,engine:resolvedEngine,command,owned_paths:owned,
+      const task={task_id:id,role:input.role,profile,access,engine:resolvedEngine,command,owned_paths:owned,commit,
         integration_root:this.root,integration_branch,workspace,branch:`worker/${id}`,base_sha,
         created_at:new Date().toISOString(),timeout_seconds:settings.workerTimeoutSeconds};
       save(resolve(dir,'task.json'),task);
+      // Stated per dispatch because it inverts what a write role would otherwise
+      // assume, and because two of the three engines would spend turns failing at
+      // git before reporting the denial as a blocker.
+      const delivery=!commit ? ''
+        : '\n\n## Delivery\n\nDo not run any git command that changes the repository — no add, commit, branch,'
+          + ' merge, reset, stash, or tag. Leave every change in the worktree as files. After you exit'
+          + ` successfully the supervisor stages your owned paths and commits them as \`${commit.message}\`.`
+          + ' Anything you changed outside owned_paths is committed by nobody and fails integration, so keep'
+          + ' every edit inside your scope. Report changed paths, verification commands and their results, and'
+          + ' any blockers; leaving work unfinished is a blocker, leaving it uncommitted is expected.';
       const prompt=readFileSync(resolve(this.root,'.harness/worker-contract.md'),'utf8')
-        +'\n\n## Canonical role\n\n'+role.replace(/\{\{cmd:([a-z-]+)\}\}/g,'project-$1')
+        +'\n\n## Canonical role\n\n'+role.replace(/\{\{cmd:([a-z-]+)\}\}/g,'project-$1')+delivery
         +'\n\n## Assignment\n\n'+JSON.stringify({task_id:id,workspace,branch:task.branch,base_sha,owned_paths:owned,instructions:input.instructions},null,2);
       writeFileSync(resolve(dir,'prompt.txt'),prompt);
       try {
