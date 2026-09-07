@@ -75,5 +75,9 @@ export function workerCommand(settings, task) {
   if (args.some(arg => /dangerously|bypassPermissions|--yolo/i.test(arg))) {
     throw new Error(`Engine ${engine} attempted a permission bypass`);
   }
-  return {executable:config.executable,args,model:model??'inherit',effort:effort??'inherit'};
+  // How the runner must deliver prompt.txt on stdin. Engines that read a plain
+  // prompt use 'text'; agy needs one NDJSON envelope per message.
+  const promptFormat = adapter.promptFormat ?? 'text';
+  if (!['text','stream-json'].includes(promptFormat)) throw new Error(`Engine ${engine} declared an unknown promptFormat`);
+  return {executable:config.executable,args,model:model??'inherit',effort:effort??'inherit',promptFormat};
 }

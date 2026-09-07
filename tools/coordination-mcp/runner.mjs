@@ -49,7 +49,12 @@ export async function run(dir) {
     child.stderr.on('data',data=>record('stderr',data));
     child.on('error',error=>finish(null,null,error.message));
     child.on('close',(code,signal)=>finish(code,signal));
-    child.stdin.end(readFileSync(resolve(dir,'prompt.txt')));
+    // Some CLIs read a bare prompt from stdin; others require a framed message.
+    // The engine adapter decides, so the runner stays engine-agnostic.
+    const promptText=readFileSync(resolve(dir,'prompt.txt'),'utf8');
+    child.stdin.end(task.command.promptFormat==='stream-json'
+      ? JSON.stringify({event:'user',message:{role:'user',content:[{type:'text',text:promptText}]}})+'\n'
+      : promptText);
     heartbeat=setInterval(()=>{
       writeFileSync(resolve(dir,'heartbeat'),new Date().toISOString());
       if (existsSync(resolve(dir,'cancel'))) stop('cancelled');

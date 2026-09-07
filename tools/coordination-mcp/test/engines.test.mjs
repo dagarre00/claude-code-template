@@ -75,6 +75,19 @@ for (const name of engineNames) {
     }
   });
 
+  test(`${name}: declares how the runner must frame the prompt on stdin`, () => {
+    const { promptFormat } = build(name, 'write');
+    assert.ok(['text','stream-json'].includes(promptFormat), `${name} resolves a prompt format`);
+    // A CLI that cannot take the prompt on stdin would cap it at the OS command
+    // line limit — agy's text mode puts the prompt in --print, and a worker
+    // prompt is 10KB+ before any instructions. stream-json avoids that entirely.
+    if (promptFormat === 'stream-json') {
+      const { args } = build(name, 'write');
+      assert.ok(args.includes('--input-format') || args.includes('-c'),
+        `${name} must actually request the framed input mode it declares`);
+    }
+  });
+
   test(`${name}: effort and model resolve through the declared vocabulary`, () => {
     const adapter = engines[name];
     assert.ok(adapter.efforts.length, 'adapter declares an effort vocabulary');

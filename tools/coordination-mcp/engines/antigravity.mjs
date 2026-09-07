@@ -3,17 +3,24 @@
 export default {
   name: 'antigravity',
   efforts: ['low', 'medium', 'high'],
-  terminal: '--print',
+  terminal: '--print=',
+  // agy's --print always requires a value, and in text mode that value IS the
+  // prompt — which would put a 10KB+ worker prompt on the command line, past the
+  // ~32K Windows limit for anything realistic. stream-json takes the prompt from
+  // stdin instead, with no size limit, so --print is given an empty value.
+  promptFormat: 'stream-json',
   buildArgs({ settings, role, readOnly, workspace, model, effort }) {
     const args = ['--add-dir', workspace, '--agent', role, '--sandbox',
       '--mode', readOnly ? 'plan' : 'accept-edits',
-      '--print-timeout', `${settings.workerTimeoutSeconds}s`];
+      '--print-timeout', `${settings.workerTimeoutSeconds}s`,
+      '--input-format', 'stream-json', '--output-format', 'stream-json'];
     if (model && model !== 'inherit') args.push('--model', model);
     if (effort) args.push('--effort', effort);
-    // --print takes an OPTIONAL inline prompt, so it must be the final argument.
-    // With a flag after it, agy consumes that flag as the prompt and discards the
-    // real one from stdin, exiting 2: `--print took "--effort" as its prompt`.
-    args.push('--print');
+    // Must stay last. --print consumes the next argument as its value, so a flag
+    // after it is swallowed and the real prompt is discarded: agy exits 2 with
+    // `--print took "--effort" as its prompt`. The attached empty value satisfies
+    // the parser while the prompt arrives over stdin as stream-json.
+    args.push('--print=');
     return args;
   },
   nativeAgent({ name, description, access, body, startup, modelFor, config, helpers }) {
