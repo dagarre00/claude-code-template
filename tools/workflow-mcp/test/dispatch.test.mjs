@@ -88,6 +88,19 @@ test('the returned command runs in the worktree, not the conductor checkout', ()
   });
 });
 
+// The conductor decides whether an engine is appropriate for a task, and it can
+// only do that if the dispatch states what the engine cannot enforce.
+test('dispatch warns when the engine cannot enforce the leaf-worker rule', () => {
+  withRepo(root => {
+    const workspace = resolve(root, '.worktrees/x');
+    const agy = prepareDispatch(root, { ...base, cli_engine: 'antigravity', conductorEngine: 'claude', workspace });
+    assert.ok(agy.warnings.some(w => /subagent|leaf/i.test(w)), 'no warning for antigravity');
+    for (const cli_engine of ['claude', 'codex']) {
+      assert.deepEqual(prepareDispatch(root, { ...base, cli_engine, conductorEngine: 'claude', workspace }).warnings, []);
+    }
+  });
+});
+
 test('antigravity gets NDJSON on stdin while the readable prompt stays plain', () => {
   withRepo(root => {
     const result = prepareDispatch(root, { ...base, conductorEngine: 'claude', cli_engine: 'antigravity',

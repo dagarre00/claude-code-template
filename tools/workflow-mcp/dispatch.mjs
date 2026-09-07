@@ -12,7 +12,7 @@ import { resolve } from 'node:path';
 import { loadCanonical } from './canonical.mjs';
 import { loadConfig, resolveEngine } from './config.mjs';
 import { composePrompt } from './compose.mjs';
-import { buildCommand, stdinPayload } from './engines/index.mjs';
+import { ENGINES, buildCommand, stdinPayload } from './engines/index.mjs';
 
 // Quote one argument for the shell the conductor will paste this into. Only ever
 // used to build the human-readable/runnable `command` string; the `args` array
@@ -47,9 +47,20 @@ export function prepareDispatch(root, input = {}) {
   writeFileSync(prompt_file, composed.prompt);
   writeFileSync(stdin_file, stdinPayload(engine, composed.prompt));
 
+  // Stated per dispatch, not buried in a doc: the conductor is the one choosing
+  // an engine for a task, and it can only weigh that choice if it is told what
+  // the engine cannot enforce below the prompt.
+  const warnings = ENGINES[engine].enforcesLeafWorker ? [] : [
+    `${engine} exposes subagent tools to workers and offers no flag to remove them, so the `
+    + 'no-recursive-dispatch rule is prompt-level here rather than process-level. The subagent '
+    + 'inherits this worker\'s sandbox and worktree, so the exposure is unbounded work, not '
+    + 'privilege escalation. Prefer another engine for open-ended tasks, and read the report.'
+  ];
+
   return {
     task_id,
     ...composed,
+    warnings,
     prompt: undefined,                       // on disk, not in the tool response
     prompt_bytes: composed.prompt.length,
     engine: command.engine,

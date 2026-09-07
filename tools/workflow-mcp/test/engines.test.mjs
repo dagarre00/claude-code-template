@@ -106,3 +106,19 @@ test('stdin is plain text everywhere except antigravity, which needs NDJSON', ()
 test('an unknown engine fails by name', () => {
   assert.throws(() => build('gemini'), /gemini/);
 });
+
+// Measured by dispatching a capability audit to each engine and asking what
+// agent-spawning tools it actually has. claude answered NONE, codex answered
+// NONE, agy answered `define_subagent`, `invoke_subagent`. The contract forbids
+// recursion on all three; only two can enforce it below the prompt, and pretending
+// otherwise would be the kind of unverified claim rule 7 exists to prevent.
+test('each engine declares honestly whether it can enforce the leaf-worker rule', () => {
+  assert.equal(ENGINES.claude.enforcesLeafWorker, true);
+  assert.equal(ENGINES.codex.enforcesLeafWorker, true);
+  assert.equal(ENGINES.antigravity.enforcesLeafWorker, false);
+});
+
+test('claude and codex argv actually carry the flag that earns the claim', () => {
+  assert.ok(build('claude').args.join(' ').includes('--disallowedTools Agent,Task'));
+  assert.ok(build('codex').args.includes('agents.enabled=false'));
+});

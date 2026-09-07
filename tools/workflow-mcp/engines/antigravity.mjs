@@ -15,6 +15,18 @@ export default {
   name: 'antigravity',
   efforts: ['low', 'medium', 'high'],
   readsProjectDocs: false,
+  // The one place agy is weaker than the other two. Its workers are handed
+  // `define_subagent` and `invoke_subagent` — measured by asking one — and agy
+  // exposes no flag to remove them: there is no tool allowlist, and its
+  // permission rules live only in user-global config this template will not
+  // write. So the leaf-worker rule is prompt-level here and process-level
+  // elsewhere, and dispatch says so out loud rather than implying parity.
+  //
+  // Bounded, not unbounded: a spawned subagent inherits this process's --sandbox
+  // and its worktree, so it cannot commit, push, or reach outside the checkout.
+  // The exposure is wasted tokens and unbounded work, capped by --print-timeout,
+  // not a privilege escalation.
+  enforcesLeafWorker: false,
   // --print always requires a value, and in text mode that value IS the prompt —
   // which would put a 35KB worker prompt on the command line, far past the
   // ~32K Windows limit. stream-json takes the prompt from stdin instead, with

@@ -19,6 +19,9 @@ export default {
   readsProjectDocs: true,
   promptFormat: 'text',
   writeMode: 'acceptEdits',
+  // --disallowedTools Agent,Task removes the tools entirely. Measured: a worker
+  // asked what agent-spawning tools it has answers NONE.
+  enforcesLeafWorker: true,
   buildArgs({ readOnly, model, effort }) {
     const args = [
       '--print',

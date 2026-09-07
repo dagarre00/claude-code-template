@@ -15,6 +15,9 @@ export default {
   efforts: ['minimal', 'low', 'medium', 'high', 'xhigh'],
   readsProjectDocs: true,
   promptFormat: 'text',
+  // agents.enabled=false removes delegation. Measured: a worker asked what
+  // agent-spawning tools it has answers NONE.
+  enforcesLeafWorker: true,
   buildArgs({ readOnly, workspace, model, effort }) {
     const args = [
       'exec', '--ephemeral', '--color', 'never', '--cd', workspace,

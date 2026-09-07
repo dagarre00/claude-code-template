@@ -22,7 +22,11 @@ const registered = [claude, codex, antigravity];
 for (const engine of registered) {
   if (!engine?.name || typeof engine.buildArgs !== 'function'
     || !Array.isArray(engine.efforts) || !engine.efforts.length
-    || !['text', 'stream-json'].includes(engine.promptFormat)) {
+    || !['text', 'stream-json'].includes(engine.promptFormat)
+    // Every adapter must answer whether it can enforce the leaf-worker rule
+    // below the prompt. Leaving it undefined would let a new CLI inherit an
+    // assumption of parity it may not have earned.
+    || typeof engine.enforcesLeafWorker !== 'boolean') {
     throw new Error(`Malformed engine adapter: ${engine?.name ?? 'unnamed'}`);
   }
 }
