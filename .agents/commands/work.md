@@ -179,7 +179,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
     - More todos in the same entity → keep going (run `/project:work` again from `develop` or the existing branch if still open).
     - **`/project:review` is due** — 5+ `work` entries in `log.md` since the last `review` entry, or cross-cutting work piling up.
     - **`/project:wiki-lint` is due** — 10+ unticked entries in `wiki-todos.md`, 5+ work cycles since the last `wiki-maintenance` entry, or the `[adversary]` count at or above `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`). Its own trigger heuristics are written inside `wiki-lint.md`, which nobody opens unless they have already decided to run it — this line is what makes them reachable.
-    - **`/project:agent-scout` is due** — you hand-rolled a multi-step procedure this cycle that no skill covers, or the stack gained a service. A gap you improvise twice is a missing skill (behavioral rule 17), and scout is what turns it into one.
+    - **A skill is missing** — you hand-rolled a multi-step procedure this cycle that no skill covers, or the stack gained a service. A gap you improvise twice is a missing skill (behavioral rule 17); say which procedure you improvised and point at the `update-toolkit` skill, which is where a gap becomes a real skill.
     - Risky next change → tag a checkpoint first (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`).
 
     A due command is a **recommendation, not an interruption** — say it in one line and let the human decide. But say it: an unsurfaced cadence is a dead command, and a dead `wiki-lint` is a `gotchas.md` that every future session reads and no session prunes.

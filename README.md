@@ -27,8 +27,6 @@ Inside Claude Code:
 /project:review      # periodic audit in a fresh session context
 /project:wiki-lint   # periodic wiki health check
 /project:wiki-ingest # direct ingest of a file or research query into wiki
-/project:agent-scout # survey and recommend stack/domain skills and agents
-/project:handoff     # package a todo as a self-contained brief for an external LLM
 ```
 
 Open `docs/wiki/` in Obsidian on the side. That's your view of the agent's knowledge.
@@ -65,7 +63,7 @@ For a worked walkthrough — `/project:init` → `/project:interview` → `/proj
 .agents/             # THE canonical source — read by every CLI, never duplicated
 ├── agents/          # planner (reasoning), developer, adversary (reasoning), reviewer, wiki-maintainer, researcher
 ├── skills/          # process skills (TDD, branching, plan-writing, adversarial-review, wiki-update, …) + update-toolkit meta skill
-├── commands/        # /project:init, /project:interview, /project:work, /project:adversary, /project:review, /project:wiki-lint, /project:wiki-ingest, /project:agent-scout, /project:handoff
+├── commands/        # /project:init, /project:interview, /project:work, /project:adversary, /project:review, /project:wiki-lint, /project:wiki-ingest
 ├── rules.md         # behavioral constraints
 └── .claude-plugin/  # makes this directory a Claude Code plugin named "project"
 tools/workflow-mcp/  # the MCP: composes worker prompts, prepares worktrees, generates the root files

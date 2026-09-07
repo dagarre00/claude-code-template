@@ -70,24 +70,7 @@ Outputs:
 - Updates to `requirements.md`, `architecture.md`, and one `entities/<slug>.md` per major feature.
 - Initial entries in `todos.md`.
 
-## 3. `/project:agent-scout` — configure your toolkit
-
-```
-/project:agent-scout
-```
-
-After the interview fills in real requirements and architecture, run this once to discover which agents and skills your project actually needs. The template ships with a stack-agnostic baseline; `agent-scout` reads your wiki and recommends the gap-fillers — things like `backend-impl`, `database-impl`, `stripe-impl`, or an `auth-impl` skill for the `developer` to auto-load when relevant.
-
-What it does:
-
-- Reads `requirements.md`, `architecture.md`, all entity pages, and `todos.md`.
-- Applies a signal table: backend API → `backend-impl` skill, named external services → service-specific skills, security-critical requirements → possible `security-reviewer` agent, and so on.
-- Produces a prioritized report with trigger descriptions, wiki citations, and procedure outlines for each recommendation.
-- **Does not create anything automatically.** It presents the list; you approve what to build. Approved items are created via the `update-toolkit` skill.
-
-Re-run `/project:agent-scout` after a major `/project:interview` that adds a new stack layer or external service.
-
-## 4. `/project:work` — first feature, TDD-style
+## 3. `/project:work` — first feature, TDD-style
 
 ```
 /project:work
@@ -105,7 +88,7 @@ Re-run `/project:agent-scout` after a major `/project:interview` that adds a new
 
 If a step fails twice on the same approach, the **two-strike rule** fires — the developer stops, you tag a checkpoint and reset, and re-spec.
 
-## 5. `/project:review` — every ~5 todos
+## 4. `/project:review` — every ~5 todos
 
 ```
 /project:review
@@ -117,7 +100,7 @@ This is **not** part of `/project:work` — it's periodic, run on demand or roug
 
 Don't confuse it with `/project:adversary`. Both are read-only and both run without the author's context, but they answer different questions: the `adversary` reads **one diff before it ships** and hunts for defects in it; the `reviewer` reads **the whole repo after things have shipped** and hunts for drift between the wiki and the code. Diff-scoped review never sees a problem in code it didn't touch, and a whole-repo audit arrives too late to stop the commit.
 
-## 6. `/project:wiki-lint` — every few cycles
+## 5. `/project:wiki-lint` — every few cycles
 
 ```
 /project:wiki-lint
@@ -334,13 +317,11 @@ Check state at session start, after a long break, or before deciding whether to 
 | ---------------------- | ----------------------------------------------------------------------------- |
 | `/project:init`        | Once at project start (includes its own interview pass for an empty wiki)     |
 | `/project:interview`   | When adding a new feature or deepening the spec after init                    |
-| `/project:agent-scout` | Once after init+interview; again after a major feature adds a new stack layer |
 | `/project:work`        | Main loop — most days you live in `/project:work`                             |
 | `/project:adversary`   | Any change you're about to call done that `/project:work` didn't gate         |
 | `/project:review`      | Periodic (every ~5 todos), before a release, after several merges             |
 | `/project:wiki-lint`   | When `wiki-todos.md` piles up or after heavy ingest                           |
 | `/project:wiki-ingest` | When you have a new external doc, or to commission web research               |
-| `/project:handoff`     | When delegating execution of a well-specified todo to an external agent       |
 
 Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `git reset --hard <tag>` to recover, `git status` / `git log` to see where you are — use plain git, not bespoke commands.
 

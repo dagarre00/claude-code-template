@@ -177,9 +177,9 @@ function loadSkills(root) {
     if (data.name !== undefined && data.name !== name) {
       throw new Error(`Skill name "${data.name}" disagrees with its directory in ${where}`);
     }
-    // Supporting files are listed, never inlined: llm-handoff's TEMPLATE.md alone
-    // is 39KB, and a prompt that carries every attachment defeats the point of
-    // choosing which skills to send.
+    // Supporting files are listed, never inlined: an attachment can dwarf the
+    // SKILL.md it belongs to, and a prompt that carries every attachment defeats
+    // the point of choosing which skills to send.
     const files = readdirSync(resolve(dir, name)).filter(file => file !== 'SKILL.md').sort()
       .map(file => `.agents/skills/${name}/${file}`);
     return { name, description: requireText(data.description, 'description', where),
