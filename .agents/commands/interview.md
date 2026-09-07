@@ -3,7 +3,6 @@ name: interview
 description: Grill-me-relentlessly Q&A to define a plan, a feature, or fill requirements. Walks down each branch of the decision tree, resolving dependencies one at a time. Always provides a recommended answer. Streams a transcript to docs/raw/interviews/ Q-by-Q and A-by-A (never batched at the end), then updates affected wiki pages.
 argument-hint: [topic — e.g. "the auth flow" | "fill requirements" | "stress-test the sync plan"]
 type: command
-skills: [spec-writing, wiki-update, decision-recording, human-checkpoint]
 ---
 
 # /project:interview

@@ -45,10 +45,16 @@ export function composePrompt(canonical, input = {}) {
     }
   }
 
-  // The command declares the workflow's skills; an explicit list narrows that
-  // default. Narrowing rather than extending keeps the declaration authoritative:
-  // a caller can decline to send a skill, never invent one the workflow omitted.
-  const requested = input.skills ?? command?.skills ?? [];
+  // The command declares which skills each ROLE receives, not one list for the
+  // whole command. That distinction is load-bearing: a flat list sent every
+  // worker of a cycle the same nine skills, making planner, developer and
+  // adversary prompts 93% identical — and handing the adversary the developer's
+  // procedures, when reading without them is the entire reason it exists.
+  //
+  // An explicit list narrows further. Narrowing rather than extending keeps the
+  // declaration authoritative: a caller can decline to send a skill, never
+  // invent one the workflow did not give that role.
+  const requested = input.skills ?? command?.skillsFor(role.name) ?? [];
   if (!Array.isArray(requested)) throw new Error('skills must be an array');
   const skills = requested.map(name => {
     const skill = canonical.skills.find(entry => entry.name === name);

@@ -3,7 +3,6 @@ name: init
 description: Detect project state, interview for requirements, scaffold docs/wiki, update CLAUDE.md with project parameters. Run once at project start, or to recover from a broken wiki layout.
 argument-hint: [context — e.g. "review the legacy files" | "stack is Django + Postgres"]
 type: command
-skills: [spec-writing, wiki-update, decision-recording, human-checkpoint]
 ---
 
 # /project:init

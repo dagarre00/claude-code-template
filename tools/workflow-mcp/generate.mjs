@@ -21,9 +21,14 @@ const BANNER = '<!-- Generated from .agents/ by tools/workflow-mcp. DO NOT EDIT.
   + '     Edit the canonical source in .agents/ and regenerate. -->';
 
 function renderAgents(canonical) {
-  const commands = canonical.commands.map(command =>
-    `| \`/project:${command.name}\` | ${command.description.replace(/\|/g, '\\|')} | ${
-      command.skills.length ? command.skills.map(s => `\`${s}\``).join(', ') : '—'} |`).join('\n');
+  const commands = canonical.commands.map(command => {
+    const byRole = command.skillsByRole;
+    const dispatches = byRole
+      ? Object.entries(byRole).map(([role, list]) =>
+          `**${role}**: ${list.map(s => `\`${s}\``).join(', ')}`).join('<br>')
+      : 'conductor only';
+    return `| \`/project:${command.name}\` | ${command.description.replace(/\|/g, '\\|')} | ${dispatches} |`;
+  }).join('\n');
 
   const roles = canonical.roles.map(role =>
     `| \`${role.name}\` | ${role.profile} | ${role.access} | ${role.description.replace(/\|/g, '\\|')} |`).join('\n');
@@ -73,7 +78,12 @@ commits, pushes and pull requests; workers deliver files.
 
 ## Commands
 
-| Command | Purpose | Declared skills |
+\`skills\` names what each **dispatched role** receives inlined in its composed
+prompt — not what the conductor uses, which it loads itself from
+\`.agents/skills/\`. Two roles dispatched by one command may never share a skill:
+if both need the same procedure, one role would have done the work of both.
+
+| Command | Purpose | Skills per dispatched role |
 | --- | --- | --- |
 ${commands}
 

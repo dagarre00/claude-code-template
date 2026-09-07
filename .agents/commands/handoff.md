@@ -3,7 +3,6 @@ name: handoff
 description: Package a todo as a self-contained brief for an external, non-Claude LLM agent. Gathers the entity spec, wiki excerpts, conventions and procedure into one file that works as that agent's sole prompt. Delegates execution; keeps orchestration here.
 argument-hint: [todo, entity, or scope — e.g. "the login endpoint" | "batch the auth todos"]
 type: command
-skills: [llm-handoff, spec-writing, human-checkpoint]
 ---
 
 # /project:handoff

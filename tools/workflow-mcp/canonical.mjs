@@ -31,12 +31,23 @@ export function parseFrontmatter(text, where) {
     const scalar = /^([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/.exec(line);
     if (!scalar) throw new Error(`Unreadable frontmatter line in ${where}: ${line}`);
     const [, key, raw] = scalar;
+    // A bare `key:` opens either a block list (`- item`) or one level of nesting
+    // (`  subkey: value`). One level is all that is supported, and all that is
+    // needed: `skills:` maps a role to the skills that role receives.
     if (raw === '') {
       const items = [];
-      while (i + 1 < lines.length && /^\s*-\s+/.test(lines[i + 1])) {
-        items.push(unquote(lines[++i].replace(/^\s*-\s+/, '').trim()));
+      const map = {};
+      let nested = false;
+      while (i + 1 < lines.length) {
+        const next = lines[i + 1];
+        if (/^\s*-\s+/.test(next)) { items.push(unquote(next.replace(/^\s*-\s+/, '').trim())); i++; continue; }
+        const pair = /^\s+([A-Za-z][A-Za-z0-9_-]*):\s*(.*)$/.exec(next);
+        if (!pair) break;
+        nested = true;
+        map[pair[1]] = inlineList(pair[2]) ?? unquote(pair[2].trim());
+        i++;
       }
-      data[key] = items;
+      data[key] = nested ? map : items;
       continue;
     }
     data[key] = LIST_KEYS.has(key) && raw.startsWith('[') && raw.endsWith(']')
@@ -45,6 +56,12 @@ export function parseFrontmatter(text, where) {
   }
   return { data, body: normalized.slice(match[0].length) };
 }
+
+// `[a, b]` → ['a','b']; anything else → null, so a prose value that merely starts
+// and ends with brackets stays a string.
+const inlineList = raw => raw.startsWith('[') && raw.endsWith(']')
+  ? raw.slice(1, -1).split(',').map(part => unquote(part.trim())).filter(Boolean)
+  : null;
 
 const unquote = value =>
   (value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))
@@ -170,9 +187,10 @@ function loadSkills(root) {
   });
 }
 
-function loadCommands(root, skills) {
+function loadCommands(root, skills, roles) {
   const dir = resolve(root, '.agents/commands');
   const known = new Set(skills.map(skill => skill.name));
+  const roleNames = new Set(roles.map(role => role.name));
   return markdown(dir).map(file => {
     const where = `.agents/commands/${file}`;
     const name = file.replace(/\.md$/, '');
@@ -182,12 +200,45 @@ function loadCommands(root, skills) {
       throw new Error(`Command name "${data.name}" disagrees with its filename in ${where}`);
     }
     const declared = data.skills ?? [];
-    if (!Array.isArray(declared)) throw new Error(`skills must be a list in ${where}`);
-    for (const skill of declared) {
+    const check = skill => {
       if (!known.has(skill)) throw new Error(`Command "${name}" declares unknown skill "${skill}" (${where})`);
+    };
+
+    // Flat list: every role this command dispatches gets the same skills, which
+    // is right for a single-role command and wrong for anything else.
+    if (Array.isArray(declared)) {
+      declared.forEach(check);
+      return { name, description: requireText(data.description, 'description', where),
+        argumentHint: data['argument-hint'] ?? '', skills: declared, skillsByRole: null,
+        skillsFor: () => declared, body: body.trim() };
+    }
+    if (typeof declared !== 'object') throw new Error(`skills must be a list or a role map in ${where}`);
+
+    // Role map: each role gets exactly what its step of the workflow needs.
+    const owner = new Map();
+    for (const [role, list] of Object.entries(declared)) {
+      if (!roleNames.has(role)) {
+        throw new Error(`Command "${name}" declares skills for unknown role "${role}" (${where})`);
+      }
+      if (!Array.isArray(list)) throw new Error(`skills.${role} must be a list in ${where}`);
+      for (const skill of list) {
+        check(skill);
+        // Two roles needing the same procedure is the signal that the split is
+        // not earning its keep — one agent would have done the work of both. It
+        // also quietly defeats the point of an independent reviewer, which is to
+        // read the change WITHOUT the author's procedures in its head.
+        if (owner.has(skill)) {
+          throw new Error(`Command "${name}" gives skill "${skill}" to both "${owner.get(skill)}" and `
+            + `"${role}" (${where}). Roles dispatched by one command must not share skills: if both `
+            + 'genuinely need it, a single role would have done better.');
+        }
+        owner.set(skill, role);
+      }
     }
     return { name, description: requireText(data.description, 'description', where),
-      argumentHint: data['argument-hint'] ?? '', skills: declared, body: body.trim() };
+      argumentHint: data['argument-hint'] ?? '',
+      skills: [...owner.keys()], skillsByRole: declared,
+      skillsFor: role => declared[role] ?? [], body: body.trim() };
   });
 }
 
@@ -199,14 +250,15 @@ export function loadCanonical(root) {
   const contractPath = resolve(base, 'worker-contract.md');
   if (!existsSync(contractPath)) throw new Error('Missing .agents/worker-contract.md');
   const skills = loadSkills(root);
+  const roles = loadRoles(root);
   const projectPath = resolve(base, 'project.md');
   return {
     root,
     rules: read(rulesPath).replace(/\r\n/g, '\n').trim(),
     contract: read(contractPath).replace(/\r\n/g, '\n').trim(),
     project: existsSync(projectPath) ? read(projectPath).replace(/\r\n/g, '\n').trim() : '',
-    roles: loadRoles(root),
+    roles,
     skills,
-    commands: loadCommands(root, skills)
+    commands: loadCommands(root, skills, roles)
   };
 }

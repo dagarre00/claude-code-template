@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadCanonical, workerRules } from '../canonical.mjs';
+import { resolve } from 'node:path';
 import { cleanup, fixture } from './helpers.mjs';
 
 const withFixture = (overrides, fn) => {
@@ -204,4 +205,84 @@ test('rules with no markers are returned intact apart from the meta section', ()
   const worker = workerRules(plain);
   assert.match(worker, /One/);
   assert.match(worker, /Two/);
+});
+
+// A command that dispatches several roles must say which skills go to WHICH
+// role. Declaring one flat list for the whole command sent every worker the
+// same nine skills — 93% identical prompts across planner, developer and
+// adversary — which both wastes tokens and, worse, hands the adversary the
+// developer's procedures when its entire value is reading without them.
+test('skills can be declared per role', () => {
+  withFixture({
+    '.agents/commands/work.md':
+      '---\nname: work\ndescription: d\nskills:\n  developer: [tdd-loop]\n  adversary: [wiki-update]\n---\n\nBody.\n'
+  }, root => {
+    const work = loadCanonical(root).commands.find(c => c.name === 'work');
+    assert.deepEqual(work.skillsFor('developer'), ['tdd-loop']);
+    assert.deepEqual(work.skillsFor('adversary'), ['wiki-update']);
+    assert.deepEqual(work.skillsFor('planner'), []);
+  });
+});
+
+test('a flat list still works and applies to every role', () => {
+  withFixture({}, root => {
+    const work = loadCanonical(root).commands.find(c => c.name === 'work');
+    assert.deepEqual(work.skillsFor('developer'), ['tdd-loop', 'wiki-update']);
+    assert.deepEqual(work.skillsFor('adversary'), ['tdd-loop', 'wiki-update']);
+  });
+});
+
+test('two roles of one command may not share a skill', () => {
+  withFixture({
+    '.agents/commands/work.md':
+      '---\nname: work\ndescription: d\nskills:\n  developer: [tdd-loop, wiki-update]\n  adversary: [wiki-update]\n---\n\nBody.\n'
+  }, root => {
+    // If two roles need the same procedure, one agent would have done better —
+    // that is the signal, so it fails loudly naming the skill and both roles.
+    assert.throws(() => loadCanonical(root), err =>
+      /wiki-update/.test(err.message) && /developer/.test(err.message) && /adversary/.test(err.message));
+  });
+});
+
+test('skills declared for a role that does not exist is an error', () => {
+  withFixture({
+    '.agents/commands/work.md':
+      '---\nname: work\ndescription: d\nskills:\n  ghost: [tdd-loop]\n---\n\nBody.\n'
+  }, root => {
+    assert.throws(() => loadCanonical(root), /ghost/);
+  });
+});
+
+test('an unknown skill under a role is still caught by name', () => {
+  withFixture({
+    '.agents/commands/work.md':
+      '---\nname: work\ndescription: d\nskills:\n  developer: [ghost-skill]\n---\n\nBody.\n'
+  }, root => {
+    assert.throws(() => loadCanonical(root), /ghost-skill/);
+  });
+});
+
+// Fixtures prove the rules work; this proves THIS repository obeys them. It is
+// the check that actually protects the project, because loadCanonical throws on
+// every violation — an unknown key, a skill given to two roles of one command,
+// a command declaring a skill for a role that does not exist.
+test('the real .agents/ source loads and satisfies every rule', () => {
+  const root = resolve(import.meta.dirname, '../../..');
+  const canonical = loadCanonical(root);
+  assert.ok(canonical.roles.length >= 1);
+  assert.ok(canonical.commands.length >= 1);
+
+  for (const command of canonical.commands) {
+    if (!command.skillsByRole) continue;
+    const seen = new Map();
+    for (const [role, list] of Object.entries(command.skillsByRole)) {
+      assert.ok(canonical.roles.some(r => r.name === role),
+        `/project:${command.name} declares skills for unknown role ${role}`);
+      for (const skill of list) {
+        assert.ok(!seen.has(skill),
+          `/project:${command.name} gives "${skill}" to both ${seen.get(skill)} and ${role}`);
+        seen.set(skill, role);
+      }
+    }
+  }
 });

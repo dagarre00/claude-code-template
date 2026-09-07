@@ -3,7 +3,8 @@ name: wiki-lint
 description: Periodic wiki health check. Dispatches the wiki-maintainer to process the wiki-todos.md queue, run the computable reconciliation pass (schema gaps, asymmetric relations, unresolved contradicts), check lint invariants, find orphans, broken [[links]], stale claims, and missing ADRs. Run every few work cycles or when wiki-todos.md is piling up.
 argument-hint: [focus — e.g. "entities/ only" | "broken links" | "archive the log"]
 type: command
-skills: [wiki-update, human-checkpoint]
+skills:
+  wiki-maintainer: [wiki-update]
 ---
 
 # /project:wiki-lint

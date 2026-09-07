@@ -3,7 +3,6 @@ name: review
 description: Thorough review of the codebase against the wiki. Runs the reviewer agent in a fresh session context with no developer baggage. Flags critical issues, warnings, drift, missing tests, security/perf concerns. Use periodically (~every 5 todos), never inside /project:work.
 argument-hint: [scope — e.g. "the auth module" | "security only" | "src/api/"]
 type: command
-skills: [human-checkpoint]
 ---
 
 # /project:review

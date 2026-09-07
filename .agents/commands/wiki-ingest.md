@@ -3,7 +3,6 @@ name: wiki-ingest
 description: Direct ingest of a file or research topic into the wiki. Use /project:wiki-ingest specification.pdf to ingest a document, or /project:wiki-ingest search for exchange rates APIs to research and ingest. Focused — no lint pass, just ingest.
 argument-hint: <path/to/file> | search for <topic>
 type: command
-skills: [wiki-update, human-checkpoint]
 ---
 
 # /project:wiki-ingest
