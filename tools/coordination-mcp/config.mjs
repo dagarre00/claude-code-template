@@ -11,8 +11,27 @@ export { engineNames };
 // commit at all (docs/harnesses.md §12) and a delivery shape that differs by
 // engine would make every downstream step engine-aware.
 
+// One definition of a repository-relative path, used for both owned paths and
+// shared build state. No absolute paths, no traversal, no Windows separators or
+// glob characters, and never anything under .git.
+export const isSafeRepoPath = path => typeof path === 'string' && !!path
+  && !/[\\:\0\r\n*?\[\]]/.test(path) && !path.startsWith('/')
+  && !path.split('/').some(part => !part || part === '.' || part === '..' || /[. ]$/.test(part))
+  && path.toLowerCase() !== '.git' && !path.toLowerCase().startsWith('.git/');
+
 export function loadSettings(root) {
   const settings = JSON.parse(readFileSync(resolve(root,'.harness/settings.json'),'utf8'));
+  // Build state a worker needs but Git does not carry: node_modules, .venv, a
+  // build cache. A fresh worktree has none of it, so without this a dispatched
+  // developer cannot run the project's tests at all — see docs/harnesses.md §7.
+  if (!Array.isArray(settings.sharedPaths) || !settings.sharedPaths.every(isSafeRepoPath)) {
+    throw new Error('sharedPaths must be an array of repository-relative paths');
+  }
+  // Task metadata outlives its worktree on purpose — read_worker_log still serves
+  // a merged task's report — but "forever" is not a retention policy.
+  if (!Number.isInteger(settings.taskRetention) || settings.taskRetention < 1 || settings.taskRetention > 1000) {
+    throw new Error('taskRetention must be an integer between 1 and 1000');
+  }
   if (settings.version !== 1 || !['inherit',...engineNames].includes(settings.defaultEngine)
     || !Number.isInteger(settings.maxWorkers) || settings.maxWorkers < 1 || settings.maxWorkers > 16
     || !Number.isInteger(settings.workerTimeoutSeconds) || settings.workerTimeoutSeconds < 1

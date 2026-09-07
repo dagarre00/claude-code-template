@@ -40,28 +40,63 @@ test('runner passes exact stdin without shell evaluation, records exit and cance
 // outside every CLI sandbox, so it turns those files into the commit that
 // merge_and_cleanup_worker requires.
 const git=(cwd,...args)=>execFileSync('git',['-C',cwd,...args],{encoding:'utf8',windowsHide:true,stdio:['ignore','pipe','pipe']}).trim();
-function supervised(t,{script,owned=['src'],commit={message:'feat(sample): supervised delivery'}}) {
+function supervised(t,{script,owned=['src'],commit={message:'feat(sample): supervised delivery'},shared=false}) {
   const dir=mkdtempSync(resolve(tmpdir(),'runner-commit-'));
   t.after(()=>rmSync(dir,{recursive:true,force:true}));
   const workspace=resolve(dir,'workspace');
   mkdirSync(resolve(workspace,'src'),{recursive:true});
   writeFileSync(resolve(workspace,'src/base.txt'),'base\n');
+  writeFileSync(resolve(workspace,'.gitignore'),'node_modules/\n');
   git(workspace,'init','-b','worker');
   git(workspace,'config','core.autocrlf','false');
   git(workspace,'config','user.email','fixture@example.invalid');
   git(workspace,'config','user.name','Fixture');
   git(workspace,'add','.'); git(workspace,'commit','-m','base');
+  // Build state that lives outside the worktree, as node_modules does.
+  const source=resolve(dir,'build-state');
+  if (shared) { mkdirSync(resolve(source,'pkg'),{recursive:true}); writeFileSync(resolve(source,'pkg/index.js'),'module.exports=42;\n'); }
   const fake=resolve(dir,'fake.mjs');
   writeFileSync(fake,script);
   writeFileSync(resolve(dir,'prompt.txt'),'do the work');
   writeFileSync(resolve(dir,'task.json'),JSON.stringify({workspace,owned_paths:owned,commit,
+    shared_paths:shared?[{path:'node_modules',source}]:[],
     command:{executable:process.execPath,args:[fake]},timeout_seconds:20}));
   spawn(process.execPath,[resolve(import.meta.dirname,'../runner.mjs'),dir],{windowsHide:true,stdio:'ignore'});
-  return {dir,workspace,result:async()=>{
+  return {dir,workspace,source,result:async()=>{
     await until(()=>existsSync(resolve(dir,'result.json')));
     return JSON.parse(readFileSync(resolve(dir,'result.json'),'utf8'));
   }};
 }
+
+// A worktree holds only tracked files, so it arrives with no node_modules and a
+// dispatched developer cannot run the project's tests — measured: the suite dies
+// with ERR_MODULE_NOT_FOUND in a fresh worktree. The runner links the integration
+// checkout's build state in for exactly as long as the worker runs.
+test('shared build state is live during the run and unlinked the moment it ends',async t=>{
+  const {workspace,source,result}=supervised(t,{shared:true,script:
+    "import {readFileSync,writeFileSync} from 'node:fs';"
+    +"writeFileSync('src/proof.txt',readFileSync('node_modules/pkg/index.js','utf8'));"});
+  const outcome=await result();
+  assert.equal(outcome.state,'completed');
+  // The worker read through the link while running.
+  assert.equal(git(workspace,'show','HEAD:src/proof.txt'),'module.exports=42;');
+  // And nothing is left pointing at it. This is not tidiness: `git worktree
+  // remove` follows a junction on Windows and deletes the tree behind it, so a
+  // surviving link would put the integration checkout's node_modules one
+  // `--force` away from deletion.
+  assert.ok(!existsSync(resolve(workspace,'node_modules')),'the link does not outlive the worker');
+  assert.equal(readFileSync(resolve(source,'pkg/index.js'),'utf8'),'module.exports=42;\n','shared state is untouched');
+  assert.equal(git(workspace,'status','--porcelain=v1','--untracked-files=all'),'');
+});
+
+test('a worker that fails still leaves no link behind',async t=>{
+  const {workspace,source,result}=supervised(t,{shared:true,script:
+    "import {existsSync} from 'node:fs';if(!existsSync('node_modules/pkg/index.js'))throw new Error('no link');process.exit(4);"});
+  const outcome=await result();
+  assert.equal(outcome.exit_code,4,'the link was there while it ran');
+  assert.ok(!existsSync(resolve(workspace,'node_modules')),'a preserved worktree must be safe to remove');
+  assert.ok(existsSync(resolve(source,'pkg/index.js')));
+});
 
 test('the runner commits a successful worker\'s owned paths under the conductor\'s subject',async t=>{
   const {workspace,result}=supervised(t,{script:

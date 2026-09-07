@@ -1,9 +1,38 @@
 // Detached task owner. The MCP process may disconnect without losing the worker.
 // Only this live owner signals its child; the server never kills a persisted PID.
 import { spawn, spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { appendFileSync, existsSync, lstatSync, mkdirSync, readFileSync, symlinkSync,
+  unlinkSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { json, save } from './manager.mjs';
+
+// A fresh worktree carries only tracked files, so it has no node_modules, no
+// .venv, no build cache — and a worker that cannot run the project's tests cannot
+// satisfy the TDD rules it is dispatched under. These link the integration
+// checkout's build state in, which is instant and needs no install step.
+//
+// The link exists only while the worker runs, and that is not a detail: on
+// Windows `git worktree remove` follows a junction and deletes the tree behind
+// it. A link left in a preserved worktree would be a loaded gun pointed at the
+// integration checkout's node_modules, so it is removed the moment the child
+// exits, whatever the outcome.
+function linkShared(task) {
+  for (const {path,source} of task.shared_paths ?? []) {
+    const link=resolve(task.workspace,path);
+    if (existsSync(link) || !existsSync(source)) continue;
+    mkdirSync(dirname(link),{recursive:true});
+    symlinkSync(source,link,process.platform==='win32'?'junction':'dir');
+  }
+}
+function unlinkShared(task) {
+  for (const {path} of task.shared_paths ?? []) {
+    const link=resolve(task.workspace,path);
+    // Only ever a link. Never recurse, never remove a directory: if the worker
+    // replaced the link with a real directory, that is its own content and the
+    // ownership check is what should speak about it.
+    try { if (lstatSync(link,{throwIfNoEntry:false})?.isSymbolicLink()) unlinkSync(link); } catch {}
+  }
+}
 
 // Commit on the worker's behalf. Codex and agy sandbox the Git store, so a write
 // worker there delivers files and nothing else; this process is an ordinary host
@@ -42,6 +71,8 @@ export async function run(dir) {
     if (finished) return;
     finished=true;
     clearInterval(heartbeat);clearTimeout(timer);clearTimeout(forceTimer);
+    // Before the commit, and before anything can remove this worktree.
+    unlinkShared(task);
     // Only a clean success earns a commit. A cancelled, timed-out or failed
     // worker keeps its work uncommitted for the conductor to inspect, which is
     // the same outcome the contract already demands of a worker that commits.
@@ -75,6 +106,7 @@ export async function run(dir) {
   writeFileSync(resolve(dir,'heartbeat'),started_at);
   if (existsSync(resolve(dir,'cancel'))) { finish(null,null,'Cancelled before launch'); return; }
   try {
+    linkShared(task);
     const env={...process.env,COORDINATION_WORKER:'1'};
     delete env.CLAUDECODE;
     child=spawn(task.command.executable,task.command.args,{cwd:task.workspace,env,

@@ -4,6 +4,10 @@
   "maxWorkers": 3,
   "workerTimeoutSeconds": 1800,
   "validation": [],
+  "sharedPaths": [
+    "tools/coordination-mcp/node_modules"
+  ],
+  "taskRetention": 20,
   "roles": {
     "adversary": {
       "engine": null,

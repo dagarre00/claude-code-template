@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
@@ -24,6 +24,23 @@ function fixture(t) {
 const task = {role:'developer',instructions:'Scoped test task: café "x"\n$(do-not-execute)',owned_paths:['sample.txt']};
 const commit = (workspace,text)=>{writeFileSync(resolve(workspace,'sample.txt'),text);git(workspace,'add','sample.txt');git(workspace,'commit','-m','worker case');};
 const integrate = (manager,id,root)=>manager.merge(id,git(root,'rev-parse','HEAD'),manager.status(id).worker_sha);
+
+// One dispatch per Behavior case only reproduces the project's history if each
+// integration is a fast-forward. A merge bubble per case doubles the log and
+// hides the order the cases were done in.
+test('an integration that can fast-forward does, leaving one commit per case', t=>{
+  const {root,manager}=fixture(t);
+  const before=git(root,'rev-list','--count','HEAD');
+  for (const subject of ['feat(sample): first case','feat(sample): second case']) {
+    const worker=manager.spawn({...task,commit_message:subject});
+    writeFileSync(resolve(worker.workspace,'sample.txt'),`${subject}\n`);
+    git(worker.workspace,'add','sample.txt'); git(worker.workspace,'commit','-m',subject);
+    assert.equal(integrate(manager,worker.task_id,root).state,'cleaned');
+  }
+  assert.equal(Number(git(root,'rev-list','--count','HEAD')),Number(before)+2,'two cases, two commits, no merge bubbles');
+  assert.deepEqual(git(root,'log','-2','--format=%s').split('\n'),['feat(sample): second case','feat(sample): first case']);
+  assert.equal(git(root,'log','-2','--format=%p').split('\n').filter(p=>p.includes(' ')).length,0,'no commit has two parents');
+});
 
 test('worker commits remain isolated until explicit SHA-pinned integration; cleanup is idempotent', t=>{
   const {root,manager}=fixture(t);
@@ -137,6 +154,86 @@ test('worker worktrees live outside the git directory, where CLI write guards al
 // .git (openai/codex#18918 on Windows, #27418 for linked worktrees, both open).
 // A write worker that produces no commits is rejected at integration anyway, so
 // refuse the dispatch up front, before the model has been paid for.
+// ~30KB of metadata and logs per dispatch, and nothing ever removed any of it.
+test('cleaned task records are pruned to the retention limit; evidence never is', t=>{
+  const {root,manager}=fixture(t);
+  const tasks=resolve(root,'.git/coordination/tasks');
+  const settingsPath=resolve(root,'.harness/settings.json');
+  const settings=JSON.parse(readFileSync(settingsPath,'utf8'));
+  settings.taskRetention=1;
+  writeFileSync(settingsPath,JSON.stringify(settings));
+  git(root,'add','-A'); git(root,'commit','-m','fixture retention');
+  const cycle=subject=>{
+    const worker=manager.spawn({...task,commit_message:subject});
+    commit(worker.workspace,`${subject}\n`);
+    assert.equal(integrate(manager,worker.task_id,root).state,'cleaned');
+    return worker.task_id;
+  };
+  const first=cycle('feat(sample): first'), second=cycle('feat(sample): second');
+  // Pruning happens at dispatch, and only past the limit: one cleaned record at
+  // the time of the second dispatch is within it, so nothing was removed yet.
+  assert.ok(existsSync(resolve(tasks,first)),'both cleaned records survived their own cycles');
+  // A worker whose result was never integrated is evidence, not clutter.
+  const preserved=manager.spawn({role:'adversary',instructions:'Read only'}).task_id;
+  assert.ok(!existsSync(resolve(tasks,first)),'the oldest cleaned record is gone');
+  const latest=manager.spawn({...task,owned_paths:['other.txt']}).task_id;
+  for (const id of [second,preserved,latest]) assert.ok(existsSync(resolve(tasks,id)),`kept ${id}`);
+  assert.equal(manager.list().length,3,'a pruned record is not a task with a missing file');
+});
+
+// Shared build state is the reason a dispatched worker can run tests at all, and
+// the reason cleanup has to be careful: `git worktree remove` follows a junction
+// on Windows and deletes the tree behind it. Verified directly — a bare
+// `worktree remove --force` over a junction destroyed the linked node_modules.
+test('shared build state is validated at dispatch and survives worktree cleanup',t=>{
+  const {root,manager}=fixture(t);
+  const settingsPath=resolve(root,'.harness/settings.json');
+  const settings=JSON.parse(readFileSync(settingsPath,'utf8'));
+  const configure=paths=>{
+    settings.sharedPaths=paths;
+    writeFileSync(settingsPath,JSON.stringify(settings));
+    git(root,'add','-A'); git(root,'commit','-m','fixture shared paths');
+  };
+  writeFileSync(resolve(root,'.gitignore'),'node_modules/\n');
+  mkdirSync(resolve(root,'node_modules/pkg'),{recursive:true});
+  writeFileSync(resolve(root,'node_modules/pkg/index.js'),'module.exports=42;\n');
+  mkdirSync(resolve(root,'tracked'),{recursive:true});
+  writeFileSync(resolve(root,'tracked/keep.txt'),'source, not build output\n');
+  configure(['node_modules']);
+
+  const worker=manager.spawn(task);
+  assert.deepEqual(worker.commit && JSON.parse(readFileSync(resolve(root,'.git/coordination/tasks',worker.task_id,'task.json'),'utf8'))
+    .shared_paths.map(s=>s.path),['node_modules']);
+  // Stand in for the runner, which is what normally creates and removes these.
+  // A link surviving into cleanup is exactly the crashed-runner case.
+  symlinkSync(resolve(root,'node_modules'),resolve(worker.workspace,'node_modules'),
+    process.platform==='win32'?'junction':'dir');
+  assert.equal(git(worker.workspace,'status','--porcelain=v1','--untracked-files=all'),'','an ignored link keeps the worker checkout clean');
+  commit(worker.workspace,'worker\n');
+  assert.equal(integrate(manager,worker.task_id,root).state,'cleaned');
+  assert.ok(!existsSync(worker.workspace));
+  assert.equal(readFileSync(resolve(root,'node_modules/pkg/index.js'),'utf8'),'module.exports=42;\n',
+    'cleanup removed the link, not the shared tree behind it');
+
+  // A tracked directory would have the worker's real checkout replaced by a link.
+  configure(['tracked']);
+  assert.throws(()=>manager.spawn(task),/ignored by Git/i);
+  configure(['sample.txt']);
+  assert.throws(()=>manager.spawn(task),/not a directory/i);
+  // A rejected dispatch must leave nothing behind that breaks the next one.
+  // Resolving shared paths after the task directory existed left an empty one on
+  // every rejection, and list() then threw on it — one bad settings value bricked
+  // every future spawn until somebody deleted the directory by hand.
+  assert.doesNotThrow(()=>manager.list(),'a rejected dispatch leaves no half-written task');
+  mkdirSync(resolve(root,'.git/coordination/tasks/00000000-0000-4000-8000-000000000000'),{recursive:true});
+  assert.doesNotThrow(()=>manager.list(),'a task directory with no task.json describes no task');
+  // A path that simply does not exist here is skipped, not an error: a JS project
+  // has no .venv and should not have to say so.
+  configure(['.venv']);
+  assert.equal(JSON.parse(readFileSync(resolve(root,'.git/coordination/tasks',manager.spawn(task).task_id,'task.json'),'utf8'))
+    .shared_paths.length,0);
+});
+
 // Rather than one delivery shape per engine, no worker commits anywhere: the
 // runner does. So a write role dispatches on every engine, and every worker is
 // told the same thing regardless of which sandbox it is behind.

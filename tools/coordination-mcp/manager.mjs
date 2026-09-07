@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, readSync,
-  readdirSync, realpathSync, renameSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+  readdirSync, realpathSync, renameSync, rmSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { resolve, relative, isAbsolute, dirname, sep } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
-import { loadSettings, workerCommand, engineNames } from './config.mjs';
+import { loadSettings, workerCommand, engineNames, isSafeRepoPath } from './config.mjs';
 
 // Worktrees must NOT live under .git: agent CLIs refuse to write anywhere inside
 // the git directory, which silently made every write role undeliverable. Task
@@ -62,9 +62,7 @@ function subject(input, role, id) {
 function paths(input) {
   if (!Array.isArray(input)) throw new Error('owned_paths must be an array');
   return [...new Set(input.map(path=>{
-    if (typeof path!=='string' || !path || /[\\:\0\r\n*?\[\]]/.test(path)
-      || path.startsWith('/') || path.split('/').some(p=>!p || p==='.' || p==='..' || /[. ]$/.test(p))
-      || path.toLowerCase()==='.git' || path.toLowerCase().startsWith('.git/')) throw new Error('Invalid owned path');
+    if (!isSafeRepoPath(path)) throw new Error('Invalid owned path');
     return path;
   }))];
 }
@@ -90,6 +88,50 @@ export class Manager {
     const entry=`/${workspaceRoot}/`;
     if (current.split(/\r?\n/).includes(entry)) return;
     writeFileSync(path,current+(current && !current.endsWith('\n')?'\n':'')+entry+'\n');
+  }
+  // Build state a worker needs and Git does not carry. Resolved and checked here,
+  // at dispatch, so a misconfigured path fails before the model has been paid for;
+  // the runner is what actually creates the links, because they must not outlive
+  // the process that made them. Missing sources are skipped — a JS project has no
+  // .venv — but a source that exists and is wrong is an error, not a shrug.
+  shared(settings) {
+    return settings.sharedPaths.flatMap(path=>{
+      const source=contained(this.root,resolve(this.root,path));
+      if (!existsSync(source)) return [];
+      if (!statSync(source).isDirectory()) throw new Error(`Shared path is not a directory: ${path}`);
+      // A tracked shared path would have the worktree's real checkout replaced by
+      // a link: Git reports a type change, the worker checkout is dirty, and the
+      // merge refuses. Ignored is the only safe state, so require it explicitly.
+      if (git(this.root,['check-ignore','--quiet','--',path],{allowFailure:true})===null) {
+        throw new Error(`Shared path must be ignored by Git, or linking it dirties the worker checkout: ${path}`);
+      }
+      return [{path,source}];
+    });
+  }
+  // Defensive sweep for a runner that died before it could unlink. Only ever
+  // removes a link, never a directory: `git worktree remove` follows a junction
+  // on Windows and deletes the shared tree behind it, which would silently
+  // destroy the integration checkout's node_modules.
+  unlink(task) {
+    for (const {path} of task.shared_paths ?? []) {
+      const link=resolve(task.workspace,path);
+      if (lstatSync(link,{throwIfNoEntry:false})?.isSymbolicLink()) unlinkSync(link);
+    }
+  }
+  // Every dispatch leaves ~30KB of metadata and logs behind, and nothing used to
+  // remove any of it. Only fully cleaned tasks are eligible: a failed, cancelled,
+  // conflicted or still-running task is evidence, and evidence is not pruned.
+  prune(keep) {
+    const dir=contained(this.storage,resolve(this.storage,'tasks'));
+    if (!existsSync(dir)) return;
+    const cleaned=readdirSync(dir).filter(id=>idPattern.test(id)).flatMap(id=>{
+      const taskPath=resolve(this.taskDir(id),'task.json'), phasePath=resolve(this.taskDir(id),'phase.json');
+      if (!existsSync(taskPath) || !existsSync(phasePath)) return [];
+      const task=json(taskPath);
+      if (task.integration_root!==this.root || json(phasePath).state!=='cleaned') return [];
+      return [{id,at:Date.parse(task.created_at) || 0}];
+    }).sort((a,b)=>b.at-a.at);
+    for (const {id} of cleaned.slice(keep)) rmSync(contained(this.storage,this.taskDir(id)),{recursive:true,force:true});
   }
   assertConductor() {
     if (this.worker) throw new Error('Workers cannot mutate coordination state or recursively delegate');
@@ -119,6 +161,11 @@ export class Manager {
     contained(this.common,this.storage);
     const dir=contained(this.storage,resolve(this.storage,'tasks'));
     return !existsSync(dir)?[]:readdirSync(dir).filter(id=>idPattern.test(id)).flatMap(id=>{
+      // A directory with no task.json is a dispatch that died between creating it
+      // and writing it — a crash, a full disk. It describes no task, so it is not
+      // one; reading it as one would make the whole control plane unusable until
+      // somebody deleted it by hand.
+      if (!existsSync(resolve(this.taskDir(id),'task.json'))) return [];
       const task=json(resolve(this.taskDir(id),'task.json'));
       return task.integration_root===this.root?[this.status(id)]:[];
     });
@@ -191,6 +238,13 @@ export class Manager {
       if (access!=='write' && input.commit_message!=null) throw new Error('Read-only roles produce no commit; commit_message does not apply');
       const commit=access==='write' ? {message:subject(input.commit_message,input.role,id)} : null;
       const command=workerCommand(settings,{...input,engine:resolvedEngine,profile,access,workspace});
+      // Every check that can reject the dispatch runs before any state is
+      // created. Resolving shared paths after taskDir() existed was enough to
+      // leave an empty task directory behind on a rejection, which list() then
+      // read as a task and threw on — one bad settings value bricked every
+      // future spawn in the repository.
+      const shared_paths=this.shared(settings);
+      this.prune(settings.taskRetention);
       const active=this.list().filter(t=>['running','interrupted'].includes(t.state));
       if (active.length>=settings.maxWorkers) throw new Error('Worker concurrency limit reached');
       if (active.some(t=>owned.some(a=>t.owned_paths.some(b=>overlap(a.toLowerCase(),b.toLowerCase()))))) throw new Error('Owned scope overlaps an active worker');
@@ -198,7 +252,7 @@ export class Manager {
       const integration_branch=branch(this.root), base_sha=head(this.root);
       const dir=this.taskDir(id);
       mkdirSync(dir,{recursive:true});
-      const task={task_id:id,role:input.role,profile,access,engine:resolvedEngine,command,owned_paths:owned,commit,
+      const task={task_id:id,role:input.role,profile,access,engine:resolvedEngine,command,owned_paths:owned,commit,shared_paths,
         integration_root:this.root,integration_branch,workspace,branch:`worker/${id}`,base_sha,
         created_at:new Date().toISOString(),timeout_seconds:settings.workerTimeoutSeconds};
       save(resolve(dir,'task.json'),task);
@@ -257,10 +311,18 @@ export class Manager {
       if (changed.some(path=>!task.owned_paths.some(scope=>path===scope || path.startsWith(scope+'/')))) throw new Error('Worker changed paths outside its owned scope');
       if (task.access==='write' && expectedWorker===task.base_sha) throw new Error('Write worker produced no deliverable commits');
       if (expectedWorker!==task.base_sha && git(this.root,['merge-base','--is-ancestor',expectedWorker,expectedTarget],{allowFailure:true})===null) {
-        try { git(this.root,['merge','--no-ff','--no-edit',task.branch]); }
-        catch(error) {
-          save(resolve(dir,'phase.json'),{state:'conflict',worker_sha:expectedWorker,detail:error.message});
-          return this.status(id);
+        // Fast-forward when the integration branch has not moved since dispatch,
+        // which is the normal case once work is dispatched one Behavior case at a
+        // time. That reproduces the history the cadence is meant to produce — one
+        // commit per case, in order — instead of burying each case under a merge
+        // bubble that doubles the log and hides the sequence.
+        try { git(this.root,['merge','--ff-only',task.branch]); }
+        catch {
+          try { git(this.root,['merge','--no-ff','--no-edit',task.branch]); }
+          catch(error) {
+            save(resolve(dir,'phase.json'),{state:'conflict',worker_sha:expectedWorker,detail:error.message});
+            return this.status(id);
+          }
         }
       }
       save(resolve(dir,'phase.json'),{state:'merged',worker_sha:expectedWorker});
@@ -278,6 +340,8 @@ export class Manager {
         && entry.split('\0').includes(`branch refs/heads/${task.branch}`));
       if (!registered) throw new Error('Worktree registration changed; refusing cleanup');
       try {
+        // Must precede removal: git follows a junction into the shared tree.
+        this.unlink(task);
         git(this.root,['worktree','remove',task.workspace]);
         git(this.root,['branch','-d',task.branch]);
       } catch(error) {
