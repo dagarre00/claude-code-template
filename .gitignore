@@ -24,9 +24,17 @@ Thumbs.db
 #
 # The third file is the handoff brief (`llm-handoff` skill): a prompt for an
 # external agent, not repo content. That agent deletes it when its cycle ends.
-.claude/handoff/*-plan.md
-.claude/handoff/*-findings.md
-.claude/handoff/*-handoff.md
+.handoff/*-plan.md
+.handoff/*-findings.md
+.handoff/*-handoff.md
+
+# Worker worktrees prepared by the coordination MCP. Never committed: each is a
+# throwaway checkout of committed HEAD, and one of them containing the repo it
+# was cut from is exactly the recursion this must not have.
+.worktrees/
+
+# Node dependencies (tools/workflow-mcp).
+node_modules/
 
 # Obsidian per-user vault config (users open the vault themselves)
 docs/.obsidian/

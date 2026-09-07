@@ -21,7 +21,7 @@ updated: 2026-07-21
 
 ## Page shape
 
-Use the summary template in `/project:wiki-ingest` (`.claude/commands/project/wiki-ingest.md`): Obsidian-standard frontmatter (`type: summary`, `sources:` pointing at the raw path, `contradicts`, `open_questions`), then `> [!abstract] Essence`, `## Summary`, `## Key claims` (each claim ← its raw source), `## Boundaries`, `## Updates to the wiki`.
+Use the summary template in `/project:wiki-ingest` (`.agents/commands/wiki-ingest.md`): Obsidian-standard frontmatter (`type: summary`, `sources:` pointing at the raw path, `contradicts`, `open_questions`), then `> [!abstract] Essence`, `## Summary`, `## Key claims` (each claim ← its raw source), `## Boundaries`, `## Updates to the wiki`.
 
 ## Why these aren't the source
 

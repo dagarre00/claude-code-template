@@ -1,1 +1,6 @@
-{}
+{
+  "extraKnownMarketplaces": {
+    "workflow": { "source": { "source": "directory", "path": "." } }
+  },
+  "enabledPlugins": { "project@workflow": true }
+}

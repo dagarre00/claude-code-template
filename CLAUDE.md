@@ -5,7 +5,7 @@ This repository is a **template for agentic software development**. Two ideas go
 1. **The wiki is the spec.** `docs/wiki/` is the source of truth for what the project is and how it works. Code that disagrees with the wiki is the bug.
 2. **Progressive disclosure beats specialized agents.** A single `developer` agent runs the whole TDD cycle, loading task-specific skills on demand. The two deliberate splits are both on Opus and both sit outside the developer's context: the `planner`, which decomposes `[complex]` or batched work before the developer executes it, and the `adversary`, which reads the resulting diff afterwards with none of the developer's context and raises findings it is not allowed to fix. Skills are short, procedural how-to for _this project_ — never abstract explanations of _what something is_.
 
-The hard behavioral constraints live in [`.claude/rules/behavioral.md`](.claude/rules/behavioral.md) — read them; they override default inclinations. This file is the map; that file is the law.
+The hard behavioral constraints live in [`.agents/rules.md`](.agents/rules.md) — read them; they override default inclinations. This file is the map; that file is the law.
 
 ## Identity
 
@@ -30,7 +30,7 @@ You are an AI development agent working on this project. At the top of every ses
 
 1. **Raw sources** — `docs/raw/` (immutable, append-only inbox). Interviews, notes, articles, PDFs. The human deposits; agents read but never edit.
 2. **Wiki** — `docs/wiki/` (LLM-owned). The compiled state: durable, atomic, reconciled pages. Agents compile `raw → wiki` and reconcile continuously; the human browses (e.g. in Obsidian) and answers clarification questions. Never invent knowledge to plug a hole — record it in `open_questions` or ask.
-3. **Schema** — this file plus `.claude/rules/behavioral.md`, `.claude/agents/`, `.claude/skills/`, `.claude/commands/`. Tells agents how to operate.
+3. **Schema** — this file plus `.agents/rules.md`, `.agents/agents/`, `.agents/skills/`, `.agents/commands/`. Tells agents how to operate.
 
 ## Where things live
 
@@ -51,12 +51,12 @@ You are an AI development agent working on this project. At the top of every ses
 | What wiki cleanup is deferred?       | `docs/wiki/wiki-todos.md` — `/project:wiki-lint` processes it                |
 | What did source X say?               | `docs/wiki/summaries/` — one page per ingested source in `docs/raw/`         |
 | Where are the immutable sources?     | `docs/raw/` — `interviews/`, `research/`; append-only                        |
-| What are the binding rules?          | `.claude/rules/behavioral.md`                                                |
-| How do I structure a wiki page?      | `.claude/skills/wiki-update/SKILL.md` — standard + templates                 |
+| What are the binding rules?          | `.agents/rules.md`                                                |
+| How do I structure a wiki page?      | `.agents/skills/wiki-update/SKILL.md` — standard + templates                 |
 
 Navigation is via the directory tree and Obsidian's graph — there is no hand-maintained `index.md`, no separate `glossary.md`. Folders are **surface grouping only**; a page's `domains`/`abstraction` facets live in frontmatter, not in the path.
 
-The wiki follows the **Obsidian LLM-wiki standard**. The full standard — templates, facet vocabulary, link ontology, placement/dedup procedure — lives in the [`wiki-update` skill](.claude/skills/wiki-update/SKILL.md); the non-negotiable invariants are behavioral rule 18. Gap and contradiction detection is computable (run by `/project:wiki-lint`), never intuition.
+The wiki follows the **Obsidian LLM-wiki standard**. The full standard — templates, facet vocabulary, link ontology, placement/dedup procedure — lives in the [`wiki-update` skill](.agents/skills/wiki-update/SKILL.md); the non-negotiable invariants are behavioral rule 18. Gap and contradiction detection is computable (run by `/project:wiki-lint`), never intuition.
 
 ## Slash commands
 

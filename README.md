@@ -37,18 +37,22 @@ For a worked walkthrough — `/project:init` → `/project:interview` → `/proj
 ## What's in the box
 
 ```
-.claude/
-├── agents/          # planner (opus), developer, adversary (opus), reviewer, wiki-maintainer, researcher
+.agents/             # THE canonical source — read by every CLI, never duplicated
+├── agents/          # planner (reasoning), developer, adversary (reasoning), reviewer, wiki-maintainer, researcher
 ├── skills/          # process skills (TDD, branching, plan-writing, adversarial-review, wiki-update, …) + update-toolkit meta skill
 ├── commands/        # /project:init, /project:interview, /project:work, /project:adversary, /project:review, /project:wiki-lint, /project:wiki-ingest, /project:agent-scout, /project:handoff
-├── settings.json    # harness settings
-└── rules/           # behavioral constraints
+├── rules.md         # behavioral constraints
+└── .claude-plugin/  # makes this directory a Claude Code plugin named "project"
+tools/workflow-mcp/  # the MCP: composes worker prompts, prepares worktrees, generates the root files
 docs/
 ├── raw/             # immutable source documents (interviews, articles, transcripts)
 └── wiki/            # LLM-owned knowledge base (entities, concepts, decisions, summaries, log, …)
-CLAUDE.md            # the schema — read first
+AGENTS.md            # generated from .agents/ — the schema, read first
+CLAUDE.md            # generated from .agents/ — imports AGENTS.md
 HUMAN.md             # the human's-eye view of how this works
 ```
+
+**One directory, three CLIs.** Claude Code loads `.agents/` as a plugin (skills, commands **and** agents) via `.claude/settings.json`; Codex reads `.agents/skills/` natively plus the generated `AGENTS.md`. Antigravity reads no repo files at all, so it runs purely on the prompt the MCP composes — which is why nothing here is ever copied per-CLI.
 
 ## Philosophy
 

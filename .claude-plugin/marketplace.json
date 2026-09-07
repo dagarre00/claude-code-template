@@ -1,0 +1,11 @@
+{
+  "name": "workflow",
+  "owner": { "name": "claude-code-template" },
+  "plugins": [
+    {
+      "name": "project",
+      "source": "./.agents",
+      "description": "Wiki-driven development workflow: spec, TDD, adversarial review, and wiki maintenance."
+    }
+  ]
+}

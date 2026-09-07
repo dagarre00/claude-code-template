@@ -8,7 +8,7 @@ Three layers, each owned by a different actor:
 
 1. **Raw sources** (`docs/raw/`) — you drop interviews, articles, transcripts here. **Immutable.** Agents read but never modify.
 2. **Wiki** (`docs/wiki/`) — the living spec. **Agents own this.** Code that disagrees with the wiki is the bug. You browse it in Obsidian.
-3. **Schema** (`CLAUDE.md`, `.claude/`) — how the agents operate. You and the agent evolve this together.
+3. **Schema** (`AGENTS.md`, `.agents/`) — how the agents operate. You and the agent evolve this together.
 
 ## Day-to-day workflow
 
@@ -32,7 +32,7 @@ Open Obsidian on `docs/wiki/` — that's your read-only-ish view of what the age
 ## What the agent does on its own
 
 - **Reads the wiki** before any code change.
-- **Plans complex work.** When a todo is tagged `[complex]` or batched (2+ todos), `/project:work` dispatches the `planner` agent (on Opus) to write a stepwise plan before testing. Plans live transiently at `.claude/handoff/<slug>-plan.md` (gitignored scratch).
+- **Plans complex work.** When a todo is tagged `[complex]` or batched (2+ todos), `/project:work` dispatches the `planner` agent (on Opus) to write a stepwise plan before testing. Plans live transiently at `.handoff/<slug>-plan.md` (gitignored scratch).
 - **Commits one Behavior case at a time.** Test + implementation + wiki tick, committed and pushed per case — so `git bisect` works, any single case can be reverted, and review diffs stay small.
 - **Writes failing tests first** (Red), confirms they fail for the right reason, then implements (Green), then refactors — all in one `developer` agent (which follows the planner's plan when there is one).
 - **Gets a second opinion on risky work.** On `[complex]` or batched cycles, `/project:work` points an `adversary` agent (Opus, none of the developer's context) at the diff. It raises numbered findings and may not touch the code. **Findings become todos, not immediate fixes** — except a `critical`/`major`, which **stops and asks you** fix-now or queue; nothing is ever fixed without you saying so. A saturated P0 queue (10 open items) stops and tells you the queue itself is the problem. Every answer lands in a commit — `git log --grep="adversary round"` shows every past review. Simple one-todo cycles skip this; run `/project:adversary` yourself when you want it anyway.
@@ -56,7 +56,7 @@ The agent ships with a small set of skills, agents, and commands. As the project
 
 Examples:
 
-- "We need a skill for adding database migrations in this project." → agent creates `.claude/skills/database-migrations/SKILL.md` via `update-toolkit`.
+- "We need a skill for adding database migrations in this project." → agent creates `.agents/skills/database-migrations/SKILL.md` via `update-toolkit`.
 - "We need a repeatable entry point for release prep." → agent adds a `/project:release` command via `update-toolkit`.
 
 ## Anti-patterns to avoid

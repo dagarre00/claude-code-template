@@ -13,15 +13,15 @@ updated: 2026-08-30
 # Git Conventions
 
 > [!abstract] Essence
-> Branching and commit conventions for this project. Mirrors the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md) — updated when the team adopts a new flow; mirror changes into the skill.
+> Branching and commit conventions for this project. Mirrors the [feature-branching skill](../../.agents/skills/feature-branching/SKILL.md) — updated when the team adopts a new flow; mirror changes into the skill.
 
 ## Integration and branching model
 
 `develop` is the primary integration branch; `main` is the release branch.
 - **Code modifications (`feat/*`, `fix/*`, `refactor/*`, `perf/*`)** must always be built on a dedicated branch cut from `develop` and merged via PR. No direct code commits on `develop`.
-- **Living documentation & operations (`docs/wiki/`, `docs/raw/`, `.claude/` config)**: maintenance commands (`/project:wiki-lint`, `/project:review`, `/project:wiki-ingest`, `/project:interview`, `/project:agent-scout`, `/project:handoff`, `/project:adversary`) commit and push directly to `develop` when standing on `develop` (or stay on the active `feat/*`/`fix/*`/`chore/*` branch if mid-feature). This keeps the living knowledge base fast and responsive without PR fatigue for documentation.
+- **Living documentation & operations (`docs/wiki/`, `docs/raw/`, `.agents/` config)**: maintenance commands (`/project:wiki-lint`, `/project:review`, `/project:wiki-ingest`, `/project:interview`, `/project:agent-scout`, `/project:handoff`, `/project:adversary`) commit and push directly to `develop` when standing on `develop` (or stay on the active `feat/*`/`fix/*`/`chore/*` branch if mid-feature). This keeps the living knowledge base fast and responsive without PR fatigue for documentation.
 
-The branching rules and command tables are defined in the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md).
+The branching rules and command tables are defined in the [feature-branching skill](../../.agents/skills/feature-branching/SKILL.md).
 
 ## Branch naming
 
@@ -62,7 +62,7 @@ Conventional commits, present tense:
 - Refactor commits are separate from feat commits.
 - Adversary findings: filed by default; approved fixes are their own `fix(<slug>): … — adversary F<N>` commits, and each round closes with a `docs(<slug>): adversary round N` commit whose body lists every disposition — the record rule 20 requires, read back with `git log --grep="adversary round"`. Full protocol: `adversarial-review` skill.
 - Don't commit half-green code.
-- **Always push after committing** (`git push -u origin <branch>`). An unpushed commit is lost when the execution container recycles — see `.claude/rules/behavioral.md` #19. Read-only commands (those that don't mutate tracked files) are the only exception.
+- **Always push after committing** (`git push -u origin <branch>`). An unpushed commit is lost when the execution container recycles — see `.agents/rules.md` #19. Read-only commands (those that don't mutate tracked files) are the only exception.
 - **No remote yet?** `git remote get-url origin` failing means every push step is skipped and noted in the report — this is the one no-remote rule; commands reference it instead of restating it.
 
 ## PRs
@@ -71,7 +71,7 @@ Conventional commits, present tense:
 - Opened automatically by `/project:work` (via the `pr-create` skill) once all Behavior cases for the cycle are `[x]`.
 - Title mirrors the lead commit.
 - Description references the entity page and the Behavior cases covered.
-- **Merge commit on merge** (`gh pr merge --merge --delete-branch`), not squash. The Red→Green→Refactor commit sequence is the evidence that the loop was actually run — squashing erases it, and this schema already forbids squashing locally for the same reason ([feature-branching](../../.claude/skills/feature-branching/SKILL.md), Anti-patterns). Squash only a branch with no TDD trace to preserve: a typo fix, a revert, a branch whose history is all `wip:` noise.
+- **Merge commit on merge** (`gh pr merge --merge --delete-branch`), not squash. The Red→Green→Refactor commit sequence is the evidence that the loop was actually run — squashing erases it, and this schema already forbids squashing locally for the same reason ([feature-branching](../../.agents/skills/feature-branching/SKILL.md), Anti-patterns). Squash only a branch with no TDD trace to preserve: a typo fix, a revert, a branch whose history is all `wip:` noise.
 - Delete the branch on merge, local and remote.
 - Merging is always the human's call.
 
@@ -83,7 +83,7 @@ Conventional commits, present tense:
 
 ## Merge conflicts
 
-Follow the [git-recovery skill](../../.claude/skills/git-recovery/SKILL.md) (Resolve merge / rebase / cherry-pick conflicts) when `git merge` or `git rebase` produces `CONFLICT (content)` markers. Key steps: resolve markers, grep for leftovers, run full tests, then `git add + git commit` (merge) or `git add + git rebase --continue` (rebase).
+Follow the [git-recovery skill](../../.agents/skills/git-recovery/SKILL.md) (Resolve merge / rebase / cherry-pick conflicts) when `git merge` or `git rebase` produces `CONFLICT (content)` markers. Key steps: resolve markers, grep for leftovers, run full tests, then `git add + git commit` (merge) or `git add + git rebase --continue` (rebase).
 
 ## Branch cleanup (after merge)
 
@@ -96,7 +96,7 @@ git push origin --delete feat/<slug>
 
 ## Advanced git operations
 
-Stash, cherry-pick, bisect, blame, reflog recovery, and other edge-case operations are covered by the [git-recovery skill](../../.claude/skills/git-recovery/SKILL.md).
+Stash, cherry-pick, bisect, blame, reflog recovery, and other edge-case operations are covered by the [git-recovery skill](../../.agents/skills/git-recovery/SKILL.md).
 
 ## Tags
 

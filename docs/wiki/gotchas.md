@@ -13,7 +13,7 @@ updated: 2026-08-05
 # Gotchas
 
 > [!abstract] Essence
-> Project-specific traps future agents must avoid. Generic discipline issues live in `.claude/rules/behavioral.md`. Use the `gotcha-recording` skill to append entries — keep the When/Symptom/Cause/Fix format.
+> Project-specific traps future agents must avoid. Generic discipline issues live in `.agents/rules.md`. Use the `gotcha-recording` skill to append entries — keep the When/Symptom/Cause/Fix format.
 
 ## Critical
 *(Severe — data corruption, security, silent breakage. Read first.)*

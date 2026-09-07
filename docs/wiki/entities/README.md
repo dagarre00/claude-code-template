@@ -17,7 +17,7 @@ updated: 2026-07-21
 
 ## Page template
 
-See the `wiki-update` skill (`.claude/skills/wiki-update/SKILL.md`) for the canonical entity-page structure: Obsidian-standard frontmatter (`type: entity`, facets, relations as quoted solitary wikilinks), then `> [!abstract] Essence`, `## Behavior` (with `B<N>:` cases), `## Implementation`, `## Tests`, `## Boundaries`, `## Provenance`.
+See the `wiki-update` skill (`.agents/skills/wiki-update/SKILL.md`) for the canonical entity-page structure: Obsidian-standard frontmatter (`type: entity`, facets, relations as quoted solitary wikilinks), then `> [!abstract] Essence`, `## Behavior` (with `B<N>:` cases), `## Implementation`, `## Tests`, `## Boundaries`, `## Provenance`.
 
 ## Creating an entity
 
@@ -25,4 +25,4 @@ Most entity pages come out of `/project:interview`. Before creating one, run the
 
 ## Naming
 
-Files: `<slug>.md` in kebab-case, no illegal characters (`* " \ / < > : | ? # ^ [ ]`). The slug is what the branch name uses (`feat/<slug>`), what the plan scratch uses (`.claude/handoff/<slug>-plan.md`), and what the tests reference. Pick once, keep it stable.
+Files: `<slug>.md` in kebab-case, no illegal characters (`* " \ / < > : | ? # ^ [ ]`). The slug is what the branch name uses (`feat/<slug>`), what the plan scratch uses (`.handoff/<slug>-plan.md`), and what the tests reference. Pick once, keep it stable.
