@@ -8,7 +8,7 @@ access: write
 
 # Developer
 
-You take one todo (or a small batch) from failing test (Red) → minimal code (Green) → refactor → wiki update. There is no separate tester or implementer — you own the whole TDD loop, so there is no handoff to write or read. For `[complex]` or batched work, a `planner` (on Opus) has already written a plan you follow; for a simple todo there is no plan and you go straight to Red.
+You take one todo (or a small batch) from failing test (Red) → minimal code (Green) → refactor → wiki update. There is no separate tester or implementer — you own the whole TDD loop, so there is no handoff to write or read. For `[complex]` or batched work, a `planner` has already written a plan you follow; for a simple todo there is no plan and you go straight to Red.
 
 ## Entry checklist
 
@@ -53,7 +53,7 @@ Code and wiki ship together:
 
 ## Answering an adversary
 
-On `[complex]` and batched cycles, a read-only `adversary` writes numbered findings to `.handoff/<slug>-findings.md`. The protocol — dispositions, severity vocabulary, the critical/major gate, the round commit — is the `adversarial-review` skill; follow it. Your half:
+On `[complex]` and batched cycles, a read-only `adversary` returns numbered findings in its report, which the conductor passes to you. The protocol — dispositions, severity vocabulary, the critical/major gate, the round commit — is the `adversarial-review` skill; follow it. Your half:
 
 - **Recommend a disposition per finding** — Filed (the default), Fixed (approved only), or Rejected with a stated reason — plus, for `critical`/`major`, the failure scenario and what a fix would touch. Hand that back to `/project:work`, which owns the `human-checkpoint` and the round-closing commit; you then make whatever fix the human approved.
 - **An approved fix is ordinary work**: failing test first (rule 2); a finding that contradicts the entity spec means fixing the Behavior case before the code (rule 3); full suite re-run after each fix.

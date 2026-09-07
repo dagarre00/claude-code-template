@@ -49,14 +49,14 @@ If a paragraph could appear in a textbook chapter on the topic, **delete it**. A
 2. **Bind the argument in the body.** Directly under the H1, write `**Argument:** \`$ARGUMENTS\`` followed by a short block saying what the argument does to this command: which step it overrides, the two or three shapes it can take (scope / fact / constraint), what happens when it's empty, and what it can never bypass (preconditions, Red phase, human checkpoints). Then wire it into the step it actually changes — a `$ARGUMENTS` echo with no step consuming it is decoration. Commands that dispatch an agent pass the argument through verbatim, so the sub-agent inherits the same scope.
 3. **Body = the procedure the orchestrator follows:** **Preconditions** (check first) → **Steps** (numbered; one action each — pick todo, branch, dispatch agent) → **Failure modes** → **Wiki updates** → **Human checkpoints** (where it pauses).
 4. **Placement.** `.agents/commands/<name>.md`. The sub-folder is the namespace: `commands/project/work.md` → `/project:work`; a flat `commands/<name>.md` → `/<name>`. Keep new ones under `project:` unless you deliberately want un-namespaced.
-5. **Update `CLAUDE.md`** — add a row to the Slash commands table, including the argument the command accepts.
+5. **Regenerate the root files** — run the workflow MCP's `sync`. The command table in `AGENTS.md` is generated from `.agents/`, so never hand-edit it; `check` fails if you forget.
 6. **Update `docs/wiki/commands.md`** if the human can run shell pieces of it.
 7. **Commit** `feat: add /<name> command — <reason>`.
 
 ### Modify / retire a command
 
 - **Modify:** re-read the file; if preconditions/output contract change, update `description` and the CLAUDE.md row. If the argument's meaning changes, update `argument-hint`, the `**Argument:**` block, and the step that consumes it together — a hint that no longer matches the behaviour is worse than none. Commit `refactor: /<name> — <reason>`.
-- **Retire:** grep `.agents/` for references, delete the file, remove the CLAUDE.md row, append to `docs/wiki/log.md`, commit `chore: retire /<name>`.
+- **Retire:** grep `.agents/` for references, delete the file, run `sync`, append to `docs/wiki/log.md`, commit `chore: retire /<name>`.
 
 ---
 
@@ -64,16 +64,16 @@ If a paragraph could appear in a textbook chapter on the topic, **delete it**. A
 
 ### Add an agent
 
-1. **Frontmatter.** `name`, `type: agent`, `model` (`sonnet` default / `opus` reasoning-heavy / `haiku` cheap mechanical), `tools:` allowlist **or** `disallowedTools:` denylist (grant only what the role needs; omit both for all tools), and a precise `description` matched against task content. Bad: "helps with code". Good: "Fresh-context auditor: reviews code against the wiki in a fresh session context, flags drift and missing tests."
+1. **Frontmatter.** `name`, `type: agent`, `profile` (`reasoning` / `balanced` / `fast`), `access` (`read-only` or `write`), and a precise `description` matched against task content. Model, effort and tool access are **not** frontmatter and are rejected there: the profile picks a model and effort from `.agents/config.json` (`engines.<engine>.models.<profile>`, or `roles.<role>.engine` + `roles.<role>.models.<engine>` to pin one role to one CLI and model), and `access` is what each engine adapter turns into its sandbox or permission mode. Bad: "helps with code". Good: "Fresh-context auditor: reviews code against the wiki in a fresh session context, flags drift and missing tests."
 2. **Body in order:** role statement (1–2 sentences) → **Entry checklist** (files to read first, always including relevant wiki pages) → Procedure → wiki updates the agent must make → **What you do NOT do** (invariants; make conflicts with other agents explicit).
-3. **Update `CLAUDE.md`** — add a row to the Agent routing table.
+3. **Register and regenerate.** Add the role to `roles` in `.agents/config.json` (pin `engine`/`models`/`effort` if it should not follow the conductor), then run `sync` — the role table in `AGENTS.md` is generated.
 4. **Verify routing.** Re-read every agent's `description`; if two could match the same task, tighten them.
 5. **Commit** `feat: add <name> agent` referencing the requirement that justified it.
 
 ### Modify / retire an agent
 
 - **Modify:** read the file end-to-end; if the role changes, update `description` (the routing key) first; update "What you do NOT do" if invariants shift. Commit `refactor: <name> agent — <reason>`.
-- **Retire:** confirm no command references it (`grep -r "<agent-name>" .agents/commands/`), delete the file, remove the CLAUDE.md row, append to `docs/wiki/log.md`, commit `chore: retire <name> agent`.
+- **Retire:** confirm no command references it (`grep -r "<agent-name>" .agents/commands/`), delete the file, drop its `roles` entry from `.agents/config.json`, run `sync`, append to `docs/wiki/log.md`, commit `chore: retire <name> agent`.
 
 ---
 

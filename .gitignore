@@ -8,24 +8,22 @@ Thumbs.db
 
 # Handoff scratch — the cycle's working surface, deleted when the cycle ends.
 #
-# All three files are transient and none of them is a record. The plan is
-# discarded; the findings mailbox is a triage scratchpad, deleted once every
-# finding's disposition is written into the body of the commit that answers it
-# (behavioral rule 20, `adversarial-review` step 9). Git history is already
-# tracked, dated, and immutable, so the dispositions need no file of their own —
-# `git log --grep="adversary round"` reads them back. Do not add a tracked
-# review report here; that is `/project:review`'s artifact, not this one's.
+# Both files are transient and neither is a record. The plan is the conductor's
+# copy of what it pasted to the developer, discarded when the cycle ends; the
+# handoff brief is a prompt written for an external agent, not repo content.
 #
-# Note these globs match only names ending exactly in `-plan.md` / `-findings.md` /
-# `-handoff.md`;
+# Reviews leave nothing here. Findings come back in a worker's report — a
+# read-only role cannot write a file at all on an engine that enforces its
+# sandbox — and each disposition is written into the body of the commit that
+# answers it (behavioral rule 20). Git history is already tracked, dated and
+# immutable, so `git log --grep="adversary round"` reads the reasons back. Do not
+# add a tracked review report here; that is `/project:review`'s artifact.
+#
+# Note these globs match only names ending exactly in `-plan.md` / `-handoff.md`;
 # a suffixed variant (`auth-plan-v2.md`) is NOT ignored and will surface as
 # untracked, failing the clean-tree gate at the end of the cycle. One file per
 # slug, no suffixes.
-#
-# The third file is the handoff brief (`llm-handoff` skill): a prompt for an
-# external agent, not repo content. That agent deletes it when its cycle ends.
 .handoff/*-plan.md
-.handoff/*-findings.md
 .handoff/*-handoff.md
 
 # Worker worktrees prepared by the coordination MCP. Never committed: each is a

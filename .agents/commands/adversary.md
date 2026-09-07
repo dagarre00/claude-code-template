@@ -1,6 +1,6 @@
 ---
 name: adversary
-description: Point a read-only second model at the current change. Dispatches the adversary agent (Opus, fresh context) over the diff, collects numbered findings in a mailbox file, triages each one, and re-reviews once. Diff-scoped and per-change — unlike /project:review, which is periodic and whole-repo.
+description: Point a read-only second model at the current change. Dispatches the adversary agent (fresh context, on its own pinned engine) over the diff, collects numbered findings from its report, triages each one, and re-reviews once. Diff-scoped and per-change — unlike /project:review, which is periodic and whole-repo.
 argument-hint: [base ref or lens — e.g. "develop" | "against main" | "concurrency only"]
 type: command
 skills:
@@ -18,7 +18,7 @@ The argument **sets what gets reviewed**, resolved in step 1:
 
 A lens never reaches the adversary as intent, rationale, or a summary of what the change is meant to do — that would leak exactly the context step 2 exists to withhold. If you cannot phrase it as a category to weight, drop it and say so. Empty argument means the standard sweep over the unshipped change, resolved in step 1.
 
-You run one adversarial review of the change in the working directory. Findings only — the adversary never edits. You triage, fix, and re-dispatch once. Follow the `adversarial-review` skill for the mailbox format, sweep order, severity vocabulary, and triage protocol.
+You run one adversarial review of the change in the working directory. Findings only — the adversary never edits. You triage, fix, and re-dispatch once. Follow the `adversarial-review` skill for the report format, sweep order, severity vocabulary, and triage protocol.
 
 ## When to use
 
@@ -45,9 +45,9 @@ Clean tree, nothing unshipped, and no base ref: stop and say there is nothing to
 
    Note the entity slug(s) touched. A whole-branch range is the usual reason a review runs past two rounds; prefer several small reviews to one large one.
 
-2. **Dispatch the `adversary`** with the diff scope, the entity slug(s) and Behavior case IDs, the mailbox path `.handoff/<slug>-findings.md`, the test command from `docs/wiki/commands.md`, and the lens from the argument if there was one. Pass **nothing else** — no plan file, no rationale, no summary of intent. That independence is the whole product.
+2. **Dispatch the `adversary`** with the diff scope, the entity slug(s) and Behavior case IDs, the test command from `docs/wiki/commands.md`, and the lens from the argument if there was one. Findings come back in its report — a read-only worker cannot write a scratch file, so do not ask it for one. Pass **nothing else** — no plan file, no rationale, no summary of intent. That independence is the whole product.
 
-3. **Read the mailbox and triage** every finding to Filed / Fixed / Rejected-with-reason (behavioral rule 20). **Filed is the default** — a line in `docs/wiki/todos.md` at the priority its severity maps to, not a fix. For every `critical` and `major`, run one `human-checkpoint` with the failure scenarios and your recommendation, and let the human choose fix-now or queue; only an approved finding gets fixed, and then by the normal loop (failing test first; spec first if the finding contradicts the entity page).
+3. **Read the report and triage** every finding to Filed / Fixed / Rejected-with-reason (behavioral rule 20). **Filed is the default** — a line in `docs/wiki/todos.md` at the priority its severity maps to, not a fix. For every `critical` and `major`, run one `human-checkpoint` with the failure scenarios and your recommendation, and let the human choose fix-now or queue; only an approved finding gets fixed, and then by the normal loop (failing test first; spec first if the finding contradicts the entity page).
 
 4. **Re-dispatch only if a fix landed** — and then over the fix commits only (`git diff <sha-before-fixes>...HEAD`), never the original range: re-reading the whole thing is what makes each round surface new findings instead of converging. If everything was filed or rejected, no code changed and the review is already done. **Two rounds maximum** — findings surviving round two mean the unit was too big, so split it and review the pieces.
 
@@ -64,9 +64,7 @@ Clean tree, nothing unshipped, and no base ref: stop and say there is nothing to
 
    Most rounds have no `fix` commit at all — that is the expected shape, not a failed review. If a round produced neither a fix nor a todo (everything rejected), make the round-closing commit `--allow-empty`: its written rejections are the only thing that has to survive.
 
-6. **Clean up.** Delete `.handoff/<slug>-findings.md` — gitignored scratch, and the dispositions are already in the commits.
-
-7. **Report.** Findings by severity, what you filed and where it sits in the queue, what you fixed under approval, and what you rejected and why. Lead with any `critical`/`major` that was filed rather than fixed. Name any rejection the human might disagree with.
+6. **Report.** Findings by severity, what you filed and where it sits in the queue, what you fixed under approval, and what you rejected and why. Lead with any `critical`/`major` that was filed rather than fixed. Name any rejection the human might disagree with.
 
 ## Failure modes
 
@@ -80,5 +78,5 @@ Clean tree, nothing unshipped, and no base ref: stop and say there is nothing to
 
 - **No adversary edits.** Findings only; you make the fixes.
 - **No leaking author context into the dispatch.** The Behavior case IDs are the brief.
-- **No whole-repo audit.** Out-of-diff problems go in the mailbox's `## Out of scope` list and, if they matter, into `docs/wiki/todos.md` for `/project:review`.
+- **No whole-repo audit.** Out-of-diff problems go in the report's `## Out of scope` list and, if they matter, into `docs/wiki/todos.md` for `/project:review`.
 - **No merging, no PR.** `/project:work` owns the PR.

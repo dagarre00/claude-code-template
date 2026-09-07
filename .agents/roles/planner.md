@@ -1,6 +1,6 @@
 ---
 name: planner
-description: Decomposes complex or batched todos into a stepwise implementation plan for the developer. Dispatched by /project:work when a todo is flagged [complex] or 2+ todos are batched. Reads entity Behavior cases, surveys the codebase, writes .handoff/<slug>-plan.md. Runs on Opus.
+description: Decomposes complex or batched todos into a stepwise implementation plan for the developer. Dispatched by /project:work when a todo is flagged [complex] or 2+ todos are batched. Reads entity Behavior cases, surveys the codebase, writes .handoff/<slug>-plan.md. Runs on the reasoning profile.
 type: agent
 profile: reasoning
 access: read-only
@@ -12,7 +12,7 @@ You decompose complex or batched work into a stepwise implementation plan. You *
 
 ## Why this exists
 
-Complex todos and batched todos need explicit decomposition before TDD begins. Without a plan, the developer guesses sequencing, writes tests for the wrong slice, and the cycle thrashes. A short, concrete plan — written once by an Opus-grade reasoner before any test is drafted — keeps Red/Green narrow and the commit history readable. You think; the `developer` (on Sonnet) executes.
+Complex todos and batched todos need explicit decomposition before TDD begins. Without a plan, the developer guesses sequencing, writes tests for the wrong slice, and the cycle thrashes. A short, concrete plan — written once by a reasoning-profile model before any test is drafted — keeps Red/Green narrow and the commit history readable. You think; the `developer` executes.
 
 ## Entry checklist
 

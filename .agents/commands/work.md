@@ -1,10 +1,11 @@
 ---
 name: work
-description: Pick the top todo (or batch consecutive todos sharing context), open a feat/* branch from develop, dispatch the planner (Opus) for complex/batched work, then the developer through red→green→refactor→wiki-update, then commit, push, and (if the entity is fully done) open a PR to develop and return to develop. The core development loop.
+description: Pick the top todo (or batch consecutive todos sharing context), open a feat/* branch from develop, dispatch the planner for complex/batched work, put the brief through the plan-adversary, then the developer through red→green→refactor→wiki-update, then commit, push, and (if the entity is fully done) open a PR to develop and return to develop. The core development loop.
 argument-hint: [todo, entity, or scope — e.g. "the login endpoint" | "batch the auth todos"]
 type: command
 skills:
   planner: [plan-writing, spec-writing]
+  plan-adversary: [plan-review]
   developer: [tdd-loop, wiki-update, gotcha-recording, decision-recording]
   adversary: [adversarial-review]
 ---
@@ -17,18 +18,18 @@ The argument **selects the work** and overrides the default "take the top todo" 
 
 - **Names a todo or entity** (`the login endpoint`, `entities/auth`) → work that instead of the top item. Match it against `docs/wiki/todos.md` lines and entity slugs; if nothing matches, say what you looked for and stop rather than picking something adjacent.
 - **Asks for a batch** (`batch the auth todos`, `next 3`) → batch those todos under one branch, subject to the same shared-entity/shared-context rule.
-- **Adds a constraint** (`skip the planner`, `tests only`) → honour it and note the deviation in the report.
+- **Adds a constraint** (`skip the planner`, `skip the pre-flight`, `tests only`) → honour it and note the deviation in the report.
 
 An argument never bypasses the preconditions, the Red phase, or the entity-page check — it only chooses *what* the cycle covers. If it's empty, take the top todo as usual.
 
-You orchestrate one TDD cycle (or a small batch). You do **not** write tests or production code directly — you dispatch the `planner` (only for complex or batched work) and then the `developer`. You verify their output, commit it, add the log entry, and — once the entity's Behavior cases are all complete — open a PR back to `develop`.
+You orchestrate one TDD cycle (or a small batch). You do **not** write tests or production code directly — you dispatch the `planner` (only for complex or batched work), the `plan-adversary` at the brief it produced, and then the `developer`. You verify their output, commit it, add the log entry, and — once the entity's Behavior cases are all complete — open a PR back to `develop`.
 
 ## How you dispatch
 
 Every dispatch goes through the workflow MCP server. You are the conductor, so you may dispatch as many times as the cycle needs; a dispatched worker never dispatches anything itself.
 
 1. `prepare_worktree` → an isolated checkout at committed HEAD on its own `worker/<id>` branch. Requires a clean checkout, so commit or set aside your own changes first.
-2. `build_worker_prompt` with the `role`, the `instructions`, the `workspace` from step 1, and — for a write role — `owned_paths` and a `commit_message`. Narrow `skills` to what that worker actually needs: this command declares nine, and sending all of them costs about 88KB against roughly 36KB for a realistic dispatch.
+2. `build_worker_prompt` with the `role`, the `instructions`, the `workspace` from step 1, and — for a write role — `owned_paths` and a `commit_message`. Narrow `skills` to what that worker actually needs: this command declares eight, and sending all of them costs about 70KB against roughly 31KB for a realistic dispatch.
 3. Run the returned `command` verbatim. It already enters the worktree and pipes the prompt.
 4. Read the worker's report. **The worker delivers files and never runs git** — so for a write role, you stage its `owned_paths` in the worktree, commit with the message you passed, and merge the branch.
 5. `remove_worktree` when the work is integrated. It refuses if the checkout is dirty or the branch holds unmerged commits, so a refusal means read before you retry — never force it.
@@ -79,18 +80,26 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 
    **Config and deploy changes are behavior.** Middleware, an auth header, a CORS rule, a routing change — each alters what the system does with a request, so each takes a failing test first like any other case (behavioral rule 2). "It's just config" is the sentence that ships an untested authentication gate.
 
-4. **Plan first if the work is complex or batched.** If the todo line is tagged `[complex]`, or you are batching 2+ todos under this branch, **dispatch the `planner`** (runs on Opus) before any testing. Pass it:
+4. **Plan first if the work is complex or batched.** If the todo line is tagged `[complex]`, or you are batching 2+ todos under this branch, **dispatch the `planner`** (runs on the engine and model pinned for it in `.agents/config.json`) before any testing. Pass it:
    - The entity slug(s) and the batch contents, if any.
    - The Behavior case IDs to cover this cycle.
    - The test command from `docs/wiki/commands.md`.
 
-   The planner is a **read-only** role: it writes no files at all and returns the complete plan in its report. Save that report to `.handoff/<slug>-plan.md` yourself (gitignored scratch) if you want it on disk — worktrees do not share scratch, so the developer gets the plan **inline in its instructions**, never as a path to read. **Sanity-check the plan:** confirm the steps cover the listed Behavior cases and the scope hasn't drifted. If it's wrong, send it back once (a second failure means re-spec via `/project:interview`). For a single simple todo, **skip planning** — go straight to step 5.
+   The planner is a **read-only** role: it writes no files at all and returns the complete plan in its report. Save that report to `.handoff/<slug>-plan.md` yourself (gitignored scratch) if you want it on disk — worktrees do not share scratch, so the developer gets the plan **inline in its instructions**, never as a path to read. **Sanity-check the plan:** confirm the steps cover the listed Behavior cases and the scope hasn't drifted. If it's wrong, send it back once (a second failure means re-spec via `/project:interview`). For a single simple todo, **skip planning** — go straight to step 4a.
+
+4a. **Review the brief — every cycle, before any test.** Dispatch the `plan-adversary` (read-only, on its own pinned engine) and run the full protocol in the `plan-review` skill — subject selection, the six-category sweep, the `blocker`/`risk`/`note` vocabulary, and the disposition of each finding all live there. The command-level division of labour:
+
+   - The subject is **exactly one** of: the step 4 plan pasted inline (`[complex]`/batched), or the todo line plus the `$ARGUMENTS` instruction verbatim (simple cycle, no plan). Send the entity slug(s), the Behavior case IDs, the test command and the branch name with it — **and nothing else**. Your own reading of the plan is precisely the framing that turns a review into agreement.
+   - Dispose of every finding before dispatching the developer. **Applied is the default** — you edit the plan text you will paste in step 5, or the todo line. **Escalated** means the *spec* is what is wrong: `human-checkpoint` recommending `/project:interview`, and the cycle stops there rather than starting Red on an ambiguous case. **Rejected** takes one sentence of reason. A `blocker` you disagree with is a checkpoint, never a rejection.
+   - Re-dispatch the `planner` only for a **structural** blocker — wrong decomposition, an impossible step order — and only once. Everything smaller you apply yourself.
+
+   Unlike step 7a, this is **not** gated on `[complex]`: a one-line todo is where an unstated assumption travels furthest, and the pass is cheap. `skip the pre-flight` in the argument turns it off; say so in the report.
 
 5. **Dispatch the `developer`** with this scope:
    - The entity slug and the branch name.
    - The Behavior case IDs to cover this cycle.
    - The test command from `docs/wiki/commands.md`.
-   - The full text of the plan from step 4 **if one was made**, pasted inline — the developer follows its step order unless reality forces a noted deviation.
+   - The full text of the plan from step 4 **if one was made**, pasted inline **as revised by step 4a** — the developer follows its step order unless reality forces a noted deviation. Never the pre-review version: the findings you applied exist only in the text you paste.
    - `owned_paths` covering the source, tests and the entity page it must update, and a `commit_message` for the case.
 
    The developer runs the loop **once per Behavior case**: Red (failing test, confirmed failing for the right reason) → Green (minimum code) → refactor → tick the case. It leaves the result as files and runs no git at all.
@@ -104,19 +113,19 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
    - Implementation and Tests sections reflect the current files.
    - The todo is checked off / removed from `docs/wiki/todos.md` (shipped work lives in git history, not a separate file).
 
-7a. **Adversarial review — `[complex]` and batched cycles only.** If you dispatched the `planner` in step 4, dispatch the `adversary` (Opus, fresh context) and run the full protocol in the `adversarial-review` skill — dispatch contents, triage, dispositions, round commit, re-review, and stop conditions all live there. The command-level division of labour:
+7a. **Adversarial review — `[complex]` and batched cycles only.** If you dispatched the `planner` in step 4, dispatch the `adversary` (fresh context, its own pinned engine) and run the full protocol in the `adversarial-review` skill — dispatch contents, triage, dispositions, round commit, re-review, and stop conditions all live there. The command-level division of labour:
 
-   - Pass **only** a small commit range (one case or a few closely-related ones), the entity slug(s) and Behavior case IDs, the mailbox path `.handoff/<slug>-findings.md`, and the test command. Never the plan file or your own reasoning — the independence is the product.
-   - Re-dispatch the `developer` with the mailbox for a recommended disposition per finding (it has the code context you don't); **you** own the `human-checkpoint` for `critical`/`major`, the todo lines, and the round-closing commit. Declined-or-unreachable criticals get flagged prominently in your step 12 report.
+   - Pass **only** a small commit range (one case or a few closely-related ones), the entity slug(s) and Behavior case IDs, and the test command. Findings come back in the adversary's report; it writes no files. Never the plan file or your own reasoning — the independence is the product.
+   - Re-dispatch the `developer` with the findings for a recommended disposition per finding (it has the code context you don't); **you** own the `human-checkpoint` for `critical`/`major`, the todo lines, and the round-closing commit. Declined-or-unreachable criticals get flagged prominently in your step 12 report.
    - The review does not gate the cycle — a cycle with open filed findings still completes; the queue owns them now.
 
    For a single simple todo, **skip this step**; the human can run `/project:adversary` on demand.
 
-8. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `work`, fields `TODO(s): <list>`, `Cases: B1, B2`, `Branch: feat/<slug>`, and `Adversary: <N> findings — <Fi> filed, <Fx> fixed, <R> rejected` (omit that line if step 7a was skipped). Stage `docs/wiki/log.md` alone; subject `docs(<slug>): log cycle`.
+8. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `work`, fields `TODO(s): <list>`, `Cases: B1, B2`, `Branch: feat/<slug>`, `Plan review: <N> findings — <A> applied, <E> escalated, <R> rejected` followed by one line per finding (`plan-review` § step 6 — the log is that review's only committed record, so the reasons go here, not just the counts), and `Adversary: <N> findings — <Fi> filed, <Fx> fixed, <R> rejected` (omit that line if step 7a was skipped; omit the plan-review lines only if the argument skipped step 4a). Stage `docs/wiki/log.md` alone; subject `docs(<slug>): log cycle`.
 
    This is the **one commit `/project:work` makes itself** — the log's own commit, which is the documented exception to shipping the entry alongside its work. The implementation was already committed case by case in step 5, and the adversary dispositions likewise, so the log is genuinely all that is left.
 
-   Then delete the `.handoff/<slug>-*.md` scratch — both files are gitignored and nothing needs saving from them. Confirm `git status --porcelain` prints nothing, and that `git log --oneline develop..HEAD` reads as a per-case sequence rather than one lump.
+   Then delete any `.handoff/<slug>-plan.md` scratch — it is gitignored and nothing needs saving from it. Confirm `git status --porcelain` prints nothing, and that `git log --oneline develop..HEAD` reads as a per-case sequence rather than one lump.
 
 9. **Check feature completion.** Re-read the entity page's `## Behavior` section.
     - **All cases are `[x]`** → the feature is finished. Proceed to step 11.
@@ -140,7 +149,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
       git checkout develop
       ```
 
-11. **Report to human.** What was done, what's next. If step 7a ran, lead with any `critical`/`major` that was filed rather than fixed — that is the one outcome the human most needs to see, and it is easy to lose among the cycle's other notes.
+11. **Report to human.** What was done, what's next. If step 4a escalated anything, say so first — a spec question you routed to `/project:interview` outlives this cycle. Then, if step 7a ran, lead with any `critical`/`major` that was filed rather than fixed — that is the one outcome the human most needs to see, and it is easy to lose among the cycle's other notes.
     Then run the **maintenance cadence check**. This is the only place the periodic commands are ever surfaced, so it runs even when the cycle went perfectly — especially then, because a clean cycle is exactly when nobody thinks to lint:
 
     ```bash
@@ -166,6 +175,10 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 ## Failure modes
 
 - **Planner can't produce a coherent plan.** The spec is too ambiguous. Stop and run `/project:interview` to refine the Behavior cases.
+- **Plan-adversary raises a `blocker` you think is wrong.** Not a rejection. `human-checkpoint` with both positions — the brief's and the reviewer's — and let the human settle it before Red.
+- **Plan-adversary and planner disagree after a re-plan.** That is round three, which is a decision rather than a review. `human-checkpoint`.
+- **Plan-adversary escalates the spec.** Stop the cycle and run `/project:interview`. Do not start Red on a Behavior case with two live readings — that is the exact cost step 4a exists to avoid.
+- **Plan-adversary writes anything.** It is read-only and has no owned paths, so any file it touched voids the round. Report it, restore the tree, re-dispatch.
 - **Adversary finding survives two rounds.** Don't open a third. `human-checkpoint` with both positions stated — the author's and the reviewer's.
 - **Adversary edits, commits, or pushes.** The read-only invariant is broken and the round is void. Report it, `git diff` to see what it touched, and re-dispatch after restoring the tree.
 - **Developer can't confirm Red.** Stop. The Behavior cases or the test environment is wrong. Use `human-checkpoint`.
@@ -176,7 +189,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 
 ## What you do NOT do
 
-- **No coding directly.** You dispatch the `planner` (when needed), the `developer`, and the `adversary` (when gated). You can read files and run commands to verify; you don't write tests or production code in this command. Fixes for adversary findings are the exception you hand back to the `developer` if they are more than a line or two.
-- **No periodic review.** That's `/project:review`, dispatched separately in a fresh session context. The `reviewer` never runs here — the in-loop second reader is the `adversary`, which is diff-scoped and read-only (behavioral rule 12).
+- **No coding directly.** You dispatch the `planner` (when needed), the `plan-adversary` (every cycle), the `developer`, and the `adversary` (when gated). You can read files and run commands to verify; you don't write tests or production code in this command. Fixes for adversary findings are the exception you hand back to the `developer` if they are more than a line or two.
+- **No periodic review.** That's `/project:review`, dispatched separately in a fresh session context. The `reviewer` never runs here — the in-loop second readers are the `plan-adversary` before Red and the `adversary` after it, both read-only (behavioral rule 12).
 - **No merging.** PR creation is automated (step 11); merging is always the human's call.
 - **No silent batching.** If you batch todos, name the batch in the commit message scope.
