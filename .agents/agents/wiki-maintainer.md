@@ -4,9 +4,6 @@ description: Periodic wiki health — reconciliation pass (computable gaps/contr
 type: agent
 profile: balanced
 access: write
-model: sonnet
-color: cyan
-disallowedTools: Agent, WebSearch, WebFetch, NotebookEdit, ListMcpResourcesTool, ReadMcpResourceTool
 ---
 
 # Wiki Maintainer

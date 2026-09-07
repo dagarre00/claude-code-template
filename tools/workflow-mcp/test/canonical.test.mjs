@@ -89,6 +89,50 @@ test('a role whose frontmatter name disagrees with its filename is an error', ()
   });
 });
 
+// A role file that carries `model: opus` reads as though it controls the model,
+// and it does not — model selection lives in .agents/config.json. Silently
+// ignoring the key is how a person spends an afternoon tuning a value that was
+// never consulted, so it is rejected and the error says where to go instead.
+test('a role declaring an engine-specific model is rejected, pointing at config.json', () => {
+  withFixture({
+    '.agents/agents/developer.md':
+      '---\nname: developer\ndescription: d\nprofile: balanced\naccess: write\nmodel: opus\n---\n\nBody.\n'
+  }, root => {
+    assert.throws(() => loadCanonical(root), err =>
+      /model/.test(err.message) && /config\.json/.test(err.message));
+  });
+});
+
+test('any unknown key in a role is rejected rather than ignored', () => {
+  for (const key of ['color', 'tools', 'disallowedTools', 'moddel']) {
+    withFixture({
+      '.agents/agents/developer.md':
+        `---\nname: developer\ndescription: d\nprofile: balanced\naccess: write\n${key}: x\n---\n\nBody.\n`
+    }, root => {
+      assert.throws(() => loadCanonical(root), new RegExp(key),
+        `${key} was accepted`);
+    });
+  }
+});
+
+test('an unknown key in a command is rejected too', () => {
+  withFixture({
+    '.agents/commands/work.md':
+      '---\nname: work\ndescription: d\nskills: [tdd-loop]\nmoddel: x\n---\n\nBody.\n'
+  }, root => {
+    assert.throws(() => loadCanonical(root), /moddel/);
+  });
+});
+
+test('the keys a role legitimately uses are all accepted', () => {
+  withFixture({
+    '.agents/agents/developer.md':
+      '---\nname: developer\ndescription: d\ntype: agent\nprofile: balanced\naccess: write\n---\n\nBody.\n'
+  }, root => {
+    assert.equal(loadCanonical(root).roles.find(r => r.name === 'developer').profile, 'balanced');
+  });
+});
+
 test('reads skills with the frontmatter stripped from the inlined body', () => {
   withFixture({}, root => {
     const { skills } = loadCanonical(root);

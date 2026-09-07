@@ -4,9 +4,6 @@ description: TDD cycle in one agent — writes failing tests, makes them pass wi
 type: agent
 profile: balanced
 access: write
-model: sonnet
-color: green
-disallowedTools: Agent, WebSearch, WebFetch, NotebookEdit, ListMcpResourcesTool, ReadMcpResourceTool
 ---
 
 # Developer

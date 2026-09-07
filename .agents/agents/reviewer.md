@@ -4,9 +4,6 @@ description: Periodic thorough review. Runs in a fresh session context with no d
 type: agent
 profile: balanced
 access: read-only
-model: sonnet
-color: yellow
-tools: Read, Write, Edit, Glob, Grep, Bash
 ---
 
 # Reviewer

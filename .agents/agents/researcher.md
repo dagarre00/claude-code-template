@@ -4,9 +4,6 @@ description: Web research agent. Searches the web, fetches pages, synthesizes fi
 type: agent
 profile: fast
 access: write
-model: haiku
-color: blue
-tools: WebSearch, WebFetch, Read, Write, Glob, Grep, Bash
 ---
 
 # Researcher

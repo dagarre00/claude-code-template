@@ -88,6 +88,36 @@ const markdown = dir => existsSync(dir)
   ? readdirSync(dir).filter(name => name.endsWith('.md')).sort()
   : [];
 
+// Frontmatter is an allowlist, for the same reason .agents/config.json rejects
+// an unknown role key: a field that is silently ignored looks exactly like a
+// field that works. Role files used to carry Claude Code's own `model`, `color`
+// and `tools` keys, which the workflow never reads — so tuning `model: opus`
+// there changed nothing, while the setting that governs lives in config.json.
+const ALLOWED = {
+  role: ['name', 'description', 'type', 'profile', 'access'],
+  command: ['name', 'description', 'type', 'argument-hint', 'skills'],
+  skill: ['name', 'description', 'type']
+};
+// Keys worth explaining rather than just rejecting, because a person writing
+// them has a specific intent that belongs somewhere real.
+const REDIRECT = {
+  model: 'model selection lives in .agents/config.json — set engines.<engine>.models.<profile>, '
+    + 'or roles.<role>.models.<engine> to pin one role. Roles declare `profile`, not a model.',
+  effort: 'effort lives in .agents/config.json — set engines.<engine>.effort.<profile>, '
+    + 'or roles.<role>.effort.<engine>.',
+  tools: 'tool access is decided by `access` (read-only or write), which each engine adapter '
+    + 'translates into its own sandbox or permission mode.',
+  disallowedTools: 'tool access is decided by `access` (read-only or write).'
+};
+
+function checkKeys(data, kind, where) {
+  for (const key of Object.keys(data)) {
+    if (ALLOWED[kind].includes(key)) continue;
+    const hint = REDIRECT[key] ?? `expected one of ${ALLOWED[kind].join(', ')}`;
+    throw new Error(`Unknown ${kind} key "${key}" in ${where}: ${hint}`);
+  }
+}
+
 function requireText(value, field, where) {
   if (typeof value !== 'string' || !value.trim()) throw new Error(`Missing ${field} in ${where}`);
   return value.trim();
@@ -99,6 +129,7 @@ function loadRoles(root) {
     const where = `.agents/agents/${file}`;
     const name = file.replace(/\.md$/, '');
     const { data, body } = parseFrontmatter(read(resolve(dir, file)), where);
+    checkKeys(data, 'role', where);
     // Identity is the filename. A disagreeing `name:` means one of the two is a
     // typo, and guessing which would dispatch the wrong role under the right label.
     if (data.name !== undefined && data.name !== name) {
@@ -125,6 +156,7 @@ function loadSkills(root) {
     // declares it would compose a prompt with a silently empty procedure.
     if (!existsSync(path)) throw new Error(`Skill directory "${name}" has no SKILL.md (${where})`);
     const { data, body } = parseFrontmatter(read(path), where);
+    checkKeys(data, 'skill', where);
     if (data.name !== undefined && data.name !== name) {
       throw new Error(`Skill name "${data.name}" disagrees with its directory in ${where}`);
     }
@@ -145,6 +177,7 @@ function loadCommands(root, skills) {
     const where = `.agents/commands/${file}`;
     const name = file.replace(/\.md$/, '');
     const { data, body } = parseFrontmatter(read(resolve(dir, file)), where);
+    checkKeys(data, 'command', where);
     if (data.name !== undefined && data.name !== name) {
       throw new Error(`Command name "${data.name}" disagrees with its filename in ${where}`);
     }

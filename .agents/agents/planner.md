@@ -4,9 +4,6 @@ description: Decomposes complex or batched todos into a stepwise implementation 
 type: agent
 profile: reasoning
 access: read-only
-model: opus
-color: blue
-disallowedTools: Agent, WebSearch, WebFetch, NotebookEdit, ListMcpResourcesTool, ReadMcpResourceTool
 ---
 
 # Planner
