@@ -496,8 +496,36 @@ below are unverified and should be closed before relying on the other engines.
   for adversarial review: with Codex inheriting, a Codex-dispatched adversary may
   silently run the same model as the author. Fill in
   `engines.codex.models` once the intended IDs are confirmed.
-- **Antigravity is unexercised.** Its flags are unit-tested in
-  `config.test.mjs`, but no real `agy` worker has been dispatched.
+- **Antigravity dispatches and reaches the model, but cannot run shell commands
+  without a user-global allow-rule.** A real `agy` worker now spawns, receives its
+  full prompt, and uses read tools. Three defects were fixed getting there:
+  `--print` must be the final argument (it swallows the next flag as its value);
+  the prompt must arrive as stream-json NDJSON on stdin, because `--print`'s text
+  mode would put a 10KB+ prompt on the command line; and `--agent` had to be
+  dropped, since naming an agent made agy refuse every write.
+
+  What remains is a genuine architectural mismatch. Claude takes per-invocation
+  `--allowedTools` and Codex takes `approval_policy="never"`, but **agy's
+  allow-rules live only in a user-global file**,
+  `~/.gemini/antigravity-cli/settings.json`, under `permissions.allow` — entries
+  look like `command(*)` or `command(npm test)`. Headless mode cannot prompt, so
+  any unlisted tool is auto-denied:
+
+  ```json
+  "denied_actions": [{ "action": "command", "display_name": "RunCommand" }]
+  ```
+
+  There is no per-dispatch equivalent, so the toolkit cannot grant this the way
+  it grants Claude's git verbs — and it should not silently edit a file that
+  governs all of a user's projects. To use Antigravity write workers, add a
+  `command(...)` rule to that file yourself, scoped as tightly as your workflow
+  allows. Note also that every dispatch creates a fresh `.worktrees/<id>` path
+  that is never in `trustedWorkspaces`; whether that independently restricts a
+  worker has not been isolated.
+
+  Do **not** reach for `--dangerously-skip-permissions`, which agy's own error
+  message suggests: `workerCommand` rejects any argv containing a bypass token,
+  deliberately.
 - **`readOnlyTools` applies to the native path only — do not delete it.**
   `engines.claude.readOnlyTools` and `engines.antigravity.readOnlyTools` are read
   by the *generator*, not by `workerCommand()`: `sync-harness.mjs:165` and `:170`
