@@ -3,9 +3,8 @@ import { closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, re
   readdirSync, realpathSync, renameSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { resolve, relative, isAbsolute, dirname, sep } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
-import { loadSettings, workerCommand } from './config.mjs';
+import { loadSettings, workerCommand, engineNames } from './config.mjs';
 
-const engines = ['claude','codex','antigravity'];
 // Worktrees must NOT live under .git: agent CLIs refuse to write anywhere inside
 // the git directory, which silently made every write role undeliverable. Task
 // metadata and logs stay in .git/coordination — nothing spawns a CLI there.
@@ -64,7 +63,7 @@ export class Manager {
   constructor(root,engine,{launch,worker=process.env.COORDINATION_WORKER==='1'}={}) {
     this.root=realpathSync(root);
     if (realpathSync(git(this.root,['rev-parse','--show-toplevel']))!==this.root) throw new Error('Root must be a Git worktree root');
-    if (!engines.includes(engine)) throw new Error('Unknown conductor engine');
+    if (!engineNames.includes(engine)) throw new Error('Unknown conductor engine');
     this.engine=engine; this.worker=worker; this.launch=launch;
     this.common=realpathSync(git(this.root,['rev-parse','--path-format=absolute','--git-common-dir']));
     this.storage=contained(this.common,resolve(this.common,'coordination'));

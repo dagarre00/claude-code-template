@@ -402,7 +402,63 @@ and asserts registration is idempotent, leaves the unrelated server and
 comment untouched, and throws on an unowned `coordination` entry rather than
 overwriting it.
 
-## 11. Open items — verified for Claude, not yet for Codex or Antigravity
+## 11. Adding a new CLI engine
+
+Everything CLI-specific lives in one module per engine under
+`tools/coordination-mcp/engines/`. The control plane — `config.mjs`,
+`manager.mjs`, `server.mjs` — contains **no engine names at all**; its validation
+lists and the `cli_engine` enum are derived from the registry.
+
+To add an engine:
+
+1. **Write `tools/coordination-mcp/engines/<name>.mjs`**, default-exporting:
+
+   ```js
+   export default {
+     name: 'gemini',
+     efforts: ['low', 'medium', 'high'],       // this CLI's effort vocabulary
+     buildArgs({ config, settings, role, access, readOnly, workspace, model, effort }) {
+       return [/* argv */];                     // never a shell string
+     },
+     nativeAgent(ctx) { /* optional */ },       // omit if the CLI is MCP-only
+   };
+   ```
+
+2. **Register it** in `engines/index.mjs` — one import, one array entry.
+3. **Add an `engines.<name>` block** to `.harness/settings.json` with
+   `executable`, `models`, and `effort` for all three profiles.
+
+That is the whole procedure for the control plane. The registry is an explicit
+list rather than a directory scan on purpose: importing whatever `.mjs` happened
+to sit in that folder would turn a dropped file into executable code inside the
+process that spawns write-capable workers.
+
+**The conformance suite then holds the new adapter to the same contract as the
+others.** `test/engines.test.mjs` iterates the registry, so a new engine is
+automatically required to produce well-formed shell-free argv, pass a hostile
+workspace path (`C:/with spaces/café/$(touch pwned)`) as a single argv element,
+distinguish `read-only` from `write` with role and model held constant, honour
+its declared effort vocabulary, pass a model override through, and never emit a
+permission-bypass flag. `workerCommand` re-checks the returned argv for control
+characters and bypass tokens, so an adapter is verified rather than trusted.
+
+### What still needs a per-engine edit
+
+Two places remain engine-aware, and neither collapses into a common shape:
+
+- **`scripts/sync-harness.mjs`** (lines ~93-139) emits *commands and skills* in
+  two flavours, `claude` and `shared`, differing in invocation syntax
+  (`/project:x` vs `project-x`) and argument macro. Codex generates none of these
+  at all — it reaches commands through MCP prompts. A new engine needs a flavour
+  choice here only if it discovers commands from disk.
+- **`scripts/configure-mcp.mjs`** registers the MCP server per client: JSON
+  merge for `.mcp.json` and `.agents/mcp_config.json`, a marker-delimited block
+  for `.codex/config.toml`. A new client needs its own registration format.
+
+Native *agent* files are already pluggable via the optional `nativeAgent` hook,
+so an MCP-only engine needs no generator change whatsoever.
+
+## 12. Open items — verified for Claude, not yet for Codex or Antigravity
 
 The dispatch loop has been exercised end to end against **Claude only**: spawn →
 isolated worktree → real CLI → file write → local commit → SHA-pinned merge →

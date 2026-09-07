@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { Manager } from './manager.mjs';
-import { loadSettings } from './config.mjs';
+import { loadSettings, engineNames } from './config.mjs';
 
 export function createServer(root,engine,options) {
   const manager=new Manager(root,engine,options);
@@ -34,7 +34,7 @@ export function createServer(root,engine,options) {
   if (!manager.worker) {
     register('spawn_worker','Launch one bounded CLI task in a fresh worktree from committed HEAD. Requires a clean integration checkout and explicit write ownership. Call list_roles first to discover valid role values. Returns immediately; inspect report before merge.',{
       role:z.string().describe('Role name from list_roles (e.g. "developer"). Call list_roles to see valid values, descriptions, profiles, and access levels.'),
-      cli_engine:z.enum(['claude','codex','antigravity']).optional(),instructions:z.string().min(1).max(100000),
+      cli_engine:z.enum([...engineNames]).optional(),instructions:z.string().min(1).max(100000),
       owned_paths:z.array(z.string()).optional(),model_override:z.string().optional(),thinking_budget:z.string().optional()
     },input=>manager.spawn(input));
     register('kill_worker','Request cancellation of the owned process tree. Retains branch, worktree, and logs; poll until stopped.',taskId,({task_id})=>manager.kill(task_id));

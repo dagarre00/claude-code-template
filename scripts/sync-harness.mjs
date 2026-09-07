@@ -5,7 +5,8 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, realpathSy
   unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve, sep, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadSettings } from '../tools/coordination-mcp/config.mjs';
+import { loadSettings, engineNames } from '../tools/coordination-mcp/config.mjs';
+import { engines as engineAdapters } from '../tools/coordination-mcp/engines/index.mjs';
 
 const defaultRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const normalize = s => typeof s === 'string' ? s.replace(/\r\n/g, '\n') : s;
@@ -157,26 +158,23 @@ export function render(root) {
       throw new Error(`Invalid agent profile/access: ${agent.path}`);
     }
     const startup = 'Read AGENTS.md and its included behavioral rules before acting.\n\n';
-    const claudePath = `.claude/agents/${name}.md`;
     const roleSettings = settings.roles[name] ?? {};
     const modelFor = engine => roleSettings.models?.[engine] ?? adapters[engine].models[profile];
     const effortFor = engine => roleSettings.effort?.[engine] ?? adapters[engine].effort[profile];
-    const claudeMeta = {name,description:expand(description,agent.path,claudePath,'claude'),model:modelFor('claude')??'inherit'};
-    if (access === 'read-only') claudeMeta.tools = adapters.claude.readOnlyTools;
-    emit(claudePath,yaml(claudeMeta,startup+expand(agent.body,agent.path,claudePath,'claude'),agent.path));
-    const agyPath = `.agents/agents/${name}.md`;
-    const agyMeta = {name,description:expand(description,agent.path,agyPath,'shared'),
-      model:modelFor('antigravity')??'inherit',subagent:true,mainAgent:true,commandExecutionPolicy:'sandbox'};
-    if (access === 'read-only') agyMeta.tools = adapters.antigravity.readOnlyTools;
-    emit(agyPath,yaml(agyMeta,startup+expand(agent.body,agent.path,agyPath,'shared'),agent.path));
-    const codexPath = `.codex/agents/${name}.toml`;
-    const codex = {name,description:expand(description,agent.path,codexPath,'shared'),
-      model_reasoning_effort:effortFor('codex'),
-      developer_instructions:startup+expand(agent.body,agent.path,codexPath,'shared')};
-    if (modelFor('codex')) codex.model = modelFor('codex');
-    if (access === 'read-only') codex.sandbox_mode = 'read-only';
-    emit(codexPath,`# Generated from ${agent.path}; DO NOT EDIT.\n`
-      +Object.entries(codex).map(([k,v])=>`${k} = ${JSON.stringify(v)}`).join('\n')+'\n');
+    // Each engine owns its own native file format; the loop owns none of them.
+    // An engine with no nativeAgent (MCP-only) simply generates nothing.
+    const helpers = {
+      source: agent.path,
+      expand: (text,target,harness) => expand(text,agent.path,target,harness),
+      yaml: (meta,body) => yaml(meta,body,agent.path),
+    };
+    for (const engineName of engineNames) {
+      const native = engineAdapters[engineName].nativeAgent;
+      if (!native) continue;
+      const output = native({name,description,profile,access,body:agent.body,startup,
+        modelFor,effortFor,config:adapters[engineName],helpers});
+      if (output) emit(output.path,output.content);
+    }
   }
   return outputs;
 }
