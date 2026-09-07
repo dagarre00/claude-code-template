@@ -22,6 +22,21 @@ test('worker adapters use native flags without shell interpolation or permission
 // Per-role overrides are the knob a human edits by hand. A silently-ignored typo
 // leaves a worker on the default model while the file claims otherwise, and the
 // mistake only shows up as a surprising bill or a weaker review.
+// A worker must not reach any MCP server, the coordination one least of all.
+// Codex expresses that in config overrides, and the shape matters: setting
+// `mcp_servers.<name>.enabled=false` creates a server table with no transport,
+// and Codex refuses to load the entire config —
+// `Error loading config.toml: invalid transport in mcp_servers.coordination` —
+// so every Codex worker died before running. Clearing the whole table works.
+test('codex workers are cut off from MCP without producing an unloadable config', () => {
+  const settings = loadSettings(root);
+  const { args } = workerCommand(settings, {engine:'codex',role:'developer',profile:'balanced',access:'write',workspace:'/tmp/w'});
+  assert.ok(args.includes('mcp_servers={}'), 'codex must clear the whole mcp_servers table');
+  assert.ok(!args.some(arg => /^mcp_servers\.[^=]+\.[^=]+=/.test(arg)),
+    'a partial mcp_servers.<name>.<key> override makes the config unloadable');
+  assert.ok(args.includes('agents.enabled=false'), 'codex workers cannot spawn their own agents');
+});
+
 test('role overrides reject typos and unknown engines instead of silently falling back', () => {
   const base = loadSettings(root);
   const withRoles = roles => ({...base, roles});
