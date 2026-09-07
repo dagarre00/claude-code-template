@@ -3,12 +3,17 @@
 export default {
   name: 'antigravity',
   efforts: ['low', 'medium', 'high'],
+  terminal: '--print',
   buildArgs({ settings, role, readOnly, workspace, model, effort }) {
     const args = ['--add-dir', workspace, '--agent', role, '--sandbox',
       '--mode', readOnly ? 'plan' : 'accept-edits',
-      '--print-timeout', `${settings.workerTimeoutSeconds}s`, '--print'];
+      '--print-timeout', `${settings.workerTimeoutSeconds}s`];
     if (model && model !== 'inherit') args.push('--model', model);
     if (effort) args.push('--effort', effort);
+    // --print takes an OPTIONAL inline prompt, so it must be the final argument.
+    // With a flag after it, agy consumes that flag as the prompt and discards the
+    // real one from stdin, exiting 2: `--print took "--effort" as its prompt`.
+    args.push('--print');
     return args;
   },
   nativeAgent({ name, description, access, body, startup, modelFor, config, helpers }) {

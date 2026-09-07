@@ -57,6 +57,24 @@ for (const name of engineNames) {
     assert.notEqual(fixed('read-only'), fixed('write'), `${name} must distinguish read-only from write`);
   });
 
+  test(`${name}: a declared terminal argument stays last in every argv`, () => {
+    const adapter = engines[name];
+    if (!adapter.terminal) return; // Engines with no positional prompt marker.
+    // Some CLIs take the prompt as an optional inline value on a trailing flag
+    // (agy's --print, codex's -). Anything emitted after it is swallowed as that
+    // value and the real stdin prompt is silently ignored — agy exits 2 with
+    // "--print took \"--effort\" as its prompt". Model and effort are appended
+    // conditionally, so this must hold for every combination, not just defaults.
+    for (const access of ['read-only', 'write']) {
+      for (const extra of [{}, { model_override: 'some-model' }, { thinking_budget: adapter.efforts[0] },
+        { model_override: 'some-model', thinking_budget: adapter.efforts[0] }]) {
+        const { args } = build(name, access, extra);
+        assert.equal(args[args.length - 1], adapter.terminal,
+          `${name} must end with ${adapter.terminal} (got ${args.slice(-3).join(' ')})`);
+      }
+    }
+  });
+
   test(`${name}: effort and model resolve through the declared vocabulary`, () => {
     const adapter = engines[name];
     assert.ok(adapter.efforts.length, 'adapter declares an effort vocabulary');

@@ -5,6 +5,7 @@
 export default {
   name: 'codex',
   efforts: ['minimal', 'low', 'medium', 'high', 'xhigh'],
+  terminal: '-',
   buildArgs({ readOnly, workspace, model, effort }) {
     const args = ['exec', '--ephemeral', '--color', 'never', '--cd', workspace,
       '--sandbox', readOnly ? 'read-only' : 'workspace-write', '-c', 'approval_policy="never"',
