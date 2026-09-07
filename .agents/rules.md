@@ -16,7 +16,7 @@ Hard constraints from real failures. These override default agent inclinations.
 
 4. **Tests must fail for the right reason.** A passing test before implementation tests existing behavior, not the new feature. Confirm RED is real (missing feature, not a typo or import error).
 
-5. **Two-strike pivot.** Two failures on the same mechanism → tag the state (`git tag checkpoint-<stamp>`), stop, and put the reset to the human via `human-checkpoint`, presenting both failed attempts. Only on their say-so do you `git reset --hard` and re-spec via `/project:interview`. The reset is gated because it is the most destructive step in this workflow: the tag protects committed history, but nothing protects uncommitted work — before it runs, `git status --porcelain` and account for every line (rule 21).
+5. **Two-strike pivot.** Two failures on the same mechanism → tag the state (`git tag checkpoint-<stamp>`), stop, and put the reset to the human via `human-checkpoint`, presenting both failed attempts. Only on their say-so do you `git reset --hard` and re-spec via `/project:interview`. The reset is gated because it is the most destructive step in this workflow: the tag protects committed history, but nothing protects uncommitted work — before it runs, `git status --porcelain` and account for every line (rule 21). <!-- conductor-only -->
 
 6. **Verify before asserting.** Run it, don't assume. Never tell the human a feature works unless tests pass and you read the output yourself.
 
@@ -26,11 +26,11 @@ Hard constraints from real failures. These override default agent inclinations.
 
 9. **No silent failures.** If a command fails, report the exact error.
 
-10. **Scoped context for sub-agents.** Give sub-agents only the task, prior outputs, and relevant constraints. Never dump full memory.
+10. **Scoped context for sub-agents.** Give sub-agents only the task, prior outputs, and relevant constraints. Never dump full memory. <!-- conductor-only -->
 
 11. **Raw sources are immutable.** Never edit files under `docs/raw/`. Only append new ones.
 
-12. **Two review roles — never merged, both read-only.** The `reviewer` is periodic and whole-repo, in a fresh session context via `/project:review`, never inside the work loop. The `adversary` is diff-scoped and per-change, dispatched by `/project:work` step 7a (`[complex]`/batched) or `/project:adversary`. Both read without the author's context and raise **findings only** — no edits, commits, pushes, or resets. A developer never audits its own work; a reviewer of either kind never fixes what it finds.
+12. **Two review roles — never merged, both read-only.** The `reviewer` is periodic and whole-repo, in a fresh session context via `/project:review`, never inside the work loop. The `adversary` is diff-scoped and per-change, dispatched by `/project:work` step 7a (`[complex]`/batched) or `/project:adversary`. Both read without the author's context and raise **findings only** — no edits, commits, pushes, or resets. A developer never audits its own work; a reviewer of either kind never fixes what it finds. <!-- conductor-only -->
 
 13. **Progressive disclosure.** Don't preload domain knowledge. Skills auto-load when their `description` matches the task. If a needed skill doesn't exist, create one via the `update-toolkit` skill rather than stuffing it into an agent prompt.
 
@@ -50,19 +50,19 @@ Hard constraints from real failures. These override default agent inclinations.
     - **Closed vocabularies** for `type`/`abstraction`/`status` (defined in `wiki-update`); properties lowercase `snake_case`.
     - **Provenance, never invent.** Every non-trivial claim traces to a `docs/raw/` file; an unfillable gap is an `open_questions` entry or a question to the human, never invented prose.
 
-19. **Branch for code changes; living wiki commits directly on develop (or current branch).**
+19. **Branch for code changes; living wiki commits directly on develop (or current branch).** <!-- conductor-only -->
     - **Code (`feat/*`, `fix/*`, `refactor/*`, `perf/*`)** is built on a dedicated branch cut from `develop` and merged via PR. The `developer` commits and pushes each Behavior case as it lands; `/project:work` adds the log entry and opens the PR.
     - **Living documentation & operations (`docs/wiki/`, `docs/raw/`, `.agents/` config)** from maintenance commands commit and push directly to `develop` — or stay on the active `feat/*`/`fix/*`/`chore/*` branch when mid-cycle. Strict PR gating for code, no PR fatigue for knowledge.
     - **Always push after committing.** Execution containers recycle between sessions; an unpushed commit is lost work. On network failure, retry with backoff. No remote → skip the push and note it in the report.
     - **The log entry belongs to the mutation, not to the command.** Whatever changed tracked files — a command, a bare chat instruction, a one-off fix — appends a `## [YYYY-MM-DD HH:MM] <kind>` entry to `docs/wiki/log.md` in the same commit (`chore` when no kind fits). A timeline with holes is worse than none, because the wiki cites it as evidence.
 
-20. **Every finding gets a written disposition, and the record is committed.** Each numbered adversary finding ends as **Filed** (a real todo line), **Fixed** (name what changed), or **Rejected** (one-sentence reason). Silence is not a disposition and "unlikely" is not a reason. Rejecting by citing an unwritten invariant → write the invariant down as part of the rejection.
+20. **Every finding gets a written disposition, and the record is committed.** Each numbered adversary finding ends as **Filed** (a real todo line), **Fixed** (name what changed), or **Rejected** (one-sentence reason). Silence is not a disposition and "unlikely" is not a reason. Rejecting by citing an unwritten invariant → write the invariant down as part of the rejection. <!-- conductor-only -->
     - **Filed is the default; fixing needs a human.** Findings become todos at the priority their severity maps to — not fixed in the cycle that surfaced them, not even two-line ones. Exception: a `critical`/`major` goes to the human via `human-checkpoint` (fix-now or queue); it is filed at P0/P1 only if they decline or are unreachable, and that is said prominently. A human instruction like "fix all the findings" is itself the approval, at that scope.
     - **The record is the commit.** Triage in the gitignored mailbox, then write each disposition into the commit that answers it: fixes name their finding; each round closes with a `docs(<slug>): adversary round N` commit whose body lists every finding's disposition. `git log --grep="adversary round"` must read the reasons back a cycle later — a disposition that exists only in deleted scratch satisfies nothing. Protocol: `adversarial-review` skill.
 
 21. **A dirty tree you did not dirty belongs to someone else.** Agents run concurrently on one checkout, so "clean working tree" preconditions read "clean **and mine**". Never `stash`, `reset --hard`, `checkout --`, or `clean` over changes whose author you cannot account for — stop and run `human-checkpoint` naming the paths. Before any tree-wide destructive git operation, `git status --porcelain` and account for every line: a path you didn't touch this session is evidence, not dirt.
 
-22. **A filed backlog needs a consumer, or filing is just deletion with extra steps.** Rule 20 makes filing the default, so `minor` findings accumulate by design (`nit` findings are never filed — the adversary tallies them and they end there). Two computable guards: `FINDINGS_MAX` caps the open `[adversary]` backlog (`docs/wiki/todos.md § Filed-findings backlog`), and `/project:wiki-lint` re-triages it every pass — re-grading, merging duplicates, closing what later work fixed. A finding that sat unread through five cycles had the wrong severity, not too short a queue.
+22. **A filed backlog needs a consumer, or filing is just deletion with extra steps.** Rule 20 makes filing the default, so `minor` findings accumulate by design (`nit` findings are never filed — the adversary tallies them and they end there). Two computable guards: `FINDINGS_MAX` caps the open `[adversary]` backlog (`docs/wiki/todos.md § Filed-findings backlog`), and `/project:wiki-lint` re-triages it every pass — re-grading, merging duplicates, closing what later work fixed. A finding that sat unread through five cycles had the wrong severity, not too short a queue. <!-- conductor-only -->
 
 ## Adding rules
 

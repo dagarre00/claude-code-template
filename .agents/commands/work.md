@@ -3,6 +3,7 @@ name: work
 description: Pick the top todo (or batch consecutive todos sharing context), open a feat/* branch from develop, dispatch the planner (Opus) for complex/batched work, then the developer through red→green→refactor→wiki-update, then commit, push, and (if the entity is fully done) open a PR to develop and return to develop. The core development loop.
 argument-hint: [todo, entity, or scope — e.g. "the login endpoint" | "batch the auth todos"]
 type: command
+skills: [tdd-loop, spec-writing, wiki-update, feature-branching, adversarial-review, pr-create, gotcha-recording, decision-recording, human-checkpoint]
 ---
 
 # /project:work

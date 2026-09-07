@@ -2,6 +2,8 @@
 name: wiki-maintainer
 description: Periodic wiki health — reconciliation pass (computable gaps/contradictions), lint invariants, batch ingest of straggler raw sources, cross-linking, legacy-page migration, ADR filing. MANUAL ONLY — never auto-invoked by another agent. Triggered exclusively by /project:wiki-lint or an explicit human request. Individual ingests go through /project:wiki-ingest, not through you.
 type: agent
+profile: balanced
+access: write
 model: sonnet
 color: cyan
 disallowedTools: Agent, WebSearch, WebFetch, NotebookEdit, ListMcpResourcesTool, ReadMcpResourceTool

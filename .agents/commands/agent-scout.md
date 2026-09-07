@@ -3,6 +3,7 @@ name: agent-scout
 description: Post-init survey that reads the wiki and recommends specific agents and skills tailored to this project's stack, domain, and external services. Run once after /project:init fills requirements and architecture. Re-run after /project:interview adds a major feature.
 argument-hint: [focus — e.g. "testing skills only" | "the payments feature" | "skills, no agents"]
 type: command
+skills: [update-toolkit, wiki-update, human-checkpoint]
 ---
 
 # /project:agent-scout

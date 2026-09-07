@@ -3,6 +3,7 @@ name: adversary
 description: Point a read-only second model at the current change. Dispatches the adversary agent (Opus, fresh context) over the diff, collects numbered findings in a mailbox file, triages each one, and re-reviews once. Diff-scoped and per-change — unlike /project:review, which is periodic and whole-repo.
 argument-hint: [base ref or lens — e.g. "develop" | "against main" | "concurrency only"]
 type: command
+skills: [adversarial-review, human-checkpoint]
 ---
 
 # /project:adversary

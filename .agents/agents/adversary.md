@@ -2,6 +2,8 @@
 name: adversary
 description: Read-only diff hunter. Reviews the current change against the wiki with zero developer context and writes numbered findings to a mailbox file — never edits, commits, or pushes. Dispatched by /project:work for [complex] or batched cycles, and by /project:adversary on demand. Distinct from the periodic whole-repo reviewer.
 type: agent
+profile: reasoning
+access: read-only
 model: opus
 color: red
 tools: Read, Glob, Grep, Bash, Write

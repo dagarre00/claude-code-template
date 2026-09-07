@@ -2,6 +2,8 @@
 name: planner
 description: Decomposes complex or batched todos into a stepwise implementation plan for the developer. Dispatched by /project:work when a todo is flagged [complex] or 2+ todos are batched. Reads entity Behavior cases, surveys the codebase, writes .handoff/<slug>-plan.md. Runs on Opus.
 type: agent
+profile: reasoning
+access: read-only
 model: opus
 color: blue
 disallowedTools: Agent, WebSearch, WebFetch, NotebookEdit, ListMcpResourcesTool, ReadMcpResourceTool

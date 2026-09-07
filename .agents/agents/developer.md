@@ -2,6 +2,8 @@
 name: developer
 description: TDD cycle in one agent — writes failing tests, makes them pass with minimal code, refactors, and updates the wiki. Follows a planner's plan for complex/batched work. Loads task-specific skills on demand. Triggered by /project:work.
 type: agent
+profile: balanced
+access: write
 model: sonnet
 color: green
 disallowedTools: Agent, WebSearch, WebFetch, NotebookEdit, ListMcpResourcesTool, ReadMcpResourceTool

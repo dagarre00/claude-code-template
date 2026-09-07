@@ -2,6 +2,8 @@
 name: reviewer
 description: Periodic thorough review. Runs in a fresh session context with no developer baggage. Audits code vs wiki, flags critical issues, warnings, drift, missing tests, security/perf concerns. Triggered by /project:review.
 type: agent
+profile: balanced
+access: read-only
 model: sonnet
 color: yellow
 tools: Read, Write, Edit, Glob, Grep, Bash
