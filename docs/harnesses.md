@@ -269,9 +269,35 @@ What the runner does, in `commitWorkerOutput`:
 | Failed, cancelled, timed-out, or output-limited | No commit. The work stays uncommitted for the conductor to read. |
 | Read-only role | No commit policy exists on the task, so the runner cannot commit even if the role misbehaved. |
 
-One dispatch is therefore one commit. To keep per-case history, scope a write
-worker to one Behavior case — batching cases into one worker batches them into
-one commit, and no instruction to the worker can change that.
+One dispatch is therefore one commit. Per-case history is kept by **scoping the
+dispatch**: `project-work` sends one Behavior case, integrates it, then sends the
+next. Batching cases into one worker batches them into one commit, and no
+instruction to the worker can change that.
+
+### Why the runner does not commit *during* the run
+
+The obvious way to keep several cases in one dispatch is a live checkpoint: the
+worker writes a finished case's subject to a mailbox file, and the supervising
+runner — which already polls that worktree twice a second — commits the tree at
+that moment. It was built and rejected. The problem is that nothing makes the
+worker hold still:
+
+- The worker writes the request and immediately starts editing the next case.
+  The runner stages whatever exists at that instant, so the next case's
+  half-finished edits land inside this case's commit. That is an intermediate
+  commit that does not build — exactly the breakage per-case commits exist to
+  prevent, except now it is produced by the mechanism meant to prevent it.
+- `git add -A` can catch a large file mid-write, for the same reason.
+- The only available defence was an instruction — "wait until the request file
+  disappears before editing again" — which depends on model compliance. When a
+  worker does not comply, nothing errors. You get a plausible-looking commit that
+  is quietly torn, and you find out at `git bisect` time.
+
+So it trades *guaranteed* coarse granularity for *probabilistic* fine
+granularity whose failure mode is a corrupted history. Committing at exit is
+atomic by construction: the worker has exited, nothing is being written, and the
+tree is final. Dispatch scope is the granularity knob, and it is enforced by the
+control plane rather than by a worker's cooperation.
 
 The commit is made with the repository's own identity and hooks; the runner
 passes no `-c user.*` override and never `--no-verify`. Subjects are validated
