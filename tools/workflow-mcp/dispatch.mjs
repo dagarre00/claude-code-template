@@ -24,7 +24,8 @@ export function prepareDispatch(root, input = {}) {
   const canonical = loadCanonical(root);
   const config = loadConfig(root);
 
-  const composed = composePrompt(canonical, { ...input, task_id, workspace });
+  const composed = composePrompt(canonical, {
+    ...input, task_id, workspace, workerCommands: config.workerCommands });
   const engine = cli_engine ?? resolveEngine(config, composed.role, conductorEngine);
 
   const roleConfig = config.roles?.[composed.role] ?? {};
@@ -50,12 +51,19 @@ export function prepareDispatch(root, input = {}) {
   // Stated per dispatch, not buried in a doc: the conductor is the one choosing
   // an engine for a task, and it can only weigh that choice if it is told what
   // the engine cannot enforce below the prompt.
-  const warnings = ENGINES[engine].enforcesLeafWorker ? [] : [
-    `${engine} exposes subagent tools to workers and offers no flag to remove them, so the `
-    + 'no-recursive-dispatch rule is prompt-level here rather than process-level. The subagent '
-    + 'inherits this worker\'s sandbox and worktree, so the exposure is unbounded work, not '
-    + 'privilege escalation. Prefer another engine for open-ended tasks, and read the report.'
-  ];
+  const adapter = ENGINES[engine];
+  const warnings = [];
+  if (!adapter.enforcesLeafWorker) {
+    warnings.push(`${engine} exposes subagent tools to workers and offers no flag to remove them, so the `
+      + 'no-recursive-dispatch rule is prompt-level here rather than process-level. The subagent '
+      + 'inherits this worker\'s sandbox and worktree, so the exposure is unbounded work, not '
+      + 'privilege escalation. Prefer another engine for open-ended tasks, and read the report.');
+  }
+  if (composed.access === 'read-only' && !adapter.enforcesReadOnly) {
+    warnings.push(`${engine} cannot enforce read-only below the prompt, so for this role the no-edits `
+      + 'rule is a promise rather than a property. Run `git status --porcelain` in the worktree '
+      + 'afterwards: anything it touched voids the round (behavioral rule 12).');
+  }
 
   return {
     task_id,

@@ -18,6 +18,11 @@ export default {
   // agents.enabled=false removes delegation. Measured: a worker asked what
   // agent-spawning tools it has answers NONE.
   enforcesLeafWorker: true,
+  // --sandbox read-only is an OS-level sandbox, so a read-only worker cannot
+  // write anywhere — not even the scratch file a skill asks it for. Measured:
+  // an adversary told to write its findings to .handoff/ reported "mailbox
+  // delivery blocked by the read-only filesystem" and the tree stayed clean.
+  enforcesReadOnly: true,
   buildArgs({ readOnly, workspace, model, effort }) {
     const args = [
       'exec', '--ephemeral', '--color', 'never', '--cd', workspace,

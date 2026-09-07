@@ -27,7 +27,8 @@ export const isSafeRepoPath = path =>
 
 export function composePrompt(canonical, input = {}) {
   const { role: roleName, command: commandName, instructions, context = '',
-    owned_paths = [], commit_message, task_id, workspace, base_sha } = input;
+    owned_paths = [], commit_message, task_id, workspace, base_sha,
+    workerCommands = [] } = input;
 
   const role = canonical.roles.find(entry => entry.name === roleName);
   if (!role) {
@@ -86,6 +87,26 @@ export function composePrompt(canonical, input = {}) {
         : '';
       return section(`Skill: ${skill.name}`, skill.body + attachments);
     }).join(SEPARATOR));
+  }
+
+  // The allowlist goes IN the prompt, not just into the argv. A worker that does
+  // not know the list improvises a near-miss — `git log -n 3` instead of an
+  // allowlisted read — and on agy a single denied command discards the entire
+  // run, report included: measured, a developer that had already written its
+  // failing test returned an empty response after one denied `git log`. Telling
+  // it the exact strings is what turns a narrow allowlist from a tripwire into a
+  // usable contract.
+  if (workerCommands.length) {
+    parts.push(section('Commands you may run',
+      'These exact command lines are the only shell commands you are permitted to run:\n\n'
+      + workerCommands.map(command => `- \`${command}\``).join('\n')
+      + '\n\nRun them **verbatim** - no cd, no chaining with ; or &&, no redirection, no '
+      + 'extra flags. Permission is matched against the exact line, so any variation is denied '
+      + 'before it executes, and on some engines one denied command ends your run and discards '
+      + 'everything you have done, including this report. Everything else - reading, searching, '
+      + 'listing, editing - you do with your own file tools, which need no permission. If the task '
+      + 'genuinely needs a command that is not on this list, stop and report that as a blocker '
+      + 'rather than trying a variation of it.'));
   }
 
   if (writes) {

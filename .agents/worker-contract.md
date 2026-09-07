@@ -25,6 +25,20 @@ not assume it exists. Read files in your worktree freely — that is your eviden
   committed by nobody and fails integration — it is a lost change and a raised
   alarm, not a shortcut.
 
+## Running commands
+
+The commands you may run are allowlisted by **exact match** on the engines that
+gate them, so run the test command exactly as your prompt gives it: no `cd`, no
+chaining with `;` or `&&`, no redirection, no wrapping it in another shell. A
+composed command line is denied as a whole — Claude Code answers "this PowerShell
+command contains multiple operations", agy denies the `command` permission and
+returns nothing — and a denial is silent enough to look like a command that
+merely failed. Anything you cannot do with an allowlisted command, do with your
+file-reading, search and edit tools, which need no permission.
+
+If a command you genuinely need is denied, that is a blocker to report, not a
+thing to work around by rephrasing it.
+
 ## You always
 
 - **Report what you did.** Changed paths, the verification commands you ran, and

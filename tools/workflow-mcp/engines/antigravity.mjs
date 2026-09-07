@@ -27,6 +27,16 @@ export default {
   // The exposure is wasted tokens and unbounded work, capped by --print-timeout,
   // not a privilege escalation.
   enforcesLeafWorker: false,
+  // The second thing agy cannot enforce below the prompt. `--mode plan` does
+  // bind on its own — a worker told to create a file refuses and creates
+  // nothing — but agy prints "warning: --mode plan has no effect while slash
+  // command expansion is disabled", and it means it: with the flag below set,
+  // the mode is inert and a read-only worker can call write_to_file. Dropping
+  // --disable-slash-commands to recover the mode would load agy's own commands
+  // and skills on top of the composed prompt, trading the context guarantee for
+  // the access one. The prompt keeps read-only roles honest here; dispatch says
+  // so out loud rather than implying parity.
+  enforcesReadOnly: false,
   // --print always requires a value, and in text mode that value IS the prompt —
   // which would put a 35KB worker prompt on the command line, far past the
   // ~32K Windows limit. stream-json takes the prompt from stdin instead, with
@@ -35,7 +45,16 @@ export default {
   buildArgs({ settings, readOnly, workspace, model, effort }) {
     const args = [
       '--add-dir', workspace,
-      '--sandbox',
+      // No --sandbox, and this is the flag that decides whether agy workers run
+      // at all. With it, every shell call needs the `escalate_admin` permission
+      // rather than `command`, and headless mode cannot prompt for either — the
+      // worker exits 0, reports SUCCESS, and returns an empty response with
+      // `denied_actions: [{action: "escalate_admin"}]`. Measured on both a
+      // read-only and a write role. `escalate_admin` also cannot be granted per
+      // command (its target is the tool, not the command line), so keeping the
+      // sandbox would mean granting Bash escalation wholesale — broader than the
+      // exact-match `command(<line>)` rules that replace it. Isolation rests on
+      // --add-dir, the worktree, and that allowlist. See docs/engine-setup.md.
       '--mode', readOnly ? 'plan' : 'accept-edits',
       // agy carries its own print-mode timeout rather than relying on the
       // caller to kill it.

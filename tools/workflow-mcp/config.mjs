@@ -27,6 +27,32 @@ export function loadConfig(root) {
     || config.workerTimeoutSeconds < 1 || config.workerTimeoutSeconds > 86400) {
     throw new Error('workerTimeoutSeconds must be an integer between 1 and 86400');
   }
+  // The exact shell commands a worker may run. Both gating engines match a
+  // command line *exactly* — Claude Code against `Bash(<cmd>:*)`, agy against a
+  // `command(<cmd>)` rule in its user-global settings — so this is a list of
+  // literal command lines, not patterns, and a worker that chains or redirects
+  // one is denied. Empty is legal and means "no worker may run anything", which
+  // is a working configuration only for roles that never verify.
+  if (!Array.isArray(config.workerCommands)) {
+    throw new Error('workerCommands must be an array of exact shell command lines');
+  }
+  if (config.workerCommands.length > 32) {
+    throw new Error('workerCommands is capped at 32 entries; a longer allowlist is not an allowlist');
+  }
+  for (const command of config.workerCommands) {
+    if (typeof command !== 'string' || !command.trim() || command.length > 200
+      || /[\r\n\0]/.test(command)) {
+      throw new Error(`Invalid workerCommands entry: ${JSON.stringify(command)}`);
+    }
+    // A command line carrying its own separators cannot be matched exactly by
+    // either engine, so it would be granted and then denied at run time.
+    if (/[;&|<>`]|\$\(/.test(command)) {
+      throw new Error(
+        `workerCommands entry "${command}" contains shell composition; both engines grant `
+        + 'permission by exact match, so a composed line can never be allowed. '
+        + 'List the plain command instead.');
+    }
+  }
   if (!config.roles || typeof config.roles !== 'object' || Array.isArray(config.roles)) {
     throw new Error('roles must be an object keyed by role name');
   }

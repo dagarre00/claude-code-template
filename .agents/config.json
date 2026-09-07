@@ -2,6 +2,14 @@
   "version": 1,
   "defaultEngine": "inherit",
   "workerTimeoutSeconds": 1800,
+  "workerCommands": [
+    "npm test",
+    "git status",
+    "git status --porcelain",
+    "git diff",
+    "git rev-parse HEAD",
+    "git branch --show-current"
+  ],
   "roles": {
     "adversary": {
       "engine": "codex",

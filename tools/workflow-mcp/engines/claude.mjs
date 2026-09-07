@@ -22,13 +22,27 @@ export default {
   // --disallowedTools Agent,Task removes the tools entirely. Measured: a worker
   // asked what agent-spawning tools it has answers NONE.
   enforcesLeafWorker: true,
-  buildArgs({ readOnly, model, effort }) {
+  // A read-only worker here cannot write: with --permission-prompts none, Write
+  // and Edit need an approval surface that does not exist and are denied.
+  // Measured — a worker told to create a file reports the Write tool "was
+  // automatically denied because it requires user approval and there's no
+  // approval interface in this session type", and no file appears.
+  enforcesReadOnly: true,
+  buildArgs({ settings, readOnly, model, effort }) {
     const args = [
       '--print',
       // The context guarantee. Everything else here is hygiene.
       '--safe-mode',
       '--no-session-persistence',
-      '--permission-mode', readOnly ? 'plan' : this.writeMode,
+      // `default`, not `plan`, for read-only roles. Plan mode refuses every Bash
+      // call — including the project's own test command — so an adversary could
+      // not verify the findings it reports and a planner could not confirm the
+      // suite is green before planning against it. Measured: in plan mode a
+      // worker answers "I'm currently in plan mode, which prevents me from
+      // executing non-readonly actions like `npm test`". Read-only is enforced
+      // by the missing approval surface instead (see enforcesReadOnly), which
+      // denies edits while leaving the allowlisted commands runnable.
+      '--permission-mode', readOnly ? 'default' : this.writeMode,
       // Nobody is at the keyboard, so anything that would prompt must be denied
       // rather than hang until the conductor's timeout.
       '--permission-prompts', 'none',
@@ -41,6 +55,15 @@ export default {
       // composer works to preserve.
       '--exclude-dynamic-system-prompt-sections'
     ];
+    // Without this a worker can edit but never run anything: --permission-prompts
+    // none denies every Bash call, so the developer cannot confirm Red or Green
+    // and rule 4 becomes unsatisfiable. Each entry is granted narrowly, and the
+    // match is on the command line as invoked — a worker that chains, redirects
+    // or prefixes `cd` is denied with "this PowerShell command contains multiple
+    // operations", which is why the worker contract says to run it verbatim.
+    for (const command of settings.workerCommands ?? []) {
+      args.push('--allowedTools', `Bash(${command}:*)`);
+    }
     if (model && model !== 'inherit') args.push('--model', model);
     if (effort) args.push('--effort', effort);
     return args;

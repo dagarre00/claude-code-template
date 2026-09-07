@@ -7,7 +7,7 @@ import { prepareDispatch } from '../dispatch.mjs';
 import { cleanup, fixture } from './helpers.mjs';
 
 const CONFIG = {
-  version: 1, defaultEngine: 'inherit', workerTimeoutSeconds: 1800,
+  version: 1, defaultEngine: 'inherit', workerTimeoutSeconds: 1800, workerCommands: ['npm test'],
   roles: { developer: { engine: null, models: {}, effort: {} },
     adversary: { engine: 'codex', models: {}, effort: {} } },
   engines: {

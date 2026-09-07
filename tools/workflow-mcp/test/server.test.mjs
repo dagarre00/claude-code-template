@@ -6,7 +6,7 @@ import { makeTools } from '../tools.mjs';
 import { cleanup, fixture } from './helpers.mjs';
 
 const CONFIG = {
-  version: 1, defaultEngine: 'inherit', workerTimeoutSeconds: 1800,
+  version: 1, defaultEngine: 'inherit', workerTimeoutSeconds: 1800, workerCommands: ['npm test'],
   roles: { developer: {}, adversary: {} },
   engines: {
     claude: { executable: 'claude', models: { reasoning: 'opus', balanced: 'sonnet', fast: 'haiku' },

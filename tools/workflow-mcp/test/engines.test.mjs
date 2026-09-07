@@ -4,6 +4,7 @@ import { ENGINES, engineNames, buildCommand, stdinPayload } from '../engines/ind
 
 const settings = {
   workerTimeoutSeconds: 1800,
+  workerCommands: ['npm test'],
   engines: {
     claude: { executable: 'claude', models: { reasoning: 'opus', balanced: 'sonnet', fast: 'haiku' },
       effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } },
@@ -49,12 +50,20 @@ test('every engine suppresses project context', () => {
   assert.equal(ENGINES.antigravity.readsProjectDocs, false);
 });
 
+// Each engine denies writes its own way, and only two of the three do it below
+// the prompt (see the enforcement test further down). Claude deliberately does
+// NOT use plan mode here: plan mode also refuses every Bash call, so a read-only
+// reviewer could not run the suite to check its own findings. What denies its
+// edits instead is the absence of an approval surface — measured: the Write tool
+// "was automatically denied because it requires user approval and there's no
+// approval interface in this session type", and no file appeared.
 test('read-only access maps to each engine\'s non-writing mode', () => {
-  assert.deepEqual(
-    [build('claude', { access: 'read-only' }).args.join(' ').match(/plan/),
-      build('codex', { access: 'read-only' }).args.includes('read-only'),
-      build('antigravity', { access: 'read-only' }).args.join(' ').includes('--mode plan')].map(Boolean),
-    [true, true, true]);
+  const claude = build('claude', { access: 'read-only' }).args;
+  assert.equal(claude[claude.indexOf('--permission-mode') + 1], 'default');
+  assert.ok(claude.join(' ').includes('--permission-prompts none'));
+  assert.ok(!claude.includes('acceptEdits'));
+  assert.ok(build('codex', { access: 'read-only' }).args.includes('read-only'));
+  assert.ok(build('antigravity', { access: 'read-only' }).args.join(' ').includes('--mode plan'));
 });
 
 test('write access maps to each engine\'s editing mode', () => {
@@ -112,10 +121,40 @@ test('an unknown engine fails by name', () => {
 // NONE, agy answered `define_subagent`, `invoke_subagent`. The contract forbids
 // recursion on all three; only two can enforce it below the prompt, and pretending
 // otherwise would be the kind of unverified claim rule 7 exists to prevent.
-test('each engine declares honestly whether it can enforce the leaf-worker rule', () => {
+// A worker that cannot run the project's test command cannot confirm Red or
+// Green, so the allowlist is what makes rules 2 and 4 reachable at all. Measured:
+// without it, a developer reports "this session has no approval surface" and every
+// npm invocation is denied.
+test('claude grants each configured command narrowly, and nothing else', () => {
+  const args = build('claude').args;
+  const at = args.indexOf('--allowedTools');
+  assert.notEqual(at, -1, 'no --allowedTools for the configured workerCommands');
+  assert.equal(args[at + 1], 'Bash(npm test:*)');
+  assert.equal(args.filter(a => a === '--allowedTools').length, settings.workerCommands.length,
+    'one grant per configured command, no wildcards');
+});
+
+// Plan mode refuses every Bash call, which would leave a read-only reviewer
+// unable to verify the findings it reports.
+test('a read-only claude worker can still run the allowlisted commands', () => {
+  const args = build('claude', { access: 'read-only' }).args;
+  assert.equal(args[args.indexOf('--permission-mode') + 1], 'default');
+  assert.ok(args.includes('Bash(npm test:*)'));
+});
+
+// With --sandbox, agy routes every shell call through `escalate_admin`, which
+// headless mode cannot grant: the worker exits 0 and returns an empty response.
+test('agy runs workers without the sandbox that silently swallows them', () => {
+  assert.ok(!build('antigravity').args.includes('--sandbox'));
+});
+
+test('each engine declares honestly what it can enforce below the prompt', () => {
   assert.equal(ENGINES.claude.enforcesLeafWorker, true);
   assert.equal(ENGINES.codex.enforcesLeafWorker, true);
   assert.equal(ENGINES.antigravity.enforcesLeafWorker, false);
+  assert.equal(ENGINES.claude.enforcesReadOnly, true);
+  assert.equal(ENGINES.codex.enforcesReadOnly, true);
+  assert.equal(ENGINES.antigravity.enforcesReadOnly, false);
 });
 
 test('claude and codex argv actually carry the flag that earns the claim', () => {
