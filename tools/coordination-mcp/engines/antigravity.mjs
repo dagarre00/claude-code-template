@@ -14,6 +14,15 @@ export default {
   // unlisted because it cannot prompt, and those rules live only in a user-global
   // file (docs/harnesses.md §12). The runner commits for every engine, so a write
   // worker here never needs the terminal at all.
+  // agy does not load AGENTS.md in print mode, so its workers were running with
+  // no behavioural rules at all until the manager started supplying them. Its own
+  // docs describe walking up from the working directory and loading GEMINI.md /
+  // AGENTS.md, but measured here it does not: an identical prompt costs 15739
+  // input tokens in an empty directory and 15743 in this repository beside a 21KB
+  // AGENTS.md, and asked to name a rule from it the worker answers NONE with no
+  // tool call. Tested in a trusted workspace at the repository root, so this is
+  // not the trust gate; the TUI was not tested, and workers only run print mode.
+  readsProjectDocs: false,
   // No --agent flag. Selecting a named agent made agy refuse every write, even
   // for a write role with an explicit write-tool allowlist, and `agy agents`
   // lists nothing from .agents/agents, so the definition does not appear to be

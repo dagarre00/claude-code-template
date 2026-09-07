@@ -52,12 +52,32 @@ a name/path-collision error.
 
 | | Claude Code | Codex | Antigravity CLI |
 | --- | --- | --- | --- |
-| Root instructions | `CLAUDE.md` (imports `AGENTS.md` via `@AGENTS.md`) | `AGENTS.md` directly (native discovery — no generated pointer file exists for Codex) | `AGENTS.md` directly (native discovery — same as Codex) |
+| Root instructions | `CLAUDE.md`, which imports `AGENTS.md` via `@AGENTS.md`. **The import is load-bearing**: measured, Claude ignores an `AGENTS.md` sitting alone and only loads it through `CLAUDE.md`. | `AGENTS.md` directly (native discovery — no generated pointer file exists for Codex). Verified: it quotes a passphrase placed in `AGENTS.md` with no tool call. | **None.** agy does not load `AGENTS.md` in print mode — see below. The coordination server supplies `.harness/worker-instructions.md` in the prompt instead. |
 | Human-invoked commands | *(no native files in any harness)* — all three are served by the coordination MCP server as registered **prompts** (see §3) | same | same |
 | Reusable procedures | `.claude/skills/<name>/SKILL.md` | `.agents/skills/<name>/SKILL.md` — Codex discovers skills from `$CWD/.agents/skills`, then parent directories, then `$REPO_ROOT/.agents/skills`, then `$HOME/.agents/skills` ([Codex skills docs](https://learn.chatgpt.com/docs/build-skills)). The same generated tree serves Codex and Antigravity. | `.agents/skills/<name>/SKILL.md` |
 | Agent/role definitions | *(no native files in any harness)* — the role body is prepended to the worker's prompt by `manager.spawn` | same | same |
 | Read-only enforcement | `--permission-mode plan`, measured to refuse writes even when `Write` and `Edit` are explicitly allowed | `--sandbox read-only` | `--mode plan`, measured to refuse the write that `--mode accept-edits` performs |
 | MCP client config | `.mcp.json` (repo root, gitignored) | `.codex/config.toml`, managed block (gitignored) | `.agents/mcp_config.json` (gitignored) |
+
+**Which CLI reads what, measured rather than assumed.** Each engine was given a
+directory containing an `AGENTS.md` whose only distinctive content was a
+passphrase appearing nowhere else, and asked for it with file-reading tools
+disabled or with tool calls observed:
+
+| Engine | Loads `AGENTS.md`? | Evidence |
+| --- | --- | --- |
+| Claude | Only via `CLAUDE.md`'s `@AGENTS.md` | `AGENTS.md` alone → answers `NONE`. Add a `CLAUDE.md` importing it → quotes the passphrase. |
+| Codex | Yes, directly | Quotes the passphrase with no tool call. `project_doc_max_bytes=0` drops 4,805 tokens. |
+| Antigravity | **No** | 15,739 input tokens in an empty directory vs 15,743 beside this repository's 21KB `AGENTS.md`; answers `NONE` with no tool call. |
+
+The Antigravity result contradicts its own documentation, which describes walking
+up from the working directory loading `GEMINI.md` / `AGENTS.md`. It was tested at
+the repository root of a **trusted** workspace, so the trust gate is not the
+cause. Only print mode was tested — which is the only mode a worker runs in. The
+consequence was that every agy worker operated with no behavioural rules at all
+until the server began supplying them; `readsProjectDocs: false` on the adapter is
+what fixes it, and it is why that flag records a measurement per engine rather
+than a convention.
 
 ## 3. Invocation catalog
 
@@ -280,13 +300,18 @@ the same canonical source. Audience is declared where the content lives:
 
 One source produces both documents, so they cannot drift apart.
 
-An adapter that declares `suppressesProjectDocs` is launched without project-file
-discovery and the manager prepends the subset instead. **Codex** does
-(`-c project_doc_max_bytes=0`). Claude and Antigravity still read `AGENTS.md`, and
-are deliberately *not* sent the subset — that would turn a saving into a
-duplication. Claude's `--bare` and `--safe-mode` would suppress it, but `--bare`
-forces API-key auth (breaking OAuth) and `--safe-mode` also disables skills, which
-rule 13 depends on; neither is an acceptable default.
+An adapter declares `readsProjectDocs`, and the manager prepends the subset to any
+worker whose engine will not see `AGENTS.md` (§2 has the measurements):
+
+| Engine | `readsProjectDocs` | Effect |
+| --- | --- | --- |
+| Claude | `true` | Loads it via `CLAUDE.md`; sending the subset too would duplicate it. |
+| Codex | `false` | Reads it by default, so we pass `-c project_doc_max_bytes=0` and supply the subset. |
+| Antigravity | `false` | Never reads it at all. It received **no** project rules before this. |
+
+Claude's `--bare` and `--safe-mode` would suppress its import, but `--bare` forces
+API-key auth (breaking OAuth) and `--safe-mode` also disables skills, which rule 13
+depends on; neither is an acceptable default, so Claude keeps the full document.
 
 **Caching is the other half.** The worker prompt is assembled most-stable-first —
 project instructions, worker contract, role body, delivery clause, then the

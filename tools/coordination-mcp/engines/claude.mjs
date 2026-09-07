@@ -3,6 +3,12 @@
 export default {
   name: 'claude',
   efforts: ['low', 'medium', 'high', 'xhigh', 'max'],
+  // Claude loads the project's rules, so the manager must not send them again.
+  // It reads them through CLAUDE.md's `@AGENTS.md` import, not from AGENTS.md
+  // itself — measured: with AGENTS.md alone it answers NONE, and with a CLAUDE.md
+  // importing it, it quotes a passphrase that appears nowhere else. The generated
+  // CLAUDE.md is therefore load-bearing here, not a courtesy pointer.
+  readsProjectDocs: true,
   // No --agent flag. It delivered a second copy of the role body the manager
   // already inlines in every prompt — 8KB for developer, 10KB for
   // wiki-maintainer, roughly doubling the instruction payload per dispatch. Its

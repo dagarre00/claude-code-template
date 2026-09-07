@@ -14,11 +14,12 @@ export { engineNames };
 // One definition of a repository-relative path, used for both owned paths and
 // shared build state. No absolute paths, no traversal, no Windows separators or
 // glob characters, and never anything under .git.
-// Whether this engine's workers are launched without project-file discovery, so
-// the manager must supply the worker-scoped instruction subset itself. Engines
-// that still read AGENTS.md must not also receive it, or the saving becomes a
-// duplication.
-export const suppressesProjectDocs = engine => adapters[engine]?.suppressesProjectDocs === true;
+// Whether this engine's workers actually load the project's AGENTS.md. Where they
+// do not — because we suppressed it, or because the CLI never reads it — the
+// manager supplies the worker-scoped subset itself. Engines that do read it must
+// not also receive it, or the saving becomes a duplication. Each value is
+// measured, not assumed; see docs/harnesses.md §2.
+export const readsProjectDocs = engine => adapters[engine]?.readsProjectDocs !== false;
 
 export const isSafeRepoPath = path => typeof path === 'string' && !!path
   && !/[\\:\0\r\n*?\[\]]/.test(path) && !path.startsWith('/')

@@ -12,10 +12,11 @@ export default {
   // upstream issues are in docs/harnesses.md §12. Nothing is needed here: the
   // runner commits for every engine, so this adapter grants no git access.
   //
-  // Codex is the one engine that can be told to skip project-file discovery, so
-  // the manager gives its workers the worker-scoped instruction subset instead of
-  // the whole conductor-facing AGENTS.md.
-  suppressesProjectDocs: true,
+  // Codex reads AGENTS.md — verified: with one in its working directory it quoted
+  // a passphrase that appears nowhere else, without a tool call. It is also the
+  // one engine that can be told not to, so we tell it not to and the manager
+  // supplies the worker-scoped subset instead of the conductor-facing whole.
+  readsProjectDocs: false,
   buildArgs({ readOnly, workspace, model, effort }) {
     const args = ['exec', '--ephemeral', '--color', 'never', '--cd', workspace,
       '--sandbox', readOnly ? 'read-only' : 'workspace-write', '-c', 'approval_policy="never"',
