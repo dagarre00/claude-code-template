@@ -76,6 +76,17 @@ engine is launched with its project-file discovery suppressed, so the prompt is
 the complete statement of how it must work. The conductor owns branches,
 commits, pushes and pull requests; workers deliver files.
 
+**MCP is the only dispatch path.** Never delegate a role to a host CLI's own
+subagent mechanism, and never recreate \`.agents/agents/\` — roles deliberately
+live in \`.agents/roles/\`, which no plugin loader scans, so they cannot be
+published as native subagent types. A natively dispatched role would inherit the
+conductor's whole context and run in the conductor's checkout with no worktree,
+no owned paths and no suppression: every guarantee above, lost silently.
+
+Only a dispatched worker is a leaf. The conductor may dispatch as many workers
+as a cycle needs — \`/project:work\` runs a planner, a developer and an
+adversary — and it is not itself a worker.
+
 ## Commands
 
 \`skills\` names what each **dispatched role** receives inlined in its composed

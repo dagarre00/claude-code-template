@@ -13,9 +13,9 @@ export function fixture(overrides = {}) {
     '.agents/worker-contract.md':
       '# Worker contract\n\nYou never dispatch another worker, and you never change branches.\n',
     '.agents/project.md': '# Project\n\n- Name: `<set during project initialization>`\n',
-    '.agents/agents/developer.md':
+    '.agents/roles/developer.md':
       '---\nname: developer\ndescription: TDD in one agent.\nprofile: balanced\naccess: write\n---\n\nYou run red, green, refactor.\n',
-    '.agents/agents/adversary.md':
+    '.agents/roles/adversary.md':
       '---\nname: adversary\ndescription: Read-only diff hunter.\nprofile: reasoning\naccess: read-only\n---\n\nYou raise findings only.\n',
     '.agents/commands/work.md':
       '---\nname: work\ndescription: The core TDD loop.\nargument-hint: "[todo]"\nskills: [tdd-loop, wiki-update]\n---\n\n# /project:work\n\nStep 1. Read the spec.\n',

@@ -378,8 +378,8 @@ The wiki is the project's source of truth — code that disagrees with it is the
 - [`HUMAN.md`](../HUMAN.md) — the human's-eye view of the workflow
 - [`docs/wiki/git-conventions.md`](wiki/git-conventions.md) — branching and commit format
 - [`docs/wiki/commands.md`](wiki/commands.md) — working shell commands
-- [`.agents/agents/planner.md`](../.agents/agents/planner.md) — the planner agent definition (Opus)
-- [`.agents/agents/developer.md`](../.agents/agents/developer.md) — the developer agent definition
-- [`.agents/agents/adversary.md`](../.agents/agents/adversary.md) — the read-only diff reviewer (Opus)
+- [`.agents/roles/planner.md`](../.agents/roles/planner.md) — the planner agent definition (Opus)
+- [`.agents/roles/developer.md`](../.agents/roles/developer.md) — the developer agent definition
+- [`.agents/roles/adversary.md`](../.agents/roles/adversary.md) — the read-only diff reviewer (Opus)
 - [`.agents/skills/plan-writing/SKILL.md`](../.agents/skills/plan-writing/SKILL.md) — how plans are structured
 - [`.agents/skills/adversarial-review/SKILL.md`](../.agents/skills/adversarial-review/SKILL.md) — sweep order, severity vocabulary, triage protocol

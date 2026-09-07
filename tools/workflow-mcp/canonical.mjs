@@ -141,9 +141,9 @@ function requireText(value, field, where) {
 }
 
 function loadRoles(root) {
-  const dir = resolve(root, '.agents/agents');
+  const dir = resolve(root, '.agents/roles');
   return markdown(dir).map(file => {
-    const where = `.agents/agents/${file}`;
+    const where = `.agents/roles/${file}`;
     const name = file.replace(/\.md$/, '');
     const { data, body } = parseFrontmatter(read(resolve(dir, file)), where);
     checkKeys(data, 'role', where);

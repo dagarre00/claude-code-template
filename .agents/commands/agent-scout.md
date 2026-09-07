@@ -25,7 +25,7 @@ Check these before proceeding. If any fails, stop and run `human-checkpoint`:
 
 1. `docs/wiki/requirements.md` — `## Vision` must have real content (not `<TBD>`).
 2. `docs/wiki/architecture.md` — `## Stack` must name a real language and framework.
-3. `.agents/agents/` and `.agents/skills/` must exist.
+3. `.agents/roles/` and `.agents/skills/` must exist.
 
 If the project hasn't been initialized yet, tell the human to run `/project:init` first.
 
@@ -44,7 +44,7 @@ Read all of these — do not skip any:
 ### 2. Inventory what already exists
 
 ```bash
-ls .agents/agents/
+ls .agents/roles/
 ls .agents/skills/
 ```
 

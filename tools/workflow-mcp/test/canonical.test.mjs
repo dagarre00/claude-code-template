@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadCanonical, workerRules } from '../canonical.mjs';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { cleanup, fixture } from './helpers.mjs';
 
@@ -65,7 +66,7 @@ test('a command declaring a skill that does not exist is an error naming both', 
 
 test('an unknown profile is an error naming the file, never a silent drop', () => {
   withFixture({
-    '.agents/agents/developer.md':
+    '.agents/roles/developer.md':
       '---\nname: developer\ndescription: d\nprofile: turbo\naccess: write\n---\n\nBody.\n'
   }, root => {
     assert.throws(() => loadCanonical(root), /developer\.md/);
@@ -74,7 +75,7 @@ test('an unknown profile is an error naming the file, never a silent drop', () =
 
 test('an unknown access level is an error', () => {
   withFixture({
-    '.agents/agents/developer.md':
+    '.agents/roles/developer.md':
       '---\nname: developer\ndescription: d\nprofile: balanced\naccess: sudo\n---\n\nBody.\n'
   }, root => {
     assert.throws(() => loadCanonical(root), /developer\.md/);
@@ -83,7 +84,7 @@ test('an unknown access level is an error', () => {
 
 test('a role whose frontmatter name disagrees with its filename is an error', () => {
   withFixture({
-    '.agents/agents/developer.md':
+    '.agents/roles/developer.md':
       '---\nname: coder\ndescription: d\nprofile: balanced\naccess: write\n---\n\nBody.\n'
   }, root => {
     assert.throws(() => loadCanonical(root), /developer/);
@@ -96,7 +97,7 @@ test('a role whose frontmatter name disagrees with its filename is an error', ()
 // never consulted, so it is rejected and the error says where to go instead.
 test('a role declaring an engine-specific model is rejected, pointing at config.json', () => {
   withFixture({
-    '.agents/agents/developer.md':
+    '.agents/roles/developer.md':
       '---\nname: developer\ndescription: d\nprofile: balanced\naccess: write\nmodel: opus\n---\n\nBody.\n'
   }, root => {
     assert.throws(() => loadCanonical(root), err =>
@@ -107,7 +108,7 @@ test('a role declaring an engine-specific model is rejected, pointing at config.
 test('any unknown key in a role is rejected rather than ignored', () => {
   for (const key of ['color', 'tools', 'disallowedTools', 'moddel']) {
     withFixture({
-      '.agents/agents/developer.md':
+      '.agents/roles/developer.md':
         `---\nname: developer\ndescription: d\nprofile: balanced\naccess: write\n${key}: x\n---\n\nBody.\n`
     }, root => {
       assert.throws(() => loadCanonical(root), new RegExp(key),
@@ -127,7 +128,7 @@ test('an unknown key in a command is rejected too', () => {
 
 test('the keys a role legitimately uses are all accepted', () => {
   withFixture({
-    '.agents/agents/developer.md':
+    '.agents/roles/developer.md':
       '---\nname: developer\ndescription: d\ntype: agent\nprofile: balanced\naccess: write\n---\n\nBody.\n'
   }, root => {
     assert.equal(loadCanonical(root).roles.find(r => r.name === 'developer').profile, 'balanced');
@@ -285,4 +286,20 @@ test('the real .agents/ source loads and satisfies every rule', () => {
       }
     }
   }
+});
+
+// Roles live in .agents/roles/, NOT .agents/agents/, and the directory name is
+// load-bearing. Claude Code's plugin loader scans `agents/`, so a role file
+// there is published as a native subagent type (project:developer). A conductor
+// that dispatched one would bypass the entire architecture at once: no worktree,
+// no owned_paths, no context suppression, and the conductor's own context
+// inherited wholesale — the opposite of every guarantee a composed prompt makes.
+// Verified: after the rename, a session reports NONE for project:* agent types
+// while /project:work and project:tdd-loop stay available.
+test('roles are not published as native subagent types', () => {
+  const root = resolve(import.meta.dirname, '../../..');
+  assert.ok(existsSync(resolve(root, '.agents/roles')), 'roles must live in .agents/roles/');
+  assert.ok(!existsSync(resolve(root, '.agents/agents')),
+    '.agents/agents/ is scanned by the Claude Code plugin loader and would republish '
+    + 'every role as a dispatchable subagent, bypassing the MCP. Keep roles in .agents/roles/.');
 });

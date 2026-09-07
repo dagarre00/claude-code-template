@@ -139,7 +139,7 @@ test('reports the prompt size so the conductor can see what it is paying for', (
 
 test('a role with no config entry still dispatches on the inherited engine', () => {
   withRepo(root => {
-    writeFileSync(resolve(root, '.agents/agents/scout.md'),
+    writeFileSync(resolve(root, '.agents/roles/scout.md'),
       '---\nname: scout\ndescription: d\nprofile: fast\naccess: read-only\n---\n\nBody.\n');
     const result = prepareDispatch(root, { role: 'scout', instructions: 'Look around.',
       conductorEngine: 'claude', workspace: resolve(root, '.worktrees/x') });

@@ -34,7 +34,7 @@ export function createServer(root, conductorEngine) {
     });
 
   register('list_roles',
-    'List worker roles from .agents/agents/, with the profile, access level, and the CLI engine each resolves to. Call before build_worker_prompt to discover valid role names.',
+    'List worker roles from .agents/roles/, with the profile, access level, and the CLI engine each resolves to. Call before build_worker_prompt to discover valid role names.',
     {}, () => api.list_roles());
 
   register('list_commands',
