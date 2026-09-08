@@ -28,4 +28,11 @@ updated: 2026-08-31
 - Change: pinned `developer` to `codex` (`gpt-5.6-luna`, effort `medium`) in `.agents/config.json`, replacing `antigravity`, specifically to test whether a codex worker can write files — no role had previously exercised codex's `workspace-write` sandbox, only its `read-only` one (adversary).
 - Change: set `allowNonWorkspaceAccess: false` in the user-global `~/.gemini/antigravity-cli/settings.json`, closing the isolation gap `docs/engine-setup.md` names — an agy worker's worktree boundary is now enforced by the CLI itself rather than only by `--add-dir` and the allowlist.
 - Why: the human asked for both directly, after a review of `docs/engine-setup.md` and the config surfaced that codex's write path was unverified under the current pinning and that agy's non-workspace access was left open.
-- Not yet verified: no dispatch has been run against the new `developer` pinning. `engines.codex.models.fast` still names `gpt-5.4-mini`, which OpenAI retired from Codex on 2026-08-31 in favor of `gpt-5.6-luna` — flagged to the human, not changed here since only `developer`'s pin was requested.
+- Not yet verified: no dispatch has been run against the new `developer` pinning.
+
+## [2026-09-07 21:45] chore
+
+- Change: `engines.codex.models.fast` `gpt-5.4-mini` → `gpt-5.6-luna` (the model retired the previous entry flagged). `engines.antigravity.models.reasoning` `gemini-3.1-pro` → `gemini-3.1-pro-preview` — the bare id was simply wrong; Google's own docs give `gemini-3.1-pro-preview` as the real one, and the old value would have failed to resolve on first use.
+- Checked against the web and left unchanged, all confirmed Active: `claude-opus-5`, `claude-sonnet-5`, `claude-haiku-4-5-20251001` (Anthropic's deprecations page — none even deprecated yet), `gpt-6-astra`, `gpt-5.6-terra` (current Codex models), `gemini-3.8-flash` (Google's model docs, stable).
+- Note: `engines.antigravity.models.reasoning` is presently unreachable — no role with a `reasoning` profile resolves to `antigravity` under the current pins in `.agents/config.json` (`adversary` and `planner`, the two `reasoning`-profile roles, are explicitly pinned to `codex` and `claude`). Fixed anyway so it isn't a landmine for the next repin.
+- MCP suite 92/92 after both edits.
