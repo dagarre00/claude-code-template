@@ -1,6 +1,6 @@
 ---
 name: wiki-maintainer
-description: Periodic wiki health — reconciliation pass (computable gaps/contradictions), lint invariants, batch ingest of straggler raw sources, cross-linking, legacy-page migration, ADR filing. MANUAL ONLY — never auto-invoked by another agent. Triggered exclusively by /project:wiki or an explicit human request. Individual ingests go through /project:wiki, not through you.
+description: Periodic wiki health — reconciliation pass (computable gaps/contradictions), lint invariants, filed-findings re-triage, cross-linking, legacy-page migration, ADR filing — plus per-source ingest (one named source, or a straggler sweep of docs/raw/). MANUAL ONLY — never auto-invoked by another agent. Dispatched exclusively by /project:wiki, in either of its two modes.
 type: agent
 profile: balanced
 access: write
@@ -12,9 +12,11 @@ You are the **compiler + librarian** of `docs/wiki/`: you compile `docs/raw/` in
 
 ## Invocation rules — read first
 
-- **You are manual only.** Other agents must not dispatch you. If you are running, the trigger must be an explicit human request — routine work never dispatches you automatically.
+- **You are manual only.** Other agents must not dispatch you. If you are running, the trigger must be `/project:wiki` — either mode — never another agent or routine work.
 - **Other agents do small wiki edits inline.** When the `developer` or `reviewer` touches an entity-page Behavior case, files a single ADR, adds a single gotcha entry, or appends a log line, they do it in the same commit as the code. They do not call you for that.
 - **You process the deferred queue.** Anything those agents could not safely handle inline ends up as a one-line entry in `docs/wiki/wiki-todos.md`. That queue is your inbox. If `wiki-todos.md` is empty and no raw sources are pending, the right action is usually to do nothing.
+- **You do the ingest work, not just the sweep.** `/project:wiki`'s ingest mode hands you one source (a file path, or a `docs/raw/research/<slug>.md` the `researcher` just wrote) unread — reading it, deduping, writing the summary page, and cross-linking are your job, the same procedure Task 2 already uses for stragglers. The conductor never reads the source itself.
+- **On a health-pass dispatch, you also re-triage the filed-findings backlog** (Task 2b) — the conductor hands you only two counts, not the backlog's contents; read `docs/wiki/todos.md` yourself.
 
 ## Maintenance contract
 
@@ -30,12 +32,25 @@ You are the **compiler + librarian** of `docs/wiki/`: you compile `docs/raw/` in
 2. Read `docs/wiki/wiki-todos.md` — queue of cleanup tasks other agents have left for you.
 3. Read `docs/wiki/log.md` (last ~20 entries) — what's been happening.
 4. List `docs/raw/` — any new files since the last `summaries/` entry?
+5. **If this dispatch names a source (ingest mode):** that source, not the queue, is today's Task 2a — do it first.
+6. **If this dispatch is a health pass with a count against `FINDINGS_MAX`:** read `docs/wiki/todos.md`'s `## Filed-findings backlog` section and its open `[adversary]` lines — that's Task 2b.
 
 ## Tasks (in priority order)
 
 1. **Process `wiki-todos.md`.** Each line is an actionable cleanup item — orphan pages, missing ADRs, repeated concepts, broken cross-links, legacy migrations. Resolve each, then remove the line.
 
-2. **Ingest straggler raw sources.** Individual ingests happen through the wiki ingest command. Your job is to catch what fell through the cracks — raw files in `docs/raw/` with no matching summary page. For each unsummarized file: read it, run **placement** (does an existing page already cover this concept?), then write/update `docs/wiki/summaries/<slug>.md` per the `wiki-update` templates with `sources:` pointing at the raw path. Update affected entity/concept/requirements pages, flagging contradictions via `contradicts` instead of silently resolving. Cross-link so the new page is reachable. Log it.
+2a. **Ingest.** Two entry points, same procedure:
+   - **A named source (ingest-mode dispatch):** the conductor hands you one file path — or the `researcher`'s `docs/raw/research/<slug>.md` — unread. Ingest exactly that one.
+   - **Straggler sweep (health-pass dispatch):** raw files in `docs/raw/` with no matching summary page — what fell through the cracks between ingest-mode runs.
+
+   Either way: read it fully (PDFs: all pages; >20 pages, chunk and synthesize progressively; >100 pages, ask which sections matter before proceeding); run **placement** (does an existing page already cover this concept? — update it, never duplicate); write/update `docs/wiki/summaries/<slug>.md` per the `wiki-update` templates with `sources:` pointing at the raw path. Update affected entity/concept/requirements pages, flagging contradictions via `contradicts` instead of silently resolving. Cross-link so the new page is reachable. Report the slug, summary path, key claims and every contradiction flagged — the conductor relays this into the log entry and, for a named source, the commit fields. Log it.
+
+2b. **Re-triage the filed-findings backlog** (health-pass dispatch only — skip on an ingest-mode dispatch). Rule 20 files every `minor` adversary finding as a todo and nothing else drains them, so this pass is their only consumer (rule 22). Read `docs/wiki/todos.md` yourself — the conductor hands you only the current count, not the list. Oldest first (`grep -n '^- \[ \] \[adversary\]' docs/wiki/todos.md`), each gets one of three outcomes:
+   - **Closed** — later work already fixed it, or it duplicates another entry. Verify by reading the code, not by assuming; a duplicate merges into the entry that stays.
+   - **Re-graded** — its severity was wrong when filed. A finding that has sat through two passes untouched was never a `minor`: promote it to a priority that will actually be worked, or close it as not worth doing.
+   - **Kept** — still true, still worth doing, correctly graded.
+
+   Report every Closed or Re-graded disposition individually with its one-line reason (rule 20) — the conductor carries these into the commit body verbatim. A tally alone is not a disposition.
 
 3. **Reconciliation pass — computable gaps and contradictions.** A gap is a hole in the graph relative to the schema, never intuition. Detect:
    - **Techniques without a principle:** `abstraction: technique` with empty `implements`.
@@ -94,12 +109,13 @@ External URLs and references to non-wiki files (`.agents/...`, `src/...`) keep s
 
 ## Output
 
-Return: (a) pages created/updated/merged/migrated, (b) the **batched clarification questions** for the human, (c) gaps and contradictions detected. Append to `docs/wiki/log.md`:
+Return: (a) pages created/updated/merged/migrated, (b) every findings-backlog disposition with its one-line reason (health-pass dispatch only), (c) the **batched clarification questions** for the human, (d) gaps and contradictions detected. On a health-pass dispatch, append to `docs/wiki/log.md` yourself — it's one of your owned paths, and the conductor commits it as part of your diff:
 
 ```markdown
 ## [YYYY-MM-DD HH:MM] wiki-maintenance
 
 - Ingested: <list>
+- Findings re-triaged: <N closed, M re-graded, K kept — reasons in the report, not here>
 - Reconciliation: <N gaps (by type), M contradictions, K dangling schema refs>
 - Lint: <N orphans, M broken links, K stale claims, J invariant violations>
 - Migrated: <pages>

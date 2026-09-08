@@ -1,6 +1,6 @@
 ---
 name: wiki
-description: Wiki operations — ingest and health. With an argument, ingests one source into the wiki (a file path, or "search for <topic>" to research first). With no argument, dispatches the wiki-maintainer for a periodic health pass — the wiki-todos queue, the reconciliation pass, lint invariants, orphans, broken links, and the filed-findings backlog. Ingest is per-source and on demand; the health pass is periodic.
+description: Wiki operations — ingest and health, both dispatched to the wiki-maintainer so the conductor never reads a source or a findings backlog itself. With an argument, ingests one source into the wiki (a file path, or "search for <topic>" to research first). With no argument, runs a periodic health pass — the wiki-todos queue, the reconciliation pass, lint invariants, orphans, broken links, and the filed-findings backlog. Ingest is per-source and on demand; the health pass is periodic.
 argument-hint: [path/to/file | search for <topic>] — empty runs the periodic health pass
 type: command
 skills:
@@ -37,15 +37,17 @@ Run the guarded sync block in [`.agents/skills/feature-branching/sync-develop.md
 
 # Ingest mode
 
-One source in, one `summaries/` page out, cross-linked. **Ingest only** — no orphan scan, no link audit, no lint pass. Those are the health pass.
+One source in, one `summaries/` page out, cross-linked. **Ingest only** — no orphan scan, no link audit, no lint pass. Those are the health pass. The conductor never reads the source itself — getting it onto disk is the only conductor-side step; reading, dedup, writing and cross-linking all happen in the `wiki-maintainer`'s own worktree, not the conductor's context.
 
-1. **Get the source.**
-   - **From a file:** read it fully. PDFs: read all pages; >20 pages, read in chunks and synthesize progressively; >100 pages, ask which sections matter.
-   - **From research:** dispatch the `researcher` with the query. It searches, fetches, and writes `docs/raw/research/<slug>.md`. Wait for it. If it returns nothing or every source was unreachable, report and stop — never synthesize a summary from thin air. Then read what it wrote.
+1. **Get the source onto disk — unread.**
+   - **From a file:** the path from the argument, already confirmed to exist by the mode resolution above. Nothing to do here; hand the path to the `wiki-maintainer` in step 2.
+   - **From research:** dispatch the `researcher` with the query. It searches, fetches, and writes `docs/raw/research/<slug>.md`. Wait for it. If it returns nothing or every source was unreachable, report and stop — never synthesize a summary from thin air. Hand its output path to the `wiki-maintainer` in step 2, same as a file source — the conductor does not read it either.
 
-2. **Placement check (dedup).** Before creating anything, compare the source's essence against existing pages — filenames and `aliases` (`grep -r "aliases:" -A3 docs/wiki/`). An existing summary or concept page already covering this material gets **updated** (merge new claims into the right section, extend `sources`, bump `updated`), never duplicated. Only then derive the slug: `specification.pdf` → `specification`. A slug collision on a genuinely different concept takes a discriminator (`-2`, `-3`) and records the near-miss in `aliases`; a collision on the *same* concept under another name means you update that page instead.
+2. **Dispatch `wiki-maintainer`** with the source path and the instructions below — this is the same reading-and-placement work it already does for straggler sources during a health pass, just aimed at the one source you were just handed instead of a `docs/raw/` sweep:
 
-3. **Write `docs/wiki/summaries/<slug>.md`.** Frontmatter per the Obsidian standard — flat, no `name`/`description`, wikilinks in properties quoted and solitary (`wiki-update` skill):
+   - **Read it fully.** PDFs: all pages; >20 pages, chunk and synthesize progressively; >100 pages, ask which sections matter before proceeding.
+   - **Placement check (dedup).** Before creating anything, compare the source's essence against existing pages — filenames and `aliases` (`grep -r "aliases:" -A3 docs/wiki/`). An existing summary or concept page already covering this material gets **updated** (merge new claims into the right section, extend `sources`, bump `updated`), never duplicated. Only then derive the slug: `specification.pdf` → `specification`. A slug collision on a genuinely different concept takes a discriminator (`-2`, `-3`) and records the near-miss in `aliases`; a collision on the *same* concept under another name means updating that page instead.
+   - **Write `docs/wiki/summaries/<slug>.md`.** Frontmatter per the Obsidian standard — flat, no `name`/`description`, wikilinks in properties quoted and solitary (`wiki-update` skill):
 
    ```markdown
    ---
@@ -86,13 +88,16 @@ One source in, one `summaries/` page out, cross-linked. **Ingest only** — no o
    - Which entity/concept/decision pages you updated based on this source.
    ```
 
-   `sources:` points at the raw file — the researcher's `docs/raw/research/<slug>.md`, or the ingested file's own path. A source still outside `docs/raw/` (a PDF dropped in the repo root) keeps its current path here; suggest moving it in the report.
+   `sources:` points at the raw file — the researcher's `docs/raw/research/<slug>.md`, or the ingested file's own path. A source still outside `docs/raw/` (a PDF dropped in the repo root) keeps its current path here; flag the move in its report.
 
-4. **Cross-link.** Grep `docs/wiki/` for the summary's terms. Where an entity or concept page overlaps, add a `[[summaries/<slug>]]` reference in its body and merge material new claims into the section they belong to. Where the source **contradicts** an existing claim, add `"[[summaries/<slug>]]"` / `"[[<page>]]"` to both pages' `contradicts` and note the conflict in both `## Boundaries` sections — never resolve it silently; unresolved `contradicts` is exactly the flag the health pass reconciles. Linking from the pages it informs is what makes a summary reachable: there is no central index.
+   - **Cross-link.** Grep `docs/wiki/` for the summary's terms. Where an entity or concept page overlaps, add a `[[summaries/<slug>]]` reference in its body and merge material new claims into the section they belong to. Where the source **contradicts** an existing claim, add `"[[summaries/<slug>]]"` / `"[[<page>]]"` to both pages' `contradicts` and note the conflict in both `## Boundaries` sections — never resolve it silently; unresolved `contradicts` is exactly the flag the health pass reconciles. Linking from the pages it informs is what makes a summary reachable: there is no central index.
+   - **Report back:** slug, summary path, key claims, every contradiction flagged, and every page touched (for the cross-links field below).
 
-5. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `wiki-ingest`, fields `Ingested: <path> → [[summaries/<slug>]]` and `Cross-links added: <list>`. Stage `docs/wiki/` and `docs/raw/` (so a source you moved in is tracked rather than left dirty); subject `docs: ingest <name> → [[summaries/<slug>]]`.
+3. **Review the diff** — `git diff --stat`. Only `docs/wiki/` (and `docs/raw/`, if a source was moved in); no other code, no raw file edits beyond adding the new source.
 
-6. **Report:** slug, summary path, key claims, and every contradiction flagged.
+4. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `wiki-ingest`, fields `Ingested: <path> → [[summaries/<slug>]]` and `Cross-links added: <list>`, both from the `wiki-maintainer`'s report. Stage `docs/wiki/` and `docs/raw/` (so a source you moved in is tracked rather than left dirty); subject `docs: ingest <name> → [[summaries/<slug>]]`.
+
+5. **Report:** slug, summary path, key claims, and every contradiction flagged — relaying the `wiki-maintainer`'s report.
 
 ---
 
@@ -106,37 +111,31 @@ Dispatch the `wiki-maintainer` for a full pass. **Periodic, not every-cycle.** D
 - `/project:review` flagged drift.
 - A new batch of raw sources landed in `docs/raw/`.
 
-1. **Check the append-only files for overflow** before dispatching:
+1. **Compute the due-checks** — two cheap counts, nothing else. This is the only reading the conductor does before dispatch; everything past it — including reading any individual finding's code to verify a disposition — belongs in the `wiki-maintainer`'s own context, not here:
 
    ```bash
-   grep -c "^## \[" docs/wiki/log.md 2>/dev/null || true
+   grep -c "^## \[" docs/wiki/log.md 2>/dev/null || true                    # log overflow — archive at >= 100
+   grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null || true  # against FINDINGS_MAX
    ```
 
-   **≥ 100 entries:** instruct the maintainer to move all but the most recent 30 into `docs/wiki/summaries/log-archive-YYYY.md` (recency is the only criterion — age is irrelevant), append-only from then on. `log.md` grows unboundedly and models loading it lose signal in the noise; the archive is reference-only and never loaded by default. Shipped work is not tracked in a `completed.md` — git history is that record.
+2. **Dispatch `wiki-maintainer`** with the focus from the argument (and an explicit instruction to skip checks outside it), the current `wiki-todos.md`, the raw files with no matching summary, and step 1's two counts — never the backlog's own contents, which the maintainer reads from `docs/wiki/todos.md` directly inside its own worktree. Instruct it to:
 
-2. **Re-triage the filed-findings backlog.** Rule 20 files every `minor` adversary finding as a todo and nothing else drains them, so this pass is their only consumer (rule 22):
+   - **If the log count is ≥ 100:** move all but the most recent 30 `log.md` entries into `docs/wiki/summaries/log-archive-YYYY.md` (recency is the only criterion — age is irrelevant), append-only from then on. `log.md` grows unboundedly and models loading it lose signal in the noise; the archive is reference-only and never loaded by default. Shipped work is not tracked in a `completed.md` — git history is that record.
+   - **Re-triage the filed-findings backlog.** Rule 20 files every `minor` adversary finding as a todo and nothing else drains them, so this pass is their only consumer (rule 22). Oldest first (`grep -n '^- \[ \] \[adversary\]' docs/wiki/todos.md`), each gets one of three outcomes:
+     - **Closed** — later work already fixed it, or it duplicates another entry. Verify by reading the code, not by assuming; a duplicate merges into the entry that stays.
+     - **Re-graded** — its severity was wrong when filed. A finding that has sat through two passes untouched was never a `minor`: promote it to a priority that will actually be worked, or close it as not worth doing.
+     - **Kept** — still true, still worth doing, correctly graded.
 
-   ```bash
-   grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null || true        # against FINDINGS_MAX
-   grep -n '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null | head -20   # oldest first — head's exit status, not grep's, ends the pipe
-   ```
+     Every Closed or Re-graded disposition needs a one-line reason (rule 20) — report each one back individually, not just the tally, so the conductor can carry the reasons into the commit body. A backlog pruned silently is a backlog deleted, and the next adversary round re-finds every one of them.
+   - Process the `wiki-todos` queue; ingest the stragglers; run the **reconciliation pass** (computable gaps — techniques without `implements`, instances without `specializes`, broken `depends_on` targets, ≥3-reference terms without a page, orphaned **content** pages only, since ledgers, root spec pages and folder READMEs are navigational and exempt, asymmetric `contrasts_with`/`alternative_to`, unresolved `contradicts`, and dangling `<file>.md § <Section>` citations from `.agents/rules.md`/`.agents/skills`/`.agents/commands`); check the **lint invariants** (illegal filename characters, broken wikilinks, nested frontmatter objects, unquoted or multiple wikilinks in properties, out-of-vocabulary `type`/`abstraction`/`status`, singular `tag`/`alias` keys, claims without provenance); migrate queued legacy pages; archive overflow; and end with a summary plus a **single batched lot** of clarification questions.
 
-   Oldest first, each gets one of three outcomes:
-   - **Closed** — later work already fixed it, or it duplicates another entry. Verify by reading the code, not by assuming; a duplicate merges into the entry that stays.
-   - **Re-graded** — its severity was wrong when filed. A finding that has sat through two passes untouched was never a `minor`: promote it to a priority that will actually be worked, or close it as not worth doing.
-   - **Kept** — still true, still worth doing, correctly graded.
+3. **Expect back:** resolved `wiki-todos` lines removed; every findings-backlog disposition (Closed / Re-graded / Kept) with its one-line reason; new `summaries/` pages for ingested stragglers; entity/concept/decision updates with cross-links so new pages are reachable; `status: stub` pages for missing prerequisites and heavily-referenced terms (never invented content); legacy pages migrated to the standard (facts moved, not rewritten); archival files if a threshold was hit.
 
-   Closing needs the same one-line reason in the commit body that rejecting a finding needs (rule 20). A backlog pruned silently is a backlog deleted, and the next adversary round re-finds every one of them.
+4. **Review the diff** — `git diff --stat`. No code outside `docs/wiki/`, no modified raw files, no mass entity rewrites (a 500-line entity diff is a red flag; the maintainer is meant to be conservative).
 
-3. **Dispatch `wiki-maintainer`** with the focus from the argument (and an explicit instruction to skip checks outside it), the current `wiki-todos.md`, the raw files with no matching summary, and step 1's overflow results. Instruct it to: process the queue; ingest the stragglers; run the **reconciliation pass** (computable gaps — techniques without `implements`, instances without `specializes`, broken `depends_on` targets, ≥3-reference terms without a page, orphaned **content** pages only, since ledgers, root spec pages and folder READMEs are navigational and exempt, asymmetric `contrasts_with`/`alternative_to`, unresolved `contradicts`, and dangling `<file>.md § <Section>` citations from `.agents/rules.md`/`.agents/skills`/`.agents/commands`); check the **lint invariants** (illegal filename characters, broken wikilinks, nested frontmatter objects, unquoted or multiple wikilinks in properties, out-of-vocabulary `type`/`abstraction`/`status`, singular `tag`/`alias` keys, claims without provenance); migrate queued legacy pages; archive overflow; and end with a summary plus a **single batched lot** of clarification questions.
+5. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `wiki-maintenance`, staging `docs/wiki/`, subject `chore(wiki): lint — <N todos, M orphans, K broken links, F findings re-triaged>`, body carrying every Closed/Re-graded reason the maintainer reported (rule 20 — a disposition that exists only in a discarded report satisfies nothing).
 
-4. **Expect back:** resolved `wiki-todos` lines removed; new `summaries/` pages for ingested stragglers; entity/concept/decision updates with cross-links so new pages are reachable; `status: stub` pages for missing prerequisites and heavily-referenced terms (never invented content); legacy pages migrated to the standard (facts moved, not rewritten); archival files if a threshold was hit.
-
-5. **Review the diff** — `git diff --stat`. No code outside `docs/wiki/`, no modified raw files, no mass entity rewrites (a 500-line entity diff is a red flag; the maintainer is meant to be conservative).
-
-6. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `wiki-maintenance`, staging `docs/wiki/`, subject `chore(wiki): lint — <N todos, M orphans, K broken links, F findings re-triaged>`.
-
-7. **Report.** What was processed, what remains, gaps and contradictions found — and the maintainer's clarification questions **in one lot**. The human or `/project:interview` decides which version of a contradiction is correct; unresolved `contradicts` stay flagged until then.
+6. **Report.** What was processed, what remains, gaps and contradictions found — and the maintainer's clarification questions **in one lot**. The human or `/project:interview` decides which version of a contradiction is correct; unresolved `contradicts` stay flagged until then.
 
 ---
 

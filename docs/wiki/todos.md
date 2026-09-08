@@ -59,7 +59,7 @@ The `|| true` is not decoration: `grep -c` exits 1 when the count is zero, which
 
 Unlike `P0_MAX`, this is not a saturation alarm — a long `minor` tail is normal and mostly harmless. It is a **re-triage trigger**, and exactly two things act on it:
 
-- **`/project:wiki`** re-triages the whole `[adversary]` backlog on each pass: re-grade what was mis-severed, merge duplicates, close what later work already fixed. Closing a finding here needs the same one-line reason in the commit body that rejecting one needs (rule 20) — a queue pruned silently is a queue deleted.
+- **The `wiki-maintainer`, dispatched by `/project:wiki`'s health-pass mode,** re-triages the whole `[adversary]` backlog on each pass: re-grade what was mis-severed, merge duplicates, close what later work already fixed. Closing a finding here needs the same one-line reason in the commit body that rejecting one needs (rule 20) — a queue pruned silently is a queue deleted.
 - **`/project:work` step 12** surfaces `/project:wiki` as due once the count reaches `FINDINGS_MAX`.
 
 If a finding survives two re-triage passes untouched, its severity was wrong when it was filed. Close it with that as the reason, or promote it — leaving it is the only option that teaches nothing.
