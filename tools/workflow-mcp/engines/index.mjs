@@ -36,7 +36,12 @@ for (const engine of registered) {
     // neither has that problem and must say so rather than the caller finding
     // out from a multi-megabyte stdout capture.
     || typeof engine.reportIsStdout !== 'boolean'
-    || typeof engine.writesReportFile !== 'boolean') {
+    || typeof engine.writesReportFile !== 'boolean'
+    // Optional: names a script under this directory that turns a captured raw
+    // transcript into a report, for an engine that needs post-processing
+    // rather than a native flag (antigravity). Absent for an engine whose
+    // buildArgs writes reportFile itself (codex) or that needs neither (claude).
+    || (engine.extractReportFrom !== undefined && typeof engine.extractReportFrom !== 'string')) {
     throw new Error(`Malformed engine adapter: ${engine?.name ?? 'unnamed'}`);
   }
 }
@@ -64,8 +69,11 @@ export function buildCommand(settings, task) {
     throw new Error(`Invalid model for ${name}: ${JSON.stringify(model)}`);
   }
 
-  // Passed to every adapter; only one (codex, via writesReportFile) does
-  // anything with it. Harmless for the others to receive and ignore.
+  // Passed to every adapter; only codex's buildArgs does anything with it
+  // (wires it in as -o). Antigravity gets its report_file a different way —
+  // dispatch.mjs wraps its command and runs extractReportFrom afterward,
+  // because there is no argv flag agy accepts for this. Harmless for claude
+  // to receive and ignore.
   const args = engine.buildArgs({ settings, config, profile, access, workspace, model, effort,
     reportFile, readOnly: access === 'read-only' });
 

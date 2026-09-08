@@ -8,7 +8,8 @@
 // read, not by reading a supervisor's logs.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadCanonical } from './canonical.mjs';
 import { loadConfig, resolveEngine } from './config.mjs';
 import { composePrompt } from './compose.mjs';
@@ -19,6 +20,12 @@ import { ENGINES, buildCommand, stdinPayload } from './engines/index.mjs';
 // is the authoritative form and never passes through a shell.
 const quote = value => /^[A-Za-z0-9_@%+=:,./-]+$/.test(value) ? value : `'${value.replaceAll("'", `'\\''`)}'`;
 
+// Resolved against this file's own location, not `root`: an extraction script
+// is part of the workflow-mcp tool, always a sibling of dispatch.mjs, whether
+// this is the template checkout or a project that adopted a copy of it — never
+// something looked up inside the target project's own tree.
+const ENGINES_DIR = fileURLToPath(new URL('./engines', import.meta.url));
+
 export function prepareDispatch(root, input = {}) {
   const { conductorEngine, cli_engine, workspace, task_id = randomUUID() } = input;
   const canonical = loadCanonical(root);
@@ -28,17 +35,21 @@ export function prepareDispatch(root, input = {}) {
     ...input, task_id, workspace, workerCommands: config.workerCommands });
   const engine = cli_engine ?? resolveEngine(config, composed.role, conductorEngine);
 
-  // All three files live beside each other so a human can read exactly what was
+  // All four files live beside each other so a human can read exactly what was
   // sent and re-run it byte for byte. The prompt is the readable form; the stdin
-  // file is the wire form, which differs only for antigravity's NDJSON envelope;
-  // report_file is where an engine that supports it (currently codex only, via
-  // `-o`) writes just the worker's final message — computed before buildCommand
-  // so the adapter can wire it into argv.
+  // file is the wire form, which differs only for antigravity's NDJSON envelope.
+  // report_file ends up holding just the worker's final message for any engine
+  // that solves the "report vs. transcript" problem (codex natively via -o;
+  // antigravity via the command wrapping below, since it has no such flag);
+  // raw_file is where that engine's full stdout+stderr goes when wrapped, kept
+  // for the rare case of debugging a failed run. Computed before buildCommand
+  // so codex's adapter can wire report_file into its own argv.
   const dir = resolve(root, '.worktrees', '.dispatch', task_id);
   mkdirSync(dir, { recursive: true });
   const prompt_file = resolve(dir, 'prompt.txt');
   const stdin_file = resolve(dir, 'stdin.txt');
   const report_file = resolve(dir, 'report.txt');
+  const raw_file = resolve(dir, 'raw.txt');
   writeFileSync(prompt_file, composed.prompt);
   writeFileSync(stdin_file, stdinPayload(engine, composed.prompt));
 
@@ -100,9 +111,31 @@ export function prepareDispatch(root, input = {}) {
     stdin_file,
     // Non-null only for an engine that actually writes to it (adapter.writesReportFile);
     // read this instead of stdout for the routine "what did the worker report" path —
-    // stdout still has everything, for the rare case of debugging a failed run.
+    // raw_file still has everything, for the rare case of debugging a failed run.
     report_file: adapter.writesReportFile ? report_file : null,
-    command: `cd ${quote(workspace)} && ${quote(command.executable)} `
-      + `${command.args.map(quote).join(' ')} < ${quote(stdin_file)}`
+    command: buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter })
   };
+}
+
+// The base invocation is always `cd <workspace> && <executable> <args> < <stdin>`.
+// claude (writesReportFile: false, reportIsStdout: true) returns exactly that —
+// stdout there is already just the report, nothing to hide. Every other engine
+// gets wrapped: stdout+stderr go to raw_file instead of straight to the
+// conductor, then either nothing more (codex already wrote report_file itself,
+// via -o in args) or extractReportFrom turns raw_file into report_file
+// (antigravity, which has no such flag), and the wrapper prints only
+// report_file — so a foreground run's tool-call result is the small clean
+// report, not a multi-megabyte transcript, on every engine that needs it.
+// The subshell + `exit $ec` preserves the underlying process's real exit code
+// as the whole command's exit code; without it, the trailing `cat` would win.
+export function buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter }) {
+  const base = `cd ${quote(workspace)} && ${quote(command.executable)} `
+    + `${command.args.map(quote).join(' ')} < ${quote(stdin_file)}`;
+  if (!adapter.writesReportFile) return base;
+
+  const extract = adapter.extractReportFrom
+    ? `node ${quote(resolve(ENGINES_DIR, adapter.extractReportFrom))} `
+      + `${quote(raw_file)} ${quote(report_file)}; `
+    : ''; // codex already wrote report_file itself, via -o in args.
+  return `( ${base} > ${quote(raw_file)} 2>&1; ec=$?; ${extract}cat ${quote(report_file)}; exit $ec )`;
 }

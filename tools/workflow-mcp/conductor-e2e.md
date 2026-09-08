@@ -98,13 +98,14 @@ Before running anything, check the response against `.agents/config.json`:
 - Record any `warnings` verbatim — they state what an engine cannot enforce.
 
 **5 — Dispatch for real, and check the guarantees.** Run the returned `command`
-verbatim, capturing stdout, stderr and the exit code. If `report_file` is
-non-null (codex), read that for the report instead of stdout — stdout there is
-the full tool-call transcript, which can reach megabytes on a real task and has
-nothing to do with model reasoning (it is the action log, not chain-of-thought).
-For an engine with no `report_file` (claude's stdout already is the report;
-agy's is a `stream-json` event log you would need to parse), stdout is what you
-have. Then answer each of these about the worker's report, with evidence:
+verbatim, capturing stdout, stderr and the exit code. For codex and antigravity,
+`command` is already wrapped to print only the extracted report — what lands in
+stdout is `report_file`'s content, not the full tool-call transcript (still
+captured, to `raw_file`, for the rare case of actually debugging a failed run —
+that can reach megabytes on a real task, and has nothing to do with model
+reasoning; it's the action log, not chain-of-thought). Claude is never wrapped:
+its own stdout already is the report. Then answer each of these about the
+worker's report, with evidence:
 
 - **Did it produce output at all?** An exit code of 0 with an empty response is
   a failure, not a pass. Say which it was.

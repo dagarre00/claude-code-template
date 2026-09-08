@@ -39,11 +39,17 @@ export default {
   enforcesReadOnly: false,
   // stdout is the NDJSON event stream --output-format stream-json requires (see
   // below) — not just the final message, and `agy --help` (1.1.27) has no flag
-  // to write the final message to its own file the way codex's -o does. The
-  // conductor has to parse the stream to find the report; flagged here rather
-  // than assumed solved.
+  // to write it to its own file the way codex's -o does (measured: --input-format
+  // stream-json refuses to pair with --output-format text — "Error: --input-format
+  // stream-json requires --output-format stream-json" — so this isn't optional).
+  // But the stream's own terminal line already isolates what matters: one
+  // {"event":"result","result":{...}} object per run, with response, status and
+  // denied_actions — everything before it is per-turn progress. dispatch.mjs
+  // wraps this engine's command to capture stdout to a file and run
+  // extractReportFrom over it instead of leaving that extraction undone.
   reportIsStdout: false,
-  writesReportFile: false,
+  writesReportFile: true,
+  extractReportFrom: 'extract-agy-result.mjs',
   // --print always requires a value, and in text mode that value IS the prompt —
   // which would put a 35KB worker prompt on the command line, far past the
   // ~32K Windows limit. stream-json takes the prompt from stdin instead, with

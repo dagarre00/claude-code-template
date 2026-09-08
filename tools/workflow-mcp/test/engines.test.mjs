@@ -119,17 +119,21 @@ test('codex omits -o entirely when no reportFile is given', () => {
   assert.ok(!build('codex').args.includes('-o'));
 });
 
-// Only two ways to avoid making the conductor parse a transcript for the
-// report: stdout already is just the report (claude), or a flag isolates it
-// into its own file (codex, via -o above). Antigravity has neither, and must
-// say so rather than silently inheriting an assumption of parity.
+// Two ways an adapter can end up with a clean report_file: stdout already is
+// the report (claude, so writesReportFile is false — there is nothing to
+// write), or something isolates it into its own file. codex does that itself
+// via -o; antigravity has no such flag, so dispatch.mjs wraps its command and
+// runs extractReportFrom over the captured transcript instead — writesReportFile
+// is true either way, because from the conductor's side the outcome is the same.
 test('each engine declares honestly whether the conductor can read its report cleanly', () => {
   assert.equal(ENGINES.claude.reportIsStdout, true);
   assert.equal(ENGINES.claude.writesReportFile, false);
   assert.equal(ENGINES.codex.reportIsStdout, false);
   assert.equal(ENGINES.codex.writesReportFile, true);
+  assert.equal(ENGINES.codex.extractReportFrom, undefined, 'codex writes report_file itself, via -o');
   assert.equal(ENGINES.antigravity.reportIsStdout, false);
-  assert.equal(ENGINES.antigravity.writesReportFile, false);
+  assert.equal(ENGINES.antigravity.writesReportFile, true);
+  assert.equal(typeof ENGINES.antigravity.extractReportFrom, 'string', 'antigravity needs post-processing');
 });
 
 test('stdin is plain text everywhere except antigravity, which needs NDJSON', () => {

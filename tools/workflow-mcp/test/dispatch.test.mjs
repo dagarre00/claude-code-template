@@ -1,9 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { loadConfig } from '../config.mjs';
-import { prepareDispatch } from '../dispatch.mjs';
+import { prepareDispatch, buildRunnableCommand } from '../dispatch.mjs';
 import { cleanup, fixture } from './helpers.mjs';
 
 const CONFIG = {
@@ -103,21 +104,81 @@ test('dispatch warns when the engine cannot enforce the leaf-worker rule', () =>
 
 // codex separates its report from its (very large) tool-call transcript via
 // -o; claude never needed one (stdout is already just the final message);
-// antigravity has neither, which is exactly what the warning below exists for.
-test('report_file is set for codex, and null for engines that do not need or have one', () => {
+// antigravity has neither flag, so dispatch.mjs wraps its command instead —
+// all three end up with a usable report_file, none with a transcript warning.
+test('report_file is set for codex and antigravity, and null for claude', () => {
   withRepo(root => {
     const workspace = resolve(root, '.worktrees/x');
     const codex = prepareDispatch(root, { ...base, cli_engine: 'codex', conductorEngine: 'claude', workspace });
     assert.equal(typeof codex.report_file, 'string');
     assert.ok(codex.report_file.endsWith('report.txt'));
     assert.ok(codex.args.includes(codex.report_file), 'report_file must be the same path passed to -o');
+    assert.doesNotMatch(codex.command, /extract-agy-result/, 'codex needs no extraction step');
 
     const claude = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude', workspace });
     assert.equal(claude.report_file, null);
+    assert.ok(!claude.command.startsWith('('), 'claude is never wrapped — its stdout is already the report');
+    assert.doesNotMatch(claude.command, /exit \$ec|extract-agy-result/, 'no wrapper leaked into claude\'s command');
 
     const agy = prepareDispatch(root, { ...base, cli_engine: 'antigravity', conductorEngine: 'claude', workspace });
-    assert.equal(agy.report_file, null);
-    assert.ok(agy.warnings.some(w => /transcript/i.test(w)), 'no transcript warning for antigravity');
+    assert.equal(typeof agy.report_file, 'string');
+    assert.ok(agy.command.includes('extract-agy-result.mjs'), 'antigravity needs the post-processing step');
+
+    for (const result of [codex, agy]) {
+      assert.ok(!result.warnings.some(w => /transcript/i.test(w)),
+        `${result.engine} solved the transcript problem and should carry no warning about it`);
+    }
+  });
+});
+
+// The wrapper is a real shell pipeline, not just string content. These build
+// it with a fake "engine" — no real CLI involved, just `cat`/`sh`, so nothing
+// here depends on codex or agy actually being installed — and run it for real.
+
+const wrapperFixture = root => {
+  const workspace = resolve(root, '.worktrees/x');
+  mkdirSync(workspace, { recursive: true });
+  const dir = resolve(root, '.worktrees/.dispatch/wrapper-test');
+  mkdirSync(dir, { recursive: true });
+  const stdin_file = resolve(dir, 'stdin.txt');
+  writeFileSync(stdin_file, '');
+  return { workspace, dir, stdin_file,
+    report_file: resolve(dir, 'report.txt'), raw_file: resolve(dir, 'raw.txt') };
+};
+const adapter = { writesReportFile: true, extractReportFrom: 'extract-agy-result.mjs' };
+
+test('the report-file wrapper extracts the report and hides the raw transcript', () => {
+  withRepo(root => {
+    const { workspace, dir, stdin_file, report_file, raw_file } = wrapperFixture(root);
+    // Pre-written, not piped through a shell one-liner: a JSON string can
+    // contain characters (quotes, real newlines) no shell-quoting scheme
+    // handles safely, which is exactly why extract-agy-result.mjs is a real
+    // file instead of an inline script — this fixture gets the same courtesy.
+    const transcript = resolve(dir, 'fake-transcript.txt');
+    writeFileSync(transcript, JSON.stringify({ event: 'init' }) + '\n'
+      + JSON.stringify({ event: 'result', result: { status: 'SUCCESS', response: 'hello from the fake worker' } }) + '\n');
+    const command = { executable: 'cat', args: [transcript] };
+
+    const wrapped = buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter });
+    const outcome = spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
+
+    assert.equal(outcome.status, 0);
+    assert.match(outcome.stdout, /hello from the fake worker/,
+      'the wrapper must print the extracted report, not the raw transcript');
+    assert.doesNotMatch(outcome.stdout, /"event":"init"/, 'the raw transcript must not reach stdout');
+    assert.match(readFileSync(raw_file, 'utf8'), /"event":"init"/, 'raw_file keeps the full transcript for debugging');
+    assert.equal(readFileSync(report_file, 'utf8').trim(),
+      JSON.stringify({ status: 'SUCCESS', response: 'hello from the fake worker' }, null, 2).trim());
+  });
+});
+
+test('the report-file wrapper preserves the wrapped process\'s real exit code', () => {
+  withRepo(root => {
+    const { workspace, stdin_file, report_file, raw_file } = wrapperFixture(root);
+    const command = { executable: 'sh', args: ['-c', 'exit 7'] };
+    const wrapped = buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter });
+    const outcome = spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
+    assert.equal(outcome.status, 7, 'a trailing `cat` must not overwrite the wrapped process\'s own exit code');
   });
 });
 
