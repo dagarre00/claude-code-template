@@ -28,8 +28,8 @@ returns an empty response with exit code 0.
 ## Running it
 
 ```bash
-codex "$(cat docs/conductor-e2e.md)"
-agy -i "$(cat docs/conductor-e2e.md)"
+codex "$(cat tools/workflow-mcp/conductor-e2e.md)"
+agy -i "$(cat tools/workflow-mcp/conductor-e2e.md)"
 ```
 
 Both read this whole file, header included; the header costs a few lines of

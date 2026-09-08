@@ -2,11 +2,13 @@
 
 A worked walkthrough from a fresh fork of this template to a first shipped feature. Read this once end-to-end before opening Claude Code so the loop makes sense — then refer back as needed.
 
-> If you've never seen the schema, read [`README.md`](../README.md) first (what the agent decides alone, and what it asks you about) and [`AGENTS.md`](../AGENTS.md) next (the rules and command catalog the agent itself reads).
+> If you've never seen the schema, read [`README.md`](../../README.md) first (what the agent decides alone, and what it asks you about) and [`AGENTS.md`](../../AGENTS.md) next (the rules and command catalog the agent itself reads).
 
 # First-time setup
 
 ## 0. One-time setup
+
+**New project** — no code or git history yet:
 
 ```bash
 git clone <this-template> my-project
@@ -16,7 +18,29 @@ git init -b main                        # optional: /project:init does this for 
 git remote add origin <your-new-repo>   # optional now; without a remote, pushes are skipped until you add one
 ```
 
-Erasing `.git` is the intended flow: the template's commit history is about building the template, not your project. Everything that matters carries over as files — the blank wiki skeletons, the `.agents/` schema, and the docs all land in your project's own initial commit.
+Erasing `.git` is the intended flow here: the template's commit history is about building the template, not your project. Everything that matters carries over as files — the blank wiki skeletons, the `.agents/` schema, and the docs all land in your project's own initial commit.
+
+**Existing project** — you already have a codebase, docs, and git history.
+**Never run `rm -rf .git` here** — that destroys your project's history, not the
+template's. From a checkout of this template, run the adoption script instead:
+
+```bash
+bash scripts/adopt.sh /path/to/my-existing-project
+```
+
+It copies `.agents/` and `tools/workflow-mcp/` in, runs `npm install`, drops
+`.mcp.json`, and registers the server with `codex`/`agy` if either is
+installed. It prints one thing left for you to finish: merging
+`.claude/settings.json` if the target already has one (created fresh
+otherwise — see `README.md § Quick start` for the exact keys, or the script's
+own comments for the manual, no-script equivalent).
+
+Your `docs/wiki/` doesn't exist yet, but your other docs and code do —
+`/project:init` below now starts with a step that confirms this wiring
+actually landed, then detects the stack that's already there instead of
+assuming a blank slate, and scaffolds the wiki around it. Prior documentation
+isn't migrated automatically; fold it in afterward, one source at a time, with
+`/project:wiki <path>` (see the ingestion scenario further down).
 
 Optional but recommended:
 
@@ -57,7 +81,7 @@ Run this when requirements change or you're adding a major feature — not as a 
 
 - **Vision** (one paragraph: problem and audience)
 - **Users** (the roles the code knows about)
-- **Personas** (optional — skip if your project has one audience; see [requirements.md](wiki/requirements.md))
+- **Personas** (optional — skip if your project has one audience; see [requirements.md](../../docs/wiki/requirements.md))
 - **User stories** with explicit acceptance criteria
 - **Functional + non-functional requirements**
 - **Success metrics** (how you'll know it worked)
@@ -85,7 +109,7 @@ Outputs:
 5. **Refactor.** The developer cleans up while keeping tests green.
 6. **Wiki update.** The developer ticks the entity-page Behavior cases `[~]` → `[x]`, updates the Implementation/Tests sections, and appends to `log.md`. Larger cross-page cleanup it can't safely do inline is queued in `wiki-todos.md` for the wiki-maintainer.
 7. **Adversarial review (conditional).** Same trigger as the plan — `[complex]` or a 2+ batch. `/project:work` dispatches the `adversary` agent (a second model, none of the developer's context) at the diff and tells it to find what's wrong. It returns numbered findings in its report and may not touch the code — being read-only, it could not write a scratch file even if asked. The developer answers each one — **filed as a todo** (the default), fixed, or rejected with a reason. Findings are not fixed in the cycle that surfaced them; they go into `docs/wiki/todos.md` at a priority set by severity. A `critical` or `major` is the exception: it goes to you via a human checkpoint, and you decide fix-now or queue. Because most rounds fix nothing, there is usually nothing to re-review and the review is one pass. Each disposition is written into the commit that answers it, which is the durable record (behavioral rule 20) — `git log --grep="adversary round"` reads it back. A simple single todo skips this; you can run `/project:adversary` yourself instead.
-8. **Commit.** Already done — the `developer` commits and pushes each Behavior case as it goes (test + implementation + wiki tick), and review fixes are their own commits. `/project:work` verifies the suite and the commit granularity, then adds just the log entry (see [git-conventions.md](wiki/git-conventions.md)).
+8. **Commit.** Already done — the `developer` commits and pushes each Behavior case as it goes (test + implementation + wiki tick), and review fixes are their own commits. `/project:work` verifies the suite and the commit granularity, then adds just the log entry (see [git-conventions.md](../../docs/wiki/git-conventions.md)).
 
 If a step fails twice on the same approach, the **two-strike rule** fires — the developer stops, you tag a checkpoint and reset, and re-spec.
 
@@ -134,7 +158,7 @@ A new user story landed. You want it specified, tested, and shipped.
 3. **Run `/project:work`.** It picks the top todo, opens `feat/auth-login`, and dispatches the `developer`. The developer reads `entities/auth-login.md#Behavior`, writes failing tests, and confirms Red.
 4. **The same agent implements.** It writes the minimum code to turn Red into Green, then refactors. There's no handoff to another agent — one developer owns the whole cycle.
 5. **Wiki updates land in the same commit.** The developer ticks the Behavior cases on the entity page, checks the todo off in `docs/wiki/todos.md` (shipped work lives in git history — there's no `completed.md`), and appends a one-line log entry. Code changed but no wiki page touched is drift — the same-commit rule is the safety net.
-6. **Commit.** The developer commits and pushes each Behavior case as it lands (test + implementation + entity-page update). `/project:work` verifies the suite and adds only the cycle log entry (see [git-conventions.md](wiki/git-conventions.md)).
+6. **Commit.** The developer commits and pushes each Behavior case as it lands (test + implementation + entity-page update). `/project:work` verifies the suite and adds only the cycle log entry (see [git-conventions.md](../../docs/wiki/git-conventions.md)).
 
 The developer plans **first** if the todo is tagged `[complex]` or a batch of 2+ todos is being run together. For a single simple todo, planning is skipped — straight to Red.
 
@@ -159,7 +183,7 @@ Some features are too big to attack directly — they cross files, need careful 
 
 When you have several related todos, running them in one cycle is often cheaper than three separate branches and PRs. A batch shares a **branch, a plan, and a PR — not a commit.** The per-case cadence is unchanged: each Behavior case still lands as its own commit.
 
-**Batch when** (all three — the [`feature-branching`](../.agents/skills/feature-branching/SKILL.md) skill owns this rule):
+**Batch when** (all three — the [`feature-branching`](../../.agents/skills/feature-branching/SKILL.md) skill owns this rule):
 
 - The todos share the same entity (`auth-login: case A`, `auth-login: case B`, `auth-login: case C`).
 - The later ones depend on the earlier ones (an API handler isn't useful until both its query parser and response serializer exist).
@@ -358,13 +382,13 @@ The wiki is the project's source of truth — code that disagrees with it is the
 
 # Related
 
-- [`CLAUDE.md`](../CLAUDE.md) — the schema (agent's view)
-- [`README.md`](../README.md) — the workflow in brief, and the agent's authority boundary
-- [`docs/wiki/git-conventions.md`](wiki/git-conventions.md) — branching and commit format
-- [`docs/wiki/commands.md`](wiki/commands.md) — working shell commands
-- [`.agents/roles/planner.md`](../.agents/roles/planner.md) — the planner agent definition
-- [`.agents/roles/plan-adversary.md`](../.agents/roles/plan-adversary.md) — the pre-implementation reviewer
-- [`.agents/roles/developer.md`](../.agents/roles/developer.md) — the developer agent definition
-- [`.agents/roles/adversary.md`](../.agents/roles/adversary.md) — the read-only diff reviewer
-- [`.agents/skills/plan-writing/SKILL.md`](../.agents/skills/plan-writing/SKILL.md) — how plans are structured
-- [`.agents/skills/adversarial-review/SKILL.md`](../.agents/skills/adversarial-review/SKILL.md) — sweep order, severity vocabulary, triage protocol
+- [`CLAUDE.md`](../../CLAUDE.md) — the schema (agent's view)
+- [`README.md`](../../README.md) — the workflow in brief, and the agent's authority boundary
+- [`docs/wiki/git-conventions.md`](../../docs/wiki/git-conventions.md) — branching and commit format
+- [`docs/wiki/commands.md`](../../docs/wiki/commands.md) — working shell commands
+- [`.agents/roles/planner.md`](../../.agents/roles/planner.md) — the planner agent definition
+- [`.agents/roles/plan-adversary.md`](../../.agents/roles/plan-adversary.md) — the pre-implementation reviewer
+- [`.agents/roles/developer.md`](../../.agents/roles/developer.md) — the developer agent definition
+- [`.agents/roles/adversary.md`](../../.agents/roles/adversary.md) — the read-only diff reviewer
+- [`.agents/skills/plan-writing/SKILL.md`](../../.agents/skills/plan-writing/SKILL.md) — how plans are structured
+- [`.agents/skills/adversarial-review/SKILL.md`](../../.agents/skills/adversarial-review/SKILL.md) — sweep order, severity vocabulary, triage protocol

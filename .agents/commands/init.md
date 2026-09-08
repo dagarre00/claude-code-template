@@ -26,6 +26,32 @@ If the argument is empty, run the full procedure below. If it names a path that 
 
 ## Steps
 
+### 0. Verify workflow-mcp wiring
+
+Skip this in seconds on a project cloned fresh from the template — everything
+is already wired and this just confirms it. It matters on a project adopted
+into an existing codebase (`scripts/adopt.sh`, or a manual copy per
+`README.md § Quick start → Existing project`), where the mechanical steps can
+land only partway:
+
+- Call any `mcp__workflow__*` tool (`list_roles` is cheapest). If it errors or
+  isn't available, the server isn't reachable — stop and check:
+  - `.mcp.json` exists at the repo root and registers `workflow`.
+  - **Claude Code only:** `.claude/settings.json` has both
+    `extraKnownMarketplaces.workflow` and `enabledPlugins["project@workflow"]`.
+    Codex and Antigravity read `.agents/` directly and don't need this — if
+    you're conducting on either and this command is running at all, this file
+    is a non-issue by construction.
+  - Point the human at `README.md § Quick start → Existing project` for the
+    exact snippet, or re-run `scripts/adopt.sh`.
+- Confirm `tools/workflow-mcp/node_modules/` exists. Missing → run
+  `npm install` there before dispatching any worker; every later `/project:work`
+  cycle needs a live dispatch.
+
+Report what you found in one line ("workflow-mcp reachable, wiring intact") and
+continue. A failure here is a hard stop — `human-checkpoint` — because nothing
+past this point can dispatch a worker.
+
 ### 1. Git state
 
 Run `git status`.

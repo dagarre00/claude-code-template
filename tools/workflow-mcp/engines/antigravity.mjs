@@ -54,7 +54,7 @@ export default {
       // command (its target is the tool, not the command line), so keeping the
       // sandbox would mean granting Bash escalation wholesale — broader than the
       // exact-match `command(<line>)` rules that replace it. Isolation rests on
-      // --add-dir, the worktree, and that allowlist. See docs/engine-setup.md.
+      // --add-dir, the worktree, and that allowlist. See tools/workflow-mcp/engine-setup.md.
       '--mode', readOnly ? 'plan' : 'accept-edits',
       // agy carries its own print-mode timeout rather than relying on the
       // caller to kill it.

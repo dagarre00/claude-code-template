@@ -10,6 +10,8 @@ A template for building software with an LLM agent as the developer, across Clau
 
 ## Quick start
 
+**New project** — no code or git history yet:
+
 ```bash
 git clone <this-template> my-project
 cd my-project
@@ -17,7 +19,43 @@ rm -rf .git    # drop the template's history — /project:init re-inits git for 
 claude
 ```
 
-Inside Claude Code:
+**Existing project** — your own codebase, docs and git history are already in
+place. Never touch `.git`. From a checkout of this template, run:
+
+```bash
+bash scripts/adopt.sh /path/to/my-existing-project
+```
+
+That copies `.agents/` and `tools/workflow-mcp/` in, installs the MCP server's
+dependencies, drops `.mcp.json`, and registers the server with `codex`/`agy` if
+either is on your `PATH`. It prints one thing for you to finish by hand: merging
+`.claude/settings.json` if the target already has one (it creates it fresh
+otherwise). Because `tools/workflow-mcp/engine-setup.md` and
+`tools/workflow-mcp/conductor-e2e.md` travel with the copy, the adopted project
+also gets its own copy of the conformance test — run it once after adopting to
+confirm the mechanism actually works on this machine before trusting it. Then,
+in the target project:
+
+```bash
+cd /path/to/my-existing-project
+claude
+```
+
+No script handy, or want to see exactly what it does? The manual equivalent:
+
+```bash
+cd my-existing-project
+cp -r <template>/.agents .
+cp -r <template>/tools/workflow-mcp tools/workflow-mcp   # skip node_modules
+cp <template>/.mcp.json .
+# merge into .claude/settings.json — don't overwrite it:
+#   "extraKnownMarketplaces": {"workflow": {"source": {"source": "directory", "path": "."}}}
+#   "enabledPlugins": {"project@workflow": true}
+cd tools/workflow-mcp && npm install && cd ../..
+claude
+```
+
+Either way, inside Claude Code:
 
 ```
 /project:init        # detect state, scaffold docs/wiki, base docs
@@ -28,10 +66,15 @@ Inside Claude Code:
 /project:wiki        # ingest a source (with an argument) or run the health pass (without)
 ```
 
+On an existing project, `/project:init` detects the stack that's already there
+instead of assuming a blank slate. Prior documentation is not migrated
+automatically — fold it in afterward, one source at a time, with
+`/project:wiki <path>`.
+
 Six commands, and that is the whole surface. What each one does in detail is in
 the generated [`AGENTS.md`](AGENTS.md) catalog — the single place they are
 described, so this list stays a menu rather than a second spec to keep in sync.
-For a worked walkthrough, see [`docs/getting-started.md`](docs/getting-started.md).
+For a worked walkthrough, see [`tools/workflow-mcp/getting-started.md`](tools/workflow-mcp/getting-started.md).
 
 Open `docs/wiki/` in Obsidian on the side. That's your view of the agent's knowledge.
 
@@ -73,7 +116,7 @@ Run the returned `command`, read the report, commit the worker's owned paths you
 | `plan-adversary` | agy | `gemini-3.8-flash` | high |
 | `adversary` | codex | `gpt-6-astra` | medium |
 
-Pinning roles to agy is the one trade-off worth naming: agy enforces neither the leaf-worker rule nor read-only below the prompt, and its workers need a one-time user-global permission grant before they can run a command at all. Every dispatch says so in its `warnings`; the setup is in [`docs/engine-setup.md`](docs/engine-setup.md).
+Pinning roles to agy is the one trade-off worth naming: agy enforces neither the leaf-worker rule nor read-only below the prompt, and its workers need a one-time user-global permission grant before they can run a command at all. Every dispatch says so in its `warnings`; the setup is in [`tools/workflow-mcp/engine-setup.md`](tools/workflow-mcp/engine-setup.md).
 
 **Workers get no ambient context.** Each engine is launched with its own project-file discovery switched off, so the composed prompt is the whole of what the worker sees. Verified by dispatching the same self-test to all three:
 
@@ -93,7 +136,7 @@ Conductor-only rules — branch, commit, push, open a PR — are withheld from w
 | codex | process (`agents.enabled=false`) | process (OS sandbox) | free inside the sandbox |
 | agy | **prompt only** | **prompt only** | allowlisted, needs one-time user-global setup |
 
-`build_worker_prompt` returns a `warnings` entry for every box in that table it cannot back, so a conductor is told per dispatch rather than having to remember this. **A worker cannot run anything that is not in `workerCommands`** (`.agents/config.json`), and on agy that list also has to be mirrored into a user-global settings file or its workers return an empty response with exit code 0. One page, all of it: [`docs/engine-setup.md`](docs/engine-setup.md).
+`build_worker_prompt` returns a `warnings` entry for every box in that table it cannot back, so a conductor is told per dispatch rather than having to remember this. **A worker cannot run anything that is not in `workerCommands`** (`.agents/config.json`), and on agy that list also has to be mirrored into a user-global settings file or its workers return an empty response with exit code 0. One page, all of it: [`tools/workflow-mcp/engine-setup.md`](tools/workflow-mcp/engine-setup.md).
 
 One caveat worth knowing: a worker's own account of its context is unreliable. agy first claimed it *had* been given AGENTS.md; asked instead to quote a withheld rule and name a command from the catalog, it correctly answered `ABSENT` to both. Test with questions only the real thing could answer.
 

@@ -119,5 +119,6 @@ promised.
 
 ## Checking your setup
 
-`docs/conductor-e2e.md` runs a worker on each engine and reports which of these
-guarantees actually held on your machine. Run it after changing any of the above.
+[`conductor-e2e.md`](conductor-e2e.md) runs a worker on each engine and reports
+which of these guarantees actually held on your machine. Run it after changing
+any of the above.
