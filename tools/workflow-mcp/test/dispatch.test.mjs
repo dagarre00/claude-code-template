@@ -101,6 +101,26 @@ test('dispatch warns when the engine cannot enforce the leaf-worker rule', () =>
   });
 });
 
+// codex separates its report from its (very large) tool-call transcript via
+// -o; claude never needed one (stdout is already just the final message);
+// antigravity has neither, which is exactly what the warning below exists for.
+test('report_file is set for codex, and null for engines that do not need or have one', () => {
+  withRepo(root => {
+    const workspace = resolve(root, '.worktrees/x');
+    const codex = prepareDispatch(root, { ...base, cli_engine: 'codex', conductorEngine: 'claude', workspace });
+    assert.equal(typeof codex.report_file, 'string');
+    assert.ok(codex.report_file.endsWith('report.txt'));
+    assert.ok(codex.args.includes(codex.report_file), 'report_file must be the same path passed to -o');
+
+    const claude = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude', workspace });
+    assert.equal(claude.report_file, null);
+
+    const agy = prepareDispatch(root, { ...base, cli_engine: 'antigravity', conductorEngine: 'claude', workspace });
+    assert.equal(agy.report_file, null);
+    assert.ok(agy.warnings.some(w => /transcript/i.test(w)), 'no transcript warning for antigravity');
+  });
+});
+
 test('antigravity gets NDJSON on stdin while the readable prompt stays plain', () => {
   withRepo(root => {
     const result = prepareDispatch(root, { ...base, conductorEngine: 'claude', cli_engine: 'antigravity',

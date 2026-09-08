@@ -110,10 +110,12 @@ The conductor — usually Claude Code — delegates through the workflow MCP ser
 ```
 prepare_worktree     # isolated checkout at committed HEAD, on its own worker/<id> branch
 build_worker_prompt  # role + rules + contract + the skills the command declares
-                     # -> { command, cwd, prompt_file, stdin_file, prompt_bytes }
+                     # -> { command, cwd, prompt_file, stdin_file, report_file, prompt_bytes }
 ```
 
 Run the returned `command`, read the report, commit the worker's owned paths yourself, then `remove_worktree`. The server never spawns, commits, merges or pushes — you keep all of that, and a failed worker is debugged by re-running a command line you can read.
+
+**Where the report actually is.** Only codex offers a flag (`-o`) to isolate a worker's final message from everything else it printed, so `report_file` is non-null only there — read it instead of `stdout`. Claude needs no such file: its `--print` stdout already is only the final message. Antigravity has neither: its stdout is the raw `stream-json` event log, and the conductor has to pull the final message out of it. Measured on a real dispatch: a `wiki-maintainer` health pass on codex produced 6.9MB/43,015 lines of stdout — almost entirely large file reads and one rejected multi-file patch echoed back in full, not model reasoning (`reasoning summaries: none` holds by default; zero `thinking:` sections in that file) — while `report_file` held just the handful of lines that were the actual report.
 
 **Which model runs which role.** `.agents/config.json` is the only place model choice lives — a role declares a `profile` (`reasoning` / `balanced` / `fast`), never a model. `engines.<engine>.models.<profile>` sets each CLI's default; `roles.<role>.engine` pins a role to one CLI, and `roles.<role>.models.<engine>` / `.effort.<engine>` pin the exact model and effort for it. As shipped, three roles are pinned across all three CLIs and the rest follow whichever CLI is conducting:
 
@@ -138,11 +140,11 @@ Conductor-only rules — branch, commit, push, open a PR — are withheld from w
 
 **What each engine can enforce, and what it only promises.** Context suppression is not the only guarantee a worker prompt makes, and the three CLIs do not honour the rest equally:
 
-| | leaf worker | read-only | running commands |
-| --- | --- | --- | --- |
-| claude | process (`--disallowedTools Agent,Task`) | process (no approval surface for edits) | allowlisted from `workerCommands` |
-| codex | process (`agents.enabled=false`) | process (OS sandbox) | free inside the sandbox |
-| agy | **prompt only** | **prompt only** | allowlisted, needs one-time user-global setup |
+| | leaf worker | read-only | running commands | clean report |
+| --- | --- | --- | --- | --- |
+| claude | process (`--disallowedTools Agent,Task`) | process (no approval surface for edits) | allowlisted from `workerCommands` | stdout already is the report |
+| codex | process (`agents.enabled=false`) | process (OS sandbox) | free inside the sandbox | `report_file`, via `-o` |
+| agy | **prompt only** | **prompt only** | allowlisted, needs one-time user-global setup | **neither** — parse the `stream-json` stdout yourself |
 
 `build_worker_prompt` returns a `warnings` entry for every box in that table it cannot back, so a conductor is told per dispatch rather than having to remember this. **A worker cannot run anything that is not in `workerCommands`** (`.agents/config.json`), and on agy that list also has to be mirrored into a user-global settings file or its workers return an empty response with exit code 0. One page, all of it: [`tools/workflow-mcp/engine-setup.md`](tools/workflow-mcp/engine-setup.md).
 

@@ -103,6 +103,35 @@ test('codex keeps the stdin marker last', () => {
   assert.equal(build('codex').args.at(-1), '-');
 });
 
+// codex exec's default text output interleaves the worker's final message with
+// the full transcript of every command it ran — measured at 6.9MB/43,015 lines
+// for one real dispatch. -o isolates the final message into its own file so the
+// conductor's routine path never has to wade through the transcript to find it.
+test('codex writes the report to its own file, still ending in the stdin marker', () => {
+  const { args } = build('codex', { reportFile: '/tmp/wt/report.txt' });
+  const at = args.indexOf('-o');
+  assert.notEqual(at, -1, 'no -o flag for the given reportFile');
+  assert.equal(args[at + 1], '/tmp/wt/report.txt');
+  assert.equal(args.at(-1), '-', '-o must not push the stdin marker off the end');
+});
+
+test('codex omits -o entirely when no reportFile is given', () => {
+  assert.ok(!build('codex').args.includes('-o'));
+});
+
+// Only two ways to avoid making the conductor parse a transcript for the
+// report: stdout already is just the report (claude), or a flag isolates it
+// into its own file (codex, via -o above). Antigravity has neither, and must
+// say so rather than silently inheriting an assumption of parity.
+test('each engine declares honestly whether the conductor can read its report cleanly', () => {
+  assert.equal(ENGINES.claude.reportIsStdout, true);
+  assert.equal(ENGINES.claude.writesReportFile, false);
+  assert.equal(ENGINES.codex.reportIsStdout, false);
+  assert.equal(ENGINES.codex.writesReportFile, true);
+  assert.equal(ENGINES.antigravity.reportIsStdout, false);
+  assert.equal(ENGINES.antigravity.writesReportFile, false);
+});
+
 test('stdin is plain text everywhere except antigravity, which needs NDJSON', () => {
   assert.equal(stdinPayload('claude', 'HELLO'), 'HELLO');
   assert.equal(stdinPayload('codex', 'HELLO'), 'HELLO');

@@ -28,25 +28,30 @@ export function prepareDispatch(root, input = {}) {
     ...input, task_id, workspace, workerCommands: config.workerCommands });
   const engine = cli_engine ?? resolveEngine(config, composed.role, conductorEngine);
 
+  // All three files live beside each other so a human can read exactly what was
+  // sent and re-run it byte for byte. The prompt is the readable form; the stdin
+  // file is the wire form, which differs only for antigravity's NDJSON envelope;
+  // report_file is where an engine that supports it (currently codex only, via
+  // `-o`) writes just the worker's final message — computed before buildCommand
+  // so the adapter can wire it into argv.
+  const dir = resolve(root, '.worktrees', '.dispatch', task_id);
+  mkdirSync(dir, { recursive: true });
+  const prompt_file = resolve(dir, 'prompt.txt');
+  const stdin_file = resolve(dir, 'stdin.txt');
+  const report_file = resolve(dir, 'report.txt');
+  writeFileSync(prompt_file, composed.prompt);
+  writeFileSync(stdin_file, stdinPayload(engine, composed.prompt));
+
   const roleConfig = config.roles?.[composed.role] ?? {};
   const command = buildCommand(config, {
     engine,
     profile: composed.profile,
     access: composed.access,
     workspace,
+    reportFile: report_file,
     model: input.model_override ?? roleConfig.models?.[engine] ?? undefined,
     effort: input.thinking_budget ?? roleConfig.effort?.[engine] ?? undefined
   });
-
-  // Both files live beside each other so a human can read exactly what was sent
-  // and re-run it byte for byte. The prompt is the readable form; the stdin file
-  // is the wire form, which differs only for antigravity's NDJSON envelope.
-  const dir = resolve(root, '.worktrees', '.dispatch', task_id);
-  mkdirSync(dir, { recursive: true });
-  const prompt_file = resolve(dir, 'prompt.txt');
-  const stdin_file = resolve(dir, 'stdin.txt');
-  writeFileSync(prompt_file, composed.prompt);
-  writeFileSync(stdin_file, stdinPayload(engine, composed.prompt));
 
   // Stated per dispatch, not buried in a doc: the conductor is the one choosing
   // an engine for a task, and it can only weigh that choice if it is told what
@@ -63,6 +68,14 @@ export function prepareDispatch(root, input = {}) {
     warnings.push(`${engine} cannot enforce read-only below the prompt, so for this role the no-edits `
       + 'rule is a promise rather than a property. Run `git status --porcelain` in the worktree '
       + 'afterwards: anything it touched voids the round (behavioral rule 12).');
+  }
+  // Only worth a warning where nothing already solves it: claude's stdout is
+  // already just the final message (reportIsStdout), and codex gets a separate
+  // report_file below (writesReportFile). Antigravity has neither.
+  if (!adapter.writesReportFile && !adapter.reportIsStdout) {
+    warnings.push(`${engine} has no way to separate the worker's report from its full tool-call `
+      + 'transcript — everything lands in stdout together, and on a large task that can reach '
+      + 'megabytes. Capture it to a file and read from the end rather than inline.');
   }
 
   return {
@@ -85,6 +98,10 @@ export function prepareDispatch(root, input = {}) {
     cwd: workspace,
     prompt_file,
     stdin_file,
+    // Non-null only for an engine that actually writes to it (adapter.writesReportFile);
+    // read this instead of stdout for the routine "what did the worker report" path —
+    // stdout still has everything, for the rare case of debugging a failed run.
+    report_file: adapter.writesReportFile ? report_file : null,
     command: `cd ${quote(workspace)} && ${quote(command.executable)} `
       + `${command.args.map(quote).join(' ')} < ${quote(stdin_file)}`
   };

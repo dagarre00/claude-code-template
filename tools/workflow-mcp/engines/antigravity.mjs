@@ -37,6 +37,13 @@ export default {
   // the access one. The prompt keeps read-only roles honest here; dispatch says
   // so out loud rather than implying parity.
   enforcesReadOnly: false,
+  // stdout is the NDJSON event stream --output-format stream-json requires (see
+  // below) — not just the final message, and `agy --help` (1.1.27) has no flag
+  // to write the final message to its own file the way codex's -o does. The
+  // conductor has to parse the stream to find the report; flagged here rather
+  // than assumed solved.
+  reportIsStdout: false,
+  writesReportFile: false,
   // --print always requires a value, and in text mode that value IS the prompt —
   // which would put a 35KB worker prompt on the command line, far past the
   // ~32K Windows limit. stream-json takes the prompt from stdin instead, with

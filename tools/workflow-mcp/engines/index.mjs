@@ -27,7 +27,16 @@ for (const engine of registered) {
     // the read-only rule below the prompt. Leaving either undefined would let a
     // new CLI inherit an assumption of parity it may not have earned.
     || typeof engine.enforcesLeafWorker !== 'boolean'
-    || typeof engine.enforcesReadOnly !== 'boolean') {
+    || typeof engine.enforcesReadOnly !== 'boolean'
+    // Same reasoning for whether the conductor can read a worker's report
+    // without wading through its full tool-call transcript: reportIsStdout
+    // (stdout is already just the report, nothing else needed) and
+    // writesReportFile (a flag isolates the report into its own file) are
+    // mutually exclusive solutions to the same problem — an adapter with
+    // neither has that problem and must say so rather than the caller finding
+    // out from a multi-megabyte stdout capture.
+    || typeof engine.reportIsStdout !== 'boolean'
+    || typeof engine.writesReportFile !== 'boolean') {
     throw new Error(`Malformed engine adapter: ${engine?.name ?? 'unnamed'}`);
   }
 }
@@ -41,7 +50,7 @@ export const engineNames = Object.freeze(registered.map(e => e.name));
 const MODEL = /^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,159}$/;
 
 export function buildCommand(settings, task) {
-  const { engine: name, profile, access, workspace } = task;
+  const { engine: name, profile, access, workspace, reportFile } = task;
   const engine = ENGINES[name];
   const config = settings.engines?.[name];
   if (!engine || !config) throw new Error(`Unknown engine: ${name}`);
@@ -55,8 +64,10 @@ export function buildCommand(settings, task) {
     throw new Error(`Invalid model for ${name}: ${JSON.stringify(model)}`);
   }
 
+  // Passed to every adapter; only one (codex, via writesReportFile) does
+  // anything with it. Harmless for the others to receive and ignore.
   const args = engine.buildArgs({ settings, config, profile, access, workspace, model, effort,
-    readOnly: access === 'read-only' });
+    reportFile, readOnly: access === 'read-only' });
 
   // The adapter is the only engine-specific code in the tool, so the contract it
   // must honour is checked here rather than trusted.

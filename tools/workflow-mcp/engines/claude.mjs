@@ -28,6 +28,10 @@ export default {
   // automatically denied because it requires user approval and there's no
   // approval interface in this session type", and no file appears.
   enforcesReadOnly: true,
+  // `--print` with no --output-format prints only the final assistant
+  // message — no per-tool-call echo. Nothing to isolate, so no report_file.
+  reportIsStdout: true,
+  writesReportFile: false,
   buildArgs({ settings, readOnly, model, effort }) {
     const args = [
       '--print',

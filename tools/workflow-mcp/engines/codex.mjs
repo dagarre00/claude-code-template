@@ -23,7 +23,18 @@ export default {
   // an adversary told to write its findings to .handoff/ reported "mailbox
   // delivery blocked by the read-only filesystem" and the tree stayed clean.
   enforcesReadOnly: true,
-  buildArgs({ readOnly, workspace, model, effort }) {
+  // `codex exec`'s default text output interleaves the worker's final message
+  // with the full transcript of every command it ran and that command's
+  // complete raw output — measured at 6.9MB/43,015 lines for a single
+  // wiki-maintainer health-pass dispatch, almost entirely large file reads and
+  // one rejected multi-file apply_patch echoed back in full. None of that is
+  // model reasoning (`reasoning summaries: none` is on by default and holds
+  // here — zero "thinking:" sections in that 43K-line file); it is the action
+  // log. -o writes just the final message to reportFile instead, so the
+  // conductor's routine path never has to wade through it.
+  reportIsStdout: false,
+  writesReportFile: true,
+  buildArgs({ readOnly, workspace, model, effort, reportFile }) {
     const args = [
       'exec', '--ephemeral', '--color', 'never', '--cd', workspace,
       '--sandbox', readOnly ? 'read-only' : 'workspace-write',
@@ -42,6 +53,7 @@ export default {
     ];
     if (model && model !== 'inherit') args.push('--model', model);
     if (effort) args.push('-c', `model_reasoning_effort=${JSON.stringify(effort)}`);
+    if (reportFile) args.push('-o', reportFile);
     args.push('-'); // Reads the prompt from stdin; must stay the final argument.
     return args;
   }
