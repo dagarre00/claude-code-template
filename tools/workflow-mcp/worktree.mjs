@@ -35,10 +35,20 @@ const isClean = root => git(root, ['status', '--porcelain=v1', '--untracked-file
 // entry can never be the thing that clears it. Harmless on any OS where the
 // check never fires; skipped (never fatal) if git itself is missing the ability
 // to read the existing list, since worktree creation must not depend on it.
+//
+// The value itself must use forward slashes. `resolve()` on Windows returns a
+// backslash path, and git for Windows does not reliably match a safe.directory
+// entry written that way against the (forward-slash) path it actually compares
+// — confirmed the hard way: two real dispatches still hit "dubious ownership"
+// with a backslash entry already registered for the exact directory. Comparison
+// for the dedup check below still goes through `resolve()` on both sides, so it
+// stays correct regardless of which slash direction an existing entry (old or
+// new) happens to use.
 function trustForCodex(root, workspace) {
+  const forwardSlashPath = workspace.replaceAll('\\', '/');
   const existing = git(root, ['config', '--global', '--get-all', 'safe.directory'], { allowFailure: true });
   const already = (existing ?? '').split('\n').some(line => resolve(line.trim()) === resolve(workspace));
-  if (!already) git(root, ['config', '--global', '--add', 'safe.directory', workspace], { allowFailure: true });
+  if (!already) git(root, ['config', '--global', '--add', 'safe.directory', forwardSlashPath], { allowFailure: true });
 }
 
 function taskDir(root, task_id) {

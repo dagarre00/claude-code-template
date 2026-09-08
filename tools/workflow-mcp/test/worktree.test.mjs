@@ -100,12 +100,19 @@ test('refuses to remove a branch holding commits that are not merged', () => {
 test('trusts the new worktree path for Codex on Windows, without duplicating on re-dispatch', () => {
   repo(root => {
     const wt = prepareWorktree(root, { task_id: 'hhh' });
+    // git for Windows does not reliably match a safe.directory value written
+    // with backslashes — measured against two real dispatches that still hit
+    // "dubious ownership" with exactly that form already registered. The
+    // registered entry must use forward slashes regardless of what OS-native
+    // separator `wt.workspace` itself carries.
+    const expected = wt.workspace.replaceAll('\\', '/');
     const trusted = () => git(root, 'config', '--global', '--get-all', 'safe.directory').stdout;
-    assert.match(trusted(), new RegExp(wt.workspace.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+    const entries = () => trusted().split(/\r?\n/).filter(line => line.trim() === expected);
+    assert.equal(entries().length, 1, 'the forward-slash form of the path must be registered');
+    assert.doesNotMatch(trusted(), /\\/, 'no entry may be written with backslashes');
     removeWorktree(root, 'hhh');
     prepareWorktree(root, { task_id: 'hhh' });
-    const entries = trusted().split(/\r?\n/).filter(line => line.trim() === wt.workspace);
-    assert.equal(entries.length, 1, 'the same path must not accumulate duplicate entries');
+    assert.equal(entries().length, 1, 'the same path must not accumulate duplicate entries');
   });
 });
 
