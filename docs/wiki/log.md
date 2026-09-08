@@ -22,3 +22,10 @@ updated: 2026-08-31
 - Why: an end-to-end run of the full cycle found workers could not execute any command — agy returned an empty response with exit 0, and claude denied every Bash call, leaving rule 4 (confirm Red) unsatisfiable.
 - Verified: full cycle re-run against a throwaway fixture — planner (claude-opus-5), plan-adversary and developer (gemini-3.8-flash), adversary (gpt-6-astra); Red confirmed, Green reached, suite green, worktree removed clean. MCP suite 92/92.
 - Setup: agy needs a one-time user-global permission grant, `docs/engine-setup.md`.
+
+## [2026-09-07 21:28] chore
+
+- Change: pinned `developer` to `codex` (`gpt-5.6-luna`, effort `medium`) in `.agents/config.json`, replacing `antigravity`, specifically to test whether a codex worker can write files — no role had previously exercised codex's `workspace-write` sandbox, only its `read-only` one (adversary).
+- Change: set `allowNonWorkspaceAccess: false` in the user-global `~/.gemini/antigravity-cli/settings.json`, closing the isolation gap `docs/engine-setup.md` names — an agy worker's worktree boundary is now enforced by the CLI itself rather than only by `--add-dir` and the allowlist.
+- Why: the human asked for both directly, after a review of `docs/engine-setup.md` and the config surfaced that codex's write path was unverified under the current pinning and that agy's non-workspace access was left open.
+- Not yet verified: no dispatch has been run against the new `developer` pinning. `engines.codex.models.fast` still names `gpt-5.4-mini`, which OpenAI retired from Codex on 2026-08-31 in favor of `gpt-5.6-luna` — flagged to the human, not changed here since only `developer`'s pin was requested.
