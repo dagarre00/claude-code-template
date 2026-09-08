@@ -17,9 +17,9 @@ Use this every time you implement code on a `feat/*` or `fix/*` branch. Nothing 
 
 ## One case at a time
 
-You own the whole cycle — write the test, then implement, then commit. There is no separate tester and no handoff JSON.
+You own the whole cycle — write the test, then implement, then leave it for the conductor to commit. There is no separate tester and no handoff JSON.
 
-Run Red → Green → Refactor → Commit for **one** Behavior case, then start the next. Don't batch: five tests then five implementations then one commit produces a diff that can't be bisected, can't be reverted case-by-case, and is too large for the `adversary` to review without manufacturing new findings every round.
+Run Red → Green → Refactor → Finish for **one** Behavior case, then start the next. Don't batch: five tests then five implementations produces a change that can't be bisected, can't be reverted case-by-case, and is too large for the `adversary` to review without manufacturing new findings every round.
 
 ## Red
 
@@ -42,15 +42,14 @@ Only after green. Goal: improve structure without changing behavior.
 2. Re-run the test command after each change. Stay green.
 3. Stop when the code is "good enough for this entity's current scope." Don't refactor neighboring code.
 
-## Commit
+## Finish
 
-Close each case before starting the next — this is the cadence `docs/wiki/git-conventions.md` specifies, and you own it, not the conductor.
+Close each case before starting the next — this is the cadence `docs/wiki/git-conventions.md` specifies. You never run git yourself (the worker contract forbids every mutating git command); the conductor stages and commits what you leave behind.
 
 1. Tick the case `[~]` → `[x]` on the entity page (see "Wiki update" below).
-2. Stage that case's test, its implementation, and the entity-page edit — explicitly by path, never `git add -A`. If this case also produced a gotcha or an ADR (see *Wiki update* below), stage `docs/wiki/gotchas.md` / `docs/wiki/decisions/<slug>.md` here too — they ride in this commit and never get one of their own.
-3. Commit: `feat(<slug>): <behavior in present tense>`, one case per commit.
-4. Push (`git push -u origin "$(git branch --show-current)"`). An unpushed commit dies with the container — behavioral rule 19.
-5. Refactor commits are separate (`refactor(<slug>): …`). Never commit half-green code.
+2. Leave that case's test, its implementation, and the entity-page edit as plain uncommitted files. If this case also produced a gotcha or an ADR (see *Wiki update* below), leave `docs/wiki/gotchas.md` / `docs/wiki/decisions/<slug>.md` edited too — they belong in the same commit the conductor makes for this case.
+3. Report the exact changed paths for this case, so the conductor can stage precisely those and commit `feat(<slug>): <behavior in present tense>`, one case per commit.
+4. A refactor is a distinct change from the green commit that precedes it — call it out separately in your report so the conductor commits it separately (`refactor(<slug>): …`). Never report a case as done while it's still half-green.
 
 Then start the next case at Red.
 

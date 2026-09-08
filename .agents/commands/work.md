@@ -115,7 +115,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
 
 7a. **Adversarial review — `[complex]` and batched cycles only.** If you dispatched the `planner` in step 4, dispatch the `adversary` (fresh context, its own pinned engine) and run the full protocol in the `adversarial-review` skill — dispatch contents, triage, dispositions, round commit, re-review, and stop conditions all live there. The command-level division of labour:
 
-   - Pass **only** a small commit range (one case or a few closely-related ones), the entity slug(s) and Behavior case IDs, and the test command. Findings come back in the adversary's report; it writes no files. Never the plan file or your own reasoning — the independence is the product.
+   - Pass **only** the diff text for a small commit range (one case or a few closely-related ones) — run `git diff` yourself and paste the output; the adversary's allowlist has no ranged `git diff`, since a range carries a per-dispatch SHA no exact-match allowlist can express — plus the entity slug(s) and Behavior case IDs, and the test command. Findings come back in the adversary's report; it writes no files. Never the plan file or your own reasoning — the independence is the product.
    - Re-dispatch the `developer` with the findings for a recommended disposition per finding (it has the code context you don't); **you** own the `human-checkpoint` for `critical`/`major`, the todo lines, and the round-closing commit. Declined-or-unreachable criticals get flagged prominently in your step 12 report.
    - The review does not gate the cycle — a cycle with open filed findings still completes; the queue owns them now.
 

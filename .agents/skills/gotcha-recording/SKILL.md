@@ -71,10 +71,10 @@ Example:
 
    This keeps the file scannable before it degrades model attention. (the periodic wiki health pass compacts `gotchas.md`; there is no standalone prune command.)
 
-6. **Ship it in the commit that discovered it** — never a commit of its own. A gotcha is a wiki edit, and wiki edits ride with the change that produced them (behavioral rule 1; `wiki-update` → "Inline vs maintainer"). So stage `docs/wiki/gotchas.md` alongside that case's test and implementation:
+6. **Ship it in the commit that discovered it** — never a commit of its own. A gotcha is a wiki edit, and wiki edits ride with the change that produced them ("Wiki-first, code-second" in the behavioral rules; `wiki-update` → "Inline vs maintainer"). You run no git yourself — leave `docs/wiki/gotchas.md` edited alongside that case's test and implementation, and report all four paths together so the conductor commits them as one case:
 
-   ```bash
-   git add <the test> <the implementation> docs/wiki/entities/<slug>.md docs/wiki/gotchas.md
+   ```
+   <the test>, <the implementation>, docs/wiki/entities/<slug>.md, docs/wiki/gotchas.md
    ```
 
    If the trap surfaced during adversary triage rather than during the work, it goes in that round's commit instead (`adversarial-review` step 6). A separate `docs: gotcha — …` commit is the "update docs at the end" anti-pattern, and — worse — a gotcha nobody stages is one that sits unstaged until it trips the next clean-tree gate.

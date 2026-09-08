@@ -14,7 +14,9 @@
 #
 # What this script does (steps 1-3 of README.md § Quick start → Existing project):
 #   1. Copy .agents/ into the target.
-#   2. Copy tools/workflow-mcp/ (minus node_modules) and `npm install` it.
+#   2. Copy tools/workflow-mcp/ (minus node_modules and its own test/ suite,
+#      and with the template-only "test" script stripped from package.json)
+#      and `npm install` it.
 #   3. Copy .mcp.json, and register the MCP server for codex/agy if installed.
 #
 # What it does NOT do (step 4, yours to finish):
@@ -72,15 +74,32 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Step 2 — tools/workflow-mcp/ (skip node_modules), then npm install
+# Step 2 — tools/workflow-mcp/ (skip node_modules and the template's own
+# test/ suite — a consuming project should never see, let alone run, tests
+# that only verify the template repo's own workflow-mcp source), then
+# npm install
 # ---------------------------------------------------------------------------
 mkdir -p "$TARGET/tools"
 if [[ -e "$TARGET/tools/workflow-mcp" ]]; then
   echo "Step 2: '$TARGET/tools/workflow-mcp' already exists — leaving it untouched." >&2
 else
-  tar -C "$TEMPLATE_ROOT" -cf - --exclude='tools/workflow-mcp/node_modules' tools/workflow-mcp \
+  tar -C "$TEMPLATE_ROOT" -cf - \
+    --exclude='tools/workflow-mcp/node_modules' \
+    --exclude='tools/workflow-mcp/test' \
+    tools/workflow-mcp \
     | tar -C "$TARGET" -xf -
-  echo "Step 2: copied tools/workflow-mcp/ (node_modules excluded)"
+  echo "Step 2: copied tools/workflow-mcp/ (node_modules and test/ excluded)"
+
+  if command -v node >/dev/null 2>&1; then
+    WORKFLOW_MCP_PKG="$TARGET/tools/workflow-mcp/package.json" node -e '
+      const fs = require("fs");
+      const p = process.env.WORKFLOW_MCP_PKG;
+      const pkg = JSON.parse(fs.readFileSync(p, "utf8"));
+      delete pkg.scripts;
+      fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + "\n");
+    '
+    echo "Step 2: stripped the template-only \"test\" script from package.json"
+  fi
 fi
 
 if command -v npm >/dev/null 2>&1; then

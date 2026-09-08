@@ -6,9 +6,15 @@ call is auto-denied. On two of the three engines that denial is silent enough to
 look like success, so read this before pinning a role to an engine.
 
 The allowlist itself lives in one place: `workerCommands` in
-`.agents/config.json`. It is a list of **exact command lines**, not patterns —
-both gating engines match the command line as invoked, so `npm test` is granted
-and `cd x && npm test` is not.
+`.agents/config.json`. It is a list of **exact command lines**, not patterns.
+The engines differ in how (and whether) they actually gate on it — agy's
+`command(<line>)` rules are true exact-match with no argument wildcarding at
+all; Claude Code's `Bash(<line>:*)` permits the command with any trailing
+arguments; Codex doesn't consult this list at all; its OS-level sandbox gates
+writes regardless of it (see below) — but on every engine, `npm test` is what
+the prompt tells a worker it may run, and `cd x && npm test` is not something
+any worker should be composing regardless of what a particular engine happens
+to let through.
 
 ```json
 "workerCommands": [
@@ -22,9 +28,11 @@ and `cd x && npm test` is not.
 ```
 
 Set the test command to your project's real one when you adopt the template
-(`/project:init` does this), and keep the list short. A worker reads, searches and
-edits with its own file tools, which need no permission; commands are only for
-running the suite and the few read-only git calls the role checklists name.
+(`/project:init` step 5a does this, in `.agents/config.json` as well as
+`docs/wiki/commands.md`), and keep the list short. A worker reads, searches
+and edits with its own file tools, which need no permission; commands are
+only for running the suite and the few read-only git calls the role
+checklists name.
 
 **The list is also inlined into every worker prompt**, under `## Commands you may
 run`. That is not redundancy: a worker that does not know the list improvises a
@@ -39,6 +47,34 @@ in the agy settings below, and nowhere else.
 `--sandbox` plus `approval_policy="never"` is an OS-level sandbox with no
 approval surface to begin with, so commands run and writes are refused by the
 kernel rather than by a prompt. `workerCommands` does not apply.
+
+### Codex on Windows
+
+Codex runs a worker under a different Windows SID than the repo owner, so
+every git call in the worktree fails `fatal: detected dubious ownership`
+unless that exact path is trusted first — measured: owner SID `…-1001`,
+worker SID `…-1005`. Left unfixed, this silently disables the `adversary` and
+the `reviewer` on Windows: their first git call errors, and nothing else in
+the dispatch surfaces that as anything other than an empty or confused
+report.
+
+`prepare_worktree` handles this itself — every worktree it creates is
+registered with `git config --global --add safe.directory <path>`
+immediately after creation, so a Codex worker dispatched into it never hits
+the ownership check. Nothing to configure.
+
+If you ever hit `dubious ownership` from a worker anyway (a worktree created
+some other way, or a global config that got reset), trust it manually:
+
+```
+git config --global --add safe.directory <absolute path to the worktree>
+```
+
+**The trailing-`/*` wildcard some git versions document does not suppress
+this on Windows** (measured) — it takes a literal path per worktree, or the
+blanket `git config --global --add safe.directory "*"`, which trusts every
+repository on the machine and is a real loosening of the ownership check, not
+just a convenience.
 
 ## Claude Code — nothing to do
 

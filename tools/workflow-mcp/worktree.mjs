@@ -26,6 +26,21 @@ export function git(root, args, { allowFailure = false } = {}) {
 
 const isClean = root => git(root, ['status', '--porcelain=v1', '--untracked-files=all']) === '';
 
+// Codex on Windows runs a worker under a different OS SID than the repo owner,
+// so every git call in the worktree fails `fatal: detected dubious ownership`
+// unless that exact path is trusted first — measured, and the trailing-`/*`
+// wildcard some git versions document does NOT suppress it (also measured), so
+// each worktree path needs its own literal entry. This must be --global: the
+// ownership check runs before local config is trusted, so a per-repo config
+// entry can never be the thing that clears it. Harmless on any OS where the
+// check never fires; skipped (never fatal) if git itself is missing the ability
+// to read the existing list, since worktree creation must not depend on it.
+function trustForCodex(root, workspace) {
+  const existing = git(root, ['config', '--global', '--get-all', 'safe.directory'], { allowFailure: true });
+  const already = (existing ?? '').split('\n').some(line => resolve(line.trim()) === resolve(workspace));
+  if (!already) git(root, ['config', '--global', '--add', 'safe.directory', workspace], { allowFailure: true });
+}
+
 function taskDir(root, task_id) {
   if (typeof task_id !== 'string' || !SLUG.test(task_id)) {
     throw new Error(`Invalid task id ${JSON.stringify(task_id)}; expected a plain slug`);
@@ -62,6 +77,7 @@ export function prepareWorktree(root, { task_id } = {}) {
   const branch = `worker/${task_id}`;
   const base_sha = git(root, ['rev-parse', 'HEAD']);
   git(root, ['worktree', 'add', '-b', branch, workspace, base_sha]);
+  trustForCodex(root, workspace);
   return { task_id, workspace, branch, base_sha,
     integration_branch: git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], { allowFailure: true }) };
 }

@@ -56,11 +56,11 @@ Conventional commits, present tense:
 
 ## Cadence
 
-- **One commit per Behavior case** — its test, its minimal implementation, and its entity-page tick, committed and pushed before the next case starts. The `developer` owns this; `/project:work` does not bundle a cycle's cases into one commit, and a commit spanning several cases is a defect (it breaks `git bisect`, makes a single case unrevertable, and inflates the adversarial-review diff past the point where it converges).
+- **One commit per Behavior case** — its test, its minimal implementation, and its entity-page tick, committed and pushed before the next case starts. The `developer` never runs git (the worker contract forbids every mutating git command) — it leaves each case as reported files, and the **conductor** commits and pushes it before dispatching the next case. `/project:work` does not bundle a cycle's cases into one commit, and a commit spanning several cases is a defect (it breaks `git bisect`, makes a single case unrevertable, and inflates the adversarial-review diff past the point where it converges).
 - Refactor commits are separate from feat commits.
 - Adversary findings: filed by default; approved fixes are their own `fix(<slug>): … — adversary F<N>` commits, and each round closes with a `docs(<slug>): adversary round N` commit whose body lists every disposition — the record rule 20 requires, read back with `git log --grep="adversary round"`. Full protocol: `adversarial-review` skill.
 - Don't commit half-green code.
-- **Always push after committing** (`git push -u origin <branch>`). An unpushed commit is lost when the execution container recycles — see `.agents/rules.md` #19. Read-only commands (those that don't mutate tracked files) are the only exception.
+- **The conductor always pushes after committing** (`git push -u origin <branch>`). An unpushed commit is lost when the execution container recycles — see `.agents/rules.md` #19. Read-only commands (those that don't mutate tracked files) are the only exception.
 - **No remote yet?** `git remote get-url origin` failing means every push step is skipped and noted in the report — this is the one no-remote rule; commands reference it instead of restating it.
 
 ## PRs

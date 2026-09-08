@@ -8,6 +8,8 @@ type: rule
 
 Hard constraints from real failures. These override default agent inclinations.
 
+**Numbering here is positional, not a stable id.** Some rules below are conductor-only and are stripped before a worker ever sees this list, and the rest are renumbered contiguously around the gaps (deliberately — a visible gap reads as "a rule was withheld from you" and invites a worker to speculate about it). So a worker's "rule 6" is not necessarily this file's canonical rule 6. If you are writing role or skill text that may be inlined into a worker's prompt, never cite a rule by bare number ("behavioral rule 12") — name what it says instead, so the reference still means something regardless of which copy of this file the reader has.
+
 1. **Wiki-first, code-second.** Never change code behavior without also updating the relevant `docs/wiki/entities/<slug>.md`. If the spec is wrong, fix the spec first, then the code — in the same commit.
 
 2. **Tests before implementation.** Never write production code without a failing test first. The Red phase is mandatory. Nothing enforces this on `feat/*` and `fix/*` — keeping the discipline is on you.
@@ -36,7 +38,7 @@ Hard constraints from real failures. These override default agent inclinations.
 
 14. **Skills are how-to, not what-is.** When writing or editing a skill, the body must be a procedure: read these wiki pages, follow these steps, update these pages. Never explain a concept the LLM already knows.
 
-15. **One agent owns the TDD loop.** The `developer` writes the failing test, confirms Red itself (rule 4 — don't trust a prior step), then implements. No tester/implementer split, no handoff JSON. The only upstream split is the `planner`, whose `.handoff/<slug>-plan.md` for `[complex]`/batched work is markdown scratch the developer reads, never a contract to validate.
+15. **One agent owns the TDD loop.** The `developer` writes the failing test, confirms Red itself (rule 4 — don't trust a prior step), then implements. No tester/implementer split, no handoff JSON. The only upstream split is the `planner`, which is read-only and writes nothing: for `[complex]`/batched work it returns a plan in its report, and the conductor pastes that text inline into the developer's instructions (worktrees don't share scratch, so never a path) — markdown scratch the developer follows, never a contract to validate.
 
 16. **Append, don't bury.** When agents discover something the maintainer should clean up later (orphan page, missing ADR, repeated concept), append a one-line entry to `docs/wiki/wiki-todos.md`. Don't wait for the periodic wiki health pass.
 

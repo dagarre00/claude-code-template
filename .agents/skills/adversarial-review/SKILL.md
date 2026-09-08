@@ -27,10 +27,10 @@ Runs over the commits just landed. A read-only `adversary` (fresh context, and b
 
 ## Steps
 
-1. **Fix the review scope, and keep it small.** The developer commits per case, so the scope is a commit range — typically `git diff <sha-before-the-cases>...HEAD`, covering one case or a few closely-related ones. Not the whole branch, and not the whole cycle if the cycle was large. Nothing landed → skip and say so.
+1. **Fix the review scope, and get the diff text yourself.** The developer commits per case, so the scope is a commit range — typically `git diff <sha-before-the-cases>...HEAD`, covering one case or a few closely-related ones. Not the whole branch, and not the whole cycle if the cycle was large. Nothing landed → skip and say so. **Run that diff command yourself, in your own shell, right now** — the adversary has no ranged `git diff` on its allowlist (`workerCommands` is a list of exact command lines, and a range carries a per-dispatch SHA that can never be a static literal), so a range name is not something it can act on. You are computing the diff text to hand it, not describing where to find it.
 
 2. **Dispatch the `adversary`** with *only*:
-   - the commit range from step 1,
+   - **the diff text from step 1, pasted inline in the instructions** — not the range for it to resolve. Its worktree holds the code *after* the change as ordinary files (full-file context, step 4 of its checklist), but not history, and it cannot run a ranged diff itself.
    - the entity slug(s) and the Behavior case IDs that range covers,
    - the test command from `docs/wiki/commands.md`.
 
@@ -71,7 +71,7 @@ Runs over the commits just landed. A read-only `adversary` (fresh context, and b
 
    Bring to the checkpoint: the count and how much of it is `[adversary]`-filed versus human-filed, the oldest three entries with their age, and a recommendation. The realistic options are to drain P0 before more feature work, to re-grade entries that are not truly P0, or to pause adversarial review until the queue recovers. Do not pick for them, and do not let the count silently keep climbing.
 
-6. **Re-dispatch only if something was fixed.** With findings filed rather than fixed, most rounds change no code and there is nothing to re-review — the review is done at step 6, and the queue owns the rest. If an approved fix did land, dispatch once over **the fix commits only** (`git diff <sha-before-fixes>...HEAD`), never the original range: re-reading the whole thing is what manufactures fresh findings each round. It confirms the fix, contests rejections once, and stops.
+6. **Re-dispatch only if something was fixed.** With findings filed rather than fixed, most rounds change no code and there is nothing to re-review — the review is done at step 6, and the queue owns the rest. If an approved fix did land, **run the diff yourself** over **the fix commits only** (`git diff <sha-before-fixes>...HEAD`), never the original range — re-reading the whole thing is what manufactures fresh findings each round — and paste that text inline, same as step 2. It confirms the fix, contests rejections once, and stops.
 
 7. **Stop condition — two rounds, then resize.** If findings survive round two, do **not** open round three. The usual cause is that the reviewed unit was too big, so the remedy is to split it: pick the smallest coherent piece, review that alone, and repeat. A disagreement about a specific `critical`/`major` goes back to the same `human-checkpoint` that gated it — record the outcome as that finding's disposition.
 

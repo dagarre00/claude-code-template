@@ -1,6 +1,6 @@
 ---
 name: init
-description: Detect project state, interview for requirements, scaffold docs/wiki, update CLAUDE.md with project parameters. Run once at project start, or to recover from a broken wiki layout.
+description: Detect project state, interview for requirements, scaffold docs/wiki, fill in .agents/project.md and regenerate AGENTS.md/CLAUDE.md. Run once at project start, or to recover from a broken wiki layout.
 argument-hint: [context — e.g. "review the legacy files" | "stack is Django + Postgres"]
 type: command
 ---
@@ -9,7 +9,7 @@ type: command
 
 **Argument:** `$ARGUMENTS`
 
-You are initializing this project. This command detects state, interviews the human for requirements, scaffolds the wiki with real answers (not placeholders), and rewrites `CLAUDE.md` to be lean and project-specific.
+You are initializing this project. This command detects state, interviews the human for requirements, scaffolds the wiki with real answers (not placeholders), and fills in `.agents/project.md` so `AGENTS.md`/`CLAUDE.md` regenerate as project-specific.
 
 If the argument is non-empty, treat it as **context that steers the init**, not as a separate task. Resolve it before step 3 and fold it into the pre-interview scan:
 
@@ -196,15 +196,56 @@ Every page gets correct frontmatter per the Obsidian LLM-wiki standard (see the 
 
 4. **Record the verified commands** in `docs/wiki/commands.md`: `## Install`, `## Test`, and whatever else you confirmed. Only commands you have actually run go in this file.
 
-If the human declines the bootstrap, leave `commands.md ## Test` as `<TBD>` and say plainly in the report that `/project:work` will refuse to start until a test command runs.
+5. **Update the worker allowlist.** `.agents/config.json`'s `workerCommands` ships with the template maintainer's own placeholder (`"npm test"`) — every worker's composed prompt names this list as what it may run, so a Python or Rust project left with `npm test` there is a Red phase no worker can ever confirm. Replace that placeholder entry with the exact command you just verified in step 5a.3, keeping the rest of the array (the read-only `git` entries) as shipped.
 
-### 6. Rewrite CLAUDE.md
+If the human declines the bootstrap, leave `commands.md ## Test` as `<TBD>` and `workerCommands` unchanged, and say plainly in the report that `/project:work` will refuse to start until a test command runs.
 
-**Re-run guard first.** If `CLAUDE.md` is already project-specific — it no longer opens with the template's "Project Schema" framing, or its command/agent tables carry rows the template doesn't ship (added later via `update-toolkit`) — do **not** overwrite it: stop and run `human-checkpoint` offering rewrite / merge the new parameters in / skip this step. A blind rewrite from the template discards every toolkit row the project has added since.
+### 6. Fill in project.md and regenerate AGENTS.md / CLAUDE.md
 
-Otherwise, rewrite `CLAUDE.md` to be lean and project-specific. Drop the template framing — this is now a real project. **Use [`.agents/templates/CLAUDE.md.tmpl`](../templates/CLAUDE.md.tmpl) as the exact skeleton:** copy it to `CLAUDE.md` and fill every `<placeholder>` (project name, vision, stack, test command) from the interview answers. Do not re-derive the section list — the template already carries it (Identity, Operating principles, Three layers, Wiki layout, Commands, Agent routing, North star).
+`AGENTS.md` and `CLAUDE.md` are never hand-written — both carry a "DO NOT EDIT"
+banner and are mechanically rendered from `.agents/` by the workflow MCP's
+`sync()`. The only per-project input is `.agents/project.md`'s four fields; the
+rest (rules, roles, skills, commands tables) is derived automatically from
+`.agents/`, so a toolkit row added later via `update-toolkit` needs no manual
+carry-forward here — `sync()` always picks it up.
 
-The template deliberately points at `.agents/rules.md` for the binding rule list instead of duplicating it — keep that pointer; do not paste a "Golden rules" block back in. The result should be under ~120 lines. Every section earns its place — if a section doesn't help an agent operate, cut it.
+**Re-run guard first.** Read `.agents/project.md`. If none of its four fields
+still carry the shipped placeholder text (`<set during project
+initialization>`, `<detect or ask during project initialization>`, `<verify
+during project initialization>`), this project was already initialized — stop
+and run `human-checkpoint` offering: update one named field / leave it as-is /
+regenerate anyway. Do not blindly overwrite an already-answered `project.md`.
+
+**Existing hand-written `CLAUDE.md` guard.** `sync()` overwrites `CLAUDE.md`
+unconditionally with the generated two-line `@AGENTS.md` import. If `CLAUDE.md`
+already exists here and does **not** carry the "Generated from `.agents/`"
+banner, it predates adopting this template and `sync()` would silently
+destroy it. Read it first: fold anything worth keeping into
+`docs/wiki/architecture.md` or `docs/wiki/gotchas.md` (wherever the content
+actually belongs — it is project knowledge, not boilerplate), then proceed.
+Never call `sync()` over unread, unpreserved content.
+
+Fill in exactly the four fields, from what this run already established:
+
+- **Name** — the project name.
+- **Vision** — the one-sentence vision from the interview.
+- **Stack** — the detected/confirmed stack (step 2).
+- **Application tests** — the verified test command (step 5a), or leave the
+  placeholder if the human declined the bootstrap.
+
+**Also replace the prose below the four fields.** As shipped, it describes
+*this template repository* ("This is a reusable development template for
+Claude Code, Codex, and Antigravity CLI…") — accurate for the template itself,
+false for a project adopting it. `canonical.mjs` renders `project.md` verbatim
+into `AGENTS.md`, so left untouched, an adopting project's own agent
+instructions would claim to be the template. Replace that paragraph with one
+or two sentences about what *this* project actually is (its vision line
+already says why it exists; this can be a pointer — "See `docs/wiki/` for the
+full spec" — rather than a restatement). Keep the wikilink-free plain prose
+style; this is the one place in `.agents/` meant to be rewritten per project.
+
+Then call the workflow MCP's `sync()` to render `AGENTS.md` and `CLAUDE.md`
+from `.agents/`, and `check()` to confirm it reports `ok: true`.
 
 ### 7. Log it
 
@@ -228,8 +269,8 @@ Stage and commit everything created or modified, then push:
 ```bash
 # Include any skeleton files created in step 5a (manifest, lockfile, empty test dir),
 # and .agents/config.json if step 0a changed it.
-git add docs/ CLAUDE.md .agents/config.json <manifest-and-skeleton-paths>
-git commit -m "chore(init): scaffold wiki, CLAUDE.md, and runnable test command"
+git add docs/ CLAUDE.md AGENTS.md .agents/project.md .agents/config.json <manifest-and-skeleton-paths>
+git commit -m "chore(init): scaffold wiki, regenerate AGENTS.md/CLAUDE.md, and a runnable test command"
 git push -u origin main
 ```
 

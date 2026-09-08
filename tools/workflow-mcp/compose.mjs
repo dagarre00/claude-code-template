@@ -98,15 +98,16 @@ export function composePrompt(canonical, input = {}) {
   // usable contract.
   if (workerCommands.length) {
     parts.push(section('Commands you may run',
-      'These exact command lines are the only shell commands you are permitted to run:\n\n'
+      'These are the commands you can rely on being allowed, run exactly as written:\n\n'
       + workerCommands.map(command => `- \`${command}\``).join('\n')
       + '\n\nRun them **verbatim** - no cd, no chaining with ; or &&, no redirection, no '
-      + 'extra flags. Permission is matched against the exact line, so any variation is denied '
-      + 'before it executes, and on some engines one denied command ends your run and discards '
-      + 'everything you have done, including this report. Everything else - reading, searching, '
-      + 'listing, editing - you do with your own file tools, which need no permission. If the task '
-      + 'genuinely needs a command that is not on this list, stop and report that as a blocker '
-      + 'rather than trying a variation of it.'));
+      + 'extra flags. Permission is matched against the exact line, so any variation risks '
+      + 'being denied before it executes. On agy specifically, one denied command ends your run '
+      + 'and discards everything you have done, including this report — treat every engine as if '
+      + 'that were true, since you cannot tell which one you are on from this prompt. Everything '
+      + 'else - reading, searching, listing, editing - you do with your own file tools, which need '
+      + 'no permission. If the task genuinely needs a command that is not on this list, stop and '
+      + 'report that as a blocker rather than trying a variation of it.'));
   }
 
   if (writes) {

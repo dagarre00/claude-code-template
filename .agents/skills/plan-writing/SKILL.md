@@ -6,7 +6,7 @@ type: skill
 
 # Plan Writing
 
-Use this as the `planner` every time you draft a plan for a `[complex]` todo or a batched cycle, before any test is written. Output is one markdown file at `.handoff/<slug>-plan.md` (gitignored scratch). You write the plan; the `developer` executes it.
+Use this as the `planner` every time you draft a plan for a `[complex]` todo or a batched cycle, before any test is written. You are read-only: output is the markdown plan returned in full as your report, never written to disk. The conductor saves it (as `.handoff/<slug>-plan.md`, gitignored scratch) if it wants a copy, then pastes the text inline into the `developer`'s instructions — worktrees don't share scratch, so the developer never reads a path.
 
 ## Read first
 
@@ -19,7 +19,7 @@ Use this as the `planner` every time you draft a plan for a `[complex]` todo or 
 
 ## Plan structure
 
-Write the plan to `.handoff/<slug>-plan.md` using this exact template:
+Return the plan in your report using this exact template:
 
 ```
 # Plan: <slug>
@@ -61,7 +61,7 @@ Each step should be small enough that **a single test can drive it**. If a step 
 
 ## Where it lives
 
-`.handoff/<slug>-plan.md`. One plan per branch. `*-plan.md` is `.gitignore`'d, so plans are transient scratch and never reach the remote. Overwrite on retry rather than versioning; the conductor clears it when the cycle is done. **Because the plan is not committed, it does not survive a container recycle** — but the work does: the developer commits and pushes per Behavior case, so a recycle loses at most the case in flight. Re-dispatching the planner regenerates the plan from the entity page's Behavior cases, which are the authoritative contract, and the remaining unticked cases are the resume point.
+Nowhere, until the conductor puts it somewhere. You return the plan in your report; you never write it to disk yourself. If the conductor keeps a copy, it's `.handoff/<slug>-plan.md` — one plan per branch, `*-plan.md` is `.gitignore`'d, so it's transient scratch that never reaches the remote and is overwritten (not versioned) on retry. **Because it is never committed, it does not survive a container recycle** — but the work does: the developer commits and pushes per Behavior case, so a recycle loses at most the case in flight. Re-dispatching the planner regenerates the plan from the entity page's Behavior cases, which are the authoritative contract, and the remaining unticked cases are the resume point.
 
 ## Handoff to the developer
 

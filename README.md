@@ -26,9 +26,14 @@ place. Never touch `.git`. From a checkout of this template, run:
 bash scripts/adopt.sh /path/to/my-existing-project
 ```
 
-That copies `.agents/` and `tools/workflow-mcp/` in, installs the MCP server's
-dependencies, drops `.mcp.json`, and registers the server with `codex`/`agy` if
-either is on your `PATH`. It prints one thing for you to finish by hand: merging
+That copies `.agents/` and `tools/workflow-mcp/` in (leaving out
+`node_modules/` and the template's own `test/` suite, and stripping the
+now-meaningless `test` script from the copied `package.json` — that suite
+only verifies this template repo's workflow-mcp source, never the adopting
+project's own code, so it has no business shipping there), installs the MCP
+server's dependencies, drops `.mcp.json`, and registers the server with
+`codex`/`agy` if either is on your `PATH`. It prints one thing for you to
+finish by hand: merging
 `.claude/settings.json` if the target already has one (it creates it fresh
 otherwise). Because `tools/workflow-mcp/engine-setup.md` and
 `tools/workflow-mcp/conductor-e2e.md` travel with the copy, the adopted project
@@ -47,6 +52,9 @@ No script handy, or want to see exactly what it does? The manual equivalent:
 cd my-existing-project
 cp -r <template>/.agents .
 cp -r <template>/tools/workflow-mcp tools/workflow-mcp   # skip node_modules
+rm -rf tools/workflow-mcp/test                            # template-only test suite
+# also delete the "scripts" block in tools/workflow-mcp/package.json —
+# its "test" script only made sense for the excluded test/ directory
 cp <template>/.mcp.json .
 # merge into .claude/settings.json — don't overwrite it:
 #   "extraKnownMarketplaces": {"workflow": {"source": {"source": "directory", "path": "."}}}

@@ -102,7 +102,7 @@ Outputs:
 
 `/project:work` picks the top item from `todos.md` (or batches consecutive todos sharing context), opens a `feat/<slug>` branch, and drives one full cycle:
 
-1. **Plan (conditional).** If the todo is flagged `[complex]` or a batch of 2+ todos was proposed, `/project:work` dispatches the `planner` agent first; it writes a stepwise plan to `.handoff/<slug>-plan.md` (gitignored scratch) that the developer then follows. A single simple todo skips planning.
+1. **Plan (conditional).** If the todo is flagged `[complex]` or a batch of 2+ todos was proposed, `/project:work` dispatches the `planner` agent first; it's read-only and returns a stepwise plan in its report. `/project:work` optionally saves a copy to `.handoff/<slug>-plan.md` (gitignored scratch) and pastes the plan inline into the developer's instructions. A single simple todo skips planning.
 2. **Pre-flight review.** Before any test exists, `/project:work` dispatches the read-only `plan-adversary` at the brief — the plan on a `[complex]` or batched cycle, the todo line and whatever you typed after `/project:work` on a simple one. It hunts the defects that cost a whole cycle: a Behavior case no step covers, a step with no assertion that could fail first, a hidden prerequisite, an instruction that admits two readings. It writes nothing; findings come back in its report. Each one is **applied** to the brief (the default — the fix is a paragraph at this stage), **escalated** to a human checkpoint recommending `/project:interview` when the spec itself is the problem, or **rejected** with a reason. This runs on **every** cycle, not just complex ones: a one-line todo is where an unstated assumption travels furthest. The dispositions land in the cycle's `log.md` entry, which is the committed record for a review that happened before any commit existed.
 3. **Red.** The developer reads the matching `entities/<slug>.md#Behavior` cases, writes one failing test per case, runs the suite, and confirms the tests fail for the right reason (missing implementation — not a typo or import error). It marks each case `[ ]` → `[~]`.
 4. **Green.** The developer writes the minimal code to make the tests pass.
@@ -175,8 +175,8 @@ Some features are too big to attack directly — they cross files, need careful 
 
    The `[complex]` tag is what `/project:work` keys off to dispatch the `planner` before testing.
 
-3. **Run `/project:work`.** With `[complex]` set (or a 2+ batch), `/project:work` first dispatches the `planner`, which writes a plan (following the `plan-writing` skill) to `.handoff/billing-invoices-plan.md` — goal, approach, ordered steps, risks, out-of-scope. `/project:work` sanity-checks it, then dispatches the `developer`, which reads the plan and drives the same Red → Green → refactor → wiki → commit flow as a simple feature, following the plan's step order.
-4. **Where the plan lives.** `.handoff/<slug>-plan.md`. The file is gitignored — plans are transient scratch `/project:work` clears when the cycle is done. The wiki holds the spec (what); the plan is how-to for one cycle. Because it isn't committed, a container recycle loses it — but so does it lose the rest of the uncommitted cycle, so `/project:work` simply restarts the still-open todo and re-dispatches the planner to regenerate the plan from the Behavior cases.
+3. **Run `/project:work`.** With `[complex]` set (or a 2+ batch), `/project:work` first dispatches the `planner`, which is read-only and returns a plan (following the `plan-writing` skill) in its report — goal, approach, ordered steps, risks, out-of-scope. `/project:work` sanity-checks it, then dispatches the `developer` with the plan text pasted inline, which drives the same Red → Green → refactor → wiki → commit flow as a simple feature, following the plan's step order.
+4. **Where the plan lives.** In the planner's report — it writes no files itself. `/project:work` may save a copy to `.handoff/billing-invoices-plan.md`, gitignored scratch it clears when the cycle is done, purely for its own reference; the developer only ever sees the plan pasted inline in its instructions, never a path (worktrees don't share scratch). The wiki holds the spec (what); the plan is how-to for one cycle. Because it isn't committed, a container recycle loses it — but so does it lose the rest of the uncommitted cycle, so `/project:work` simply restarts the still-open todo and re-dispatches the planner to regenerate the plan from the Behavior cases.
 5. **Two-strike interaction.** If the developer fails twice on the same mechanism, it stops, tags a checkpoint, and presents both failed attempts. On an authorized retry, `/project:work` re-dispatches the `planner` to overwrite the plan with a fundamentally different shape — naming the failed approach and the new one in the `## Approach` section. You never silently retry the same plan.
 
 ## Scenario: Batching multiple small todos
@@ -361,7 +361,7 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 | Reviewer scope unclear                             | Re-run `/project:review` with an explicit scope argument (e.g. `/project:review security only`)                            |
 | `wiki-todos.md` is huge                            | Run `/project:wiki`                                                                                                  |
 | Developer keeps retrying the same failing approach | Two-strike rule should fire — it stops after the second failure and asks you                                              |
-| Plan looks wrong                                   | Edit `.handoff/<slug>-plan.md`, or just tell the developer the approach to take                                    |
+| Plan looks wrong                                   | Tell the conductor the approach to take before it pastes the plan into the developer's instructions, or just tell the developer directly                          |
 | Adversary found nothing and said only "looks good" | An unexplained pass is a failed review — it owes you a `**Checked:**` line per category. Re-dispatch demanding it          |
 | Adversary and developer keep going back and forth  | Two rounds is the cap — it should stop and ask you with both positions stated                                             |
 
@@ -378,7 +378,7 @@ The wiki is the project's source of truth — code that disagrees with it is the
 - **Letting `wiki-todos.md` pile up.** When it's long, run `/project:wiki`.
 - **Running the same failed approach a third time.** The two-strike rule exists for a reason — pivot or re-spec.
 - **Letting findings pass unanswered.** Filing three findings and quietly ignoring two turns review into theatre. Each one gets a disposition in writing — filed as a todo, fixed under your approval, or rejected with a reason.
-- **Treating a plan as a spec.** Plans live in `.handoff/` and are transient scratch. The wiki holds the spec. If the plan needs to change, edit the plan; if the contract needs to change, run `/project:interview`.
+- **Treating a plan as a spec.** A plan is the planner's report, pasted inline for the cycle — transient scratch, not a committed contract. The wiki holds the spec. If the plan needs to change, tell the conductor before it dispatches the developer; if the contract needs to change, run `/project:interview`.
 
 # Related
 

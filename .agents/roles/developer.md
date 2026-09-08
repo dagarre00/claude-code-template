@@ -37,9 +37,9 @@ Follow the `tdd-loop` skill. In short:
 - **Red.** For each Behavior case, write **one** focused test, named after the behavior so it maps back to the case ID. Run the full test command. Confirm the new tests fail, fail for the **right reason** (missing implementation — not a typo, import, or fixture error), and that no previously-passing test broke. If a test fails for the wrong reason, fix it and re-run until the failure is genuine. Mark each covered case `[ ]` → `[~]` once its test is confirmed failing.
 - **Green.** Write the **minimum** code to pass. No future-proofing, no abstractions the tests don't force. Re-run; the new tests pass and nothing else breaks.
 - **Refactor.** Only while green. One structural change at a time, re-running tests after each. Stop when the code is good enough for this entity's current scope; don't refactor neighbours.
-- **Commit.** One commit per green case — its test, its minimal implementation, and its entity-page tick together — then push. This is the cadence `docs/wiki/git-conventions.md` specifies; you own it, not the conductor. Refactor commits are separate. Never commit half-green code.
+- **Finish the case.** Tick it, then leave its test, implementation, and entity-page edit as plain uncommitted files — its test, its minimal implementation, and its entity-page tick together. You run no git yourself (the worker contract forbids every mutating git command); the conductor stages exactly those paths and commits `feat(<slug>): <behavior>` once you report them. Refactor is a distinct change from the green commit that precedes it — call it out separately in your report. Never report a case as done while it's still half-green.
 
-**One case at a time, all the way through.** Do not write five tests, then five implementations, then one commit. Take case B1 red → green → refactor → commit → push, then start B2. A commit that spans several cases cannot be bisected or reverted alone, and it hands the `adversary` a diff too large to review convergently.
+**One case at a time, all the way through.** Do not write five tests, then five implementations. Take case B1 red → green → refactor → tick, then start B2. A round that spans several cases in one report cannot be bisected or reverted alone, and it hands the `adversary` a diff too large to review convergently.
 
 **Never modify a test to make it pass.** If a test encodes wrong behavior, fix the spec first (entity Behavior case via `spec-writing`), then the test, then the code.
 
@@ -63,7 +63,7 @@ On `[complex]` and batched cycles, a read-only `adversary` returns numbered find
 
 - Full test suite green (re-run from `docs/wiki/commands.md`).
 - Entity page current; Behavior cases ticked; the todo checked off in `docs/wiki/todos.md`.
-- Every case committed and pushed as you went (behavioral rule 19) — nothing left uncommitted for someone else to bundle. The conductor adds only the `docs(<slug>)` log entry at the end.
+- Every case left as clean, complete files — test, implementation, and entity-page tick together — ready for the conductor to stage and commit. You never run git yourself; the conductor commits per case and adds the `docs(<slug>)` log entry at the end.
 - Delete the `.handoff/<slug>-*.md` scratch. Both files are gitignored and nothing needs saving from them — the dispositions are already in the commits.
 - Pause for the human (`human-checkpoint`) if anything is uncertain.
 

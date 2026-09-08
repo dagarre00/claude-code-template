@@ -52,7 +52,7 @@ repair. Record what happened, including your own failures.
 - Report exact errors verbatim. A check that fails is a useful result; a check
   you skipped and reported as passing is not.
 
-**1 — Reach the server.** Call `list_roles`, `list_commands` and `check`.
+**1 — Reach the server.** Call `list_roles` and `check`.
 
 - Record each role's resolved `engine`, and confirm the list matches
   `.agents/roles/`.

@@ -6,7 +6,7 @@ type: skill
 
 # Wiki Update — Standard, Templates, Routing
 
-The wiki follows the **Obsidian LLM-wiki standard**. This skill is the **single source of truth** for that standard; the non-negotiable invariants are also stated as behavioral rule 18. Routine ticks (`[ ]` → `[~]` → `[x]`, checking off a todo, appending a log line) are documented in `tdd-loop`. This skill covers: **placement**, the **templates**, the **facet/ontology tables**, and **inline-vs-maintainer routing**.
+The wiki follows the **Obsidian LLM-wiki standard**. This skill is the **single source of truth** for that standard; the non-negotiable invariants are also restated as their own behavioral rule ("Obsidian LLM-wiki standard — hard rules"). Routine ticks (`[ ]` → `[~]` → `[x]`, checking off a todo, appending a log line) are documented in `tdd-loop`. This skill covers: **placement**, the **templates**, the **facet/ontology tables**, and **inline-vs-maintainer routing**.
 
 ## Placement — before creating any page
 
@@ -316,7 +316,7 @@ A gap is a hole in the graph relative to this schema — computable by the perio
 
 ## Inline vs maintainer routing
 
-You — the `developer` — own **small, in-scope** wiki edits and make them in the same commit as the code. (The `reviewer` and `adversary` do not: they are findings-only under behavioral rule 12, and the command that dispatched them files what they raise.) The wiki-maintainer is **manual only** and handles large or cross-page work.
+You — the `developer` — own **small, in-scope** wiki edits and make them in the same commit as the code. (The `reviewer` and `adversary` do not: they are findings-only by design — a conductor-only invariant — and the command that dispatched them files what they raise.) The wiki-maintainer is **manual only** and handles large or cross-page work.
 
 **Inline** (same commit, no dispatch): single ADR via `decision-recording`; single gotcha via `gotcha-recording`; entity-page edit on the entity you're working on; fixing a single broken `[[link]]` you happened to notice; stubbing a missing link target.
 
