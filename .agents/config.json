@@ -17,9 +17,9 @@
       "effort": { "codex": "medium" }
     },
     "developer": {
-      "engine": "codex",
-      "models": { "codex": "gpt-5.6-luna" },
-      "effort": { "codex": "medium" }
+      "engine": "antigravity",
+      "models": { "antigravity": "gemini-3.8-flash" },
+      "effort": { "antigravity": "medium" }
     },
     "plan-adversary": {
       "engine": "antigravity",
@@ -57,7 +57,7 @@
     "antigravity": {
       "executable": "agy",
       "models": {
-        "reasoning": "gemini-3.1-pro-preview",
+        "reasoning": "gemini-3.8-flash",
         "balanced": "gemini-3.8-flash",
         "fast": "gemini-3.8-flash"
       },

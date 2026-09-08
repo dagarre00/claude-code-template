@@ -36,3 +36,10 @@ updated: 2026-08-31
 - Checked against the web and left unchanged, all confirmed Active: `claude-opus-5`, `claude-sonnet-5`, `claude-haiku-4-5-20251001` (Anthropic's deprecations page — none even deprecated yet), `gpt-6-astra`, `gpt-5.6-terra` (current Codex models), `gemini-3.8-flash` (Google's model docs, stable).
 - Note: `engines.antigravity.models.reasoning` is presently unreachable — no role with a `reasoning` profile resolves to `antigravity` under the current pins in `.agents/config.json` (`adversary` and `planner`, the two `reasoning`-profile roles, are explicitly pinned to `codex` and `claude`). Fixed anyway so it isn't a landmine for the next repin.
 - MCP suite 92/92 after both edits.
+
+## [2026-09-07 21:50] chore
+
+- Change: reverted `developer` to `antigravity`/`gemini-3.8-flash`/`medium`, undoing the previous entry's codex pin. Change: `engines.antigravity.models.reasoning` `gemini-3.1-pro-preview` → `gemini-3.8-flash`, so every configured Gemini reference is now the same model.
+- Why: human request, after the codex-write question this reversion reopens was tested directly first (see below) rather than left unanswered.
+- Verified first, outside any role config: dispatched `codex exec --sandbox workspace-write` by hand against a throwaway git-initialized fixture (not a worktree of this repo), model `gpt-5.6-luna`, asking it to create `proof.txt` with fixed content. It wrote the file with exactly the requested bytes and nothing else — confirmed on disk after the process exited, not just from the CLI's own transcript. Codex's write path is real; the fixture was deleted after.
+- MCP suite 92/92 after the revert.
