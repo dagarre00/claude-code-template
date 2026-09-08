@@ -7,7 +7,7 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-08-31
+updated: 2026-09-08
 ---
 
 # Log
@@ -43,3 +43,15 @@ updated: 2026-08-31
 - Why: human request, after the codex-write question this reversion reopens was tested directly first (see below) rather than left unanswered.
 - Verified first, outside any role config: dispatched `codex exec --sandbox workspace-write` by hand against a throwaway git-initialized fixture (not a worktree of this repo), model `gpt-5.6-luna`, asking it to create `proof.txt` with fixed content. It wrote the file with exactly the requested bytes and nothing else — confirmed on disk after the process exited, not just from the CLI's own transcript. Codex's write path is real; the fixture was deleted after.
 - MCP suite 92/92 after the revert.
+
+## [2026-09-08 13:35] chore
+
+- Change: removed `get_workflow`, `list_commands`, and the per-command MCP prompt registration from the `workflow` server — commands (`work`, `review`, `adversary`, `wiki`, `interview`, `init`) now have no MCP surface at all, reachable only through Claude Code's native `project` plugin (or, for another conductor, a human pointing it at `.agents/commands/<name>.md` directly). `canonical.mjs`'s command loading is unchanged; `generate.mjs` still needs it for the AGENTS.md catalog.
+- Change: audited every file actually inlined into a dispatched worker's prompt (all 7 role bodies, the 8 skills declared in a command's `skills:` map, and `rules.md`) for `/project:xxx` references a worker has no way to act on — 64 occurrences across 16 files reworded to plain outcomes (e.g. "escalate via `/project:interview`" → "flag it for the conductor to route to a fresh spec pass"). Frontmatter `description:` fields left untouched — `compose.mjs` never inlines them into a worker prompt.
+- Change: hardened "MCP is the only dispatch path" (`generate.mjs`'s "Delegating work", and `.agents/commands/work.md`'s dispatch intro) to say explicitly it holds even when a role's engine equals the conductor's own — no shortcut through the conductor's native Task/Agent tool.
+- Fix (incidental): `.agents/skills/update-toolkit/SKILL.md`'s "Placement" step described commands getting their `/project:` prefix from a `commands/project/<name>.md` sub-folder namespace — never true in this repo; the prefix comes from the Claude Code plugin's own name (`project`, in `.agents/.claude-plugin/plugin.json`) over a flat `.agents/commands/<name>.md`. Corrected, and noted commands have no MCP surface to add one for.
+- Fix (incidental): `.agents/roles/developer.md` described being dispatched "with a path to `.handoff/<slug>-plan.md`" — the actual mechanism (`work.md` step 4/5, rule 15) pastes the plan inline in the developer's instructions; worktrees don't share scratch, so a path was never valid. Corrected in the same edit that removed the `/project:work` reference on that line.
+- Why: a user-facing question about `/project:work` vs `mcp__workflow__project-work` surfaced the duplication; further discussion established Claude Code is the only conductor for now (no per-CLI generation needed) and that a dispatched worker being handed a command reference it cannot act on was the sharper, previously-unnoticed problem.
+- Researched and rejected generating a native command surface for Codex/Antigravity: Codex's custom-prompt slash commands are deprecated by OpenAI in favor of "skills"; both Codex's (`~/.codex/prompts/`) and Antigravity's (`~/.gemini/antigravity-cli/plugins/`) extension points are user-home-scoped, not project-portable — see `docs/wiki/decisions/2026-09-08-drop-commands-from-mcp-surface.md`.
+- Verified: `workerRules()` run programmatically against the edited `rules.md` confirms zero leaked `/project:` references reach a worker. MCP suite 90/90 (92 minus the two `get_workflow` tests removed with the tool). `sync`/`check` regenerated `AGENTS.md`/`CLAUDE.md` with no drift (run via direct `node` invocation of `generate.mjs` — the session's already-running MCP server process has last session's `generate.mjs`/`canonical.mjs` cached in memory and will not pick up same-session edits; see gotcha).
+- ADR: `docs/wiki/decisions/2026-09-08-drop-commands-from-mcp-surface.md`.

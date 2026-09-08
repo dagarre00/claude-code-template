@@ -8,7 +8,7 @@ type: skill
 
 Runs over the commits just landed. A read-only `adversary` (fresh context, and by default a different model from the author's) reads them and returns numbered findings in its report; every one is triaged and the dispositions are recorded **in the commits that answer them**.
 
-**Who triages.** The word "author" below means whoever is driving the cycle, and the split is fixed: the **`developer`** supplies the technical judgement on each finding (is it real, does an invariant rule it out, what would the fix touch) and makes any approved fix, failing test first. The **dispatching command** — `/project:work` step 7a, or `/project:adversary` — owns the `human-checkpoint` for `critical`/`major`, the todo lines, and the round-closing commit. A sub-agent cannot hold the conversation with the human, so the checkpoint never belongs to the `developer`; and the `developer` has the code context the orchestrator lacks, so the judgement never belongs to the orchestrator alone.
+**Who triages.** The word "author" below means whoever is driving the cycle, and the split is fixed: the **`developer`** supplies the technical judgement on each finding (is it real, does an invariant rule it out, what would the fix touch) and makes any approved fix, failing test first. **The dispatching conductor** — mid development cycle, or running an adversarial review on demand — owns the `human-checkpoint` for `critical`/`major`, the todo lines, and the round-closing commit. A sub-agent cannot hold the conversation with the human, so the checkpoint never belongs to the `developer`; and the `developer` has the code context the orchestrator lacks, so the judgement never belongs to the orchestrator alone.
 
 **A review files work, it does not do work.** The default disposition is a todo in `docs/wiki/todos.md` — findings are not fixed in the cycle that surfaced them. The one exception is a `critical` or `major`, which is put to the human via `human-checkpoint`: they decide whether it is fixed now or queued like the rest. This keeps a review from silently reordering the work queue, and keeps one review from becoming an open-ended fix-and-re-review loop.
 
@@ -21,9 +21,9 @@ Runs over the commits just landed. A read-only `adversary` (fresh context, and b
 
 ## When it fires
 
-- **Automatically:** `/project:work` step 7a, when the todo is tagged `[complex]` or 2+ todos are batched — the same trigger that dispatched the `planner`.
-- **On demand:** `/project:adversary`, for any branch or dirty tree.
-- **Never:** as a substitute for Red (behavioral rule 2), for the periodic `/project:review`, or for the pre-implementation pass — the brief was already reviewed before any test existed (`plan-review`, `/project:work` step 4a), and this round reads only what the code did with it.
+- **Automatically:** during a development cycle's own post-implementation step, when the todo is tagged `[complex]` or 2+ todos are batched — the same trigger that dispatched the `planner`.
+- **On demand:** a human asking for an adversarial review directly, for any branch or dirty tree.
+- **Never:** as a substitute for Red (behavioral rule 2), for the periodic whole-repo review, or for the pre-implementation pass — the brief was already reviewed before any test existed (`plan-review`), and this round reads only what the code did with it.
 
 ## Steps
 
@@ -99,7 +99,7 @@ What the adversary returns. It only has to survive long enough for you to triage
 
 ## Out of scope
 
-- <pre-existing problems outside the diff — for /project:review, not this cycle>
+- <pre-existing problems outside the diff — for the periodic whole-repo review, not this cycle>
 ```
 
 ## The six-category sweep
@@ -177,7 +177,7 @@ Todo line format — one per finding, so the queue is traceable back to the revi
 - An approved fix is its own commit — code + wiki together, naming the finding it closes.
 - A finding that revealed a project-specific trap → `gotcha-recording`, inline, same commit. Worth doing even when the finding itself is only Filed: the trap is real now, whenever the fix happens.
 - A finding whose rejection encodes a design stance → `decision-recording`, inline, same commit.
-- `/project:work` records the round in `log.md` as counts only (`Adversary: N findings — Fi filed, Fx fixed, R rejected`). The counts are an index; the dispositions themselves are in the commits, reachable with `git log --grep="adversary round"`. Do not write a separate review report; that is `/project:review`'s artifact, not this one's.
+- The conductor records the round in `log.md` as counts only (`Adversary: N findings — Fi filed, Fx fixed, R rejected`). The counts are an index; the dispositions themselves are in the commits, reachable with `git log --grep="adversary round"`. Do not write a separate review report; that is the periodic whole-repo review's artifact, not this one's.
 
 ## Swapping in an external reviewer
 
@@ -188,7 +188,7 @@ Cross-vendor independence is stronger than a second context on the same family. 
 - **Leaking author context into the dispatch.** Pasting the plan or "here's what I was going for" turns the adversary into a rubber stamp. The Behavior case IDs are the whole brief.
 - **Letting the adversary fix things.** It raises, you decide. A reviewer that edits erases both the decision and the record of it.
 - **Absorbing findings silently.** Filing three and ignoring two without a written reason is how a review becomes theatre.
-- **Filing as if it were disposal.** Filed findings have exactly one consumer — `/project:wiki`'s re-triage pass (behavioral rule 22) — and it only runs if someone runs it. When your filing pushes the open `[adversary]` count to `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`), say so in the cycle report. A backlog that grows every round and drains never means the reviews are producing paperwork, not fixes.
+- **Filing as if it were disposal.** Filed findings have exactly one consumer — the periodic wiki-maintenance re-triage pass (behavioral rule 22) — and it only runs if someone runs it. When your filing pushes the open `[adversary]` count to `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`), say so in the cycle report. A backlog that grows every round and drains never means the reviews are producing paperwork, not fixes.
 - **Fixing findings because they are small.** A `minor` that takes two lines is still filed. "While I'm here" is how a review becomes an unplanned refactor, and it skips the Red-first loop.
 - **Fixing a `critical` without asking.** The gate is not paperwork — it is the human's call whether the branch stops for this. Fix without approval and you have made a scheduling decision that was not yours.
 - **Inflating severity to force a fix.** Severity drives the interruption, so grading a `minor` as `major` spends the human's attention on your preference.

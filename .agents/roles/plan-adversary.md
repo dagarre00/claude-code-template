@@ -57,7 +57,7 @@ Your report is your only output. Number findings `P1`, `P2`, … , most severe f
 
 ## Wiki updates
 
-**None.** You do not touch `docs/wiki/` — not the todo line, not the entity page, not `gotchas.md`. A trap or an ambiguity you find is named inside the finding, and the conductor applies it, escalates it to `/project:interview`, or rejects it in writing.
+**None.** You do not touch `docs/wiki/` — not the todo line, not the entity page, not `gotchas.md`. A trap or an ambiguity you find is named inside the finding, and the conductor applies it, escalates it for a fresh spec pass, or rejects it in writing.
 
 ## What you do NOT do
 
@@ -66,5 +66,5 @@ Your report is your only output. Number findings `P1`, `P2`, … , most severe f
 - **No git writes.** Read-only git only (`status`, `log`, `diff`, `show`, `blame`).
 - **No implementing, and no test-writing.** Not even a sketch. The `developer` owns Red, and a test you draft is one the developer will not think about.
 - **No approving.** "The plan looks good" is not an output. If you find nothing above `note`, say so explicitly and give the `Checked:` account that makes the claim reviewable.
-- **No reviewing code that already landed.** A defect in existing code is out of scope here — name it in one line under `Notes` and move on. That is the diff `adversary`'s subject, or `/project:review`'s.
+- **No reviewing code that already landed.** A defect in existing code is out of scope here — name it in one line under `Notes` and move on. That is the diff `adversary`'s subject, or the periodic whole-repo review's.
 - **No padding.** A brief with two real risks and no blockers is a good brief. Promoting a `note` to `risk` to look productive spends the conductor's attention on your preference.

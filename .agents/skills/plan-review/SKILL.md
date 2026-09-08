@@ -19,8 +19,8 @@ Runs **before Red**, over the intent rather than the code. A read-only `plan-adv
 
 ## When it fires
 
-- **Automatically:** `/project:work` step 4a — **every cycle**, complex or simple. Unlike the diff review, this one is not gated on `[complex]`: a simple todo is exactly where an unstated assumption survives unchallenged.
-- **Never:** after any test is written (that is `adversarial-review`), or as a substitute for `/project:interview` when the spec itself is the problem — it *routes* there, it does not replace it.
+- **Automatically:** the conductor's development-cycle command, before any test is written — **every cycle**, complex or simple. Unlike the diff review, this one is not gated on `[complex]`: a simple todo is exactly where an unstated assumption survives unchallenged.
+- **Never:** after any test is written (that is `adversarial-review`), or as a substitute for a fresh interview pass when the spec itself is the problem — it *routes* there, it does not replace it.
 
 ## Steps
 
@@ -28,7 +28,7 @@ Runs **before Red**, over the intent rather than the code. A read-only `plan-adv
    - **Plan** (`[complex]` or batched, step 4 ran) — the planner's full plan text.
    - **Todo** (simple cycle, no plan) — the todo line verbatim, plus the `$ARGUMENTS` instruction the human typed, if any.
 
-   Nothing else is the subject. If the cycle has neither a plan nor a todo, the problem is step 1 of `/project:work`, not this review.
+   Nothing else is the subject. If the cycle has neither a plan nor a todo, the problem is upstream — how the conductor picked the work — not this review.
 
 2. **Dispatch the `plan-adversary`** with *only*:
    - the subject from step 1, pasted inline (worktrees do not share scratch, so never a path to `.handoff/`),
@@ -47,14 +47,14 @@ Runs **before Red**, over the intent rather than the code. A read-only `plan-adv
    | Disposition | When | What you do |
    | --- | --- | --- |
    | **Applied** *(the default)* | The finding is right and the fix is a plan edit, a sharper todo line, or an added Behavior case ID | Edit the plan text you will paste to the developer, or the todo line in `docs/wiki/todos.md`. No re-dispatch of the planner for a paragraph. |
-   | **Escalated** | The finding says the **spec** is wrong, ambiguous, or missing — not the plan | `human-checkpoint`, recommending `/project:interview`. Do not guess the intent and proceed; this is the finding class this review exists to catch. |
+   | **Escalated** | The finding says the **spec** is wrong, ambiguous, or missing — not the plan | `human-checkpoint`, recommending a fresh interview pass. Do not guess the intent and proceed; this is the finding class this review exists to catch. |
    | **Rejected** | The finding misreads the plan, or names work outside this cycle's Behavior cases | One sentence of reason. Out-of-scope work worth doing becomes an ordinary todo line — not an `[adversary]` one, which is reserved for diff-review findings with a sha. |
 
    A `blocker` that is neither applied nor escalated cannot be rejected into silence: if you disagree with a blocker, that is a `human-checkpoint`, not a rejection.
 
 5. **Re-plan only for a structural blocker.** If the findings show the plan's *approach* is wrong rather than its details — wrong decomposition, a step order that cannot work — re-dispatch the `planner` once with the findings attached. Anything smaller you apply yourself. **One round either way**: this review never re-reviews its own corrections. If a second dispatch would be round three on the same disagreement, that is a `human-checkpoint` with both positions stated.
 
-6. **Record it in the cycle's log entry.** No commit exists yet to carry the dispositions, so the `work` entry written at `/project:work` step 8 is the committed record (rule 20 — the record is committed, and here that is the log):
+6. **Record it in the cycle's log entry.** No commit exists yet to carry the dispositions, so the `work` log entry the conductor writes at the end of the cycle is the committed record (rule 20 — the record is committed, and here that is the log):
 
    ```markdown
    - Plan review: 3 findings — 2 applied, 1 rejected
@@ -63,7 +63,7 @@ Runs **before Red**, over the intent rather than the code. A read-only `plan-adv
      - P3 note scope — Rejected: the retry policy is entity `billing`, not this cycle.
    ```
 
-   Escalations are the exception worth naming twice: a cycle that stopped for `/project:interview` says so in the report, not only in the log.
+   Escalations are the exception worth naming twice: a cycle that stopped for a fresh interview pass says so in the report, not only in the log.
 
 ## The six-category sweep
 
@@ -93,9 +93,9 @@ Doubt grades **up** here, the opposite of the diff review. A false `blocker` cos
 ## Wiki update
 
 - **Applied to a todo** → the sharpened line in `docs/wiki/todos.md`, committed with the cycle.
-- **Escalated** → whatever `/project:interview` writes to the entity page. This review writes no spec itself.
+- **Escalated** → whatever the fresh interview pass writes to the entity page. This review writes no spec itself.
 - **A trap the plan nearly walked into** → `gotcha-recording`, inline, in the cycle's first commit. The trap is real whether or not the plan hit it.
-- **Dispositions** → the `Plan review:` field of the `work` log entry (step 6 above). Never a separate report; `/project:review` owns those.
+- **Dispositions** → the `Plan review:` field of the `work` log entry (step 6 above). Never a separate report; the periodic whole-repo review owns those.
 
 ## Anti-patterns
 

@@ -61,7 +61,7 @@ Each step should be small enough that **a single test can drive it**. If a step 
 
 ## Where it lives
 
-`.handoff/<slug>-plan.md`. One plan per branch. `*-plan.md` is `.gitignore`'d, so plans are transient scratch and never reach the remote. Overwrite on retry rather than versioning; `/project:work` clears it when the cycle is done. **Because the plan is not committed, it does not survive a container recycle** — but the work does: the developer commits and pushes per Behavior case, so a recycle loses at most the case in flight. Re-dispatching the planner regenerates the plan from the entity page's Behavior cases, which are the authoritative contract, and the remaining unticked cases are the resume point.
+`.handoff/<slug>-plan.md`. One plan per branch. `*-plan.md` is `.gitignore`'d, so plans are transient scratch and never reach the remote. Overwrite on retry rather than versioning; the conductor clears it when the cycle is done. **Because the plan is not committed, it does not survive a container recycle** — but the work does: the developer commits and pushes per Behavior case, so a recycle loses at most the case in flight. Re-dispatching the planner regenerates the plan from the entity page's Behavior cases, which are the authoritative contract, and the remaining unticked cases are the resume point.
 
 ## Handoff to the developer
 
@@ -74,8 +74,8 @@ When re-dispatched after a failed `developer` attempt (two-strike rule — behav
 ## Anti-patterns
 
 - **Pseudocode in steps.** Steps name the action and the file target, not the implementation. The `developer` chooses the code at the Green step.
-- **Inventing requirements.** If a Behavior case is missing or ambiguous, escalate via `human-checkpoint` and recommend `/project:interview`. Never write a plan that assumes behavior the entity page does not list.
-- **Editing entity pages.** Plans are how, not what. Spec changes go through `/project:interview` and `spec-writing`.
+- **Inventing requirements.** If a Behavior case is missing or ambiguous, escalate via `human-checkpoint` and recommend a fresh interview pass. Never write a plan that assumes behavior the entity page does not list.
+- **Editing entity pages.** Plans are how, not what. Spec changes go through a fresh interview pass and `spec-writing`.
 - **Cross-entity batching without a precedent.** If the batch crosses architectural boundaries (e.g. backend + frontend in one cycle) and no prior cycle did so, stop and ask the human.
 - **Skipping the risks section.** "No risks" is rarely true on a complex todo. If you genuinely see none, state why — usually it means the scope is small enough that it shouldn't have been flagged `[complex]`.
 - **Step count > Behavior case count by a large margin.** A blow-up usually means scope creep snuck in. Re-check `## Out of scope`.

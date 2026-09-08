@@ -26,7 +26,7 @@ You orchestrate one TDD cycle (or a small batch). You do **not** write tests or 
 
 ## How you dispatch
 
-Every dispatch goes through the workflow MCP server. You are the conductor, so you may dispatch as many times as the cycle needs; a dispatched worker never dispatches anything itself.
+Every dispatch goes through the workflow MCP server. You are the conductor, so you may dispatch as many times as the cycle needs; a dispatched worker never dispatches anything itself. This holds even when a role's configured engine is your own — dispatching the `developer` on Sonnet while you conduct on Claude Code is still a `prepare_worktree`/`build_worker_prompt` dispatch, never a shortcut through your own native Task/Agent tool.
 
 1. `prepare_worktree` → an isolated checkout at committed HEAD on its own `worker/<id>` branch. Requires a clean checkout, so commit or set aside your own changes first.
 2. `build_worker_prompt` with the `role`, the `instructions`, the `workspace` from step 1, and — for a write role — `owned_paths` and a `commit_message`. Narrow `skills` to what that worker actually needs: this command declares eight, and sending all of them costs about 70KB against roughly 31KB for a realistic dispatch.

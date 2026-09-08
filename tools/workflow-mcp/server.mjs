@@ -5,11 +5,15 @@
 // regenerates the two root files the CLIs hardcode. It deliberately does not
 // spawn processes, commit, merge, or push — the conductor has a shell and owns
 // all of that. Keeping the control plane this small is what makes it auditable.
+//
+// Top-level commands (`work`, `review`, …) have no surface here on purpose: a
+// conductor that can read `.agents/commands/` — Claude Code natively via its
+// plugin, any other CLI when a human points it there — never needs an MCP
+// round-trip to reach one. MCP is worker-dispatch plumbing, nothing else.
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { resolve } from 'node:path';
-import { loadCanonical } from './canonical.mjs';
 import { engineNames } from './engines/index.mjs';
 import { makeTools } from './tools.mjs';
 
@@ -36,15 +40,6 @@ export function createServer(root, conductorEngine) {
   register('list_roles',
     'List worker roles from .agents/roles/, with the profile, access level, and the CLI engine each resolves to. Call before build_worker_prompt to discover valid role names.',
     {}, () => api.list_roles());
-
-  register('list_commands',
-    'List the workflow commands in .agents/commands/, with the skills each declares.',
-    {}, () => api.list_commands());
-
-  register('get_workflow',
-    'Read one workflow command for the conductor to follow, with the free-text context attached as data.',
-    { name: z.string(), context: z.string().max(100000).optional() },
-    input => api.get_workflow(input));
 
   register('build_worker_prompt',
     'Compose the complete prompt for one worker from .agents/ and return the exact command to run it. '
@@ -86,15 +81,6 @@ export function createServer(root, conductorEngine) {
   register('check',
     'Report whether AGENTS.md and CLAUDE.md still match .agents/.',
     {}, () => api.check());
-
-  // Commands are served as MCP prompts, so one name works in every CLI that
-  // speaks MCP without generating a command file for each of them.
-  for (const command of loadCanonical(root).commands) {
-    server.registerPrompt(`project-${command.name}`,
-      { description: command.description, argsSchema: { context: z.string().optional() } },
-      async input => ({ messages: [{ role: 'user',
-        content: { type: 'text', text: api.get_workflow({ name: command.name, ...input }) } }] }));
-  }
 
   return server;
 }

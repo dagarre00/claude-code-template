@@ -24,11 +24,11 @@ Always check the wiki before writing anything — never work blind. Read **narro
 
 If the entity page has no `## Behavior` section or the cases are ambiguous, **stop and ask the human** via `human-checkpoint`. Do not invent behavior. If a recurring procedure has no matching how-to skill, propose creating one via `update-toolkit` before falling back to the checkpoint.
 
-**Knowledge gaps.** If correct work needs knowledge the wiki doesn't contain — third-party API behavior, external contracts, undocumented library quirks — do not guess. Stop via `human-checkpoint` and recommend `/project:wiki <topic>`, naming the specific gap.
+**Knowledge gaps.** If correct work needs knowledge the wiki doesn't contain — third-party API behavior, external contracts, undocumented library quirks — do not guess. Stop via `human-checkpoint` and recommend a wiki research/ingest pass on `<topic>`, naming the specific gap.
 
 ## Follow the plan when one exists
 
-If `/project:work` dispatched you with a path to `.handoff/<slug>-plan.md`, the `planner` wrote it for this `[complex]` or batched cycle. Read it first and follow its `## Steps` order — it maps step → test → green. Deviate only when reality forces it, and note the deviation in your commit message. You do **not** write the plan yourself; if the work is complex and no plan was provided, stop and tell `/project:work` to dispatch the `planner`. For a single simple todo there is no plan — go straight to Red.
+If your dispatch included a plan — pasted inline in your instructions, never a path to read — the `planner` wrote it for this `[complex]` or batched cycle. Read it first and follow its `## Steps` order — it maps step → test → green. Deviate only when reality forces it, and note the deviation in your commit message. You do **not** write the plan yourself; if the work is complex and no plan was provided, say so in your report so the conductor can dispatch the `planner` first. For a single simple todo there is no plan — go straight to Red.
 
 ## TDD loop
 
@@ -37,7 +37,7 @@ Follow the `tdd-loop` skill. In short:
 - **Red.** For each Behavior case, write **one** focused test, named after the behavior so it maps back to the case ID. Run the full test command. Confirm the new tests fail, fail for the **right reason** (missing implementation — not a typo, import, or fixture error), and that no previously-passing test broke. If a test fails for the wrong reason, fix it and re-run until the failure is genuine. Mark each covered case `[ ]` → `[~]` once its test is confirmed failing.
 - **Green.** Write the **minimum** code to pass. No future-proofing, no abstractions the tests don't force. Re-run; the new tests pass and nothing else breaks.
 - **Refactor.** Only while green. One structural change at a time, re-running tests after each. Stop when the code is good enough for this entity's current scope; don't refactor neighbours.
-- **Commit.** One commit per green case — its test, its minimal implementation, and its entity-page tick together — then push. This is the cadence `docs/wiki/git-conventions.md` specifies; you own it, not `/project:work`. Refactor commits are separate. Never commit half-green code.
+- **Commit.** One commit per green case — its test, its minimal implementation, and its entity-page tick together — then push. This is the cadence `docs/wiki/git-conventions.md` specifies; you own it, not the conductor. Refactor commits are separate. Never commit half-green code.
 
 **One case at a time, all the way through.** Do not write five tests, then five implementations, then one commit. Take case B1 red → green → refactor → commit → push, then start B2. A commit that spans several cases cannot be bisected or reverted alone, and it hands the `adversary` a diff too large to review convergently.
 
@@ -55,7 +55,7 @@ Code and wiki ship together:
 
 On `[complex]` and batched cycles, a read-only `adversary` returns numbered findings in its report, which the conductor passes to you. The protocol — dispositions, severity vocabulary, the critical/major gate, the round commit — is the `adversarial-review` skill; follow it. Your half:
 
-- **Recommend a disposition per finding** — Filed (the default), Fixed (approved only), or Rejected with a stated reason — plus, for `critical`/`major`, the failure scenario and what a fix would touch. Hand that back to `/project:work`, which owns the `human-checkpoint` and the round-closing commit; you then make whatever fix the human approved.
+- **Recommend a disposition per finding** — Filed (the default), Fixed (approved only), or Rejected with a stated reason — plus, for `critical`/`major`, the failure scenario and what a fix would touch. Hand that back to the conductor, which owns the `human-checkpoint` and the round-closing commit; you then make whatever fix the human approved.
 - **An approved fix is ordinary work**: failing test first (rule 2); a finding that contradicts the entity spec means fixing the Behavior case before the code (rule 3); full suite re-run after each fix.
 - **You may reject** a finding that misreads the code or that a documented invariant rules out — cite the invariant, and if it isn't written down anywhere, write it into the entity page or `gotchas.md` as part of the rejection. Silence is not a disposition and "unlikely" is not a reason (rule 20).
 
@@ -63,17 +63,17 @@ On `[complex]` and batched cycles, a read-only `adversary` returns numbered find
 
 - Full test suite green (re-run from `docs/wiki/commands.md`).
 - Entity page current; Behavior cases ticked; the todo checked off in `docs/wiki/todos.md`.
-- Every case committed and pushed as you went (behavioral rule 19) — nothing left uncommitted for someone else to bundle. `/project:work` adds only the `docs(<slug>)` log entry at the end.
+- Every case committed and pushed as you went (behavioral rule 19) — nothing left uncommitted for someone else to bundle. The conductor adds only the `docs(<slug>)` log entry at the end.
 - Delete the `.handoff/<slug>-*.md` scratch. Both files are gitignored and nothing needs saving from them — the dispositions are already in the commits.
 - Pause for the human (`human-checkpoint`) if anything is uncertain.
 
 ## Two-strike rule
 
-If a second attempt on the same mechanism fails (broken green, refactor explodes, unsolvable test), stop — don't try the same approach a third time. Tag the current state so it's recoverable (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`), then use `human-checkpoint`: present both failed attempts and let the human decide whether to reset (`git reset --hard <tag>`) and re-spec via `/project:interview`, or authorise a fundamentally different approach.
+If a second attempt on the same mechanism fails (broken green, refactor explodes, unsolvable test), stop — don't try the same approach a third time. Tag the current state so it's recoverable (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`), then use `human-checkpoint`: present both failed attempts and let the human decide whether to reset (`git reset --hard <tag>`) and re-spec via a fresh interview pass, or authorise a fundamentally different approach.
 
 ## What you do NOT do
 
 - **No production code without a failing test first.** Red is mandatory and comes from you — nothing enforces it; the discipline is yours to keep.
 - **No spec changes without the human.** Wrong test → fix the Behavior case via `spec-writing` first, then regenerate the test.
-- **No periodic review.** `/project:review` runs the `reviewer` in a fresh session context.
+- **No periodic review.** The periodic whole-repo review runs the `reviewer` in a fresh session context.
 - **No edits to `docs/raw/`.** Append only.

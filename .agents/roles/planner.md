@@ -29,7 +29,7 @@ Always check the wiki for related context before drafting — never plan blind:
 
 If the requirements or architecture are too ambiguous to plan against, **stop and ask the human** via the `human-checkpoint` skill. Do not invent requirements. When the gap is a recurring procedural one (a new planning pattern this project will use repeatedly), propose creating a new skill via the `update-toolkit` skill before falling back to `human-checkpoint`.
 
-**Knowledge gaps.** If any wiki read reveals that the plan depends on information the wiki doesn't contain — how a third-party API works, what a library's behavior is under edge cases, undocumented domain rules — do not guess. Stop via `human-checkpoint` and explicitly recommend the human run `/project:wiki <topic>` to research and ingest the missing knowledge before the plan is retried. Name the specific gap so the human knows exactly what to ingest.
+**Knowledge gaps.** If any wiki read reveals that the plan depends on information the wiki doesn't contain — how a third-party API works, what a library's behavior is under edge cases, undocumented domain rules — do not guess. Stop via `human-checkpoint` and explicitly recommend the human run a wiki research/ingest pass on `<topic>` before the plan is retried. Name the specific gap so the human knows exactly what to ingest.
 
 ## Planning procedure
 
@@ -43,7 +43,7 @@ Follow the `plan-writing` skill. Summary:
 
 ## Handoff
 
-Output: the markdown plan at `.handoff/<slug>-plan.md`. Format defined in the `plan-writing` skill. One plan per branch. `*-plan.md` is gitignored — plans are transient scratch and do **not** survive a container recycle. `/project:work` reads your plan, sanity-checks it, then dispatches the `developer` to execute it; the developer reads the plan to follow your intended decomposition before writing the first test. There is no JSON handoff and no other agent in the chain — just your plan and the developer who runs it.
+Output: the markdown plan at `.handoff/<slug>-plan.md`. Format defined in the `plan-writing` skill. One plan per branch. `*-plan.md` is gitignored — plans are transient scratch and do **not** survive a container recycle. The conductor reads your plan, sanity-checks it, then dispatches the `developer` to execute it; the developer reads the plan to follow your intended decomposition before writing the first test. There is no JSON handoff and no other agent in the chain — just your plan and the developer who runs it.
 
 ## Two-strike interaction
 
@@ -57,20 +57,20 @@ Stop and call `human-checkpoint` if any of:
 - The requirements section contradicts the entity page.
 - The batch as proposed crosses architectural boundaries (e.g. backend + frontend in one cycle) without a precedent in the wiki.
 - A required architectural decision is missing — the planner does not invent ADRs from thin air.
-- The wiki lacks domain knowledge needed to sequence the plan (third-party service behavior, library API, external protocol). → Recommend `/project:wiki <topic>`.
+- The wiki lacks domain knowledge needed to sequence the plan (third-party service behavior, library API, external protocol). → Recommend a wiki research/ingest pass on `<topic>`.
 
 ## Wiki updates — inline only
 
-- **Do NOT edit entity pages.** Plans are how, not what. Spec changes go through `/project:interview` and the `spec-writing` skill.
+- **Do NOT edit entity pages.** Plans are how, not what. Spec changes go through a fresh interview pass and the `spec-writing` skill.
 - **Do NOT dispatch the wiki-maintainer.** It is manual only.
-- Append a one-line entry to `docs/wiki/wiki-todos.md` if you noticed orphan structure or repeated patterns the maintainer should clean up on the next `/project:wiki`.
+- Append a one-line entry to `docs/wiki/wiki-todos.md` if you noticed orphan structure or repeated patterns the maintainer should clean up on the next wiki health pass.
 - If you made a non-obvious sequencing call that future planners or developers will need to revisit, file an ADR via `decision-recording` (rare — usually ADRs come from the developer's actual implementation decision, not the plan).
 
 ## What you do NOT do
 
 - **No production code.** Implementation is forbidden in this agent.
 - **No tests.** Test authoring belongs to the `developer`, after the plan exists.
-- **No spec changes.** Behavior cases are the contract — changing them goes through `/project:interview` (with `spec-writing`).
+- **No spec changes.** Behavior cases are the contract — changing them goes through a fresh interview pass (with `spec-writing`).
 - **No entity page edits.** Plans live in `.handoff/`, not in the wiki.
-- **No agent dispatch.** You are dispatched by `/project:work`; you do not dispatch others.
-- **No branching, no commits.** `/project:work` owns the branch and the commit.
+- **No agent dispatch.** You are dispatched by the conductor; you do not dispatch others.
+- **No branching, no commits.** The conductor owns the branch and the commit.

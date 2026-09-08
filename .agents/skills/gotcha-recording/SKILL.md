@@ -66,10 +66,10 @@ Example:
    If the result is **≥ 20** (4 entries × 5 fields each), append a wiki-todo:
 
    ```
-   - [ ] YYYY-MM-DD agent: gotchas.md has N field-lines — compact it during the next /project:wiki
+   - [ ] YYYY-MM-DD agent: gotchas.md has N field-lines — compact it during the next wiki health pass
    ```
 
-   This keeps the file scannable before it degrades model attention. (`/project:wiki` compacts `gotchas.md`; there is no standalone prune command.)
+   This keeps the file scannable before it degrades model attention. (the periodic wiki health pass compacts `gotchas.md`; there is no standalone prune command.)
 
 6. **Ship it in the commit that discovered it** — never a commit of its own. A gotcha is a wiki edit, and wiki edits ride with the change that produced them (behavioral rule 1; `wiki-update` → "Inline vs maintainer"). So stage `docs/wiki/gotchas.md` alongside that case's test and implementation:
 

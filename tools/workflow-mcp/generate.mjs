@@ -53,6 +53,13 @@ reads it directly:
 Nothing under \`.agents/\` is ever copied. Only this file and \`CLAUDE.md\` are
 generated, because those two filenames are hardcoded by the CLIs that read them.
 
+Top-level commands have no MCP surface — they are a conductor concern, and a
+conductor that can read \`.agents/commands/\` never needs a tool call to reach
+one. Claude Code is the only conductor with a native command surface today
+(the plugin above); when another CLI conducts, point it at
+\`.agents/commands/<name>.md\` directly and it reads that like any other
+project file.
+
 ## Working here
 
 1. Read the behavioral rules below — they override default inclinations.
@@ -81,7 +88,11 @@ subagent mechanism, and never recreate \`.agents/agents/\` — roles deliberatel
 live in \`.agents/roles/\`, which no plugin loader scans, so they cannot be
 published as native subagent types. A natively dispatched role would inherit the
 conductor's whole context and run in the conductor's checkout with no worktree,
-no owned paths and no suppression: every guarantee above, lost silently.
+no owned paths and no suppression: every guarantee above, lost silently. This
+holds even when a role's configured engine is identical to the conductor's own
+— Claude Code conducting and also running \`developer\` on Sonnet still
+dispatches through \`prepare_worktree\`/\`build_worker_prompt\`, never through
+its own native Task/Agent tool. Same engine is not the same process.
 
 Only a dispatched worker is a leaf. The conductor may dispatch as many workers
 as a cycle needs — \`/project:work\` runs a planner, a developer and an
@@ -89,10 +100,13 @@ adversary — and it is not itself a worker.
 
 ## Commands
 
-\`skills\` names what each **dispatched role** receives inlined in its composed
-prompt — not what the conductor uses, which it loads itself from
-\`.agents/skills/\`. Two roles dispatched by one command may never share a skill:
-if both need the same procedure, one role would have done the work of both.
+Reachable today as native Claude Code slash commands (\`/project:<name>\`);
+another CLI's conductor reads the file in \`.agents/commands/\` directly when a
+human names one. \`skills\` names what each **dispatched role** receives
+inlined in its composed prompt — not what the conductor uses, which it loads
+itself from \`.agents/skills/\`. Two roles dispatched by one command may never
+share a skill: if both need the same procedure, one role would have done the
+work of both.
 
 | Command | Purpose | Skills per dispatched role |
 | --- | --- | --- |

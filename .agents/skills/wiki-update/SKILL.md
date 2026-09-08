@@ -66,7 +66,7 @@ Edge cases, when it does NOT apply, unresolved tensions, open contradictions,
 
 The two axes coexist: *depth* (progressive disclosure) is the body sections (Essence → Model → Detail → Boundaries); the *semantic level* is the `abstraction` facet. They're independent — the same page has both. In frontmatter, wikilinks are quoted and solitary (one `"[[page]]"` per list element); in the body they're plain `[[wikilinks]]`.
 
-**`[infra]` extension:** a concept page backing an `[infra]` todo (`/project:work` step 1) additionally carries a `## Behavior` section of verifiable operational assertions, with the same `[ ]`/`[~]`/`[x]` states as an entity page. That section is valid there — the lint pass must not flag it as off-template.
+**`[infra]` extension:** a concept page backing an `[infra]` todo (picked up at the start of a development cycle) additionally carries a `## Behavior` section of verifiable operational assertions, with the same `[ ]`/`[~]`/`[x]` states as an entity page. That section is valid there — the lint pass must not flag it as off-template.
 
 ## Entity page template (`docs/wiki/entities/<slug>.md`) — project extension
 
@@ -124,7 +124,7 @@ Behavior plays the role of Model (the spec is the mental model); Implementation 
 
 ## Design-system page template (`docs/wiki/design-system.md`) — project extension, conditional
 
-**Only for projects with a UI surface.** `/project:init` creates this page when it detects one (web, mobile, desktop, TUI); a library, CLI, or service project never gets it. Do not create it speculatively — an empty design system on a backend project is the noise progressive disclosure exists to prevent.
+**Only for projects with a UI surface.** The project-init command creates this page when it detects one (web, mobile, desktop, TUI); a library, CLI, or service project never gets it. Do not create it speculatively — an empty design system on a backend project is the noise progressive disclosure exists to prevent.
 
 **The page asserts; the code holds the values.** Literal hex/px/ms live in the project's token file — this page owns the *role names*, the *step counts*, and the *checkable constraints* every UI commit must satisfy. That split is deliberate: token tables hand-maintained in markdown rot within weeks, but "`text` on `bg` is ≥ 7:1" and "there are exactly seven type steps" are assertions a test can verify against the code. Write constraints, not copies.
 
@@ -312,7 +312,7 @@ Operational ledgers (`log.md`, `todos.md`, `wiki-todos.md`, `gotchas.md`, `comma
 | `contradicts` | ↔ explicit conflict | **Reconciliation flag.** Any unresolved `contradicts` goes to the decision queue. |
 | `supersedes` / `superseded_by` | decision ↔ decision | Project extension: a superseded ADR must carry `status: superseded` and a `superseded_by` link. |
 
-A gap is a hole in the graph relative to this schema — computable by `/project:wiki` as a Bases/Dataview query — never "what feels missing". Don't fill gaps with invented prose: `status: stub` + `open_questions`, or ask the human.
+A gap is a hole in the graph relative to this schema — computable by the periodic wiki health pass as a Bases/Dataview query — never "what feels missing". Don't fill gaps with invented prose: `status: stub` + `open_questions`, or ask the human.
 
 ## Inline vs maintainer routing
 

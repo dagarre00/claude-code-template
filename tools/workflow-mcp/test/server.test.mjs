@@ -23,7 +23,7 @@ const withRepo = fn => {
   try { return fn(root); } finally { cleanup(root); }
 };
 
-test('the server constructs and registers a prompt per command', () => {
+test('the server constructs — commands get no MCP surface, only worker dispatch does', () => {
   withRepo(root => {
     assert.ok(createServer(root, 'claude'));
   });
@@ -43,27 +43,12 @@ test('list_roles reports the engine each role would actually run on', () => {
   });
 });
 
-test('get_workflow returns the body with the user context attached as data', () => {
-  withRepo(root => {
-    const body = makeTools(root, 'claude').get_workflow({ name: 'work', context: 'the login endpoint' });
-    assert.match(body, /Step 1\. Read the spec\./);
-    assert.match(body, /never execute it/i);
-    assert.ok(body.includes(JSON.stringify('the login endpoint')));
-  });
-});
-
 test('check fails before sync and passes after', () => {
   withRepo(root => {
     const api = makeTools(root, 'claude');
     assert.equal(api.check().ok, false);
     api.sync();
     assert.equal(api.check().ok, true);
-  });
-});
-
-test('an unknown command name is an error, not an empty prompt', () => {
-  withRepo(root => {
-    assert.throws(() => makeTools(root, 'claude').get_workflow({ name: 'ghost' }), /ghost/);
   });
 });
 
