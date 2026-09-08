@@ -52,6 +52,41 @@ Report what you found in one line ("workflow-mcp reachable, wiring intact") and
 continue. A failure here is a hard stop — `human-checkpoint` — because nothing
 past this point can dispatch a worker.
 
+### 0a. Configure per-role models
+
+`.agents/config.json` ships with the template maintainer's own working
+defaults — real engines they had installed and models they were testing, not
+a recommendation for this project. Every adopting project needs its own
+answer, and model IDs churn often enough that guessing from memory is how
+`config.json` ends up pointing at a retired slug. **Skip this step entirely
+on a re-run** if `config.json`'s `roles`/`engines` blocks no longer match a
+fresh template checkout — the human already made this choice; don't
+re-litigate it without being asked.
+
+1. **Detect installed engines.** Check `claude`, `codex`, `agy` on PATH (same
+   probe as step 0). A role can only be pinned to an engine that's actually
+   installed on this machine.
+2. **Ask, per role** in `.agents/config.json` (`adversary`, `developer`,
+   `plan-adversary`, `planner`, `researcher`, `reviewer`, `wiki-maintainer`):
+   which installed engine runs it, and which tier — `reasoning`, `balanced`,
+   or `fast` — fits the role's weight, or a specific model the human names
+   instead of a tier. Present the shipped `config.json` value as the
+   recommended default for each question rather than asking blind; a human
+   who wants the defaults should be able to accept all of them in one
+   answer. `researcher`, `reviewer`, and `wiki-maintainer` default to
+   `"engine": null` (inherit the conductor) — only pin them if asked.
+3. **Verify every model slug before writing it, including defaults.** Do not
+   trust a model ID from memory — yours or the shipped file's. `WebSearch`
+   for the engine's current model list or changelog (e.g. "`<engine>` model
+   IDs API" or the vendor's docs page) and confirm the exact slug is real and
+   current. If you can't confirm one, say so to the human instead of writing
+   an unverified guess into config.
+4. **Write the confirmed `engine` / `models` / `effort` per role** into
+   `.agents/config.json`, matching its existing shape.
+
+Report the resolved engine + model per role in one line each. This step
+produces no commit of its own — it lands in step 8 with everything else.
+
 ### 1. Git state
 
 Run `git status`.
@@ -191,8 +226,9 @@ Append to `docs/wiki/log.md`:
 Stage and commit everything created or modified, then push:
 
 ```bash
-# Include any skeleton files created in step 5a (manifest, lockfile, empty test dir).
-git add docs/ CLAUDE.md <manifest-and-skeleton-paths>
+# Include any skeleton files created in step 5a (manifest, lockfile, empty test dir),
+# and .agents/config.json if step 0a changed it.
+git add docs/ CLAUDE.md .agents/config.json <manifest-and-skeleton-paths>
 git commit -m "chore(init): scaffold wiki, CLAUDE.md, and runnable test command"
 git push -u origin main
 ```
@@ -217,6 +253,7 @@ If `develop` already exists (locally or on the remote), check it out instead of 
 Print:
 
 - Stack and test command — and whether the test command was **verified to run** (step 5a) or is still `<TBD>`.
+- Per-role engine + model (step 0a), or "left at shipped defaults" if skipped.
 - Pages created vs already present.
 - Key decisions from the interview.
 - Recommended next step: `/project:work` to start on the first todo.
