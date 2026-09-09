@@ -52,10 +52,10 @@ To change the threshold for a project, edit the number here — both call sites 
 Count with:
 
 ```bash
-grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null || true
+grep -c '^- \[ \] .*\[adversary\]' docs/wiki/todos.md 2>/dev/null || true
 ```
 
-The `|| true` is not decoration: `grep -c` exits 1 when the count is zero, which is the *healthy* state of this queue. Without it the command fails in any chained or `set -e` context, and both call sites below carry the same guard.
+The `.*` before the tag is not decoration either: the Tags section above shows `[adversary]` right after the checkbox, but nothing enforces that a line filed by hand (or by a differently-worded skill copy) keeps it there rather than folding it in near the severity suffix — an anchor tied to exact token order silently undercounts the moment it drifts, which is worse than a wrong count because it looks healthy. Matching `[adversary]` anywhere on a checkbox line is robust to that drift while still being specific enough not to catch anything else. The `|| true` is not decoration: `grep -c` exits 1 when the count is zero, which is the *healthy* state of this queue. Without it the command fails in any chained or `set -e` context, and both call sites below carry the same guard.
 
 Unlike `P0_MAX`, this is not a saturation alarm — a long `minor` tail is normal and mostly harmless. It is a **re-triage trigger**, and exactly two things act on it:
 

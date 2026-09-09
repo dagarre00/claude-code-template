@@ -158,7 +158,7 @@ If you find yourself **on a `feat/*` branch with uncommitted changes** (a rate-l
     awk '/^## \[[^]]*\] review[[:space:]]*$/{n=0;next} /^## \[[^]]*\] work/{n++} END{print n+0}' docs/wiki/log.md            # work cycles since /project:review
     awk '/^## \[[^]]*\] wiki-maintenance[[:space:]]*$/{n=0;next} /^## \[[^]]*\] work/{n++} END{print n+0}' docs/wiki/log.md  # work cycles since /project:wiki
     grep -cE '^- \[ \] [0-9]{4}-' docs/wiki/wiki-todos.md 2>/dev/null || true                 # maintainer queue depth (dated entries only — the file's own format example is not one)
-    grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null || true                   # filed findings never triaged
+    grep -c '^- \[ \] .*\[adversary\]' docs/wiki/todos.md 2>/dev/null || true                 # filed findings never triaged
     ```
 
     Each `awk` resets its counter at the last entry of its own kind and counts the `work` entries after it, so it answers the trigger as written ("5+ work cycles since…") rather than handing you two line numbers to eyeball. A log with no `review` entry yet counts every cycle, which is the right answer.

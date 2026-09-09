@@ -115,13 +115,13 @@ Dispatch the `wiki-maintainer` for a full pass. **Periodic, not every-cycle.** D
 
    ```bash
    grep -c "^## \[" docs/wiki/log.md 2>/dev/null || true                    # log overflow — archive at >= 100
-   grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null || true  # against FINDINGS_MAX
+   grep -c '^- \[ \] .*\[adversary\]' docs/wiki/todos.md 2>/dev/null || true  # against FINDINGS_MAX
    ```
 
 2. **Dispatch `wiki-maintainer`** with the focus from the argument (and an explicit instruction to skip checks outside it), the current `wiki-todos.md`, the raw files with no matching summary, and step 1's two counts — never the backlog's own contents, which the maintainer reads from `docs/wiki/todos.md` directly inside its own worktree. Instruct it to:
 
    - **If the log count is ≥ 100:** move all but the most recent 30 `log.md` entries into `docs/wiki/summaries/log-archive-YYYY.md` (recency is the only criterion — age is irrelevant), append-only from then on. `log.md` grows unboundedly and models loading it lose signal in the noise; the archive is reference-only and never loaded by default. Shipped work is not tracked in a `completed.md` — git history is that record.
-   - **Re-triage the filed-findings backlog.** Rule 20 files every `minor` adversary finding as a todo and nothing else drains them, so this pass is their only consumer (rule 22). Oldest first (`grep -n '^- \[ \] \[adversary\]' docs/wiki/todos.md`), each gets one of three outcomes:
+   - **Re-triage the filed-findings backlog.** Rule 20 files every `minor` adversary finding as a todo and nothing else drains them, so this pass is their only consumer (rule 22). Oldest first (`grep -n '^- \[ \] .*\[adversary\]' docs/wiki/todos.md`), each gets one of three outcomes:
      - **Closed** — later work already fixed it, or it duplicates another entry. Verify by reading the code, not by assuming; a duplicate merges into the entry that stays.
      - **Re-graded** — its severity was wrong when filed. A finding that has sat through two passes untouched was never a `minor`: promote it to a priority that will actually be worked, or close it as not worth doing.
      - **Kept** — still true, still worth doing, correctly graded.
