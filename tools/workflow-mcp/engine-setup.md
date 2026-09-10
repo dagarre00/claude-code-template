@@ -163,7 +163,53 @@ jetski: no output produced — a tool required the "command" permission that
 headless mode cannot prompt for, so it was auto-denied.
 ```
 
-This is why the conductor reads a worker's report rather than its exit code.
+**The wrapped command turns this into a real failure.** `extract-agy-result.mjs`
+reads the `result` event, and now exits non-zero when `denied_actions` is
+non-empty or no `result` event was found at all; `dispatch.mjs` folds that into
+the exit code of the whole runnable command, unless the underlying process
+itself already failed (that `ec` still wins). So a denied grant is no longer
+something the conductor has to notice by reading — a nonzero exit is the
+signal — but the report is still where you find *which* action was denied.
+
+### Read grants for files outside the worktree
+
+Each worker's workspace is its isolated worktree (from `prepare_worktree`).
+Anything it needs to read that lives outside that tree — a shared virtualenv,
+a `vendor/` directory, a monorepo dependency the worktree doesn't include — is
+invisible to it unless granted, **separately from `workerCommands`**: allowing
+`pytest` does not grant reading the interpreter's own packages, and a denied
+read fails exactly like a denied command (exit 0, `SUCCESS`, empty response,
+now caught by the check above).
+
+Grant it as `read_file(<absolute path>)` in the same
+`~/.gemini/antigravity-cli/settings.json` `permissions.allow` list as the
+`command(...)` entries — a directory grant covers its descendants, so one
+entry per shared root is enough:
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "command(npm test)",
+      "read_file(C:/path/to/shared/.venv)",
+      "read_file(C:/path/to/shared/vendor)"
+    ]
+  }
+}
+```
+
+**Enumerate every shared path a role's task will touch in one pass before
+dispatching, not one at a time.** Discovering these iteratively — dispatch,
+read the denial, add one grant, redispatch, hit the next missing directory —
+costs a full worker round trip per path. Read the task's instructions and the
+skills it will receive first, list every directory outside the worktree they
+imply, and grant all of them up front. Also check that nothing in `deny` or
+`ask` shadows the path you just added — agy's own precedence puts `deny` and
+`ask` ahead of `allow`, so a broader deny rule elsewhere silently wins.
+
+Prefer this over setting `allowNonWorkspaceAccess: true` below: that flag
+grants every path on the machine, where a handful of `read_file(...)` entries
+grant only the ones this project actually needs.
 
 ### Why agy workers run without `--sandbox`
 

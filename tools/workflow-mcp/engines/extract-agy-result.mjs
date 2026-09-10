@@ -1,5 +1,13 @@
 #!/usr/bin/env node
-// Pulls the report out of an antigravity (agy) stream-json transcript.
+// Pulls the report out of an antigravity (agy) stream-json transcript, and
+// doubles as the only mechanical failure signal agy's own exit code cannot
+// give: a denied action headless mode could not prompt for, or no result at
+// all, both leave the underlying process at exit 0 with status: SUCCESS and
+// an empty response (see antigravity.mjs and engine-setup.md) — so this
+// script exits non-zero in both cases and dispatch.mjs's buildRunnableCommand
+// folds that into the wrapped command's own exit code. Without it, "the
+// conductor reads a worker's report rather than its exit code" was a promise
+// resting entirely on someone remembering to read the report.
 //
 // agy's --output-format stream-json prints one NDJSON event per line, and only
 // the terminal "result" event carries what a conductor actually needs —
@@ -32,7 +40,14 @@ for (let i = lines.length - 1; i >= 0; i--) {
   } catch { /* not JSON — a log line, or a line truncated mid-write; keep scanning backward */ }
 }
 
-writeFileSync(reportFile, result
-  ? JSON.stringify(result, null, 2) + '\n'
-  : `No "result" event found in ${rawFile} — the process may have been killed, denied `
+if (!result) {
+  writeFileSync(reportFile, `No "result" event found in ${rawFile} — the process may have been killed, denied `
     + 'before producing one, or exceeded --print-timeout. Read the raw file.\n');
+  process.exit(1);
+}
+
+writeFileSync(reportFile, JSON.stringify(result, null, 2) + '\n');
+
+if (Array.isArray(result.denied_actions) && result.denied_actions.length) {
+  process.exit(1);
+}

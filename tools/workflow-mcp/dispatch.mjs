@@ -126,16 +126,26 @@ export function prepareDispatch(root, input = {}) {
 // (antigravity, which has no such flag), and the wrapper prints only
 // report_file — so a foreground run's tool-call result is the small clean
 // report, not a multi-megabyte transcript, on every engine that needs it.
-// The subshell + `exit $ec` preserves the underlying process's real exit code
-// as the whole command's exit code; without it, the trailing `cat` would win.
+// The subshell preserves the underlying process's real exit code as the whole
+// command's exit code by default; without that, the trailing `cat` would win.
+//
+// For an engine with extractReportFrom (antigravity), the extraction step is
+// also the only place a denied action or a missing result can be detected —
+// the underlying process itself exits 0 either way (see extract-agy-result.mjs)
+// — so its own exit code is folded in too: a real process failure (`ec`) still
+// wins over it, but a clean process paired with a denied-action report now
+// fails the whole command instead of silently returning 0.
 export function buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter }) {
   const base = `cd ${quote(workspace)} && ${quote(command.executable)} `
     + `${command.args.map(quote).join(' ')} < ${quote(stdin_file)}`;
   if (!adapter.writesReportFile) return base;
 
-  const extract = adapter.extractReportFrom
-    ? `node ${quote(resolve(ENGINES_DIR, adapter.extractReportFrom))} `
-      + `${quote(raw_file)} ${quote(report_file)}; `
-    : ''; // codex already wrote report_file itself, via -o in args.
-  return `( ${base} > ${quote(raw_file)} 2>&1; ec=$?; ${extract}cat ${quote(report_file)}; exit $ec )`;
+  if (!adapter.extractReportFrom) {
+    // codex already wrote report_file itself, via -o in args — nothing to extract or validate.
+    return `( ${base} > ${quote(raw_file)} 2>&1; ec=$?; cat ${quote(report_file)}; exit $ec )`;
+  }
+  const extractCmd = `node ${quote(resolve(ENGINES_DIR, adapter.extractReportFrom))} `
+    + `${quote(raw_file)} ${quote(report_file)}`;
+  return `( ${base} > ${quote(raw_file)} 2>&1; ec=$?; ${extractCmd}; xc=$?; cat ${quote(report_file)}; `
+    + `exit $([ "$ec" -ne 0 ] && echo "$ec" || echo "$xc") )`;
 }

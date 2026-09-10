@@ -211,6 +211,38 @@ test('the report-file wrapper preserves the wrapped process\'s real exit code', 
   });
 });
 
+// Agy's own exit code is 0 whether or not a tool call was auto-denied — headless
+// mode has no approval surface to fail loudly on. extract-agy-result.mjs is the
+// only place that can see denied_actions, so it must fail the whole wrapped
+// command itself rather than leaving that to whoever reads the report text.
+test('a denied action fails the wrapped command even though the underlying process exits 0', () => {
+  withRepo(root => {
+    const { workspace, dir, stdin_file, report_file, raw_file } = wrapperFixture(root);
+    const transcript = resolve(dir, 'denied-transcript.txt');
+    writeFileSync(transcript, JSON.stringify({ event: 'init' }) + '\n'
+      + JSON.stringify({ event: 'result', result: { status: 'SUCCESS', response: '',
+        denied_actions: [{ action: 'read_file', target: 'vendor/freecad-libs' }] } }) + '\n');
+    const command = { executable: 'cat', args: [transcript] };
+
+    const wrapped = buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter });
+    const outcome = spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
+
+    assert.notEqual(outcome.status, 0, 'a denied action must not report success');
+    assert.match(outcome.stdout, /denied_actions/, 'the report must still be printed so the denial is visible');
+  });
+});
+
+test('a missing result event fails the wrapped command, not just an already-nonzero process exit', () => {
+  withRepo(root => {
+    const { workspace, stdin_file, report_file, raw_file } = wrapperFixture(root);
+    const command = { executable: 'true', args: [] }; // exits 0, but produces no transcript at all
+    const wrapped = buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter });
+    const outcome = spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
+    assert.notEqual(outcome.status, 0, 'no result event must not report success');
+    assert.match(outcome.stdout, /No "result" event found/);
+  });
+});
+
 test('antigravity gets NDJSON on stdin while the readable prompt stays plain', () => {
   withRepo(root => {
     const result = prepareDispatch(root, { ...base, conductorEngine: 'claude', cli_engine: 'antigravity',
