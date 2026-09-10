@@ -57,13 +57,22 @@ export default {
       // Neither value gives the strict allowlist the comment below describes.
       // Measured on 2.1.267 across every `--permission-mode` value tried
       // (`default`, `auto`, `manual`, `dontAsk`): a Bash command that is NOT in
-      // `--allowedTools` below still executes — proven with `sha256sum` on a file
-      // whose hash could not be guessed — while Write/Edit stay denied regardless
-      // of mode, per enforcesReadOnly. The CLI now routes ungranted, non-mutating
-      // Bash through its own semantic auto-mode classifier (`claude auto-mode
+      // `--allowedTools` below can still execute — proven with `sha256sum` on a
+      // file whose hash could not be guessed. The CLI routes ungranted Bash
+      // through its own semantic auto-mode classifier (`claude auto-mode
       // defaults`) rather than hard-denying everything outside `--allowedTools`.
-      // So `enforcesReadOnly` (no file mutation) still holds; a literal reading of
-      // "workers may only run these exact commands" does not. See gotchas.md.
+      // A fuller sweep narrows what that actually costs, though: writes (Write
+      // tool, and a Bash shell-redirect), deletes (`rm`), network calls (`curl`),
+      // and reads outside the worktree were all denied in every mode tried. Only
+      // local, in-scope, non-mutating reads slip through — and Read/Grep/Glob
+      // already give every role that same access with no gating at all, so this
+      // hands a worker nothing its own file tools didn't already have.
+      // `enforcesReadOnly` (no mutation, no exfiltration, no scope escape) holds;
+      // only the literal "workers may only run these exact commands" does not.
+      // A custom `--settings` hard_deny rule and a blanket `--disallowedTools
+      // Bash` were both tried against this and neither restored the literal
+      // allowlist without also breaking the commands it's meant to grant. See
+      // gotchas.md § Tooling.
       '--permission-mode', readOnly ? 'dontAsk' : this.writeMode,
       // Nobody is at the keyboard, so anything that would prompt must be denied
       // rather than hang until the conductor's timeout.

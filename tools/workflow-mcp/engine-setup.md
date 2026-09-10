@@ -122,13 +122,20 @@ The adapter turns each `workerCommands` entry into `--allowedTools
 verifying its own findings, while `dontAsk` plus `--permission-prompts none`
 denies edits (no approval surface) and still allows the allowlisted commands.
 
-Known gap, measured on 2.1.267: this denies Write/Edit reliably in every
-`--permission-mode` value, but does not make the allowlist a hard gate on Bash.
-A Bash command outside `--allowedTools` can still execute if Claude Code's own
+Known gap, measured on 2.1.267: this does not make the allowlist a hard gate on
+Bash. A command outside `--allowedTools` can still execute if Claude Code's own
 auto-mode classifier (`claude auto-mode defaults`) judges it benign — proven
-with `sha256sum` against a file whose hash could not otherwise be known. Only
-file mutation is actually guaranteed closed; "workers may only run these exact
-commands" is not, for this engine, as things stand.
+with `sha256sum` against a file whose hash could not otherwise be known. A
+fuller sweep bounds the actual exposure, though: writes, deletes, network
+calls, and reads outside the worktree were all denied in every mode tried.
+Only local, in-scope, non-mutating reads slip through, and Read/Grep/Glob
+already grant every role that same access unconditionally — so this costs
+nothing beyond what a worker's own file tools already allow. "Workers may only
+run these exact commands" is not literally true for this engine; "workers
+cannot mutate, exfiltrate, or read outside their worktree" still is. A custom
+`--settings` hard_deny rule and a blanket `--disallowedTools Bash` were both
+tried as a fix and neither restored the literal allowlist without also
+breaking the commands it's meant to grant — see `docs/wiki/gotchas.md`.
 
 ## Antigravity (agy) — one manual step, per machine
 
