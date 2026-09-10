@@ -76,6 +76,44 @@ blanket `git config --global --add safe.directory "*"`, which trusts every
 repository on the machine and is a real loosening of the ownership check, not
 just a convenience.
 
+### Codex — optional context-management overrides
+
+`-o reportFile` (above, in the codex adapter) keeps the *conductor* from
+paying for a bloated transcript, but says nothing about the *worker's own*
+context during a long task: a wiki-maintainer health pass or an adversary
+sweep that reads many large files can still burn through its history and
+force an early, lossy auto-compaction mid-task.
+
+Codex's own config.toml exposes two knobs for this — unrelated to this
+repo's report/raw split, and not measured against a real dispatch here the
+way the transcript sizes above are, so no default is set for you. Opt in per
+project in `.agents/config.json`'s `engines.codex` block:
+
+```json
+"engines": {
+  "codex": {
+    "executable": "codex",
+    "toolOutputTokenLimit": 2000,
+    "modelAutoCompactTokenLimit": 50000,
+    ...
+  }
+}
+```
+
+- `toolOutputTokenLimit` caps how many tokens of a single tool output (a large
+  file read, a verbose command) Codex keeps in its own history before
+  truncating — lower keeps a session lean but risks the worker missing
+  something in the truncated tail.
+- `modelAutoCompactTokenLimit` is the history size that triggers Codex's own
+  auto-summarization pass. Lower triggers it earlier (more headroom, less
+  early-session detail retained); unset, Codex picks a default based on the
+  model's context window.
+
+Both must be positive integers, and both are Codex-only — `loadConfig` refuses
+either field on `engines.claude` or `engines.antigravity`, since neither
+adapter has an argv slot that reads them and the value would otherwise be
+silently inert.
+
 ## Claude Code — nothing to do
 
 The adapter turns each `workerCommands` entry into `--allowedTools

@@ -119,6 +119,23 @@ test('codex omits -o entirely when no reportFile is given', () => {
   assert.ok(!build('codex').args.includes('-o'));
 });
 
+// Neither flag has a default in this repo (no measured number to justify one,
+// unlike the -o transcript sizes above) — a project opts in per config.mjs's
+// validation of engines.codex.{toolOutputTokenLimit,modelAutoCompactTokenLimit}.
+test('codex passes the context-management overrides when configured, still ending in the stdin marker', () => {
+  const withLimits = { ...settings, engines: { ...settings.engines,
+    codex: { ...settings.engines.codex, toolOutputTokenLimit: 2000, modelAutoCompactTokenLimit: 50000 } } };
+  const { args } = buildCommand(withLimits, { engine: 'codex', ...task });
+  assert.ok(args.includes('tool_output_token_limit=2000'));
+  assert.ok(args.includes('model_auto_compact_token_limit=50000'));
+  assert.equal(args.at(-1), '-', 'the new -c flags must not push the stdin marker off the end');
+});
+
+test('codex omits both context-management overrides when not configured', () => {
+  const joined = build('codex').args.join(' ');
+  assert.doesNotMatch(joined, /tool_output_token_limit|model_auto_compact_token_limit/);
+});
+
 // Two ways an adapter can end up with a clean report_file: stdout already is
 // the report (claude, so writesReportFile is false — there is nothing to
 // write), or something isolates it into its own file. codex does that itself

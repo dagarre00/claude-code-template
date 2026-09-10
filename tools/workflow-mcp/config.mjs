@@ -76,6 +76,21 @@ export function loadConfig(root) {
         throw new Error(`Engine ${name} is missing models/effort for profile "${profile}"`);
       }
     }
+    // Codex-only context-management knobs (see codex.mjs): capping how many
+    // tokens of a single tool output it keeps, and when it auto-compacts its
+    // own history. Scoped to codex specifically, not just "any positive
+    // integer on any engine", because the other two adapters have no argv slot
+    // that reads these fields — setting one on claude or antigravity would be
+    // silently inert, exactly the typo this loader exists to catch loudly.
+    for (const key of ['toolOutputTokenLimit', 'modelAutoCompactTokenLimit']) {
+      if (engine[key] == null) continue;
+      if (name !== 'codex') {
+        throw new Error(`Engine ${name} does not support "${key}"; it is a Codex-only setting`);
+      }
+      if (!Number.isInteger(engine[key]) || engine[key] < 1) {
+        throw new Error(`Engine ${name}.${key} must be a positive integer (tokens), got ${JSON.stringify(engine[key])}`);
+      }
+    }
   }
   for (const name of Object.keys(config.engines ?? {})) {
     if (!engineNames.includes(name)) {

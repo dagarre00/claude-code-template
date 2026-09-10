@@ -34,7 +34,16 @@ export default {
   // conductor's routine path never has to wade through it.
   reportIsStdout: false,
   writesReportFile: true,
-  buildArgs({ readOnly, workspace, model, effort, reportFile }) {
+  // tool_output_token_limit and model_auto_compact_token_limit are real config.toml
+  // keys (confirmed against Codex's own docs, not measured in this repo the way
+  // the -o transcript numbers above are) that bound how much of a large file read
+  // or command output the worker keeps in its own history before truncating, and
+  // when it hands its history to an auto-summarization pass. Both are optional and
+  // unset by default: -o already keeps the *conductor* from paying for a bloated
+  // transcript, but a long task can still burn the *worker's own* context on large
+  // reads and force early lossy compaction. Set per-project in
+  // .agents/config.json's engines.codex block; see engine-setup.md.
+  buildArgs({ readOnly, workspace, model, effort, reportFile, config }) {
     const args = [
       'exec', '--ephemeral', '--color', 'never', '--cd', workspace,
       '--sandbox', readOnly ? 'read-only' : 'workspace-write',
@@ -53,6 +62,10 @@ export default {
     ];
     if (model && model !== 'inherit') args.push('--model', model);
     if (effort) args.push('-c', `model_reasoning_effort=${JSON.stringify(effort)}`);
+    if (config?.toolOutputTokenLimit) args.push('-c', `tool_output_token_limit=${config.toolOutputTokenLimit}`);
+    if (config?.modelAutoCompactTokenLimit) {
+      args.push('-c', `model_auto_compact_token_limit=${config.modelAutoCompactTokenLimit}`);
+    }
     if (reportFile) args.push('-o', reportFile);
     args.push('-'); // Reads the prompt from stdin; must stay the final argument.
     return args;

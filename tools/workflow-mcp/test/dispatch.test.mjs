@@ -58,6 +58,35 @@ test('a shell shim is refused as an executable', () => {
       claude: { ...CONFIG.engines.claude, executable: 'claude.cmd' } } }) });
 });
 
+test('codex context-management overrides accept a positive integer', () => {
+  withRepo(root => {
+    const config = loadConfig(root);
+    assert.equal(config.engines.codex.toolOutputTokenLimit, 2000);
+    assert.equal(config.engines.codex.modelAutoCompactTokenLimit, 50000);
+  }, { '.agents/config.json': JSON.stringify({ ...CONFIG,
+    engines: { ...CONFIG.engines,
+      codex: { ...CONFIG.engines.codex, toolOutputTokenLimit: 2000, modelAutoCompactTokenLimit: 50000 } } }) });
+});
+
+test('a non-integer context-management override fails loudly instead of reaching argv', () => {
+  withRepo(root => {
+    assert.throws(() => loadConfig(root), /toolOutputTokenLimit|positive integer/i);
+  }, { '.agents/config.json': JSON.stringify({ ...CONFIG,
+    engines: { ...CONFIG.engines,
+      codex: { ...CONFIG.engines.codex, toolOutputTokenLimit: '2000' } } }) });
+});
+
+// These fields are Codex config.toml keys with no argv slot on the other two
+// adapters; setting one elsewhere would be silently inert, which is exactly
+// the class of typo this loader exists to catch.
+test('a context-management override on a non-codex engine is rejected', () => {
+  withRepo(root => {
+    assert.throws(() => loadConfig(root), /claude.*toolOutputTokenLimit|Codex-only/i);
+  }, { '.agents/config.json': JSON.stringify({ ...CONFIG,
+    engines: { ...CONFIG.engines,
+      claude: { ...CONFIG.engines.claude, toolOutputTokenLimit: 2000 } } }) });
+});
+
 test('writes the prompt and the exact stdin bytes, and returns a runnable command', () => {
   withRepo(root => {
     const result = prepareDispatch(root, { ...base, command: 'work', conductorEngine: 'claude',
