@@ -35,7 +35,8 @@ export default {
   // --disable-slash-commands to recover the mode would load agy's own commands
   // and skills on top of the composed prompt, trading the context guarantee for
   // the access one. The prompt keeps read-only roles honest here; dispatch says
-  // so out loud rather than implying parity.
+  // so out loud rather than implying parity. Re-measured on 1.2.0 (up from
+  // 1.1.27 when this file was first written): same warning, same inert plan mode.
   enforcesReadOnly: false,
   // stdout is the NDJSON event stream --output-format stream-json requires (see
   // below) — not just the final message, and `agy --help` (1.1.27) has no flag

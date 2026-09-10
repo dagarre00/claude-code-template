@@ -7,7 +7,7 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-09-08
+updated: 2026-09-10
 ---
 
 # Gotchas
@@ -18,7 +18,12 @@ updated: 2026-09-08
 ## Critical
 *(Severe — data corruption, security, silent breakage. Read first.)*
 
-*(None yet.)*
+### Claude's `--allowedTools` Bash allowlist is not a hard gate
+
+**When:** Dispatching any role on the `claude` engine (`tools/workflow-mcp/engines/claude.mjs`), on Claude Code 2.1.267.
+**Symptom:** A worker runs a Bash command that was never granted via `--allowedTools`/`workerCommands`, and reports a correct result for it. Reproduced by granting only `Bash(git status:*)` and asking the worker to compute the SHA-256 of a file — the correct hash (unguessable, verified against a hash computed independently) came back anyway.
+**Cause:** With `--permission-prompts none`, a Bash command outside the explicit `--allowedTools`/`--disallowedTools` rules is no longer hard-denied. Claude Code now routes it through its own semantic "auto-mode classifier" (`claude auto-mode defaults`/`config`), which independently judges whether the command looks safe. Measured across every `--permission-mode` value (`default`, `auto`, `manual`, `dontAsk`) — all behave the same. Write/Edit are unaffected: they still deny reliably with no approval surface, so `enforcesReadOnly` (no file mutation) holds. Only "workers may only run these exact allowlisted commands" is false.
+**Fix:** None found yet. Do not treat `workerCommands`/`--allowedTools` as a hard security boundary for the `claude` engine — it's a hint for what a worker is expected to run, not an enforcement mechanism. Where arbitrary Bash execution by a worker would be unacceptable, prefer `codex` (real OS-level sandbox via `--sandbox`) for that role instead. Whether `claude auto-mode` config can be hardened (e.g. via `--settings`, or a hard-deny rule for anything outside the allowlist) to close this is still open.
 
 ## Runtime
 *(Things that go wrong while the code runs.)*

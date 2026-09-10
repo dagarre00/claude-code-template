@@ -38,15 +38,33 @@ export default {
       // The context guarantee. Everything else here is hygiene.
       '--safe-mode',
       '--no-session-persistence',
-      // `default`, not `plan`, for read-only roles. Plan mode refuses every Bash
+      // `dontAsk`, not `plan`, for read-only roles. Plan mode refuses every Bash
       // call — including the project's own test command — so an adversary could
       // not verify the findings it reports and a planner could not confirm the
       // suite is green before planning against it. Measured: in plan mode a
       // worker answers "I'm currently in plan mode, which prevents me from
       // executing non-readonly actions like `npm test`". Read-only is enforced
       // by the missing approval surface instead (see enforcesReadOnly), which
-      // denies edits while leaving the allowlisted commands runnable.
-      '--permission-mode', readOnly ? 'default' : this.writeMode,
+      // denies edits while the allowlisted commands stay runnable.
+      //
+      // `dontAsk` replaces the earlier `default`, which `claude --help` (2.1.267)
+      // no longer lists among `--permission-mode`'s documented choices (still
+      // accepted when measured, but undocumented values are exactly the kind of
+      // thing a future release drops without warning). `dontAsk` is a documented,
+      // named value whose own denial message ("Claude Code is currently in
+      // 'don't ask mode'") matches the property this line exists for.
+      //
+      // Neither value gives the strict allowlist the comment below describes.
+      // Measured on 2.1.267 across every `--permission-mode` value tried
+      // (`default`, `auto`, `manual`, `dontAsk`): a Bash command that is NOT in
+      // `--allowedTools` below still executes — proven with `sha256sum` on a file
+      // whose hash could not be guessed — while Write/Edit stay denied regardless
+      // of mode, per enforcesReadOnly. The CLI now routes ungranted, non-mutating
+      // Bash through its own semantic auto-mode classifier (`claude auto-mode
+      // defaults`) rather than hard-denying everything outside `--allowedTools`.
+      // So `enforcesReadOnly` (no file mutation) still holds; a literal reading of
+      // "workers may only run these exact commands" does not. See gotchas.md.
+      '--permission-mode', readOnly ? 'dontAsk' : this.writeMode,
       // Nobody is at the keyboard, so anything that would prompt must be denied
       // rather than hang until the conductor's timeout.
       '--permission-prompts', 'none',

@@ -117,10 +117,18 @@ silently inert.
 ## Claude Code — nothing to do
 
 The adapter turns each `workerCommands` entry into `--allowedTools
-"Bash(<cmd>:*)"`. Read-only roles run in `--permission-mode default` rather than
+"Bash(<cmd>:*)"`. Read-only roles run in `--permission-mode dontAsk` rather than
 `plan`: plan mode refuses every Bash call, which would stop an adversary from
-verifying its own findings, while `default` plus `--permission-prompts none`
+verifying its own findings, while `dontAsk` plus `--permission-prompts none`
 denies edits (no approval surface) and still allows the allowlisted commands.
+
+Known gap, measured on 2.1.267: this denies Write/Edit reliably in every
+`--permission-mode` value, but does not make the allowlist a hard gate on Bash.
+A Bash command outside `--allowedTools` can still execute if Claude Code's own
+auto-mode classifier (`claude auto-mode defaults`) judges it benign — proven
+with `sha256sum` against a file whose hash could not otherwise be known. Only
+file mutation is actually guaranteed closed; "workers may only run these exact
+commands" is not, for this engine, as things stand.
 
 ## Antigravity (agy) — one manual step, per machine
 

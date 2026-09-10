@@ -59,7 +59,7 @@ test('every engine suppresses project context', () => {
 // approval interface in this session type", and no file appeared.
 test('read-only access maps to each engine\'s non-writing mode', () => {
   const claude = build('claude', { access: 'read-only' }).args;
-  assert.equal(claude[claude.indexOf('--permission-mode') + 1], 'default');
+  assert.equal(claude[claude.indexOf('--permission-mode') + 1], 'dontAsk');
   assert.ok(claude.join(' ').includes('--permission-prompts none'));
   assert.ok(!claude.includes('acceptEdits'));
   assert.ok(build('codex', { access: 'read-only' }).args.includes('read-only'));
@@ -188,7 +188,7 @@ test('claude grants each configured command narrowly, and nothing else', () => {
 // unable to verify the findings it reports.
 test('a read-only claude worker can still run the allowlisted commands', () => {
   const args = build('claude', { access: 'read-only' }).args;
-  assert.equal(args[args.indexOf('--permission-mode') + 1], 'default');
+  assert.equal(args[args.indexOf('--permission-mode') + 1], 'dontAsk');
   assert.ok(args.includes('Bash(npm test:*)'));
 });
 
