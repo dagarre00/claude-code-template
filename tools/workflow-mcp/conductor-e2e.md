@@ -98,7 +98,11 @@ Before running anything, check the response against `.agents/config.json`:
 - Record any `warnings` verbatim — they state what an engine cannot enforce.
 
 **5 — Dispatch for real, and check the guarantees.** Run the returned `command`
-verbatim, capturing stdout, stderr and the exit code. For codex and antigravity,
+verbatim on a real POSIX shell in the same filesystem namespace as this checkout
+(Git Bash on Windows, never WSL — see `docs/wiki/gotchas.md § build_worker_prompt's
+returned command is a POSIX shell string`). If that guarantee doesn't hold, use
+the structured `executable`/`args`/`cwd`/`stdin_file` fields instead. Capture
+stdout, stderr and the exit code. For codex and antigravity,
 `command` is already wrapped to print only the extracted report — what lands in
 stdout is `report_file`'s content, not the full tool-call transcript (still
 captured, to `raw_file`, for the rare case of actually debugging a failed run —

@@ -3,11 +3,13 @@ aliases: [Work queue]
 type: reference
 domains: [software]
 status: stable
-sources: []
+sources:
+  - docs/raw/research/2026-09-10-workflow-resume-report.md
+  - docs/raw/research/2026-09-10-workflow-review-followup.md
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-08-05
+updated: 2026-09-10
 ---
 
 # Todos
@@ -70,11 +72,14 @@ _(Empty — run `/project:interview` to populate.)_
 
 ## Next (P1)
 
-_(Items waiting for capacity. Should map to entity pages.)_
+- [ ] [infra] workflow-mcp: add a conductor-side result validator that rejects a nonzero exit, any denied action, an empty required report, or a write outside `owned_paths` before a worker's report is accepted — `extract-agy-result.mjs` only covers antigravity today; claude and codex reports can carry the same failure shapes unvalidated. Source: `docs/raw/research/2026-09-10-workflow-resume-report.md` § Optimization 1.
 
 ## Later (P2)
 
-_(Nice-to-have. Promote to Next when prioritized.)_
+- [ ] [infra] workflow-mcp: persist a small resume record per dispatch (task, role, base/integration SHA, `owned_paths`, engine, terminal state, last test result, report path) beside `.worktrees/.dispatch/<task_id>/`, and expose it through `list_worktrees` or a new bounded status call — recovering an interrupted cycle currently means reconstructing this from conversation tail, git log and dispatch files by hand. Source: `docs/raw/research/2026-09-10-workflow-resume-report.md` § Optimization 5.
+- [ ] [infra] workflow-mcp: a judgement-only "triage" role for re-grading adversary/plan-adversary findings — narrower instructions and read-only, unlike dispatching the full `developer` (TDD skills, write access) just to agree or disagree with a finding's severity. Proposed only, not a merge of the adversary and developer roles, and must keep written dispositions. Source: `docs/raw/research/2026-09-10-workflow-review-followup.md` § Additional workflow measurements.
+- [ ] [infra] workflow-mcp: reduce redundant model/tool traffic in a dispatch loop — observed cases of an engine reporting it was "still waiting" for a suite whose completed output was already present — and benchmark engines (accepted cases, retries, elapsed time) on real cycles before changing any role's default engine. Source: `docs/raw/research/2026-09-10-workflow-resume-report.md` § Optimization 6.
+- [ ] [infra] workflow-mcp: report actual per-dispatch duration, retries and acceptance outcome alongside the existing token/cache counters, and note where an engine (claude's plain-text report) exposes no comparable usage counters at all. Source: `docs/raw/research/2026-09-10-workflow-resume-report.md` § Optimization 8 and `docs/raw/research/2026-09-10-workflow-review-followup.md` § Additional workflow measurements.
 
 ## Backlog
 

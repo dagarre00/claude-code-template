@@ -27,6 +27,7 @@ Run Red → Green → Refactor → Finish for **one** Behavior case, then start 
 2. Run the canonical `test command` from `docs/wiki/commands.md`. Confirm the new tests actually fail.
 3. Confirm the failure reason matches "missing implementation" — not a typo, import error, or fixture issue. If it's the wrong reason, fix the test and re-run until the failure is genuine.
 4. Mark each covered case `[ ]` → `[~]` on the entity page once its test is confirmed failing.
+5. Quote the actual failing assertion in your report — not just a pass/fail count. "the full suite passed" or "12 tests, 1 failed" is not Red evidence; the conductor cannot tell a real regression from a fixture that always passes without seeing the assertion itself (e.g. `assert '# new version\n' == '# old version\n'`). A resumed cycle once accepted a false Red this way — a monkeypatch that never reached the code under test, "confirmed" only by a full green suite after the fact.
 
 ## Green
 

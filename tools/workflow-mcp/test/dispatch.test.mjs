@@ -275,7 +275,23 @@ test('reports the prompt size so the conductor can see what it is paying for', (
     const result = prepareDispatch(root, { ...base, command: 'work', conductorEngine: 'claude',
       workspace: resolve(root, '.worktrees/x') });
     assert.ok(result.prompt_bytes > 100);
-    assert.equal(result.prompt_bytes, readFileSync(result.prompt_file, 'utf8').length);
+    assert.equal(result.prompt_bytes, Buffer.byteLength(readFileSync(result.prompt_file, 'utf8'), 'utf8'));
+  });
+});
+
+// A JS string's .length counts UTF-16 code units, not bytes — every non-ASCII
+// character in a worker's instructions (accented names, curly quotes pasted
+// from a doc, an emoji in a commit message) makes that number quietly wrong.
+// Real-session evidence: a resumed dispatch reported prompt_bytes equal to
+// prompt_file's .length, which is exactly this bug (workflow-resume-report,
+// 2026-09-10, "Tighten metrics and permission descriptions").
+test('prompt_bytes counts real UTF-8 bytes, not UTF-16 code units', () => {
+  withRepo(root => {
+    const result = prepareDispatch(root, { ...base, instructions: 'Implement login for the café 🚀 flow.',
+      conductorEngine: 'claude', workspace: resolve(root, '.worktrees/x') });
+    const prompt = readFileSync(result.prompt_file, 'utf8');
+    assert.notEqual(result.prompt_bytes, prompt.length, 'this prompt has multi-byte characters, so bytes must exceed code units');
+    assert.equal(result.prompt_bytes, Buffer.byteLength(prompt, 'utf8'));
   });
 });
 

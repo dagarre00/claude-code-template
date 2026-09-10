@@ -94,7 +94,10 @@ export function prepareDispatch(root, input = {}) {
     ...composed,
     warnings,
     prompt: undefined,                       // on disk, not in the tool response
-    prompt_bytes: composed.prompt.length,
+    // Buffer.byteLength, not .length: a JS string's .length counts UTF-16 code
+    // units, so any multi-byte character (accents, curly quotes, an emoji)
+    // silently under-reports what a real UTF-8 prompt actually costs.
+    prompt_bytes: Buffer.byteLength(composed.prompt, 'utf8'),
     engine: command.engine,
     executable: command.executable,
     args: command.args,
