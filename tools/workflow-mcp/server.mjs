@@ -70,7 +70,12 @@ export function createServer(root, conductorEngine) {
     { task_id: z.string().optional() },
     input => api.prepare_worktree(input), false);
 
-  register('list_worktrees', 'List the worker worktrees this repository currently has.',
+  register('list_worktrees',
+    'List the worker worktrees this repository currently has, each with what it is holding: `clean` and '
+    + '`changed_paths`, `violations` (a read-only role that wrote anything, or a write role that wrote '
+    + 'outside its owned_paths — measured against the access level recorded at dispatch), `merged`, and '
+    + '`retirable` for one that is provably holding nothing unique. Call it after a read-only dispatch '
+    + 'instead of checking the worktree by hand, and before cleanup to see what is safe to remove.',
     {}, () => api.list_worktrees());
 
   register('remove_worktree',

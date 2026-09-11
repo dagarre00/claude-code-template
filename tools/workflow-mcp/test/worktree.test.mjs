@@ -1,13 +1,22 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { listWorktrees, prepareWorktree, removeWorktree } from '../worktree.mjs';
 import { cleanup, fixture } from './helpers.mjs';
 
 const git = (root, ...args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
+
+// What prepareDispatch leaves beside the prompt it composed. Written here by
+// hand so these tests exercise the reading half without dragging a whole
+// dispatch (and an engine config) into a worktree test.
+function record(root, task_id, fields) {
+  const dir = resolve(root, '.worktrees/.dispatch', task_id);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(resolve(dir, 'dispatch.json'), JSON.stringify({ task_id, ...fields }, null, 2));
+}
 
 function repo(fn) {
   const root = fixture();
@@ -113,6 +122,79 @@ test('trusts the new worktree path for Codex on Windows, without duplicating on 
     removeWorktree(root, 'hhh');
     prepareWorktree(root, { task_id: 'hhh' });
     assert.equal(entries().length, 1, 'the same path must not accumulate duplicate entries');
+  });
+});
+
+// F-F: read-only is a promise the prompt makes, not a property two of three
+// engines can enforce, and verifying it was left to the conductor remembering to
+// run `git status --porcelain` in the worktree afterwards. The MCP owns the
+// worktree path, so it can check what it handed out instead of asking.
+test('a read-only worker that wrote anything is reported as a violation, not just as dirty', () => {
+  repo(root => {
+    const wt = prepareWorktree(root, { task_id: 'ro' });
+    record(root, 'ro', { role: 'adversary', access: 'read-only', owned_paths: [] });
+    writeFileSync(resolve(wt.workspace, 'sneaky.txt'), 'an edit a read-only role must not have made\n');
+
+    const listed = listWorktrees(root).find(entry => entry.task_id === 'ro');
+    assert.equal(listed.clean, false);
+    assert.equal(listed.access, 'read-only');
+    assert.deepEqual(listed.violations, ['sneaky.txt']);
+    assert.equal(listed.retirable, false, 'a worktree holding an unexplained change is not cleanup');
+  });
+});
+
+test('a write worker is measured against its owned paths, not against being dirty at all', () => {
+  repo(root => {
+    const wt = prepareWorktree(root, { task_id: 'rw' });
+    record(root, 'rw', { role: 'developer', access: 'write', owned_paths: ['src'] });
+    mkdirSync(resolve(wt.workspace, 'src'), { recursive: true });
+    writeFileSync(resolve(wt.workspace, 'src/feature.js'), 'delivered\n');
+
+    let listed = listWorktrees(root).find(entry => entry.task_id === 'rw');
+    assert.equal(listed.clean, false);
+    assert.deepEqual(listed.violations, [], 'work inside owned_paths is the expected output, not a violation');
+
+    writeFileSync(resolve(wt.workspace, 'elsewhere.js'), 'outside its scope\n');
+    listed = listWorktrees(root).find(entry => entry.task_id === 'rw');
+    assert.deepEqual(listed.violations, ['elsewhere.js'],
+      'a path nobody will commit is exactly what the conductor needs told');
+  });
+});
+
+test('a worktree with no dispatch record still reports cleanliness, without inventing a verdict', () => {
+  repo(root => {
+    prepareWorktree(root, { task_id: 'bare' });
+    const listed = listWorktrees(root).find(entry => entry.task_id === 'bare');
+    assert.equal(listed.clean, true);
+    assert.equal(listed.access, null);
+    assert.equal(listed.violations, null, 'without owned_paths there is nothing to measure against');
+  });
+});
+
+// F-G: eleven worktrees had accumulated, because prepare never prunes and remove
+// is manual. Whether one is holding anything unique is computable — clean, and
+// its branch already an ancestor of the integration branch — so it gets computed
+// rather than verified by hand.
+test('flags a worktree that provably holds nothing unique', () => {
+  repo(root => {
+    prepareWorktree(root, { task_id: 'spent' });
+    const listed = listWorktrees(root).find(entry => entry.task_id === 'spent');
+    assert.equal(listed.merged, true, 'branched at HEAD and never committed on');
+    assert.equal(listed.retirable, true);
+  });
+});
+
+test('a worktree whose branch holds its own commits is never flagged for retirement', () => {
+  repo(root => {
+    const wt = prepareWorktree(root, { task_id: 'delivered' });
+    writeFileSync(resolve(wt.workspace, 'result.txt'), 'worker output\n');
+    git(wt.workspace, 'add', '-A');
+    git(wt.workspace, 'commit', '-qm', 'worker output');
+
+    const listed = listWorktrees(root).find(entry => entry.task_id === 'delivered');
+    assert.equal(listed.clean, true, 'committed work leaves a clean tree');
+    assert.equal(listed.merged, false);
+    assert.equal(listed.retirable, false, 'clean is not the same as safe to delete');
   });
 });
 

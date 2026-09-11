@@ -104,6 +104,17 @@ export function prepareDispatch(root, input = {}) {
   writeFileSync(prompt_file, composed.prompt);
   writeFileSync(stdin_file, stdinPayload(engine, composed.prompt));
 
+  // What this dispatch was allowed to do, written where list_worktrees can read
+  // it back. Without it a worktree is just a dirty or clean checkout; with it,
+  // "a read-only role wrote something" and "a developer wrote outside its owned
+  // paths" are both computable afterwards instead of being the conductor's job
+  // to remember (dispatch-findings F-F).
+  writeFileSync(resolve(dir, 'dispatch.json'), JSON.stringify({
+    task_id, role: composed.role, access: composed.access, owned_paths: composed.owned_paths,
+    engine, workspace: workspace ?? null, base_sha: input.base_sha ?? null,
+    created_at: new Date().toISOString()
+  }, null, 2) + '\n');
+
   const roleConfig = config.roles?.[composed.role] ?? {};
   const command = buildCommand(config, {
     engine,
@@ -128,8 +139,9 @@ export function prepareDispatch(root, input = {}) {
   }
   if (composed.access === 'read-only' && !adapter.enforcesReadOnly) {
     warnings.push(`${engine} cannot enforce read-only below the prompt, so for this role the no-edits `
-      + 'rule is a promise rather than a property. Run `git status --porcelain` in the worktree '
-      + 'afterwards: anything it touched voids the round (behavioral rule 12).');
+      + 'rule is a promise rather than a property. Call list_worktrees after the run: it reports this '
+      + 'worktree\'s `violations` against the access level recorded for this dispatch, so the check is '
+      + 'computed rather than remembered. Anything it touched voids the round (behavioral rule 12).');
   }
   // Only worth a warning where nothing already solves it: claude's stdout is
   // already just the final message (reportIsStdout), and codex gets a separate

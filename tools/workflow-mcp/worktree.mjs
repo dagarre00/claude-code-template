@@ -92,15 +92,68 @@ export function prepareWorktree(root, { task_id } = {}) {
     integration_branch: git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], { allowFailure: true }) };
 }
 
+// What a dispatch left beside its prompt. Absent for a worktree prepared but
+// never dispatched into, or one from before this file existed — in which case
+// the listing reports what it can see and declines to guess the rest.
+function dispatchRecord(root, task_id) {
+  const path = resolve(root, WORKSPACES, '.dispatch', task_id, 'dispatch.json');
+  if (!existsSync(path)) return null;
+  try { return JSON.parse(readFileSync(path, 'utf8')); } catch { return null; }
+}
+
+// `git status --porcelain=v1` pads a two-column status before the path, and a
+// rename carries `old -> new`. The destination is the path that exists now,
+// which is the one a violation is about.
+const changedPaths = workspace => (git(workspace, ['status', '--porcelain=v1', '--untracked-files=all']) || '')
+  .split('\n').filter(Boolean)
+  .map(line => line.slice(3).trim().replace(/^.* -> /, '').replace(/^"|"$/g, ''));
+
+const under = (path, owned) => owned.some(base => path === base || path.startsWith(`${base}/`));
+
 export function listWorktrees(root) {
   const raw = git(root, ['worktree', 'list', '--porcelain']);
+  // Where a retirable worktree's commits would have to have landed. Detached
+  // HEAD leaves nothing to compare against, and an unanswerable question is
+  // reported as unanswered rather than as "no".
+  const integration = git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], { allowFailure: true });
+
   return raw.split(/\n\n+/).map(entry => {
     const path = /^worktree (.+)$/m.exec(entry)?.[1];
     const branch = /^branch refs\/heads\/(.+)$/m.exec(entry)?.[1];
-    return path && branch?.startsWith('worker/')
-      ? { task_id: branch.slice('worker/'.length), workspace: path, branch,
-          head: /^HEAD ([0-9a-f]+)$/m.exec(entry)?.[1] ?? null }
+    if (!path || !branch?.startsWith('worker/')) return null;
+    const task_id = branch.slice('worker/'.length);
+    const record = dispatchRecord(root, task_id);
+    const changed = existsSync(path) ? changedPaths(path) : [];
+
+    // Read-only is a promise the prompt makes and two of three engines cannot
+    // enforce, so it was left to the conductor to verify by hand afterwards
+    // (dispatch-findings F-F). The MCP owns this path; it can just look. For a
+    // write role the same check has a different shape: anything outside
+    // owned_paths is work nobody will commit, which fails integration silently.
+    const owned = Array.isArray(record?.owned_paths) ? record.owned_paths : null;
+    const violations = record?.access === 'read-only' ? changed
+      : owned ? changed.filter(file => !under(file, owned))
+        : null;
+
+    // Provably holding nothing unique: nothing uncommitted, and every commit on
+    // the branch already reachable from the integration branch. Both halves are
+    // computable, and verifying them by hand across eleven worktrees is what
+    // this replaces (dispatch-findings F-G).
+    const merged = integration
+      ? git(root, ['merge-base', '--is-ancestor', branch, integration], { allowFailure: true }) !== null
       : null;
+
+    return { task_id, workspace: path, branch,
+      head: /^HEAD ([0-9a-f]+)$/m.exec(entry)?.[1] ?? null,
+      role: record?.role ?? null,
+      access: record?.access ?? null,
+      engine: record?.engine ?? null,
+      owned_paths: owned,
+      clean: changed.length === 0,
+      changed_paths: changed,
+      violations,
+      merged,
+      retirable: changed.length === 0 && merged === true && !(violations?.length) };
   }).filter(Boolean);
 }
 
