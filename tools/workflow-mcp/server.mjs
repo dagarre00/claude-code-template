@@ -82,7 +82,10 @@ export function createServer(root, conductorEngine) {
     {}, () => api.sync(), false);
 
   register('check',
-    'Report whether AGENTS.md and CLAUDE.md still match .agents/.',
+    'Report whether AGENTS.md and CLAUDE.md still match .agents/, which engine CLIs are actually installed, '
+    + 'and which roles that leaves undispatchable. Call it before a cycle: a role whose whole engine chain '
+    + 'is missing is cheaper to learn about here than from a composed prompt that could never have run. '
+    + 'A usage limit is not visible to it — only a missing executable is.',
     {}, () => api.check());
 
   return server;

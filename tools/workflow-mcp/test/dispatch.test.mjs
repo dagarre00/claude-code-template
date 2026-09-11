@@ -126,7 +126,13 @@ test('dispatch warns when the engine cannot enforce the leaf-worker rule', () =>
     const agy = prepareDispatch(root, { ...base, cli_engine: 'antigravity', conductorEngine: 'claude', workspace });
     assert.ok(agy.warnings.some(w => /subagent|leaf/i.test(w)), 'no warning for antigravity');
     for (const cli_engine of ['claude', 'codex']) {
-      assert.deepEqual(prepareDispatch(root, { ...base, cli_engine, conductorEngine: 'claude', workspace }).warnings, []);
+      // Availability warnings are excluded deliberately: whether the real
+      // `claude`/`codex` binaries happen to be installed on the machine running
+      // this suite says nothing about what an engine can enforce, and asserting
+      // an empty array here made this test pass or fail on that.
+      const warnings = prepareDispatch(root, { ...base, cli_engine, conductorEngine: 'claude', workspace })
+        .warnings.filter(warning => !/not installed|not found on PATH/i.test(warning));
+      assert.deepEqual(warnings, [], `${cli_engine} claims a guarantee it does not have`);
     }
   });
 });
@@ -226,6 +232,57 @@ test('a denied action fails the wrapped command even though the underlying proce
 
     assert.notEqual(outcome.status, 0, 'a denied action must not report success');
     assert.match(outcome.stdout, /denied_actions/, 'the report must still be printed so the denial is visible');
+  });
+});
+
+// `denied_actions` names the action and not the target — measured,
+// `{"action": "read_file", "display_name": "ViewFile"}` — so the grant cannot be
+// fixed from the report and the only remedies are to guess or to re-dispatch on
+// another engine (dispatch-findings 2026-09-10, F-B). The path is in the
+// transcript the extraction already reads; it just was not being carried across.
+test('a denied action reports what it was denied on, recovered from the transcript', () => {
+  withRepo(root => {
+    const { workspace, dir, stdin_file, report_file, raw_file } = wrapperFixture(root);
+    const transcript = resolve(dir, 'denied-transcript.txt');
+    // Two shapes on purpose: the extraction must not depend on one event
+    // spelling, because the only source for it is whatever agy emits this week.
+    writeFileSync(transcript, [
+      JSON.stringify({ event: 'step_update', tool_calls: [{ action: 'read_file', args: { path: 'vendor/freecad-libs/Part.pyi' } }] }),
+      JSON.stringify({ event: 'tool_call', tool_name: 'read_file', file_path: 'docs/wiki/gotchas.md' }),
+      JSON.stringify({ event: 'result', result: { status: 'SUCCESS', response: '',
+        denied_actions: [{ action: 'read_file', display_name: 'ViewFile' }] } })
+    ].join('\n') + '\n');
+    const command = { executable: 'cat', args: [transcript] };
+
+    const wrapped = buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter });
+    const outcome = spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
+
+    assert.notEqual(outcome.status, 0);
+    const report = readFileSync(report_file, 'utf8');
+    assert.match(report, /vendor\/freecad-libs\/Part\.pyi/, 'the denied path must reach the report');
+    assert.match(report, /docs\/wiki\/gotchas\.md/, 'a second event spelling must be picked up too');
+    assert.match(report, /denied_actions/, 'the engine\'s own field stays intact');
+    assert.doesNotThrow(() => JSON.parse(report), 'the report must stay machine-readable');
+  });
+});
+
+test('a denial with nothing recoverable says so instead of looking like it found nothing', () => {
+  withRepo(root => {
+    const { workspace, dir, stdin_file, report_file, raw_file } = wrapperFixture(root);
+    const transcript = resolve(dir, 'bare-denial.txt');
+    writeFileSync(transcript, JSON.stringify({ event: 'result', result: { status: 'SUCCESS', response: '',
+      denied_actions: [{ action: 'escalate_admin' }] } }) + '\n');
+    const command = { executable: 'cat', args: [transcript] };
+
+    const wrapped = buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter });
+    spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
+
+    const report = readFileSync(report_file, 'utf8');
+    // Pointing at the raw file is the difference between "no target" and "we
+    // did not look" — the conductor needs to know which it is.
+    assert.match(report, /raw/i);
+    assert.ok(report.includes(raw_file.replaceAll('\\', '\\\\')) || report.includes(raw_file),
+      'the report must name the file the conductor should read next');
   });
 });
 

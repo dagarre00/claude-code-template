@@ -105,7 +105,24 @@ export function loadConfig(root) {
         throw new Error(`Unknown key "${key}" in role ${name}; expected ${ROLE_KEYS.join(', ')}`);
       }
     }
-    if (role.engine != null && !['inherit', ...engineNames].includes(role.engine)) {
+    // A string is one engine; an array is an ordered fallback chain, tried in
+    // order at dispatch. The chain exists because four roles sharing one engine
+    // all became undispatchable together when that engine did, with a manual
+    // per-dispatch override as the only remedy (dispatch-findings F-C).
+    if (role.engine != null && Array.isArray(role.engine)) {
+      if (!role.engine.length) {
+        throw new Error(`Role ${name}.engine is an empty list; a chain needs at least one engine`);
+      }
+      if (role.engine.length > engineNames.length + 1) {
+        throw new Error(`Role ${name}.engine lists more entries than there are engines`);
+      }
+      for (const entry of role.engine) {
+        if (!['inherit', ...engineNames].includes(entry)) {
+          throw new Error(`Invalid engine "${entry}" in role ${name}'s fallback chain; `
+            + `expected inherit or one of ${engineNames.join(', ')}`);
+        }
+      }
+    } else if (role.engine != null && !['inherit', ...engineNames].includes(role.engine)) {
       throw new Error(`Invalid engine for role ${name}: ${role.engine}`);
     }
     for (const field of ['models', 'effort']) {
@@ -121,14 +138,26 @@ export function loadConfig(root) {
   return config;
 }
 
-// Which engine a role actually runs on, given who is conducting. `inherit` means
-// "whatever CLI the conductor is", so a Claude Code session dispatches Claude
-// workers by default and a Codex session dispatches Codex workers.
-export function resolveEngine(config, role, conductorEngine) {
+// Which engines a role may run on, in the order it wants them tried. `inherit`
+// means "whatever CLI the conductor is", so a Claude Code session dispatches
+// Claude workers by default and a Codex session dispatches Codex workers.
+//
+// Deduped, because `["inherit", "claude"]` conducted from Claude Code is a chain
+// of one, and a fallback to the engine that just failed is not a fallback.
+export function resolveEngineChain(config, role, conductorEngine) {
   const configured = config.roles?.[role]?.engine ?? config.defaultEngine;
-  const resolved = configured === 'inherit' ? conductorEngine : configured;
-  if (!engineNames.includes(resolved)) {
-    throw new Error(`Cannot resolve an engine for role "${role}": got ${JSON.stringify(resolved)}`);
+  const chain = [...new Set((Array.isArray(configured) ? configured : [configured])
+    .map(entry => entry === 'inherit' ? conductorEngine : entry))];
+  for (const resolved of chain) {
+    if (!engineNames.includes(resolved)) {
+      throw new Error(`Cannot resolve an engine for role "${role}": got ${JSON.stringify(resolved)}`);
+    }
   }
-  return resolved;
+  return chain;
+}
+
+// The role's first choice. Everything that only needs to name one engine — the
+// role catalog, a dispatch with nothing unavailable — goes through here.
+export function resolveEngine(config, role, conductorEngine) {
+  return resolveEngineChain(config, role, conductorEngine)[0];
 }

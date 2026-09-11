@@ -11,7 +11,8 @@ import { randomUUID } from 'node:crypto';
 import { isAbsolute, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadCanonical } from './canonical.mjs';
-import { loadConfig, resolveEngine } from './config.mjs';
+import { engineAvailability } from './availability.mjs';
+import { loadConfig, resolveEngineChain } from './config.mjs';
 import { composePrompt } from './compose.mjs';
 import { computeDiff } from './diff.mjs';
 import { ENGINES, buildCommand, stdinPayload } from './engines/index.mjs';
@@ -75,7 +76,15 @@ export function prepareDispatch(root, input = {}) {
   const composed = composePrompt(canonical, {
     ...input, instructions, context: context ?? '', diff,
     task_id, workspace, workerCommands: config.workerCommands });
-  const engine = cli_engine ?? resolveEngine(config, composed.role, conductorEngine);
+  // An explicit cli_engine is the conductor deciding, and the chain does not
+  // argue with it. Otherwise walk the role's chain and take the first engine
+  // that is actually installed. A missing CLI is the half of "unavailable" that
+  // is computable; a usage limit is not, and is still answered by re-dispatching
+  // with cli_engine.
+  const chain = cli_engine ? [cli_engine] : resolveEngineChain(config, composed.role, conductorEngine);
+  const availability = chain.map(name => engineAvailability(config, name));
+  const chosen = availability.find(entry => entry.available) ?? availability[0];
+  const engine = chosen.name;
 
   // All four files live beside each other so a human can read exactly what was
   // sent and re-run it byte for byte. The prompt is the readable form; the stdin
@@ -130,6 +139,19 @@ export function prepareDispatch(root, input = {}) {
       + 'transcript — everything lands in stdout together, and on a large task that can reach '
       + 'megabytes. Capture it to a file and read from the end rather than inline.');
   }
+  // A worker running on a different model than the role was pinned to is a
+  // result the conductor has to be able to weigh, so a fallback announces
+  // itself. Only on an actual switch: "the chain's first choice was used" is
+  // the normal case and needs no warning.
+  if (engine !== chain[0]) {
+    warnings.push(`${chain[0]} is not installed (${availability[0].executable} was not found on PATH), `
+      + `so this dispatch falls through the role's chain to ${engine}. The role's own model and effort `
+      + 'pins for that engine apply, which are not the ones the role was tuned on.');
+  } else if (!chosen.available) {
+    warnings.push(`No engine in this role's chain (${chain.join(', ')}) is installed — `
+      + `${chosen.executable} was not found on PATH. The command below is still correct, but it will `
+      + 'almost certainly fail to start. Fix the PATH or pass cli_engine.');
+  }
   // An empty diff almost always means the range was wrong, and finding that out
   // from a reviewer's report costs the whole dispatch.
   if (diff?.empty) {
@@ -151,6 +173,12 @@ export function prepareDispatch(root, input = {}) {
     // silently under-reports what a real UTF-8 prompt actually costs.
     prompt_bytes: Buffer.byteLength(composed.prompt, 'utf8'),
     engine: command.engine,
+    // What the role asked for, in order, and whether the one it got is there.
+    // The conductor needs both to answer a failed dispatch without re-deriving
+    // the config: the chain says what to try next, availability says whether
+    // trying is worth it.
+    engine_chain: chain,
+    engine_available: chosen.available,
     executable: command.executable,
     args: command.args,
     model: command.model,
