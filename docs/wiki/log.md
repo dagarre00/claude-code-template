@@ -15,6 +15,19 @@ updated: 2026-09-10
 > Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd — `init`, `interview`, `work`, `pr`, `adversary`, `review`, `wiki-ingest`, `wiki-maintenance`, or `chore` when nothing else fits (behavioral rule 19).
 > Entries are written by the command that did the work, in the same commit as the work. `/project:wiki` archives this file once it passes ~100 entries.
 
+## [2026-09-10 21:30] chore
+
+- Source: `docs/raw/research/2026-09-10-workflow-mcp-dispatch-findings.md` — a FreeCAD-MCP session measured eight dispatches after syncing `tools/workflow-mcp` and filed eight findings (F-A…F-H). Four of the eight dispatches had needed conductor intervention, three for engine-availability reasons unrelated to the prompt. Human instruction: fix all of them. All eight are fixed; none filed.
+- **F-D** `instructions_file` / `context_file` on `build_worker_prompt`: a plan reached the developer only as text the conductor re-typed through a tool call (~8k tokens of pure transport, the largest single token cost in the loop). The MCP reads the file in the conductor's checkout and inlines it, so the worker still receives text — rule 15, `plan-writing`, `plan-review`, `work.md` and the planner/developer roles now route the plan through `.handoff/<slug>-plan.md` instead of a paste.
+- **F-A** `diff_range`: a reviewer handed a commit range could not see the diff, because the allowlist grants fixed `git diff` forms only. It reviewed whole post-change files and still returned four valid findings — silent degradation. The diff is now computed and embedded as a `## Diff under review` section; empty and truncated ranges warn at composition time. Chosen over widening the allowlist so the diff is present by construction.
+- **F-B** agy denials now carry the target: `denied_actions` names the action and not the path, so the extraction scans the transcript for the refused tool call. Inferred targets live under `workflow_mcp_extraction`, never merged into the engine's own field.
+- **F-C** ordered engine chains (`"engine": ["codex", "claude"]`) and availability in `check`: four of seven roles resolved to one engine, so one usage limit took all four out at once. Only a missing executable is computable — a usage limit still needs `cli_engine`. `check` on this repo shows the same shape: four roles on claude via `inherit`.
+- **F-E** `report_file` is a path on every engine (it was null for claude), so the conductor has one retrieval path. claude's stderr deliberately stays out of it.
+- **F-F / F-G** each dispatch records its access and `owned_paths`; `list_worktrees` reports `clean`, `violations` (a read-only role that wrote, or a write role outside its paths), `merged` and `retirable`. Replaces a by-hand `git status --porcelain` the conductor had to remember, and a by-hand check of eleven worktrees.
+- **F-H** planner and developer role text: a case whose verification needs a command absent from the worker allowlist is a handback, named in the first report rather than discovered.
+- Also fixed, found while verifying: a dispatch with no `workspace` failed with "Engine codex produced an invalid argv", naming neither the parameter nor the caller.
+- Verified: MCP suite 140/140. Smoke-tested against this repo — `check` reports real availability, and a `diff_range` dispatch embedded a 12,491-byte diff into a 29,883-byte prompt with the record written beside it.
+
 ## [2026-09-07 22:13] chore
 
 - Change: added the `plan-adversary` role (pre-implementation review, `/project:work` step 4a) with its `plan-review` skill; pinned each role to an engine and exact model in `.agents/config.json`; moved adversary findings from the `.handoff` mailbox into the worker's report.

@@ -92,6 +92,9 @@ with the entity slug, both case IDs and the test command as `instructions`.
 Before running anything, check the response against `.agents/config.json`:
 
 - `engine`, `model` and `effort` are the ones configured for that role.
+  `engine_chain` shows what the role asked for in order, and `engine_available`
+  whether the chosen CLI is installed — a fallback to a later entry announces
+  itself in `warnings`.
 - `access` is `read-only` and `owned_paths` is empty.
 - `prompt_bytes` is non-zero, and the skills listed are the ones `work.md`
   declares for the planner and no others.
@@ -102,35 +105,42 @@ verbatim on a real POSIX shell in the same filesystem namespace as this checkout
 (Git Bash on Windows, never WSL — see `docs/wiki/gotchas.md § build_worker_prompt's
 returned command is a POSIX shell string`). If that guarantee doesn't hold, use
 the structured `executable`/`args`/`cwd`/`stdin_file` fields instead. Capture
-stdout, stderr and the exit code. For codex and antigravity,
-`command` is already wrapped to print only the extracted report — what lands in
-stdout is `report_file`'s content, not the full tool-call transcript (still
-captured, to `raw_file`, for the rare case of actually debugging a failed run —
-that can reach megabytes on a real task, and has nothing to do with model
-reasoning; it's the action log, not chain-of-thought). Claude is never wrapped:
-its own stdout already is the report. Then answer each of these about the
-worker's report, with evidence:
+stdout, stderr and the exit code. `command` is wrapped on every engine so that
+what lands in stdout is `report_file`'s content and nothing else — for codex and
+antigravity that means the extracted report rather than the full tool-call
+transcript (still captured, to `raw_file`, for the rare case of actually
+debugging a failed run — that can reach megabytes on a real task, and has
+nothing to do with model reasoning; it's the action log, not chain-of-thought);
+for claude, whose stdout already is the report, it means the report is also on
+disk where the other two engines put theirs. **Read `report_file` the same way
+regardless of engine** — that uniformity is the point. Then answer each of these
+about the worker's report, with evidence:
 
 - **Did it produce output at all?** An exit code of 0 with an empty response is
   a failure, not a pass. Say which it was.
 - **Could it run commands?** Look for denied-permission messages. A worker that
   cannot execute the test command cannot do TDD, and this is the check most
   likely to fail — quote the exact denial if you see one.
-- **Did it respect read-only?** `git status --porcelain` in the workspace must
-  print nothing after a read-only role runs.
+- **Did it respect read-only?** Call `list_worktrees`: this workspace must come
+  back `clean`, with `violations` empty. It is measured against the access level
+  recorded for the dispatch, so it answers the question directly rather than
+  leaving you to compare a status listing against what the role was allowed.
 - **Did it do the job?** For the planner, a stepwise plan covering B1 and B2.
 
-**6 — Repeat for each role you can reach.** Dispatch `plan-adversary` with the
-plan pasted inline as its subject, then `developer` for `B1` only (with
-`owned_paths` and a `commit_message`), then `adversary` over the resulting
-commit range. For each one, answer the same four questions from step 5, plus:
+**6 — Repeat for each role you can reach.** Save the planner's plan to a file and
+dispatch `plan-adversary` with `instructions_file` pointing at it, then
+`developer` for `B1` only (same file, plus `owned_paths` and a
+`commit_message`), then `adversary` over the resulting commit range with
+`diff_range`. For each one, answer the same four questions from step 5, plus:
 
 - **`developer`:** did it write a failing test *before* the implementation, and
   did it stay inside `owned_paths`? Run the suite yourself afterwards — never
   trust the report's claim that it passes.
 - **`adversary`:** did the findings arrive in its report, numbered and graded,
-  with a `Checked:` line? It must write no files at all — confirm with
-  `git status --porcelain` that it wrote none.
+  with a `Checked:` line? Do they cite lines that are actually in the range — a
+  reviewer that never saw the diff reviews whole files and infers, so check that
+  `## Diff under review` was in the prompt. It must write no files at all —
+  confirm with `list_worktrees` that `violations` is empty.
 - **`plan-adversary`:** did it return findings graded `blocker`/`risk`/`note`
   with a `Checked:` line? An unexplained pass is a failed review.
 

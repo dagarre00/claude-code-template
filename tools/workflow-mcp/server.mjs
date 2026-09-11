@@ -57,7 +57,7 @@ export function createServer(root, conductorEngine) {
       diff_range: z.string().optional().describe('Revision range (e.g. `<sha>..<sha>`, `develop..HEAD`). The diff is computed and embedded in the prompt as data. Pass this for every review dispatch: a ranged `git diff` matches nothing on the worker allowlist, so a reviewer without it reviews whole post-change files and infers what changed.'),
       owned_paths: z.array(z.string()).optional().describe('Repository-relative paths this worker may write. Required for write roles.'),
       commit_message: z.string().max(200).optional().describe('Subject the conductor will use when committing this worker\'s output. Rejected for read-only roles.'),
-      workspace: z.string().optional().describe('Worktree path from prepare_worktree.'),
+      workspace: z.string().describe('Worktree path from prepare_worktree. Required: the command that starts a worker begins by entering its checkout.'),
       task_id: z.string().optional(),
       cli_engine: z.enum([...engineNames]).optional(),
       model_override: z.string().optional(),

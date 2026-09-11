@@ -6,7 +6,7 @@ type: skill
 
 # Plan Writing
 
-Use this as the `planner` every time you draft a plan for a `[complex]` todo or a batched cycle, before any test is written. You are read-only: output is the markdown plan returned in full as your report, never written to disk. The conductor saves it (as `.handoff/<slug>-plan.md`, gitignored scratch) if it wants a copy, then pastes the text inline into the `developer`'s instructions — worktrees don't share scratch, so the developer never reads a path.
+Use this as the `planner` every time you draft a plan for a `[complex]` todo or a batched cycle, before any test is written. You are read-only: output is the markdown plan returned in full as your report, never written to disk. The conductor saves it as `.handoff/<slug>-plan.md` (gitignored scratch) and sends that file to the `developer` as `instructions_file`, which the MCP reads in the conductor's checkout and inlines — worktrees don't share scratch, so the developer receives the text and never a path.
 
 ## Read first
 

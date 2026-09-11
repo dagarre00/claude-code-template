@@ -13,7 +13,7 @@ skills:
 
 The argument **sets what gets reviewed**, resolved in step 1:
 
-- **A base ref** (`develop`, `against main`, `HEAD~3`) → diff against it (`git diff <ref>...HEAD`) instead of the working tree. This is the "or you were given a base ref" case in the preconditions — with a ref, a clean tree is reviewable rather than a stop condition.
+- **A base ref** (`develop`, `against main`, `HEAD~3`) → review `<ref>...HEAD` instead of the working tree. This is the "or you were given a base ref" case in the preconditions — with a ref, a clean tree is reviewable rather than a stop condition.
 - **A lens** (`concurrency only`, `error handling`) → pass it to the adversary as an emphasis on top of the six-category sweep. It **narrows nothing**: the full sweep still runs, because a sweep the author gets to shrink is one the author gets to steer. Say in the report that a lens was applied.
 
 A lens never reaches the adversary as intent, rationale, or a summary of what the change is meant to do — that would leak exactly the context step 2 exists to withhold. If you cannot phrase it as a category to weight, drop it and say so. Empty argument means the standard sweep over the unshipped change, resolved in step 1.
@@ -38,18 +38,18 @@ Clean tree, nothing unshipped, and no base ref: stop and say there is nothing to
 
 ## Steps
 
-1. **Scope it, and keep it small.** Resolve the scope in this order:
-   - **Argument named a base ref** → `git diff <ref>...HEAD`.
-   - **Dirty tree** → the uncommitted change (`git diff HEAD`, naming any untracked files). If it builds on unpushed commits from the same task, widen to `git diff <sha-before-them>...HEAD` so the review sees the whole unshipped change.
-   - **Clean tree with unreviewed commits** → the commits for one Behavior case, or a few closely-related ones — `git diff <sha-before-them>...HEAD`.
+1. **Scope it, and keep it small.** Resolve the range in this order:
+   - **Argument named a base ref** → `<ref>...HEAD`.
+   - **Dirty tree** → the uncommitted change. There is no range for uncommitted work, so run `git diff HEAD` yourself and pass the text as `context`, naming any untracked files. If it builds on unpushed commits from the same task, commit or widen to `<sha-before-them>...HEAD` so the review sees the whole unshipped change.
+   - **Clean tree with unreviewed commits** → the commits for one Behavior case, or a few closely-related ones — `<sha-before-them>...HEAD`.
 
    Note the entity slug(s) touched. A whole-branch range is the usual reason a review runs past two rounds; prefer several small reviews to one large one.
 
-2. **Dispatch the `adversary`** with the diff **text** from step 1 (run the command yourself and paste the output — the adversary's allowlist has no ranged `git diff`, since a range carries a per-dispatch SHA that can never be a static literal on an exact-match allowlist), the entity slug(s) and Behavior case IDs, the test command from `docs/wiki/commands.md`, and the lens from the argument if there was one. Findings come back in its report — a read-only worker cannot write a scratch file, so do not ask it for one. Pass **nothing else** — no plan file, no rationale, no summary of intent. That independence is the whole product.
+2. **Dispatch the `adversary`** with `diff_range` set to the range from step 1 — the MCP computes the diff and embeds it in the prompt as data. Do not describe the range in the instructions and leave it at that: the adversary's allowlist has no ranged `git diff` (a range carries a per-dispatch SHA that can never be a static literal on an exact-match allowlist), and a reviewer that cannot run one reviews whole post-change files instead, inferring what changed from commit subjects. Measured, it does that *and still returns valid findings*, so the degradation is silent. Send the entity slug(s) and Behavior case IDs, the test command from `docs/wiki/commands.md`, and the lens from the argument if there was one. Check the dispatch response: an empty or truncated diff is reported there, before the worker runs. Findings come back in its report — a read-only worker cannot write a scratch file, so do not ask it for one. Pass **nothing else** — no plan file, no rationale, no summary of intent. That independence is the whole product.
 
 3. **Read the report and triage** every finding to Filed / Fixed / Rejected-with-reason (behavioral rule 20). **Filed is the default** — a line in `docs/wiki/todos.md` at the priority its severity maps to, not a fix. For every `critical` and `major`, run one `human-checkpoint` with the failure scenarios and your recommendation, and let the human choose fix-now or queue; only an approved finding gets fixed, and then by the normal loop (failing test first; spec first if the finding contradicts the entity page).
 
-4. **Re-dispatch only if a fix landed** — and then diff the fix commits only yourself (`git diff <sha-before-fixes>...HEAD`), never the original range, and paste that text in: re-reading the whole thing is what makes each round surface new findings instead of converging. If everything was filed or rejected, no code changed and the review is already done. **Two rounds maximum** — findings surviving round two mean the unit was too big, so split it and review the pieces.
+4. **Re-dispatch only if a fix landed** — and then pass `diff_range: <sha-before-fixes>...HEAD`, the fix commits only, never the original range: re-reading the whole thing is what makes each round surface new findings instead of converging. If everything was filed or rejected, no code changed and the review is already done. **Two rounds maximum** — findings surviving round two mean the unit was too big, so split it and review the pieces.
 
 5. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `adversary`, fields `Commit reviewed` (the sha, plus "+ dirty tree" if the working tree was in scope), `Findings: <N> (<C> critical, <M> major, <m> minor)` and `Disposition: <Fi> filed, <Fx> fixed, <R> rejected`.
 

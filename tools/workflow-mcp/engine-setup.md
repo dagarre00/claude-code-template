@@ -252,6 +252,41 @@ If your `~/.gemini/antigravity-cli/settings.json` sets
 worktree. Set it to `false` if you want that boundary enforced rather than
 promised.
 
+## When an engine is unavailable
+
+Two different problems wear the same face, and only one of them is computable.
+
+**The CLI is not installed.** `check` reports, per engine, whether its
+`executable` resolves on PATH, which roles resolve to it, and — the actionable
+part — `roles_without_an_available_engine`. Run it before a cycle rather than
+finding out from a composed prompt that could never have run.
+
+**The engine is installed but refuses to work** — a usage limit, an expired
+login. Nothing short of running the CLI reveals `try again at 9:05 PM`, so no
+amount of checking will predict it. What is left is recovering cheaply:
+
+- **Give a concentrated role a fallback chain.** `roles.<name>.engine` takes an
+  ordered list as well as a single name:
+
+  ```json
+  "planner": { "engine": ["codex", "claude"], "models": { "codex": "gpt-6-astra" } }
+  ```
+
+  Dispatch takes the first entry that is installed, and says so in `warnings`
+  when it falls through — a worker running on a model the role was not tuned on
+  is a result you have to be able to weigh. `inherit` is allowed inside a chain
+  and means the conducting CLI; a repeat is collapsed.
+
+- **Override one dispatch.** `cli_engine` on `build_worker_prompt` beats the
+  chain entirely, which is the right tool for a usage limit: the engine is
+  installed, so the chain has no reason to skip it.
+
+Worth checking when you pin roles: how many of them land on the same engine. A
+measured session had four of seven on one, so a single usage limit made all four
+undispatchable at once — including the `wiki-maintainer` that the findings
+backlog was waiting on. `check`'s per-engine `roles` list shows that
+concentration at a glance.
+
 ## Checking your setup
 
 [`conductor-e2e.md`](conductor-e2e.md) runs a worker on each engine and reports

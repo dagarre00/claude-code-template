@@ -37,13 +37,13 @@ Follow the `plan-writing` skill. Summary:
 
 1. Identify the scope — the entity slug, the Behavior case IDs covered this cycle, the batch contents (if any).
 2. Draft the stepwise plan: each step is small enough that one test drives it.
-3. Identify risks, unknowns, and explicit out-of-scope items.
+3. Identify risks, unknowns, and explicit out-of-scope items — **including any case no worker can verify**. Your prompt lists the commands a worker may run. A case whose verification needs something absent from that list (a GUI application, a hardware- or machine-specific runner, a service with no credentials in the sandbox) cannot be closed by the `developer`, and a plan that does not say so hands it a step it will discover is impossible halfway through. Name the case, the command, and the fact that the conductor is the only one who can run it, so the handback is budgeted from the start rather than found. If that is the *whole* cycle, return blocked instead of a plan.
 4. Identify the files to touch (best estimate — the developer may diverge with a noted reason).
 5. Return the plan in your report, using the exact template in `plan-writing`.
 
 ## Handoff
 
-Output: the markdown plan, in full, as the body of your report. Format defined in the `plan-writing` skill. You are **read-only** — you write no files at all, not even `.handoff/`; worktrees don't share scratch, so a file you wrote there would be invisible to the conductor and the developer anyway. The conductor reads your report, sanity-checks the plan, optionally saves a copy to `.handoff/<slug>-plan.md` for its own reference, and pastes the plan text inline into the developer's instructions. There is no JSON handoff and no other agent in the chain — just your report and the developer who runs what it contains.
+Output: the markdown plan, in full, as the body of your report. Format defined in the `plan-writing` skill. You are **read-only** — you write no files at all, not even `.handoff/`; worktrees don't share scratch, so a file you wrote there would be invisible to the conductor and the developer anyway. The conductor reads your report, sanity-checks the plan, saves it to `.handoff/<slug>-plan.md` in its own checkout, and sends that file to the developer as `instructions_file` — the MCP inlines its content, so the developer receives the plan as text. There is no JSON handoff and no other agent in the chain — just your report and the developer who runs what it contains.
 
 ## Two-strike interaction
 

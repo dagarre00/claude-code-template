@@ -65,6 +65,15 @@ function readText(root, { value, file, field }) {
 
 export function prepareDispatch(root, input = {}) {
   const { conductorEngine, cli_engine, workspace, task_id = randomUUID() } = input;
+  // Every engine's command begins by entering the worktree — claude has no --cd
+  // flag and works in the process's working directory — so a dispatch without
+  // one produces `cd undefined`. Caught here because the alternative is what it
+  // used to do: fail inside the adapter contract check with "Engine codex
+  // produced an invalid argv", which names neither the parameter nor the caller.
+  if (typeof workspace !== 'string' || !workspace.trim()) {
+    throw new Error('workspace is required — pass the path from prepare_worktree. A worker runs in its '
+      + 'own checkout, and the command that starts it has to enter one.');
+  }
   const canonical = loadCanonical(root);
   const config = loadConfig(root);
 

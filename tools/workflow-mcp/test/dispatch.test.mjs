@@ -349,6 +349,20 @@ test('prompt_bytes counts real UTF-8 bytes, not UTF-16 code units', () => {
   });
 });
 
+// Found while verifying the diff_range work: omitting workspace produced
+// "Engine codex produced an invalid argv" from deep inside the adapter contract
+// check — a message that names neither the missing parameter nor the caller's
+// mistake. Every engine's command starts by entering the worktree, so there is
+// no dispatch without one.
+test('a dispatch with no workspace names the missing parameter, not the adapter', () => {
+  withRepo(root => {
+    for (const cli_engine of ['claude', 'codex', 'antigravity']) {
+      assert.throws(() => prepareDispatch(root, { ...base, cli_engine, conductorEngine: 'claude' }),
+        /workspace/i, `${cli_engine} failed with something other than the real reason`);
+    }
+  });
+});
+
 // Worktrees share no scratch, so a plan produced by the planner reaches the
 // developer only as inline text — and the conductor had to reproduce an 8k-token
 // plan word for word through a tool call just to transport it. Measured as the

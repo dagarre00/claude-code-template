@@ -31,7 +31,7 @@ Runs **before Red**, over the intent rather than the code. A read-only `plan-adv
    Nothing else is the subject. If the cycle has neither a plan nor a todo, the problem is upstream — how the conductor picked the work — not this review.
 
 2. **Dispatch the `plan-adversary`** with *only*:
-   - the subject from step 1, pasted inline (worktrees do not share scratch, so never a path to `.handoff/`),
+   - the subject from step 1 — a plan goes as `instructions_file: .handoff/<slug>-plan.md`, which the MCP reads in your checkout and inlines; a todo line goes inline in `instructions`. Either way the worker receives text: worktrees do not share scratch, so a path is never something it can open itself,
    - the entity slug(s) and the Behavior case IDs this cycle claims to cover,
    - the test command from `docs/wiki/commands.md`,
    - the branch name, so it can read the code the plan touches.
@@ -46,7 +46,7 @@ Runs **before Red**, over the intent rather than the code. A read-only `plan-adv
 
    | Disposition | When | What you do |
    | --- | --- | --- |
-   | **Applied** *(the default)* | The finding is right and the fix is a plan edit, a sharper todo line, or an added Behavior case ID | Edit the plan text you will paste to the developer, or the todo line in `docs/wiki/todos.md`. No re-dispatch of the planner for a paragraph. |
+   | **Applied** *(the default)* | The finding is right and the fix is a plan edit, a sharper todo line, or an added Behavior case ID | Edit `.handoff/<slug>-plan.md` — the same file the developer's dispatch will send — or the todo line in `docs/wiki/todos.md`. No re-dispatch of the planner for a paragraph. |
    | **Escalated** | The finding says the **spec** is wrong, ambiguous, or missing — not the plan | `human-checkpoint`, recommending a fresh interview pass. Do not guess the intent and proceed; this is the finding class this review exists to catch. |
    | **Rejected** | The finding misreads the plan, or names work outside this cycle's Behavior cases | One sentence of reason. Out-of-scope work worth doing becomes an ordinary todo line — not an `[adversary]` one, which is reserved for diff-review findings with a sha. |
 

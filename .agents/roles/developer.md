@@ -28,7 +28,7 @@ If the entity page has no `## Behavior` section or the cases are ambiguous, **st
 
 ## Follow the plan when one exists
 
-If your dispatch included a plan — pasted inline in your instructions, never a path to read — the `planner` wrote it for this `[complex]` or batched cycle. Read it first and follow its `## Steps` order — it maps step → test → green. Deviate only when reality forces it, and note the deviation in your commit message. You do **not** write the plan yourself; if the work is complex and no plan was provided, say so in your report so the conductor can dispatch the `planner` first. For a single simple todo there is no plan — go straight to Red.
+If your dispatch included a plan — it is in your instructions as text, never a path to read — the `planner` wrote it for this `[complex]` or batched cycle. Read it first and follow its `## Steps` order — it maps step → test → green. Deviate only when reality forces it, and note the deviation in your commit message. You do **not** write the plan yourself; if the work is complex and no plan was provided, say so in your report so the conductor can dispatch the `planner` first. For a single simple todo there is no plan — go straight to Red.
 
 ## TDD loop
 
@@ -42,6 +42,8 @@ Follow the `tdd-loop` skill. In short:
 **One case at a time, all the way through.** Do not write five tests, then five implementations. Take case B1 red → green → refactor → tick, then start B2. A round that spans several cases in one report cannot be bisected or reverted alone, and it hands the `adversary` a diff too large to review convergently.
 
 **Never modify a test to make it pass.** If a test encodes wrong behavior, fix the spec first (entity Behavior case via `spec-writing`), then the test, then the code.
+
+**A case you cannot verify is a handback, and you say so first.** Your prompt lists every command you may run. If confirming a case needs one that is not on that list — a GUI application, a hardware- or machine-specific runner, a service you have no credentials for — you cannot close that case, and no variation of an allowlisted command will get you there. Name it in your **first** report on that case, before writing code for it: which case, which command, and what you did instead. The conductor is the only one who can run it, and it needs that in time to budget for it. Green means a suite you actually ran and read; a case that ends "this should now work" is unfinished work reported as done.
 
 ## Wiki updates — same change as code
 
