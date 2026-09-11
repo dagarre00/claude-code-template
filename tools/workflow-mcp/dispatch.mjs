@@ -173,6 +173,22 @@ export function prepareDispatch(root, input = {}) {
       + `${chosen.executable} was not found on PATH. The command below is still correct, but it will `
       + 'almost certainly fail to start. Fix the PATH or pass cli_engine.');
   }
+  // The engine pins exist partly to spread load across providers, and a worker
+  // on the conductor's own engine spends the conductor's own account limit. That
+  // is invisible at dispatch time and shows up later as a refusal, on whichever
+  // dispatch happens to cross the line — measured as four nested Claude sessions
+  // inside one Claude conductor, where the casualty was the adversary: last in
+  // the cycle, the largest prompt of the seven, and the one whose absence costs
+  // most (cycle1-findings F-D). Stated on every such dispatch, not just on an
+  // override, because the consequence does not depend on how the engine was
+  // chosen — a role pinned to the conductor's engine shares the quota exactly as
+  // much as an ad-hoc `cli_engine` does.
+  if (engine === conductorEngine) {
+    warnings.push(`This worker runs on ${engine}, the same engine as the conductor, so it spends the same `
+      + 'account quota rather than spreading load across providers. Consecutive dispatches compound it, '
+      + 'and the limit lands on whichever one crosses it — usually the largest, which is the one you '
+      + `least want to lose. Dispatch expensive roles first, or pass cli_engine to move this one off ${engine}.`);
+  }
   // An empty diff almost always means the range was wrong, and finding that out
   // from a reviewer's report costs the whole dispatch.
   if (diff?.empty) {

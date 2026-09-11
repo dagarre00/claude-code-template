@@ -130,10 +130,36 @@ test('dispatch warns when the engine cannot enforce the leaf-worker rule', () =>
       // `claude`/`codex` binaries happen to be installed on the machine running
       // this suite says nothing about what an engine can enforce, and asserting
       // an empty array here made this test pass or fail on that.
-      const warnings = prepareDispatch(root, { ...base, cli_engine, conductorEngine: 'claude', workspace })
+      //
+      // The conductor is a third engine on purpose: dispatching claude from a
+      // claude conductor now carries a shared-quota warning, which is true but
+      // says nothing about what an engine enforces below the prompt. Keeping it
+      // out of the fixture beats filtering it back out of the result.
+      const warnings = prepareDispatch(root, { ...base, cli_engine, conductorEngine: 'antigravity', workspace })
         .warnings.filter(warning => !/not installed|not found on PATH/i.test(warning));
       assert.deepEqual(warnings, [], `${cli_engine} claims a guarantee it does not have`);
     }
+  });
+});
+
+// The per-role engine pins exist partly to spread load across providers, and a
+// worker on the conductor's own engine bills the conductor's own account. A
+// measured cycle ran four nested Claude sessions inside one Claude conductor and
+// lost its adversary dispatch — last in line, 45 KB prompt, the most expensive
+// of the seven and the one whose absence costs most — to `You've hit your
+// session limit` (cycle1-findings F-D). Nothing below the prompt sees it coming.
+test('dispatch warns when a worker will bill the conductor\'s own quota', () => {
+  withRepo(root => {
+    const workspace = resolve(root, '.worktrees/x');
+    const shared = prepareDispatch(root,
+      { ...base, cli_engine: 'claude', conductorEngine: 'claude', workspace });
+    assert.ok(shared.warnings.some(w => /quota/i.test(w)),
+      'a claude worker under a claude conductor shares one account limit and must say so');
+
+    const split = prepareDispatch(root,
+      { ...base, cli_engine: 'codex', conductorEngine: 'claude', workspace });
+    assert.ok(!split.warnings.some(w => /quota/i.test(w)),
+      'a dispatch to a different provider must not cry wolf');
   });
 });
 

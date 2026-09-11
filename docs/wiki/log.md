@@ -7,13 +7,26 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-09-10
+updated: 2026-09-11
 ---
 
 # Log
 
 > Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd — `init`, `interview`, `work`, `pr`, `adversary`, `review`, `wiki-ingest`, `wiki-maintenance`, or `chore` when nothing else fits (behavioral rule 19).
 > Entries are written by the command that did the work, in the same commit as the work. `/project:wiki` archives this file once it passes ~100 entries.
+
+## [2026-09-11 13:20] chore
+
+- Source: `docs/raw/research/2026-09-11-workflow-mcp-cycle1-findings.md` — a FreeCAD-MCP session measured seven dispatches implementing its PDF Cycle 1 and filed nine findings (F-A…F-I). Copied in as provenance, not this template's own `researcher` output. Human instruction: fix all of them.
+- **Read the dates before the findings.** That session ran on the `524d2bb` sync (2026-09-10 18:00), which predates this branch's four fix commits (2026-09-10 21:18–21:31). So **F-B** (denied targets), **F-E** (`instructions_file`), **F-F** (getting the diff to a reviewer) and **F-I** (`report_file` null for claude) were already fixed before the cycle that rediscovered them — verified in code, not assumed. They stand as independent confirmation; nothing was changed for them. The finding with the widest blast radius is the sync lag itself.
+- **F-F is fixed better than it asks.** It recommends an `attachments` parameter that drops the diff into the worker's worktree as an untracked file. `diff_range` already embeds the diff as prompt data, which avoids that recommendation's own two caveats — a cleanliness check told to expect an untracked file, and a `remove_worktree` that refuses until it is deleted. Rejected deliberately, not overlooked.
+- **F-C** `antigravity` is off the `developer` engine chain (now `["codex", "claude"]`). Measured there: `write_to_file` refused to create a new file in the worktree (`is not a valid artifact path`), non-deterministically — the same task succeeded ~20 minutes earlier — leaving a worker that can edit but cannot create. A fallback that cannot write is not a fallback, so it is removed rather than demoted; it stays first on `plan-adversary` and available to `adversary`, both read-only. **Not reproduced in this repo** — filed as a gotcha with the mechanism marked unconfirmed and the observation marked reliable.
+- **F-D** `build_worker_prompt` now warns when the resolved engine equals the conductor's own, naming the shared-quota consequence and the two remedies (order expensive dispatches first, or pass `cli_engine`). That cycle ran four nested Claude sessions inside one Claude conductor and lost its adversary dispatch — last in line, 45 KB prompt, the most expensive of the seven — to a session limit nothing had warned about. Rec 2 of that finding (fallback chains) shipped yesterday in `f95b60e`; the chains are now actually *used*: every pinned role degrades to another provider before landing on the conductor's engine, so claude is last wherever it is not the pin.
+- **F-A** a worker can create and edit files but cannot delete, move, or rename one — no `workerCommands` entry unlinks and the write tools do not either, so a worker learns this by dying and costs a whole dispatch. Now doctrine on both sides: `developer.md` says write the new path, leave the old, and name the superseded paths in the report; `work.md` says the conductor `git rm`s the old path at staging, in the same commit, which records the change as a rename.
+- **F-G** generalized rather than ported. The specific ask (put `freecadcmd` on `workerCommands`) is right for that project and wrong here — this template's allowlist is `npm test`. The transferable half is the conductor's: `work.md` step 6 now makes a case the worker could not verify a conductor run *before* its commit claims anything, and cites the two measured failure shapes — a unit harness that supplies an environment the real runner does not, and **F-H**'s worse one, a substitute that fails as a pass (a script the harness never executes prints nothing and exits 0, which reads exactly like green).
+- **F-H** no separate template change; its lesson is carried by the F-G text above. It is filed as a gotcha in the project that hit it.
+- One test was deliberately changed, not to make it pass: `dispatch warns when the engine cannot enforce the leaf-worker rule` asserted an empty warning list for a claude worker under a claude conductor, which the new warning makes false. Its fixture now conducts from a third engine so it keeps asserting what its name says — enforcement guarantees — rather than filtering the new warning back out.
+- Verified: MCP suite 141/141 (was 140), RED confirmed on the new test before implementing. Probed live against this repo: a `planner` dispatch from a claude conductor carries the quota warning, a `developer` dispatch now resolves to codex and carries none. `AGENTS.md`/`CLAUDE.md` regenerated directly via `generate.mjs` (the MCP server caches its own source mid-session); no drift.
 
 ## [2026-09-10 21:30] chore
 

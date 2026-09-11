@@ -12,28 +12,66 @@
   ],
   "roles": {
     "adversary": {
-      "engine": "codex",
-      "models": { "codex": "gpt-6-astra" },
-      "effort": { "codex": "medium" }
+      "engine": [
+        "codex",
+        "antigravity",
+        "claude"
+      ],
+      "models": {
+        "codex": "gpt-6-astra"
+      },
+      "effort": {
+        "codex": "medium"
+      }
     },
     "developer": {
-      "engine": "antigravity",
-      "models": { "antigravity": "gemini-3.8-flash" },
-      "effort": { "antigravity": "medium" }
+      "engine": [
+        "codex",
+        "claude"
+      ],
+      "models": {},
+      "effort": {}
     },
     "plan-adversary": {
-      "engine": "antigravity",
-      "models": { "antigravity": "gemini-3.8-flash" },
-      "effort": { "antigravity": "high" }
+      "engine": [
+        "antigravity",
+        "codex",
+        "claude"
+      ],
+      "models": {
+        "antigravity": "gemini-3.8-flash"
+      },
+      "effort": {
+        "antigravity": "high"
+      }
     },
     "planner": {
-      "engine": "claude",
-      "models": { "claude": "claude-opus-5" },
-      "effort": { "claude": "high" }
+      "engine": [
+        "claude",
+        "codex"
+      ],
+      "models": {
+        "claude": "claude-opus-5"
+      },
+      "effort": {
+        "claude": "high"
+      }
     },
-    "researcher": { "engine": null, "models": {}, "effort": {} },
-    "reviewer": { "engine": null, "models": {}, "effort": {} },
-    "wiki-maintainer": { "engine": null, "models": {}, "effort": {} }
+    "researcher": {
+      "engine": null,
+      "models": {},
+      "effort": {}
+    },
+    "reviewer": {
+      "engine": null,
+      "models": {},
+      "effort": {}
+    },
+    "wiki-maintainer": {
+      "engine": null,
+      "models": {},
+      "effort": {}
+    }
   },
   "engines": {
     "claude": {
@@ -43,7 +81,11 @@
         "balanced": "claude-sonnet-5",
         "fast": "claude-haiku-4-5-20251001"
       },
-      "effort": { "reasoning": "high", "balanced": "medium", "fast": "low" }
+      "effort": {
+        "reasoning": "high",
+        "balanced": "medium",
+        "fast": "low"
+      }
     },
     "codex": {
       "executable": "codex",
@@ -52,7 +94,11 @@
         "balanced": "gpt-5.6-terra",
         "fast": "gpt-5.6-luna"
       },
-      "effort": { "reasoning": "high", "balanced": "medium", "fast": "low" }
+      "effort": {
+        "reasoning": "high",
+        "balanced": "medium",
+        "fast": "low"
+      }
     },
     "antigravity": {
       "executable": "agy",
@@ -61,7 +107,11 @@
         "balanced": "gemini-3.8-flash",
         "fast": "gemini-3.8-flash"
       },
-      "effort": { "reasoning": "high", "balanced": "medium", "fast": "low" }
+      "effort": {
+        "reasoning": "high",
+        "balanced": "medium",
+        "fast": "low"
+      }
     }
   }
 }
