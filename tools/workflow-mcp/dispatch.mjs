@@ -6,13 +6,14 @@
 // process itself. It keeps the control plane small enough to reason about, and
 // means a failed worker is debugged by re-running a command line a human can
 // read, not by reading a supervisor's logs.
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { resolve, dirname } from 'node:path';
+import { isAbsolute, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadCanonical } from './canonical.mjs';
 import { loadConfig, resolveEngine } from './config.mjs';
 import { composePrompt } from './compose.mjs';
+import { computeDiff } from './diff.mjs';
 import { ENGINES, buildCommand, stdinPayload } from './engines/index.mjs';
 
 // Quote one argument for the shell the conductor will paste this into. Only ever
@@ -26,13 +27,54 @@ const quote = value => /^[A-Za-z0-9_@%+=:,./-]+$/.test(value) ? value : `'${valu
 // something looked up inside the target project's own tree.
 const ENGINES_DIR = fileURLToPath(new URL('./engines', import.meta.url));
 
+// Generous for a plan, bounded enough that a mistyped path cannot turn a binary
+// into a prompt. The inline parameters cap at 100k characters; a file is allowed
+// more because moving large text out of the conversation is the entire point.
+const MAX_TEXT_BYTES = 262_144;
+
+// A plan the planner produced has to reach the developer somehow, and worktrees
+// share no scratch — so it travelled as inline text the conductor re-typed word
+// for word through a tool call: ~8k tokens of pure transport on one measured
+// dispatch, the largest single token cost in the loop (dispatch-findings
+// 2026-09-10, F-D). A path costs none of that. The text still ends up in the
+// prompt byte for byte; only the conversation is spared.
+function readText(root, { value, file, field }) {
+  if (file == null) return value;
+  if (value != null) {
+    throw new Error(`Pass either ${field} or ${field}_file, not both — two sources for one value `
+      + 'means the prompt does not say which one the worker got.');
+  }
+  const path = isAbsolute(file) ? file : resolve(root, file);
+  let stats;
+  try { stats = statSync(path); }
+  catch { throw new Error(`${field}_file not found: ${path}`); }
+  if (!stats.isFile()) throw new Error(`${field}_file is not a file: ${path}`);
+  if (stats.size > MAX_TEXT_BYTES) {
+    throw new Error(`${field}_file is too large: ${stats.size} bytes, limit ${MAX_TEXT_BYTES}. `
+      + 'A worker prompt this size is a scoping problem, not a transport one.');
+  }
+  const text = readFileSync(path, 'utf8');
+  if (text.includes('\0')) throw new Error(`${field}_file is not text: ${path}`);
+  // Files end with a newline; a pasted string does not. Trimming the tail is
+  // what makes "pass the text" and "pass the file holding that text" compose
+  // the same prompt, which is the only way a caller can treat the choice as the
+  // transport detail it is.
+  return text.trimEnd();
+}
+
 export function prepareDispatch(root, input = {}) {
   const { conductorEngine, cli_engine, workspace, task_id = randomUUID() } = input;
   const canonical = loadCanonical(root);
   const config = loadConfig(root);
 
+  const instructions = readText(root,
+    { value: input.instructions, file: input.instructions_file, field: 'instructions' });
+  const context = readText(root, { value: input.context, file: input.context_file, field: 'context' });
+  const diff = input.diff_range ? computeDiff(root, input.diff_range) : null;
+
   const composed = composePrompt(canonical, {
-    ...input, task_id, workspace, workerCommands: config.workerCommands });
+    ...input, instructions, context: context ?? '', diff,
+    task_id, workspace, workerCommands: config.workerCommands });
   const engine = cli_engine ?? resolveEngine(config, composed.role, conductorEngine);
 
   // All four files live beside each other so a human can read exactly what was
@@ -88,6 +130,16 @@ export function prepareDispatch(root, input = {}) {
       + 'transcript — everything lands in stdout together, and on a large task that can reach '
       + 'megabytes. Capture it to a file and read from the end rather than inline.');
   }
+  // An empty diff almost always means the range was wrong, and finding that out
+  // from a reviewer's report costs the whole dispatch.
+  if (diff?.empty) {
+    warnings.push(`\`git diff ${diff.range}\` is empty — there are no changes in that range. `
+      + 'Check the range before spending a dispatch on it.');
+  }
+  if (diff?.truncated) {
+    warnings.push(`The diff for ${diff.range} was truncated at ${diff.bytes} bytes. The worker is `
+      + 'told, but its findings cover only the part it received.');
+  }
 
   return {
     task_id,
@@ -112,23 +164,40 @@ export function prepareDispatch(root, input = {}) {
     cwd: workspace,
     prompt_file,
     stdin_file,
-    // Non-null only for an engine that actually writes to it (adapter.writesReportFile);
-    // read this instead of stdout for the routine "what did the worker report" path —
-    // raw_file still has everything, for the rare case of debugging a failed run.
-    report_file: adapter.writesReportFile ? report_file : null,
+    // Echoed back when the text came from disk, so the audit trail names the
+    // file the prompt was actually built from.
+    ...(input.instructions_file ? { instructions_file: resolve(root, input.instructions_file) } : {}),
+    ...(input.context_file ? { context_file: resolve(root, input.context_file) } : {}),
+    ...(diff ? { diff_range: diff.range, diff_bytes: diff.bytes,
+      diff_truncated: diff.truncated, diff_empty: diff.empty } : {}),
+    // Always a path, on every engine. It used to be null for claude — whose
+    // stdout is already just the report — which left the conductor maintaining
+    // two retrieval paths in the one place the workflow otherwise abstracts
+    // engines away (dispatch-findings 2026-09-10, F-E). How the file gets
+    // written still differs per engine; that the conductor reads one file does
+    // not. raw_file keeps the full transcript for the engines that produce one.
+    report_file,
     command: buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter })
   };
 }
 
 // The base invocation is always `cd <workspace> && <executable> <args> < <stdin>`.
-// claude (writesReportFile: false, reportIsStdout: true) returns exactly that —
-// stdout there is already just the report, nothing to hide. Every other engine
-// gets wrapped: stdout+stderr go to raw_file instead of straight to the
-// conductor, then either nothing more (codex already wrote report_file itself,
-// via -o in args) or extractReportFrom turns raw_file into report_file
-// (antigravity, which has no such flag), and the wrapper prints only
-// report_file — so a foreground run's tool-call result is the small clean
-// report, not a multi-megabyte transcript, on every engine that needs it.
+// Every engine is then wrapped so that report_file exists afterwards, because a
+// conductor that reads one file for claude and another for codex is a conductor
+// keeping engine-specific state in the one place the workflow abstracts engines
+// away (dispatch-findings 2026-09-10, F-E). Three mechanisms, one destination:
+//
+//   - reportIsStdout (claude): stdout IS the report, so it is captured straight
+//     into report_file. stderr is deliberately NOT redirected — it belongs to
+//     the conductor, and folding a crash trace into the file it reads as "the
+//     worker's answer" is how a failed run reads as a strange report.
+//   - writesReportFile without extraction (codex): it wrote report_file itself
+//     via -o; stdout+stderr go to raw_file so the transcript stays out of the way.
+//   - writesReportFile with extraction (antigravity): same capture, then
+//     extractReportFrom turns raw_file into report_file.
+//
+// The wrapper prints report_file either way, so a foreground run's tool-call
+// result is the small clean report rather than a multi-megabyte transcript.
 // The subshell preserves the underlying process's real exit code as the whole
 // command's exit code by default; without that, the trailing `cat` would win.
 //
@@ -141,7 +210,10 @@ export function prepareDispatch(root, input = {}) {
 export function buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter }) {
   const base = `cd ${quote(workspace)} && ${quote(command.executable)} `
     + `${command.args.map(quote).join(' ')} < ${quote(stdin_file)}`;
-  if (!adapter.writesReportFile) return base;
+  if (!adapter.writesReportFile) {
+    if (!adapter.reportIsStdout) return base;   // neither — the caller is warned instead
+    return `( ${base} > ${quote(report_file)}; ec=$?; cat ${quote(report_file)}; exit $ec )`;
+  }
 
   if (!adapter.extractReportFrom) {
     // codex already wrote report_file itself, via -o in args — nothing to extract or validate.

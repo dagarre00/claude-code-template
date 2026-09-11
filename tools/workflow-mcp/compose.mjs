@@ -27,7 +27,7 @@ export const isSafeRepoPath = path =>
 
 export function composePrompt(canonical, input = {}) {
   const { role: roleName, command: commandName, instructions, context = '',
-    owned_paths = [], commit_message, task_id, workspace, base_sha,
+    owned_paths = [], commit_message, task_id, workspace, base_sha, diff = null,
     workerCommands = [] } = input;
 
   const role = canonical.roles.find(entry => entry.name === roleName);
@@ -122,6 +122,29 @@ export function composePrompt(canonical, input = {}) {
       + 'uncommitted is expected.'));
   }
 
+  // Per-dispatch, so it sits after everything cacheable and before the
+  // assignment it belongs to. A reviewer that has to fetch its own diff cannot:
+  // a ranged `git diff` matches nothing on the allowlist, and a worker that
+  // respects the allowlist reviews whole post-change files instead, silently
+  // (dispatch-findings 2026-09-10, F-A). So the diff arrives as data.
+  //
+  // Fenced with four backticks, not three: a patch can legitimately contain a
+  // line of three, and a fence the content can close is a prompt that ends
+  // early.
+  if (diff) {
+    parts.push(section('Diff under review',
+      `This is the complete diff for \`${diff.range}\`, computed by the conductor and embedded here as `
+      + 'data. It is authoritative and already complete — do not try to reconstruct it with git '
+      + 'commands. A ranged `git diff` is not on your allowlist, and a near-miss variation of an '
+      + 'allowlisted command risks being denied.'
+      + (diff.empty ? '\n\n**This range contains no changes.** Report that as a blocker rather than '
+        + 'reviewing whatever the checkout happens to contain.' : '')
+      + (diff.truncated ? '\n\n**This diff was truncated** — it exceeded the size one dispatch carries. '
+        + 'Review what is here and name the truncation as a limit on your findings.' : '')
+      + (diff.stat ? `\n\n\`\`\`\n${diff.stat}\n\`\`\`` : '')
+      + `\n\n\`\`\`\`diff\n${diff.patch.trimEnd()}\n\`\`\`\``));
+  }
+
   // Last, and the only part that varies per dispatch. The human's free text is
   // carried as a JSON value and labelled as data: it is untrusted input that must
   // never read as an instruction, and never be pasted into a shell command.
@@ -129,6 +152,7 @@ export function composePrompt(canonical, input = {}) {
     ...(task_id ? { task_id } : {}),
     ...(workspace ? { workspace } : {}),
     ...(base_sha ? { base_sha } : {}),
+    ...(diff ? { diff_range: diff.range } : {}),
     role: role.name,
     ...(command ? { command: command.name } : {}),
     owned_paths: owned,

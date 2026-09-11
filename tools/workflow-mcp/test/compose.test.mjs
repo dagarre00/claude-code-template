@@ -91,3 +91,37 @@ test('supporting files are named but not inlined', () => {
   assert.match(prompt, /\.agents\/skills\/tdd-loop\/CHECKLIST\.md/);
   assert.doesNotMatch(prompt, /x{5000}/);
 });
+
+// A reviewer handed a commit range could not see the diff: the allowlist grants
+// fixed `git diff` forms and nothing matching `git diff <sha>..<sha>`, and a
+// conscientious worker refuses an un-allowlisted variation rather than
+// improvising. Measured — it reviewed post-change files whole and inferred
+// in-diff vs. pre-existing from commit subjects, which degrades quality
+// silently (dispatch-findings 2026-09-10, F-A). Embedding the computed diff
+// makes it present by construction instead of by the conductor remembering.
+test('an embedded diff reaches the worker as data it does not have to fetch', () => {
+  const diff = { range: 'aaa111..bbb222', stat: ' src/a.js | 2 +-', patch: '--- a/src/a.js\n+++ b/src/a.js\n+added line\n', truncated: false };
+  const { prompt } = compose({ role: 'adversary', instructions: 'Review it.', diff });
+  assert.match(prompt, /## Diff under review/);
+  assert.match(prompt, /\+added line/);
+  assert.match(prompt, /aaa111\.\.bbb222/);
+  // It must be told this is the whole diff, or it will still try to run git.
+  assert.match(prompt, /do not.*reconstruct|already complete|authoritative/i);
+});
+
+test('the embedded diff sits after the cacheable prefix, like every other per-dispatch value', () => {
+  const withDiff = compose({ role: 'adversary', instructions: 'Review it.',
+    diff: { range: 'a..b', stat: '', patch: 'x', truncated: false } }).prompt;
+  const without = compose({ role: 'adversary', instructions: 'Review it.' }).prompt;
+  const prefix = text => text.slice(0, text.indexOf('## Diff under review') === -1
+    ? text.indexOf('## Assignment') : text.indexOf('## Diff under review'));
+  assert.equal(prefix(withDiff), prefix(without));
+  assert.ok(withDiff.indexOf('## Diff under review') < withDiff.indexOf('## Assignment'),
+    'the diff belongs with the assignment, not in the cached prefix');
+});
+
+test('a truncated diff says so in the prompt rather than ending mid-hunk in silence', () => {
+  const { prompt } = compose({ role: 'adversary', instructions: 'Review it.',
+    diff: { range: 'a..b', stat: '', patch: 'huge', truncated: true, bytes: 900000 } });
+  assert.match(prompt, /truncat/i);
+});
