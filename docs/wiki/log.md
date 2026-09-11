@@ -15,6 +15,16 @@ updated: 2026-09-11
 > Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd — `init`, `interview`, `work`, `pr`, `adversary`, `review`, `wiki-ingest`, `wiki-maintenance`, or `chore` when nothing else fits (behavioral rule 19).
 > Entries are written by the command that did the work, in the same commit as the work. `/project:wiki` archives this file once it passes ~100 entries.
 
+## [2026-09-11 14:05] chore
+
+- Added `/project:sync-template` (`update-toolkit` → Commands). Runs **in an adopting project**, pulls the generic workflow from a template checkout, and refuses to run in the template itself.
+- Why now: a FreeCAD-MCP cycle filed nine findings of which four were already fixed here before that cycle started — the adopting project is a vendored copy with no link back, so improvements only arrive when someone remembers to copy them. Manual syncs had left its `tools/workflow-mcp/` a day behind and its `.agents/` ~28 files behind. The lag was the finding with the widest blast radius, and nothing in the workflow owned it.
+- The command's load-bearing content is the generic/project-owned table: `tools/workflow-mcp/**` and the `.agents/` workflow text are copied; `.agents/config.json` and `.agents/project.md` never are; `AGENTS.md`/`CLAUDE.md` are regenerated rather than copied, because copying them would install the template's project facts into the adopter.
+- Three guards come from things that actually went wrong while doing this sync by hand: a **human checkpoint before overwriting** any `.agents/` file that looks customized rather than merely stale; **copy, never delete**, so an adopting project's own additions survive (and because `rsync --delete` is correctly refused as destructive); and a **validation step that treats a config the new validator rejects as blocking** — the loader gets stricter over time while `.agents/config.json` is deliberately not synced, so a project's config can stop loading on a sync that otherwise looks clean.
+- Step 6 invokes `generate.mjs` directly rather than the MCP's `sync`, per the existing gotcha that the server caches its own source for the session — otherwise `check` compares stale output against itself and passes.
+- Step 7 explicitly does **not** run the MCP test suite in the adopting project; that suite is the template's.
+- Verified: `AGENTS.md`/`CLAUDE.md` regenerated, command row present, no drift, MCP suite 141/141. The command has not yet been run end to end against a real adopting project — FreeCAD-MCP's `tools/workflow-mcp/` was synced by hand earlier today (`4590c83` there), and its `.agents/` is still behind.
+
 ## [2026-09-11 13:20] chore
 
 - Source: `docs/raw/research/2026-09-11-workflow-mcp-cycle1-findings.md` — a FreeCAD-MCP session measured seven dispatches implementing its PDF Cycle 1 and filed nine findings (F-A…F-I). Copied in as provenance, not this template's own `researcher` output. Human instruction: fix all of them.
