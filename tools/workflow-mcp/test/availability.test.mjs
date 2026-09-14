@@ -182,3 +182,14 @@ test('a chain in the config survives a round trip through the real project confi
     assert.deepEqual(resolveEngineChain(loadConfig(root), 'developer', 'codex'), ['claude']);
   } finally { cleanup(root); }
 });
+
+test('check names every role whose chain reaches an engine lacking a capability it needs', () => {
+  const root = fixture({
+    '.agents/config.json': config({ researcher: { engine: ['antigravity', 'codex'] } }),
+    '.agents/roles/researcher.md': '---\nname: researcher\ndescription: Web research.\nprofile: fast\naccess: write\ncapabilities: [web]\n---\n\nResearch.\n'
+  });
+  try {
+    assert.deepEqual(makeTools(root, 'claude').check().capability_gaps,
+      [{ role: 'researcher', engine: 'antigravity', missing: ['web'] }]);
+  } finally { cleanup(root); }
+});

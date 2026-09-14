@@ -533,3 +533,32 @@ test('a role with no config entry still dispatches on the inherited engine', () 
     assert.equal(result.model, 'haiku');
   });
 });
+
+test('a role that needs the web is warned off an engine whose workers have none', () => {
+  withRepo(root => {
+    const workspace = resolve(root, '.worktrees/x');
+    const agy = prepareDispatch(root, { role: 'researcher', instructions: 'Research slugs.', owned_paths: ['docs/raw'],
+      cli_engine: 'antigravity', conductorEngine: 'claude', workspace });
+    assert.ok(agy.warnings.some(w => /web/i.test(w) && /antigravity/.test(w)), agy.warnings.join(' | '));
+    const codex = prepareDispatch(root, { role: 'researcher', instructions: 'Research slugs.', owned_paths: ['docs/raw'],
+      cli_engine: 'codex', conductorEngine: 'claude', workspace });
+    assert.ok(!codex.warnings.some(w => /web tools/i.test(w)));
+  }, { '.agents/roles/researcher.md':
+    '---\nname: researcher\ndescription: Web research.\nprofile: fast\naccess: write\ncapabilities: [web]\n---\n\nResearch.\n' });
+});
+
+test('a codex worker on Windows is told the spelling of each command that actually runs there', () => {
+  withRepo(root => {
+    const workspace = resolve(root, '.worktrees/x');
+    const onWindows = readFileSync(prepareDispatch(root, { ...base, cli_engine: 'codex', conductorEngine: 'claude',
+      workspace, platform: 'win32' }).prompt_file, 'utf8');
+    assert.match(onWindows, /- `npm.cmd test`/);
+    assert.match(onWindows, /wherever .*`npm test`.*run `npm.cmd test`/i);
+    const onLinux = readFileSync(prepareDispatch(root, { ...base, cli_engine: 'codex', conductorEngine: 'claude',
+      workspace, platform: 'linux' }).prompt_file, 'utf8');
+    assert.doesNotMatch(onLinux, /npm.cmd/);
+    const agyOnWindows = readFileSync(prepareDispatch(root, { ...base, cli_engine: 'antigravity', conductorEngine: 'claude',
+      workspace, platform: 'win32' }).prompt_file, 'utf8');
+    assert.doesNotMatch(agyOnWindows, /npm.cmd/, 'agy runs npm test on Windows as written');
+  });
+});

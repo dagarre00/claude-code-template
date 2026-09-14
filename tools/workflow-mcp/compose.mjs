@@ -28,7 +28,7 @@ export const isSafeRepoPath = path =>
 export function composePrompt(canonical, input = {}) {
   const { role: roleName, command: commandName, instructions, context = '',
     owned_paths = [], commit_message, task_id, workspace, base_sha, diff = null,
-    workerCommands = [] } = input;
+    workerCommands = [], commandNotes = [] } = input;
 
   const role = canonical.roles.find(entry => entry.name === roleName);
   if (!role) {
@@ -107,7 +107,11 @@ export function composePrompt(canonical, input = {}) {
       + 'that were true, since you cannot tell which one you are on from this prompt. Everything '
       + 'else - reading, searching, listing, editing - you do with your own file tools, which need '
       + 'no permission. If the task genuinely needs a command that is not on this list, stop and '
-      + 'report that as a blocker rather than trying a variation of it.'));
+      + 'report that as a blocker rather than trying a variation of it.'
+      + '\n\nWhen a command returns, its output is complete: never wait for it, poll it, or run it again '
+      + 'to see whether it finished. Re-run the test command only after you have changed or edited a file '
+      + 'since the last run, or to answer one specific doubt — and name that doubt in your report.'
+      + commandNotes.map(note => `\n\n${note}`).join('')));
   }
 
   if (writes) {

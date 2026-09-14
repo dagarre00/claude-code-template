@@ -125,3 +125,14 @@ test('a truncated diff says so in the prompt rather than ending mid-hunk in sile
     diff: { range: 'a..b', stat: '', patch: 'huge', truncated: true, bytes: 900000 } });
   assert.match(prompt, /truncat/i);
 });
+
+// Measured twice on agy: a worker said it was "waiting for the full suite" after
+// the suite's completed output had already come back, and re-ran it with nothing
+// changed (resume-report 2026-09-10, §6). Completion has to be unambiguous in the
+// one place every worker reads.
+test('the command section says returned output is complete and a rerun needs a reason', () => {
+  const { prompt } = compose({ ...base, workerCommands: ['npm test'] });
+  assert.match(prompt, /output .*complete/i);
+  assert.match(prompt, /never wait for|do not wait for/i);
+  assert.match(prompt, /re-?run .*only after .*(chang|edit)/i);
+});

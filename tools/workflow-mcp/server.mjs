@@ -45,9 +45,8 @@ export function createServer(root, conductorEngine) {
     'Compose the complete prompt for one worker from .agents/ and return the exact command to run it. '
     + 'Writes prompt.txt (readable) and stdin.txt (the bytes to pipe). The worker receives this prompt and '
     + 'nothing else — every engine is launched with project-file discovery suppressed. Run the returned '
-    + 'command yourself; this server never spawns anything. Read `report_file` afterwards: a nonzero exit '
-    + 'means reject the report, and on engines whose transcript can be read it carries a '
-    + '`workflow_mcp_audit` naming anything the worker touched outside its workspace.',
+    + 'command yourself; this server never spawns anything. The command records how the run went; call '
+    + 'inspect_dispatch afterwards rather than judging the exit code and report by hand.',
     {
       role: z.string().describe('Role name from list_roles.'),
       instructions: z.string().min(1).max(100000).optional().describe('What this worker must do. Use instructions_file instead for anything large.'),
@@ -60,7 +59,8 @@ export function createServer(root, conductorEngine) {
       owned_paths: z.array(z.string()).optional().describe('Repository-relative paths this worker may write. Required for write roles.'),
       commit_message: z.string().max(200).optional().describe('Subject the conductor will use when committing this worker\'s output. Rejected for read-only roles.'),
       workspace: z.string().describe('Worktree path from prepare_worktree. Required: the command that starts a worker begins by entering its checkout.'),
-      task_id: z.string().optional(),
+      task_id: z.string().optional().describe('The id prepare_worktree was given. Composing again into a task whose last attempt already ran archives that attempt and counts this one as a retry.'),
+      retry_of: z.string().optional().describe('task_id of an attempt in another worktree that this dispatch replaces, so retries are counted per engine and role.'),
       cli_engine: z.enum([...engineNames]).optional(),
       model_override: z.string().optional(),
       thinking_budget: z.string().optional()
@@ -68,9 +68,33 @@ export function createServer(root, conductorEngine) {
     input => api.build_worker_prompt(input));
 
   register('prepare_worktree',
-    'Create an isolated checkout at committed HEAD on its own worker/<id> branch. Requires a clean checkout. Not a security sandbox — it prevents collisions, not malice.',
+    'Create an isolated checkout at committed HEAD on its own worker/<id> branch. Requires a clean checkout. Not a security sandbox — it prevents collisions, not malice. '
+    + 'Returns `setup_commands` from config (e.g. building a per-worktree virtualenv): run each in the workspace before dispatching, and treat a failure as a blocker.',
     { task_id: z.string().optional() },
     input => api.prepare_worktree(input), false);
+
+  register('inspect_dispatch',
+    'One bounded record of a dispatch: role, engine, model, attempt, base SHA, owned paths, how the run went '
+    + '(exit code, duration), the report path and whether it is empty, the worktree\'s changes and violations, '
+    + 'agy\'s usage counters and audit, and a mechanical `verdict` — `reject` with reasons (nonzero exit, empty '
+    + 'report, denied action, writes outside scope, a worker commit, a subagent call), `incomplete`, or `pass`. '
+    + 'Call it after every dispatch, before accepting anything, and to resume an interrupted cycle. `pass` means '
+    + 'nothing computable is wrong, not that the work is right — that judgement is yours, recorded with record_decision.',
+    { task_id: z.string() }, input => api.inspect_dispatch(input));
+
+  register('record_decision',
+    'Record whether you accepted or rejected a finished dispatch, with the one-sentence reason. Accepting '
+    + 'something whose mechanical verdict is not `pass` is refused unless override_mechanical is set and the reason '
+    + 'says why each rejection reason does not apply. These decisions are what dispatch_stats counts.',
+    { task_id: z.string(), decision: z.enum(['accepted', 'rejected']), reason: z.string().min(3).max(1000),
+      override_mechanical: z.boolean().optional() },
+    input => api.record_decision(input), false);
+
+  register('dispatch_stats',
+    'Per engine and role, across every attempt composed in this checkout: dispatches, finished runs, nonzero '
+    + 'exits, mechanical pass/reject, accepted/rejected decisions, retries, median and total duration, and tokens '
+    + 'where the engine reports them. Consult it before changing which engine a role runs on.',
+    {}, () => api.dispatch_stats());
 
   register('list_worktrees',
     'List the worker worktrees this repository currently has, each with what it is holding: `clean` and '

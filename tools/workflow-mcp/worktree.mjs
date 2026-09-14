@@ -79,6 +79,15 @@ function taskDir(root, task_id) {
   return resolve(root, WORKSPACES, task_id);
 }
 
+// Where everything a task's dispatches leave behind lives: prompts, reports, the
+// records inspect_dispatch reads. Beside the worktrees rather than inside one, so
+// it survives remove_worktree and never dirties a worker's checkout. The same slug
+// check as the worktree itself: a task id becomes a path.
+export function dispatchDir(root, task_id) {
+  taskDir(root, task_id);
+  return resolve(root, WORKSPACES, '.dispatch', task_id);
+}
+
 // The workspace root lives inside the checkout, so it must be ignored or it
 // dirties the very tree dispatch requires to be clean. Writing it to
 // .git/info/exclude rather than .gitignore keeps this correct in any adopting
@@ -109,8 +118,15 @@ export function prepareWorktree(root, { task_id } = {}) {
   const base_sha = git(root, ['rev-parse', 'HEAD']);
   git(root, [...LONG_PATHS, 'worktree', 'add', '-b', branch, workspace, base_sha]);
   trustForCodex(root, workspace);
-  return { task_id, workspace, branch, base_sha,
+  const record = { task_id, workspace, branch, base_sha,
     integration_branch: git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], { allowFailure: true }) };
+  // Written now, so a worktree that is prepared and then abandoned — an
+  // interrupted session — still says what it was branched from and for.
+  const dir = dispatchDir(root, task_id);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(resolve(dir, 'worktree.json'),
+    JSON.stringify({ ...record, created_at: new Date().toISOString() }, null, 2) + '\n');
+  return record;
 }
 
 // What a dispatch left beside its prompt. Absent for a worktree prepared but

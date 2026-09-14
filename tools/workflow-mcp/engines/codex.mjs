@@ -34,6 +34,16 @@ export default {
   // conductor's routine path never has to wade through it.
   reportIsStdout: false,
   writesReportFile: true,
+  // Codex runs a worker's commands through PowerShell on Windows, as a separate
+  // sandbox account for which PowerShell refuses to run npm.ps1. Measured
+  // 2026-09-14: `npm test` exited 1 with PSSecurityException and `npm.cmd test`
+  // exited 0, in the same sandbox, one after the other. So a worker on codex is
+  // told the .cmd spelling; claude and agy ran `npm test` on the same machine and
+  // are left alone. Anything that already names a shim, or is not npm/npx, is
+  // returned unchanged.
+  spellCommand(command, platform) {
+    return platform === 'win32' ? command.replace(/^(npm|npx)(?= )/, '$1.cmd') : command;
+  },
   // tool_output_token_limit and model_auto_compact_token_limit are real config.toml
   // keys (confirmed against Codex's own docs, not measured in this repo the way
   // the -o transcript numbers above are) that bound how much of a large file read

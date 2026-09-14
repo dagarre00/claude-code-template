@@ -250,3 +250,26 @@ test('claude and codex argv actually carry the flag that earns the claim', () =>
   assert.ok(build('claude').args.join(' ').includes('--disallowedTools Agent,Task'));
   assert.ok(build('codex').args.includes('agents.enabled=false'));
 });
+
+// Only a measured "no" is declared. agy's agent definition carries no web tools,
+// and headless agy denied read_url_content and failed search_web anyway; claude
+// and codex workers were never measured for web access, so they declare nothing.
+test('antigravity declares that its workers have no web tools', () => {
+  assert.equal(ENGINES.antigravity.providesWeb, false);
+  assert.equal(ENGINES.claude.providesWeb, undefined);
+  assert.equal(ENGINES.codex.providesWeb, undefined);
+});
+
+// Measured 2026-09-14 inside codex's Windows sandbox: `npm test` exits 1 with
+// PSSecurityException (PowerShell blocks npm.ps1 for the sandbox account) and
+// `npm.cmd test` exits 0. claude and agy ran `npm test` on the same machine.
+test('codex on Windows respells npm and npx to their .cmd shims, and nothing else', () => {
+  const spell = ENGINES.codex.spellCommand;
+  assert.equal(spell('npm test', 'win32'), 'npm.cmd test');
+  assert.equal(spell('npx vitest run', 'win32'), 'npx.cmd vitest run');
+  assert.equal(spell('git status', 'win32'), 'git status');
+  assert.equal(spell('npm.cmd test', 'win32'), 'npm.cmd test');
+  assert.equal(spell('npm test', 'linux'), 'npm test');
+  assert.equal(ENGINES.claude.spellCommand, undefined);
+  assert.equal(ENGINES.antigravity.spellCommand, undefined);
+});

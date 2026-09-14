@@ -323,3 +323,17 @@ test('text a worker can receive never cites a behavioral rule by bare number', (
     [...body.matchAll(/(?:behavioral[ \t]+)?rules?[ \t]+#?\d+|rules\.md`?[ \t]+#\d+/gi)].map(match => `${where}: "${match[0]}"`));
   assert.deepEqual(offenders, []);
 });
+
+// A role that cannot do its job without the web says so, so the MCP can refuse
+// to pretend an engine without web tools will run it (measured: the researcher on
+// agy could neither search nor fetch).
+test('a role may declare capabilities from a closed vocabulary', () => {
+  const role = caps => `---\nname: researcher\ndescription: Web research.\nprofile: fast\naccess: write\n${caps}---\n\nResearch.\n`;
+  withFixture({ '.agents/roles/researcher.md': role('capabilities: [web]\n') }, root => {
+    assert.deepEqual(loadCanonical(root).roles.find(r => r.name === 'researcher').capabilities, ['web']);
+    assert.deepEqual(loadCanonical(root).roles.find(r => r.name === 'developer').capabilities, []);
+  });
+  withFixture({ '.agents/roles/researcher.md': role('capabilities: [telepathy]\n') }, root => {
+    assert.throws(() => loadCanonical(root), /telepathy/);
+  });
+});

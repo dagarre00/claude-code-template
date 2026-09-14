@@ -53,6 +53,21 @@ export function loadConfig(root) {
         + 'List the plain command instead.');
     }
   }
+  // Commands the conductor runs inside a fresh worktree before dispatching into
+  // it — building a per-worktree virtualenv is the measured case (engine-setup.md
+  // § Projects with a Python virtualenv). They are handed back by
+  // prepare_worktree, never run by this server, and never granted to a worker, so
+  // unlike workerCommands they may compose: the conductor's own shell runs them.
+  if (config.worktreeSetup != null) {
+    if (!Array.isArray(config.worktreeSetup) || config.worktreeSetup.length > 16) {
+      throw new Error('worktreeSetup must be an array of at most 16 shell command lines');
+    }
+    for (const command of config.worktreeSetup) {
+      if (typeof command !== 'string' || !command.trim() || command.length > 500 || /[\r\n\0]/.test(command)) {
+        throw new Error(`Invalid worktreeSetup entry: ${JSON.stringify(command)}`);
+      }
+    }
+  }
   if (!config.roles || typeof config.roles !== 'object' || Array.isArray(config.roles)) {
     throw new Error('roles must be an object keyed by role name');
   }

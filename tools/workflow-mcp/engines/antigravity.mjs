@@ -39,6 +39,11 @@ export default {
   // `--mode plan` is still passed, but it is inert while slash command expansion
   // is disabled ("warning: --mode plan has no effect..."), and nothing relies on it.
   enforcesReadOnly: true,
+  // Measured once, and the agent definition below carries no web tools anyway:
+  // headless agy auto-denies read_url_content unless each URL is pre-granted, and
+  // search_web failed on its own ("no summary returned from GenerateContent"). A
+  // role that declares `capabilities: [web]` is warned off this engine.
+  providesWeb: false,
   // stdout is the NDJSON event stream --output-format stream-json requires —
   // --input-format stream-json refuses to pair with any other output format. The
   // terminal {"event":"result"} line carries response, status and denied_actions,

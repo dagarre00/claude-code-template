@@ -6,7 +6,7 @@
 // process itself. It keeps the control plane small enough to reason about, and
 // means a failed worker is debugged by re-running a command line a human can
 // read, not by reading a supervisor's logs.
-import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { isAbsolute, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +16,7 @@ import { loadConfig, resolveEngineChain } from './config.mjs';
 import { composePrompt } from './compose.mjs';
 import { computeDiff } from './diff.mjs';
 import { ENGINES, buildCommand, stdinPayload } from './engines/index.mjs';
+import { dispatchDir } from './worktree.mjs';
 
 // Quote one argument for the shell the conductor will paste this into. Only ever
 // used to build the human-readable/runnable `command` string; the `args` array
@@ -27,6 +28,7 @@ const quote = value => /^[A-Za-z0-9_@%+=:,./-]+$/.test(value) ? value : `'${valu
 // this is the template checkout or a project that adopted a copy of it — never
 // something looked up inside the target project's own tree.
 const ENGINES_DIR = fileURLToPath(new URL('./engines', import.meta.url));
+const RECORD_OUTCOME = fileURLToPath(new URL('./record-outcome.mjs', import.meta.url));
 
 // Generous for a plan, bounded enough that a mistyped path cannot turn a binary
 // into a prompt. The inline parameters cap at 100k characters; a file is allowed
@@ -63,6 +65,51 @@ function readText(root, { value, file, field }) {
   return text.trimEnd();
 }
 
+const readJson = path => {
+  if (!existsSync(path)) return null;
+  try { return JSON.parse(readFileSync(path, 'utf8')); } catch { return null; }
+};
+
+// Everything one attempt leaves in its dispatch directory. `worktree.json`
+// belongs to the worktree, not the attempt, and `attempts/` is the archive itself.
+const ATTEMPT_FILES = ['dispatch.json', 'prompt.txt', 'stdin.txt', 'report.txt', 'raw.txt',
+  'outcome.json', 'decision.json', 'agent'];
+
+// Which attempt this composition is. A dispatch directory that already holds a
+// run is archived under attempts/<n>/ first — resuming re-dispatches into the
+// worktree that holds the partial work, and composing again used to overwrite the
+// previous attempt's prompt, report and record. Composing twice without running
+// in between is one attempt, overwritten. `retry_of` names an attempt in another
+// worktree that this one replaces.
+function nextAttempt(root, dir, task_id, retry_of) {
+  const previous = readJson(resolve(dir, 'dispatch.json'));
+  let attempt = 1;
+  let replaces = null;
+  if (previous) {
+    if (existsSync(resolve(dir, 'outcome.json'))) {
+      const archive = resolve(dir, 'attempts', String(previous.attempt ?? 1));
+      mkdirSync(archive, { recursive: true });
+      for (const name of ATTEMPT_FILES) {
+        if (existsSync(resolve(dir, name))) renameSync(resolve(dir, name), resolve(archive, name));
+      }
+      attempt = (previous.attempt ?? 1) + 1;
+      replaces = task_id;
+    } else {
+      attempt = previous.attempt ?? 1;
+      replaces = previous.retry_of ?? null;
+    }
+  }
+  if (retry_of != null && retry_of !== task_id) {
+    const replaced = readJson(resolve(dispatchDir(root, retry_of), 'dispatch.json'));
+    if (!replaced) {
+      throw new Error(`retry_of "${retry_of}" names no composed dispatch — pass the task_id of the attempt this one replaces`);
+    }
+    attempt = Math.max(attempt, (replaced.attempt ?? 1) + 1);
+    replaces = retry_of;
+  }
+  return { attempt, retry_of: replaces };
+}
+
 export function prepareDispatch(root, input = {}) {
   const { conductorEngine, cli_engine, workspace, task_id = randomUUID() } = input;
   // Every engine's command begins by entering the worktree — claude has no --cd
@@ -82,18 +129,30 @@ export function prepareDispatch(root, input = {}) {
   const context = readText(root, { value: input.context, file: input.context_file, field: 'context' });
   const diff = input.diff_range ? computeDiff(root, input.diff_range) : null;
 
-  const composed = composePrompt(canonical, {
-    ...input, instructions, context: context ?? '', diff,
-    task_id, workspace, workerCommands: config.workerCommands });
   // An explicit cli_engine is the conductor deciding, and the chain does not
   // argue with it. Otherwise walk the role's chain and take the first engine
   // that is actually installed. A missing CLI is the half of "unavailable" that
   // is computable; a usage limit is not, and is still answered by re-dispatching
-  // with cli_engine.
-  const chain = cli_engine ? [cli_engine] : resolveEngineChain(config, composed.role, conductorEngine);
+  // with cli_engine. Resolved before composing, because how a command must be
+  // spelled for the worker depends on the engine that runs it.
+  const chain = cli_engine ? [cli_engine] : resolveEngineChain(config, input.role, conductorEngine);
   const availability = chain.map(name => engineAvailability(config, name));
   const chosen = availability.find(entry => entry.available) ?? availability[0];
   const engine = chosen.name;
+  const platform = input.platform ?? process.platform;
+  const spell = ENGINES[engine]?.spellCommand;
+  const workerCommands = spell ? config.workerCommands.map(command => spell(command, platform)) : config.workerCommands;
+  const respelled = config.workerCommands.filter((command, at) => command !== workerCommands[at]);
+  const commandNotes = respelled.length
+    ? [`On this engine and platform some commands need a different spelling to run at all: wherever your `
+      + `instructions or the wiki say ${respelled.map(command => `\`${command}\``).join(', ')}, run `
+      + `${respelled.map(command => `\`${spell(command, platform)}\``).join(', ')} instead. It is the same command; `
+      + 'the plain spelling is refused by this shell before it starts.']
+    : [];
+
+  const composed = composePrompt(canonical, {
+    ...input, instructions, context: context ?? '', diff,
+    task_id, workspace, workerCommands, commandNotes });
 
   // All four files live beside each other so a human can read exactly what was
   // sent and re-run it byte for byte. The prompt is the readable form; the stdin
@@ -104,7 +163,8 @@ export function prepareDispatch(root, input = {}) {
   // raw_file is where that engine's full stdout+stderr goes when wrapped, kept
   // for the rare case of debugging a failed run. Computed before buildCommand
   // so codex's adapter can wire report_file into its own argv.
-  const dir = resolve(root, '.worktrees', '.dispatch', task_id);
+  const dir = dispatchDir(root, task_id);
+  const { attempt, retry_of } = nextAttempt(root, dir, task_id, input.retry_of);
   mkdirSync(dir, { recursive: true });
   const prompt_file = resolve(dir, 'prompt.txt');
   const stdin_file = resolve(dir, 'stdin.txt');
@@ -112,20 +172,6 @@ export function prepareDispatch(root, input = {}) {
   const raw_file = resolve(dir, 'raw.txt');
   writeFileSync(prompt_file, composed.prompt);
   writeFileSync(stdin_file, stdinPayload(engine, composed.prompt));
-
-  // What this dispatch was allowed to do, written where list_worktrees can read
-  // it back. Without it a worktree is just a dirty or clean checkout; with it,
-  // "a read-only role wrote something" and "a developer wrote outside its owned
-  // paths" are both computable afterwards instead of being the conductor's job
-  // to remember (dispatch-findings F-F).
-  // worker_commands is what extract-agy-result.mjs audits run_command calls
-  // against; it reads this file from beside the transcript.
-  writeFileSync(resolve(dir, 'dispatch.json'), JSON.stringify({
-    task_id, role: composed.role, access: composed.access, owned_paths: composed.owned_paths,
-    engine, workspace: workspace ?? null, base_sha: input.base_sha ?? null,
-    worker_commands: config.workerCommands ?? [],
-    created_at: new Date().toISOString()
-  }, null, 2) + '\n');
 
   // An engine that launches as a custom agent gets its definition written here,
   // in its own directory so the engine is handed that folder and nothing else of
@@ -152,6 +198,26 @@ export function prepareDispatch(root, input = {}) {
     model: input.model_override ?? roleConfig.models?.[engine] ?? undefined,
     effort: input.thinking_budget ?? roleConfig.effort?.[engine] ?? undefined
   });
+
+  // What this dispatch was allowed to do and what it ran on, written where
+  // list_worktrees and inspect_dispatch read it back. Without it a worktree is
+  // just a dirty or clean checkout; with it, "a read-only role wrote something",
+  // "a developer wrote outside its owned paths" and "which engine was this, on
+  // which attempt" are all computable afterwards (dispatch-findings F-F,
+  // resume-report §5). worker_commands is what extract-agy-result.mjs audits
+  // run_command calls against; it reads this file from beside the transcript.
+  const worktreeRecord = readJson(resolve(dir, 'worktree.json'));
+  writeFileSync(resolve(dir, 'dispatch.json'), JSON.stringify({
+    task_id, role: composed.role, access: composed.access, profile: composed.profile,
+    owned_paths: composed.owned_paths, engine, model: command.model, effort: command.effort,
+    workspace: workspace ?? null,
+    base_sha: input.base_sha ?? worktreeRecord?.base_sha ?? null,
+    integration_branch: worktreeRecord?.integration_branch ?? null,
+    attempt, retry_of,
+    prompt_bytes: Buffer.byteLength(composed.prompt, 'utf8'), prompt_chars: composed.prompt.length,
+    worker_commands: config.workerCommands ?? [],
+    report_file, created_at: new Date().toISOString()
+  }, null, 2) + '\n');
 
   // Stated per dispatch, not buried in a doc: the conductor is the one choosing
   // an engine for a task, and it can only weigh that choice if it is told what
@@ -206,6 +272,13 @@ export function prepareDispatch(root, input = {}) {
       + 'and the limit lands on whichever one crosses it — usually the largest, which is the one you '
       + `least want to lose. Dispatch expensive roles first, or pass cli_engine to move this one off ${engine}.`);
   }
+  // A role that needs the web, on an engine whose workers were measured to have
+  // none, would spend its whole dispatch discovering that.
+  const roleDefinition = canonical.roles.find(entry => entry.name === composed.role);
+  if (roleDefinition?.capabilities?.includes('web') && adapter.providesWeb === false) {
+    warnings.push(`The ${composed.role} role needs web access, and ${engine} workers have no web tools — `
+      + 'measured: search failed and every URL fetch was denied headless. Dispatch it elsewhere with cli_engine.');
+  }
   // An empty diff almost always means the range was wrong, and finding that out
   // from a reviewer's report costs the whole dispatch.
   if (diff?.empty) {
@@ -219,6 +292,8 @@ export function prepareDispatch(root, input = {}) {
 
   return {
     task_id,
+    attempt,
+    retry_of,
     ...composed,
     warnings,
     prompt: undefined,                       // on disk, not in the tool response
@@ -289,20 +364,30 @@ export function prepareDispatch(root, input = {}) {
 // — so its own exit code is folded in too: a real process failure (`ec`) still
 // wins over it, but a clean process paired with a denied-action report now
 // fails the whole command instead of silently returning 0.
+//
+// Every variant also records its outcome — start time before the process,
+// finish time and exit codes after it — through record-outcome.mjs into the
+// dispatch directory, which is what inspect_dispatch reads back. A process
+// launched from the structured executable/args fields bypasses that, and
+// inspect_dispatch says so rather than guessing.
 export function buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter }) {
   const base = `cd ${quote(workspace)} && ${quote(command.executable)} `
     + `${command.args.map(quote).join(' ')} < ${quote(stdin_file)}`;
+  const record = `node ${quote(RECORD_OUTCOME)}`;
+  const dir = quote(dirname(report_file));
+  const start = `${record} start ${dir}`;
+  const finish = codes => `${record} finish ${dir} ${codes}`;
   if (!adapter.writesReportFile) {
-    if (!adapter.reportIsStdout) return base;   // neither — the caller is warned instead
-    return `( ${base} > ${quote(report_file)}; ec=$?; cat ${quote(report_file)}; exit $ec )`;
+    if (!adapter.reportIsStdout) return `( ${start}; ${base}; ec=$?; ${finish('$ec')}; exit $ec )`;
+    return `( ${start}; ${base} > ${quote(report_file)}; ec=$?; ${finish('$ec')}; cat ${quote(report_file)}; exit $ec )`;
   }
 
   if (!adapter.extractReportFrom) {
     // codex already wrote report_file itself, via -o in args — nothing to extract or validate.
-    return `( ${base} > ${quote(raw_file)} 2>&1; ec=$?; cat ${quote(report_file)}; exit $ec )`;
+    return `( ${start}; ${base} > ${quote(raw_file)} 2>&1; ec=$?; ${finish('$ec')}; cat ${quote(report_file)}; exit $ec )`;
   }
   const extractCmd = `node ${quote(resolve(ENGINES_DIR, adapter.extractReportFrom))} `
     + `${quote(raw_file)} ${quote(report_file)}`;
-  return `( ${base} > ${quote(raw_file)} 2>&1; ec=$?; ${extractCmd}; xc=$?; cat ${quote(report_file)}; `
-    + `exit $([ "$ec" -ne 0 ] && echo "$ec" || echo "$xc") )`;
+  return `( ${start}; ${base} > ${quote(raw_file)} 2>&1; ec=$?; ${extractCmd}; xc=$?; ${finish('$ec $xc')}; `
+    + `cat ${quote(report_file)}; exit $([ "$ec" -ne 0 ] && echo "$ec" || echo "$xc") )`;
 }

@@ -29,6 +29,17 @@ test('the server constructs — commands get no MCP surface, only worker dispatc
   });
 });
 
+// A tool implemented in tools.mjs and never registered here is a feature no
+// conductor can reach. get_contract is the one deliberate exception: the contract
+// is already inlined in every composed prompt.
+test('every tool the implementation exposes is registered on the server', () => {
+  withRepo(root => {
+    const registered = Object.keys(createServer(root, 'claude')._registeredTools).sort();
+    const implemented = Object.keys(makeTools(root, 'claude')).filter(name => name !== 'get_contract').sort();
+    assert.deepEqual(registered, implemented);
+  });
+});
+
 test('an unknown conductor engine is refused at construction', () => {
   withRepo(root => {
     assert.throws(() => createServer(root, 'gemini'), /gemini/);

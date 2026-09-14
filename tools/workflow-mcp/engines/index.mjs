@@ -44,7 +44,13 @@ for (const engine of registered) {
     || (engine.extractReportFrom !== undefined && typeof engine.extractReportFrom !== 'string')
     // Optional: a per-dispatch agent definition the engine launches as
     // (antigravity), which dispatch.mjs writes before the command is built.
-    || (engine.agentDefinition !== undefined && typeof engine.agentDefinition !== 'function')) {
+    || (engine.agentDefinition !== undefined && typeof engine.agentDefinition !== 'function')
+    // Optional, and only ever a measured answer: false where an engine's workers
+    // were shown to have no working web access. Unmeasured stays undefined.
+    || (engine.providesWeb !== undefined && typeof engine.providesWeb !== 'boolean')
+    // Optional: how a worker on this engine must spell a configured command on a
+    // given platform, where the engine's own shell cannot run it as written.
+    || (engine.spellCommand !== undefined && typeof engine.spellCommand !== 'function')) {
     throw new Error(`Malformed engine adapter: ${engine?.name ?? 'unnamed'}`);
   }
 }

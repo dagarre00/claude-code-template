@@ -5,9 +5,10 @@ import { resolve } from 'node:path';
 import { engineAvailability, engineSetup } from './availability.mjs';
 import { loadCanonical } from './canonical.mjs';
 import { loadConfig, resolveEngineChain } from './config.mjs';
-import { engineNames } from './engines/index.mjs';
+import { ENGINES, engineNames } from './engines/index.mjs';
 import { prepareDispatch } from './dispatch.mjs';
 import { generate, checkGenerated } from './generate.mjs';
+import { dispatchStats, inspectDispatch, recordDecision } from './inspect.mjs';
 import { listWorktrees, prepareWorktree, removeWorktree } from './worktree.mjs';
 
 export function makeTools(root, conductorEngine) {
@@ -29,8 +30,22 @@ export function makeTools(root, conductorEngine) {
       return prepareDispatch(root, { ...input, conductorEngine });
     },
 
+    // Loaded first, so a malformed worktreeSetup fails before a worktree exists.
     prepare_worktree(input = {}) {
-      return prepareWorktree(root, input);
+      const setup_commands = loadConfig(root).worktreeSetup ?? [];
+      return { ...prepareWorktree(root, input), setup_commands };
+    },
+
+    inspect_dispatch({ task_id } = {}) {
+      return inspectDispatch(root, task_id);
+    },
+
+    record_decision(input = {}) {
+      return recordDecision(root, input);
+    },
+
+    dispatch_stats() {
+      return dispatchStats(root);
     },
 
     list_worktrees() {
@@ -73,7 +88,13 @@ export function makeTools(root, conductorEngine) {
         // dispatch right now". A role is only undispatchable when its whole
         // chain is gone.
         roles_without_an_available_engine: Object.keys(chains)
-          .filter(role => !chains[role].some(engine => available.has(engine))).sort()
+          .filter(role => !chains[role].some(engine => available.has(engine))).sort(),
+        // A role whose chain reaches an engine that cannot give it what it
+        // declares it needs. Only measured gaps are listed.
+        capability_gaps: loadCanonical(root).roles.flatMap(role => (chains[role.name] ?? []).map(engine => ({
+          role: role.name, engine,
+          missing: role.capabilities.filter(capability => capability === 'web' && ENGINES[engine].providesWeb === false)
+        }))).filter(gap => gap.missing.length)
       };
     },
 

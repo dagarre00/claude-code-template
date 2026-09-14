@@ -7,6 +7,9 @@ import { resolve } from 'node:path';
 
 export const PROFILES = Object.freeze(['reasoning', 'balanced', 'fast']);
 export const ACCESS = Object.freeze(['read-only', 'write']);
+// What a role cannot do its job without, beyond reading and writing files. A
+// closed list, so an engine adapter can declare a measured "no" against it.
+export const CAPABILITIES = Object.freeze(['web']);
 
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
 
@@ -14,7 +17,7 @@ const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
 // start and end with brackets — `argument-hint: [todo, entity, or scope …]` is
 // the shape every command uses — and splitting those on commas silently
 // shredded the hint into fragments.
-const LIST_KEYS = new Set(['skills', 'aliases', 'tags', 'cssclasses']);
+const LIST_KEYS = new Set(['skills', 'capabilities', 'aliases', 'tags', 'cssclasses']);
 
 // A deliberately small YAML subset: scalars, inline lists, and block lists.
 // Anything richer is a sign the frontmatter is growing logic it should not have,
@@ -111,7 +114,7 @@ const markdown = dir => existsSync(dir)
 // and `tools` keys, which the workflow never reads — so tuning `model: opus`
 // there changed nothing, while the setting that governs lives in config.json.
 const ALLOWED = {
-  role: ['name', 'description', 'type', 'profile', 'access'],
+  role: ['name', 'description', 'type', 'profile', 'access', 'capabilities'],
   command: ['name', 'description', 'type', 'argument-hint', 'skills'],
   skill: ['name', 'description', 'type']
 };
@@ -158,8 +161,13 @@ function loadRoles(root) {
     if (!ACCESS.includes(data.access)) {
       throw new Error(`Invalid access "${data.access}" in ${where}; expected one of ${ACCESS.join(', ')}`);
     }
+    const capabilities = data.capabilities ?? [];
+    if (!Array.isArray(capabilities) || capabilities.some(entry => !CAPABILITIES.includes(entry))) {
+      throw new Error(`Invalid capabilities ${JSON.stringify(capabilities)} in ${where}; `
+        + `expected a list drawn from ${CAPABILITIES.join(', ')}`);
+    }
     return { name, description: requireText(data.description, 'description', where),
-      profile: data.profile, access: data.access, body: body.trim() };
+      profile: data.profile, access: data.access, capabilities, body: body.trim() };
   });
 }
 
