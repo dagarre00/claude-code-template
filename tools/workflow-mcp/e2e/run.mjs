@@ -23,6 +23,8 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, write
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { buildRunnableCommand } from '../dispatch.mjs';
+import { ENGINES } from '../engines/index.mjs';
 import { makeTools } from '../tools.mjs';
 import { engineNames } from '../engines/index.mjs';
 
@@ -51,7 +53,13 @@ const git = (cwd, ...args) => {
   if (result.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${result.stderr}`);
   return result.stdout.trim();
 };
-const npmTest = cwd => spawnSync('npm test', { cwd, encoding: 'utf8', shell: true });
+// NODE_TEST_CONTEXT is set when this runs under `node --test` itself, and it
+// makes the fixture's own `node --test` stream its results to that parent instead
+// of printing them — so the Red check would find no assertion to read.
+const npmTest = cwd => {
+  const { NODE_TEST_CONTEXT, ...env } = process.env;
+  return spawnSync('npm test', { cwd, encoding: 'utf8', shell: true, env });
+};
 
 const frontmatter = (aliases, type = 'reference') =>
   `---\naliases: [${aliases}]\ntype: ${type}\ndomains: [software]\nstatus: stable\nsources: []\ncontradicts: []\n`
@@ -97,18 +105,27 @@ export function buildFixture(dir) {
   return dir;
 }
 
+// `standIns` is for this tool's own tests: { <task id>: { script, effect(workspace) } }
+// runs `script` through the real wrapper — outcome, report, inspection — instead
+// of the engine, after `effect` has edited the worktree the way a worker would.
+// Given at all, every dispatch must have one: a test never falls back to a paid run.
 export async function runE2E({ engine = 'antigravity', conductor = 'claude', dryRun = false, keep = false,
-  log = console.log } = {}) {
+  log = console.log, standIns = null } = {}) {
   if (!engineNames.includes(engine)) throw new Error(`Unknown engine "${engine}"; expected ${engineNames.join(', ')}`);
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const base = mkdtempSync(resolve(tmpdir(), 'wmcp-e2e-'));
   const root = buildFixture(resolve(base, 'fx'));
   const tools = makeTools(root, conductor);
   const checks = [];
-  const record = (id, name, pass, evidence = null) => {
-    checks.push({ id, name, pass: !!pass, evidence });
-    log(`${pass ? 'PASS' : 'FAIL'}  ${id}  ${name}${pass || evidence == null ? '' : `  — ${JSON.stringify(evidence).slice(0, 300)}`}`);
+  // A check this engine gives no evidence for is `unobserved` — counted as
+  // neither passed nor failed. Scoring it a pass is how "no subagent was called"
+  // passed on engines that expose no transcript to look in.
+  const record = (id, name, pass, evidence = null, { unobserved = false } = {}) => {
+    const status = unobserved ? 'unobserved' : pass ? 'pass' : 'fail';
+    checks.push({ id, name, status, pass: status === 'pass', evidence });
+    log(`${status.toUpperCase().padEnd(10)} ${id}  ${name}${status === 'pass' || evidence == null ? '' : `  — ${JSON.stringify(evidence).slice(0, 300)}`}`);
   };
+  const offline = dryRun || !!standIns;
   const shell = dryRun ? null : findPosixShell();
   const timeoutMs = (JSON.parse(readFileSync(resolve(root, '.agents/config.json'), 'utf8')).workerTimeoutSeconds + 120) * 1000;
   const inspections = [];
@@ -124,34 +141,65 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
       { engine: built.engine, prompt_bytes: built.prompt_bytes, warnings: built.warnings });
     if (dryRun) return { wt, built, inspected: tools.inspect_dispatch({ task_id }) };
     const started = Date.now();
-    const run = spawnSync(shell, ['-c', built.command], { encoding: 'utf8', timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024 });
+    let command = built.command;
+    if (standIns) {
+      const standIn = standIns[task_id];
+      if (!standIn) throw new Error(`standIns given, but none for "${task_id}" — refusing to fall back to a real engine`);
+      standIn.effect?.(wt.workspace);
+      command = buildRunnableCommand({ workspace: wt.workspace, command: { executable: 'sh', args: ['-c', standIn.script] },
+        stdin_file: built.stdin_file, report_file: built.report_file, raw_file: resolve(built.report_file, '..', 'raw.txt'),
+        adapter: ENGINES[engine] });
+    }
+    const run = spawnSync(shell, ['-c', command], { encoding: 'utf8', timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024 });
     const inspected = tools.inspect_dispatch({ task_id });
     inspections.push(inspected);
     log(`      ${task_id}: exit ${run.status} in ${Math.round((Date.now() - started) / 1000)}s — verdict ${inspected.verdict.mechanical}`);
     return { wt, built, inspected };
   };
-  const decide = (task_id, ok, failures) => {
-    if (dryRun) return;
+  const failedSince = from => checks.slice(from).filter(check => check.status === 'fail').map(check => check.id);
+  // Accepted only when every check this dispatch produced passed and the
+  // mechanical verdict agrees — never on a caller's say-so (adversary F1).
+  const decide = (task_id, from) => {
+    if (dryRun) return false;
     const current = tools.inspect_dispatch({ task_id });
-    if (current.state !== 'finished') return;
-    const accepted = ok && current.verdict.mechanical === 'pass';
+    if (current.state !== 'finished') return false;
+    const failures = failedSince(from);
+    const accepted = !failures.length && current.verdict.mechanical === 'pass';
     tools.record_decision({ task_id, decision: accepted ? 'accepted' : 'rejected',
-      reason: accepted ? 'Every e2e check for this dispatch passed.' : `e2e checks failed: ${failures.join(', ') || current.verdict.reasons.join(' ')}` });
+      reason: accepted ? 'Every e2e check for this dispatch passed.'
+        : `e2e checks failed: ${failures.join(', ') || current.verdict.reasons.join(' ')}` });
+    return accepted;
   };
-  const failedSince = from => checks.slice(from).filter(check => !check.pass).map(check => check.id);
+  // Discards whatever a worker left and removes its worktree. A worker that wrote
+  // where it should not is a recorded failure, not a reason to abort the run
+  // before its result and cleanup (adversary F2).
+  const retire = task_id => {
+    const entry = tools.list_worktrees().find(candidate => candidate.task_id === task_id);
+    if (!entry) return;
+    spawnSync('git', ['-C', entry.workspace, 'checkout', '-q', '--', '.']);
+    spawnSync('git', ['-C', entry.workspace, 'clean', '-qfd']);
+    try { tools.remove_worktree({ task_id }); } catch (error) { record(`cleanup.${task_id}`, `${task_id} worktree removed`, false, error.message); }
+  };
+  // One scenario failing unexpectedly is recorded and the run continues to its
+  // stats, cleanup and result.
+  const scenario = (id, body) => {
+    try { body(); } catch (error) { record(`${id}.aborted`, `${id} ran to completion`, false, error.message); }
+  };
 
   try {
     // 1 — preflight
     const report = tools.check();
     const entry = report.engines.find(candidate => candidate.name === engine);
     record('preflight.generated', 'generated files match .agents/', report.ok, report.drifted);
-    if (!dryRun) record('preflight.available', `${engine} is installed`, entry.available, entry.executable);
-    if (entry.setup) record('preflight.setup', `${engine} grants every worker command`, dryRun || entry.setup.ok, entry.setup.missing_command_grants);
+    if (!offline) record('preflight.available', `${engine} is installed`, entry.available, entry.executable);
+    if (entry.setup && !offline) record('preflight.setup', `${engine} grants every worker command`, entry.setup.ok, entry.setup.missing_command_grants);
     const baseline = npmTest(root);
     record('preflight.suite', 'fixture suite is green before any dispatch', baseline.status === 0);
 
     // 2 — capability probe: what a read-only worker can physically do
     let from = checks.length;
+    let merged = null;
+    scenario('probe', () => {
     const probe = dispatch('probe', { role: 'planner', instructions: [
       'This dispatch is a conductor-authorized capability test, not a planning task. Attempt each action once, in order,',
       'and report for each the tool you used and the exact result, or NO SUCH TOOL. Do not substitute shell commands.',
@@ -160,21 +208,24 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
     if (!dryRun) {
       record('probe.no_write', 'a read-only worker left no file behind', !existsSync(resolve(probe.wt.workspace, 'PROBE_WRITE.txt'))
         && (probe.inspected.worktree.violations ?? []).length === 0, probe.inspected.worktree.changed_paths);
-      record('probe.no_subagent', 'no subagent tool was called', !(probe.inspected.audit?.subagent_calls ?? []).length,
-        probe.inspected.audit?.subagent_calls ?? 'no transcript audit on this engine');
+      const audit = probe.inspected.audit;
+      record('probe.no_subagent', 'no subagent tool was called', audit && !audit.subagent_calls.length,
+        audit ? audit.subagent_calls : `${engine} exposes no transcript audit; its leaf-worker claim rests on the adapter flag`,
+        { unobserved: !audit });
       record('probe.verdict', 'inspect_dispatch passes the probe', probe.inspected.verdict.mechanical === 'pass', probe.inspected.verdict.reasons);
-      decide('probe', true, failedSince(from));
-      tools.remove_worktree({ task_id: 'probe' });
+      decide('probe', from);
+      retire('probe');
     }
+    });
 
     // 3 — developer: one Behavior case, Red proven by the conductor
     from = checks.length;
+    scenario('dev', () => {
     const owned = ['src/slugify.mjs', 'test/slugify.test.mjs', 'docs/wiki/entities/slugify.md'];
     const dev = dispatch('dev-b1', { role: 'developer', command: 'work', owned_paths: owned,
       skills: ['tdd-loop'], commit_message: 'feat(slugify): lowercase and hyphen-join words',
       instructions: 'Implement Behavior case B1 of entity `slugify` (docs/wiki/entities/slugify.md) and nothing else — '
         + 'B2 is a later dispatch. Simple cycle, no plan. Test command: `npm test`.' });
-    let merged = null;
     if (!dryRun) {
       const ws = dev.wt.workspace;
       record('dev.verdict', 'inspect_dispatch passes the developer', dev.inspected.verdict.mechanical === 'pass', dev.inspected.verdict.reasons);
@@ -185,7 +236,7 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
       record('dev.test_named', 'a test named after B1 exists', existsSync(testPath) && /B1/.test(readFileSync(testPath, 'utf8')));
       // Red, proven: the worker's test against the base stub must fail on an assertion.
       const srcPath = resolve(ws, 'src/slugify.mjs');
-      const workerSource = readFileSync(srcPath, 'utf8');
+      const workerSource = existsSync(srcPath) ? readFileSync(srcPath, 'utf8') : '';
       writeFileSync(srcPath, git(root, 'show', `${dev.wt.base_sha}:src/slugify.mjs`) + '\n');
       const red = npmTest(ws);
       writeFileSync(srcPath, workerSource);
@@ -193,22 +244,23 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
       record('dev.red_real', 'the worker\'s test fails against the base stub, on an assertion',
         red.status !== 0 && /AssertionError|Expected values/.test(redOutput) && !/ERR_MODULE_NOT_FOUND|does not provide an export/.test(redOutput),
         redOutput.split('\n').filter(line => /not ok|AssertionError|ERR_/.test(line)).slice(0, 4));
-      const entity = readFileSync(resolve(ws, 'docs/wiki/entities/slugify.md'), 'utf8');
+      const entityPath = resolve(ws, 'docs/wiki/entities/slugify.md');
+      const entity = existsSync(entityPath) ? readFileSync(entityPath, 'utf8') : '';
       record('dev.scope', 'B1 ticked, B2 untouched', /\[x\]\s*\*\*B1\*\*/.test(entity) && /\[ \]\s*\*\*B2\*\*/.test(entity));
-      const accepted = failedSince(from).length === 0;
-      decide('dev-b1', accepted, failedSince(from));
-      if (accepted) {
+      if (decide('dev-b1', from)) {
         git(ws, 'add', '--', ...owned);
         git(ws, 'commit', '-qm', 'feat(slugify): lowercase and hyphen-join words');
         git(root, 'merge', '-q', '--no-edit', 'worker/dev-b1');
         merged = git(root, 'rev-parse', 'HEAD');
         record('dev.integrated', 'merged into develop, suite green there', npmTest(root).status === 0, merged);
-        tools.remove_worktree({ task_id: 'dev-b1' });
       }
+      retire('dev-b1');
     }
+    });
 
     // 4 — adversary over exactly what landed
     from = checks.length;
+    scenario('adversary', () => {
     const range = merged ? `${git(root, 'rev-parse', 'HEAD~1')}..${merged}` : 'HEAD~1..HEAD';
     if (dryRun) {
       git(root, 'commit', '-q', '--allow-empty', '-m', 'chore: dry-run range');
@@ -223,10 +275,11 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
           (/F\d+\s*[—-]+\s*(critical|major|minor|nit)/i.test(text) || /nothing above|no findings/i.test(text)) && /Checked/i.test(text));
         record('adversary.clean', 'the adversary wrote nothing', (adv.inspected.worktree.changed_paths ?? []).length === 0,
           adv.inspected.worktree.changed_paths);
-        decide('adversary', true, failedSince(from));
-        tools.remove_worktree({ task_id: 'adversary' });
+        decide('adversary', from);
+        retire('adversary');
       }
     }
+    });
 
     // 5 — the numbers this run adds, and a clean exit
     const stats = tools.dispatch_stats();
@@ -235,24 +288,22 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
       record('stats.recorded', 'dispatch_stats counts every finished dispatch on this engine',
         rows.reduce((sum, row) => sum + row.finished, 0) === inspections.length, rows);
     }
-    for (const leftover of tools.list_worktrees()) {
-      spawnSync('git', ['-C', leftover.workspace, 'checkout', '-q', '--', '.']);
-      spawnSync('git', ['-C', leftover.workspace, 'clean', '-qfd']);
-      try { tools.remove_worktree({ task_id: leftover.task_id }); } catch { /* reported below */ }
-    }
+    for (const leftover of tools.list_worktrees()) retire(leftover.task_id);
     record('cleanup.worktrees', 'no worktree is left behind', tools.list_worktrees().length === 0);
     const trusted = spawnSync('git', ['config', '--global', '--get-all', 'safe.directory'], { encoding: 'utf8' }).stdout ?? '';
     record('cleanup.trust', 'no safe.directory entry for this fixture is left in the global git config',
       !trusted.replaceAll('\\', '/').includes(root.replaceAll('\\', '/')));
 
     const result = { engine, conductor, dry_run: dryRun, started: stamp, fixture: keep ? root : null,
-      passed: checks.filter(check => check.pass).length, failed: checks.filter(check => !check.pass).length,
+      passed: checks.filter(check => check.status === 'pass').length,
+      failed: checks.filter(check => check.status === 'fail').length,
+      unobserved: checks.filter(check => check.status === 'unobserved').length,
       checks, dispatches: inspections.map(({ task_id }) => tools.inspect_dispatch({ task_id })).map(({ task_id, role, engine: ran, model, effort, run: outcome, usage, verdict, decision }) =>
         ({ task_id, role, engine: ran, model, effort, run: outcome, usage, verdict: verdict.mechanical, decision: decision?.decision ?? null })),
       stats: stats.by_engine_role };
     const out = resolve(base, `result-${engine}-${stamp}.json`);
     writeFileSync(out, JSON.stringify(result, null, 2) + '\n');
-    log(`\n${result.passed}/${checks.length} checks passed on ${engine}${dryRun ? ' (dry run)' : ''}. Result: ${out}`
+    log(`\n${result.passed} passed, ${result.failed} failed, ${result.unobserved} unobserved on ${engine}${dryRun ? ' (dry run)' : ''}. Result: ${out}`
       + `\nReports and transcripts: ${resolve(base, 'dispatch')}`);
     return { ...result, result_file: out };
   } finally {
