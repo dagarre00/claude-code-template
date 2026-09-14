@@ -52,6 +52,8 @@ Runs **before Red**, over the intent rather than the code. A read-only `plan-adv
 
    A `blocker` that is neither applied nor escalated cannot be rejected into silence: if you disagree with a blocker, that is a `human-checkpoint`, not a rejection.
 
+   When a finding turns on the code the brief touches — a helper the plan assumes exists, a seam the reviewer says is elsewhere — and you cannot settle it by reading, the conductor may dispatch the read-only `triage` role with the brief and the findings verbatim. It recommends Applied, Escalated or Rejected per finding; the disposition stays yours, and a `blocker` you still doubt still goes to the human.
+
 5. **Re-plan only for a structural blocker.** If the findings show the plan's *approach* is wrong rather than its details — wrong decomposition, a step order that cannot work — re-dispatch the `planner` once with the findings attached. Anything smaller you apply yourself. **One round either way**: this review never re-reviews its own corrections. If a second dispatch would be round three on the same disagreement, that is a `human-checkpoint` with both positions stated.
 
 6. **Record it in the cycle's log entry.** No commit exists yet to carry the dispositions, so the `work` log entry the conductor writes at the end of the cycle is the committed record (the written-disposition rule — the record is committed, and here that is the log):

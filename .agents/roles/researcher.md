@@ -4,6 +4,7 @@ description: Web research agent. Searches the web, fetches pages, synthesizes fi
 type: agent
 profile: fast
 access: write
+capabilities: [web]
 ---
 
 # Researcher

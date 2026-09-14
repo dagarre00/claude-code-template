@@ -67,6 +67,11 @@
       "models": {},
       "effort": {}
     },
+    "triage": {
+      "engine": null,
+      "models": {},
+      "effort": {}
+    },
     "wiki-maintainer": {
       "engine": null,
       "models": {},

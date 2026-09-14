@@ -1,0 +1,49 @@
+---
+name: worker-dispatch
+description: How the conductor runs one worker through the workflow MCP and decides whether to accept its result — check the setup, prepare the worktree and run its setup commands, compose, run the returned command, inspect the dispatch, record the decision, integrate, clean up, and resume an interrupted dispatch. Use for every dispatch any command makes. Trigger on "dispatch", "prepare_worktree", "build_worker_prompt", "inspect_dispatch", "record_decision", "dispatch_stats", "run the worker", "retry the worker", "resume a dispatch", "worker failed", "accept the report", "change a role's engine".
+type: skill
+---
+
+# Worker Dispatch
+
+One procedure for every dispatch — `/project:work`, `/project:adversary`, `/project:review`, `/project:wiki`. A command decides *which* role gets *what* brief; this decides how the worker runs and whether its result is accepted. It is conductor-side only: no worker ever receives it.
+
+## Read first
+
+- `tools/workflow-mcp/engine-setup.md` — only the section for an engine `check` reports a problem with.
+
+## Once per cycle, before the first dispatch
+
+1. **Call `check`** and act on every field before composing anything:
+   - `ok: false` → regenerate with `sync`. If the MCP server predates an edit to `tools/workflow-mcp/`, run `generate.mjs` directly instead (gotcha: the server caches its own source).
+   - A role you are about to dispatch appears in `roles_without_an_available_engine` → `human-checkpoint`.
+   - An engine that role resolves to has `setup.ok: false` → `human-checkpoint` naming its `missing_command_grants`. A worker on it dies on its first command.
+   - The role appears in `capability_gaps` for its first engine → dispatch it with `cli_engine` set to an engine not listed there.
+
+## Per dispatch
+
+1. **Prepare.** `prepare_worktree` with a task id. If it returns `setup_commands`, run each one inside the returned `workspace`, in order, and read the output. A failing setup command is a blocker — never dispatch into a half-built worktree. Whatever setup creates must be gitignored; otherwise inspection reads it as worker output.
+2. **Compose.** `build_worker_prompt` with the role, `instructions` or `instructions_file`, the `workspace` and the same `task_id` — plus `owned_paths` and `commit_message` for a write role, and `diff_range` for any review. Re-composing into a task whose last attempt already ran archives that attempt and counts this one as a retry; a retry in a fresh worktree passes `retry_of: <previous task id>`. Read the `warnings`: a fallback engine, a shared quota, an empty diff, a capability the engine lacks.
+3. **Run** the returned `command` verbatim, on a POSIX shell that shares the checkout's filesystem — Git Bash on Windows, never WSL. The command records its own outcome. Launching from the structured `executable`/`args`/`cwd`/`stdin_file` fields skips that record, so use them only when no such shell exists, and judge that dispatch by hand.
+4. **Inspect.** `inspect_dispatch` with the task id, then act on `verdict.mechanical`:
+   - **`reject`** → the result is not accepted, whatever the report says. Each reason names the failure — nonzero exit, empty report, a denied action (the refused target is in the report), a change outside scope, a commit on the worker branch, a subagent call. Fix the cause (a grant, an input inlined instead of read from outside the worktree, a narrower brief) and re-dispatch, or `human-checkpoint`. Never re-send an unchanged brief: the same inputs fail the same way.
+   - **`incomplete`** → it has not run or not finished. Nothing to decide yet.
+   - **`pass`** → nothing computable is wrong, which is not the same as the work being right. Read the report at `report.path` and judge it against what the command defines as done — a quoted failing assertion for Red, numbered findings with a `Checked:` line for a review. Weigh `verdict.warnings` too: a reviewer that read outside its workspace may have read the author's material, and then its independence is gone.
+5. **Decide.** `record_decision` with `accepted` or `rejected` and the one-sentence reason — for every finished dispatch, rejections included. Accepting anything but a `pass` needs `override_mechanical: true` and a reason that answers each rejection reason; if you cannot write that sentence, you are not accepting it. Undecided attempts are what make `dispatch_stats` meaningless.
+6. **Integrate** an accepted write role: stage exactly its `owned_paths` in its worktree, commit with the message you passed, then merge `worker/<id>` into your branch with a plain `git merge` — never `--ff-only`, because the worktree branched from an older HEAD whenever your branch has moved since. Resolve conflicts per `git-recovery` and keep the merge commit. A path the worker reported as superseded is yours to `git rm` in the same commit: workers cannot delete files.
+7. **Clean up.** `remove_worktree` once the work is integrated, or once a rejected attempt's worktree holds nothing you still need. A refusal means read before retrying; never force it. The dispatch record outlives the worktree.
+
+## Resuming an interrupted dispatch
+
+`list_worktrees` shows what exists; `inspect_dispatch` per task gives `state`, `attempt`, `base_sha`, `owned_paths`, `decision` and the report path. Resume from the state: `prepared` → step 2; `composed` → step 3; `finished` with no decision → step 4; `accepted` but not merged (`worktree.merged: false`) → step 6.
+
+## Changing which engine a role runs on
+
+Call `dispatch_stats` first and compare, for that role, accepted over finished, retries, and median duration per engine — on real cycles, not a single run. A change to `.agents/config.json` with no stats behind it is a guess; if you make one anyway, say so in its log entry.
+
+## Anti-patterns
+
+- **Accepting on the exit code, or on the report's own claim of success.** Measured: `exit 0` + `SUCCESS` + a denied read, and a Red "confirmed" by a green suite that never reached the code.
+- **Dispatching into a worktree whose setup failed.** Every result from it measures the environment, not the change.
+- **Leaving attempts undecided.**
+- **Running a role through your own native subagent tool.** It inherits your context and your checkout — `AGENTS.md § Delegating work`.

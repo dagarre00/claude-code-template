@@ -2,8 +2,12 @@
 
 Everything below the line is a **prompt**. Paste it into a CLI acting as
 conductor and it will drive the workflow end to end and report a pass/fail
-table. Run it whenever you adopt a new conductor CLI, change an engine adapter,
-or change `.agents/config.json`.
+table. Run it whenever you adopt a new conductor CLI.
+
+To check a **worker engine** instead — after upgrading its CLI, changing its
+adapter, or before moving a role onto it — no conductor is needed:
+`npm --prefix tools/workflow-mcp run e2e -- --engine <name>` runs the scripted
+equivalent of steps 3–8 and exits non-zero on any failed check.
 
 ## One-time setup per conductor
 
@@ -116,11 +120,15 @@ debugging a failed run — that can reach megabytes on a real task, and has
 nothing to do with model reasoning; it's the action log, not chain-of-thought);
 for claude, whose stdout already is the report, it means the report is also on
 disk where the other two engines put theirs. **Read `report_file` the same way
-regardless of engine** — that uniformity is the point. Then answer each of these
-about the worker's report, with evidence:
+regardless of engine** — that uniformity is the point. Then call
+`inspect_dispatch` and record its `verdict` (and its reasons, verbatim) before
+reading the report yourself — then `record_decision`. Answer each of these about
+the worker's report, with evidence:
 
 - **Did it produce output at all?** An exit code of 0 with an empty response is
-  a failure, not a pass. Say which it was.
+  a failure, not a pass. Say which it was — and whether `inspect_dispatch`
+  agreed. A mechanical verdict that disagrees with what you read is a defect in
+  the MCP worth naming.
 - **Could it run commands?** Look for denied-permission messages. A worker that
   cannot execute the test command cannot do TDD, and this is the check most
   likely to fail — quote the exact denial if you see one.

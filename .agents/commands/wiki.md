@@ -37,6 +37,8 @@ Run the guarded sync block in [`.agents/skills/feature-branching/sync-develop.md
 
 # Ingest mode
 
+Every dispatch in this command — `researcher` and `wiki-maintainer` alike — runs through the workflow MCP per the `worker-dispatch` skill, including `inspect_dispatch` before its output is trusted. The `researcher` needs the web: if `check` lists it under `capability_gaps` for its engine, dispatch it with `cli_engine` elsewhere.
+
 One source in, one `summaries/` page out, cross-linked. **Ingest only** — no orphan scan, no link audit, no lint pass. Those are the health pass. The conductor never reads the source itself — getting it onto disk is the only conductor-side step; reading, dedup, writing and cross-linking all happen in the `wiki-maintainer`'s own worktree, not the conductor's context.
 
 1. **Get the source onto disk — unread.**

@@ -198,6 +198,8 @@ Every page gets correct frontmatter per the Obsidian LLM-wiki standard (see the 
 
 5. **Update the worker allowlist.** `.agents/config.json`'s `workerCommands` ships with the template maintainer's own placeholder (`"npm test"`) — every worker's composed prompt names this list as what it may run, so a Python or Rust project left with `npm test` there is a Red phase no worker can ever confirm. Replace that placeholder entry with the exact command you just verified in step 5a.3, keeping the rest of the array (the read-only `git` entries) as shipped.
 
+6. **If the test command needs an environment a fresh checkout does not have** — a Python virtualenv, `node_modules` — decide how a worker's worktree gets one, with the human, using `tools/workflow-mcp/engine-setup.md § Projects with a Python virtualenv`. For a per-worktree environment, put the commands that build it in `.agents/config.json` `worktreeSetup` (`prepare_worktree` hands them back to run), and make sure what they create is gitignored. For a shared one, the worker's command is relative to `.worktrees/<id>/` and is a separate `workerCommands` entry. Then call `check` and resolve any `setup` block it reports for the engines your roles use.
+
 If the human declines the bootstrap, leave `commands.md ## Test` as `<TBD>` and `workerCommands` unchanged, and say plainly in the report that `/project:work` will refuse to start until a test command runs.
 
 ### 6. Fill in project.md and regenerate AGENTS.md / CLAUDE.md

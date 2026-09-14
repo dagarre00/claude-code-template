@@ -108,12 +108,20 @@ are yours to trigger.
 The conductor — usually Claude Code — delegates through the workflow MCP server in `tools/workflow-mcp`. It is a prompt factory, not a process supervisor: it composes the worker's prompt from `.agents/` and hands back a command you run.
 
 ```
-prepare_worktree     # isolated checkout at committed HEAD, on its own worker/<id> branch
+check                # drift, installed engines, missing agy grants, capability gaps
+prepare_worktree     # isolated checkout at committed HEAD on worker/<id>, plus setup_commands to run in it
 build_worker_prompt  # role + rules + contract + the skills the command declares
-                     # -> { command, cwd, prompt_file, stdin_file, report_file, prompt_bytes }
+                     # -> { command, cwd, prompt_file, stdin_file, report_file, prompt_bytes, attempt }
+inspect_dispatch     # after the run: record, exit code, duration, report path, worktree changes,
+                     # agy usage and audit, and a mechanical verdict (pass / reject / incomplete)
+record_decision      # accepted or rejected, with the reason
+dispatch_stats       # per engine and role: accepted, retries, durations, tokens
+list_worktrees / remove_worktree / list_roles / sync
 ```
 
-Run the returned `command`, read the report, commit the worker's owned paths yourself, then `remove_worktree`. The server never spawns, commits, merges or pushes — you keep all of that, and a failed worker is debugged by re-running a command line you can read.
+Run the returned `command`, `inspect_dispatch`, read the report, `record_decision`, commit the worker's owned paths yourself, then `remove_worktree` — the full procedure is the `worker-dispatch` skill. The server never spawns, commits, merges or pushes — you keep all of that, and a failed worker is debugged by re-running a command line you can read.
+
+**Checking an engine end to end.** `npm --prefix tools/workflow-mcp run e2e -- --engine <antigravity|codex|claude>` runs one small real cycle on that engine — a capability probe, a developer case whose Red the conductor re-proves, and an adversary — in a throwaway fixture, and exits non-zero if any check fails. Run it after upgrading an engine CLI and before changing which engine a role runs on.
 
 **Where the report actually is.** `report_file` is non-null for codex and antigravity — read it instead of `stdout` for the routine "what did the worker report" path; `stdout` is captured to a `raw_file` alongside it, for the rare case of actually debugging a failed run. Claude needs neither: its `--print` stdout already is only the final message, and `command` is never wrapped for it. Codex writes `report_file` itself, via `-o`. Antigravity has no equivalent flag (measured: `--input-format stream-json` refuses to pair with `--output-format text`, so its stdout has to be the full NDJSON event stream), so `dispatch.mjs` wraps its command instead — capture stdout to `raw_file`, run `engines/extract-agy-result.mjs` over it to pull out the stream's one `{"event":"result",...}` line, print only that. Either way, running the returned `command` verbatim now leaves a small, clean report as the only thing that reaches the conductor's own tool-call result, on every engine. Measured on a real dispatch, before this existed: a `wiki-maintainer` health pass on codex produced 6.9MB/43,015 lines of raw stdout — almost entirely large file reads and one rejected multi-file patch echoed back in full, not model reasoning (`reasoning summaries: none` holds by default; zero `thinking:` sections anywhere in that file).
 

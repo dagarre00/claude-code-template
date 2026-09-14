@@ -289,6 +289,12 @@ GenerateContent`), and `read_url_content` is auto-denied in headless mode unless
 each URL is granted in advance, which a research task cannot know. The agent
 definition carries no web tools for that reason. Keep `researcher` off agy.
 
+That is computed rather than remembered: the `researcher` role declares
+`capabilities: [web]`, the agy adapter declares `providesWeb: false`, so `check`
+lists the pair under `capability_gaps` and `build_worker_prompt` warns on any
+such dispatch. Only a measured "no" is declared — claude and codex workers were
+never measured for web access, so they declare nothing either way.
+
 ## Projects with a Python virtualenv
 
 A worktree is a fresh checkout, so it has no `.venv` — it is gitignored. The
@@ -332,8 +338,19 @@ uv venv --python 3.11 .venv
 uv pip install --python .venv/Scripts/python.exe -e . pytest    # or: uv sync, with a uv.lock
 ```
 
-The conductor runs that in the worktree after `prepare_worktree` and before
-dispatch; the `.venv` is ignored, so the worktree still reads as clean. A
+Put those lines in `.agents/config.json` as `worktreeSetup`:
+
+```json
+"worktreeSetup": [
+  "uv venv --python 3.11 .venv",
+  "uv pip install --python .venv/Scripts/python.exe -e . pytest"
+]
+```
+
+`prepare_worktree` hands them back as `setup_commands`, and the conductor runs
+each in the worktree before dispatch — the MCP itself still runs nothing. A
+failing setup command is a blocker (`worker-dispatch` skill); the `.venv` is
+ignored, so the worktree still reads as clean. A
 virtualenv is also deep enough to pass Windows' 260-character path limit, which
 used to make `remove_worktree` fail half-way and leave the directory and branch
 behind; worktrees are now created and removed with `core.longpaths=true`.

@@ -57,11 +57,10 @@ Code and wiki ship together:
 
 ## Answering an adversary
 
-On `[complex]` and batched cycles, a read-only `adversary` returns numbered findings in its report, which the conductor passes to you. The protocol — dispositions, severity vocabulary, the critical/major gate, the round commit — is the `adversarial-review` skill; follow it. Your half:
+On `[complex]` and batched cycles, a read-only `adversary` returns numbered findings. The conductor gets a disposition recommendation for each from the read-only `triage` role, not from you, and owns the `human-checkpoint` and the round-closing commit. You are dispatched only when a fix was approved. The protocol — dispositions, severity vocabulary, the critical/major gate — is the `adversarial-review` skill. Your half:
 
-- **Recommend a disposition per finding** — Filed (the default), Fixed (approved only), or Rejected with a stated reason — plus, for `critical`/`major`, the failure scenario and what a fix would touch. Hand that back to the conductor, which owns the `human-checkpoint` and the round-closing commit; you then make whatever fix the human approved.
 - **An approved fix is ordinary work**: failing test first (tests before implementation); a finding that contradicts the entity spec means fixing the Behavior case before the code (never modify tests to make them pass); full suite re-run after each fix.
-- **You may reject** a finding that misreads the code or that a documented invariant rules out — cite the invariant, and if it isn't written down anywhere, write it into the entity page or `gotchas.md` as part of the rejection. Silence is not a disposition and "unlikely" is not a reason (every finding gets a written disposition).
+- **If writing the failing test shows the finding misreads the code** — the scenario cannot be made to fail — stop and report that, with the test you tried, rather than changing code to match a finding that does not hold. The conductor re-disposes it; silence is not a disposition (every finding gets a written disposition).
 
 ## Finishing
 

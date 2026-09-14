@@ -34,7 +34,7 @@ If any fails: run `human-checkpoint`.
 
 1. **Sync develop.** Run the guarded sync block in `.agents/skills/feature-branching/sync-develop.md` (read it; its stop conditions apply).
 
-2. **Dispatch the `reviewer` agent** with:
+2. **Dispatch the `reviewer` agent** through the workflow MCP, per the `worker-dispatch` skill (`check`, prepare, compose, run, `inspect_dispatch`, `record_decision`), with:
    - The scope (whole repo or specific area from `$ARGUMENTS`).
    - The current `docs/wiki/wiki-todos.md` (so it sees outstanding queue items as input).
    - Explicit instruction: fresh context, no developer assumptions, verify claims independently.
