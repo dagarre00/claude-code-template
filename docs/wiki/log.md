@@ -15,7 +15,7 @@ updated: 2026-09-11
 > Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd — `init`, `interview`, `work`, `pr`, `adversary`, `review`, `wiki-ingest`, `wiki-maintenance`, or `chore` when nothing else fits (behavioral rule 19).
 > Entries are written by the command that did the work, in the same commit as the work. `/project:wiki` archives this file once it passes ~100 entries.
 
-## [2026-09-14 05:30] chore
+## [2026-09-14 06:38] chore
 
 - Change: `.agents/config.json` `roles.developer.engine` `["codex", "claude"]` → `["antigravity", "codex", "claude"]` — agy first, on the human's instruction to add it to the developer role.
 - Why first rather than a fallback: the `adversary` starts on codex, so a codex developer put author and reviewer on one provider (`adversarial-review` wants a different model by default) and both roles behind one usage limit. With agy first, each of the three providers is first for at least one role again.
