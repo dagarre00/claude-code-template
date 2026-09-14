@@ -65,6 +65,22 @@ export function composePrompt(canonical, input = {}) {
     return skill;
   });
 
+  // Deferral, not delegation. `.agents/` is committed, so a skill a role rarely
+  // needs is already in its worktree and can be named by path instead of being
+  // paid for on every dispatch. Only a skill this dispatch sends can be deferred:
+  // which skills a role has stays the command's decision, and a lazy list that
+  // could name anything would be a loophole around the per-role split.
+  const lazyNames = input.lazy_skills ?? [];
+  if (!Array.isArray(lazyNames)) throw new Error('lazy_skills must be an array');
+  for (const name of lazyNames) {
+    if (!skills.some(skill => skill.name === name)) {
+      throw new Error(`lazy_skills names "${name}", which is not sent to this dispatch; `
+        + `only a sent skill can be deferred (sent: ${skills.map(skill => skill.name).join(', ') || 'none'})`);
+    }
+  }
+  const lazy = skills.filter(skill => lazyNames.includes(skill.name));
+  const inlined = skills.filter(skill => !lazyNames.includes(skill.name));
+
   const writes = role.access === 'write';
   if (!writes && commit_message != null) {
     throw new Error(`Role "${role.name}" is read-only and produces no commit; commit_message does not apply`);
@@ -79,14 +95,29 @@ export function composePrompt(canonical, input = {}) {
     section(`Role: ${role.name}`, role.body)
   ];
 
-  if (skills.length) {
-    parts.push(skills.map(skill => {
+  if (inlined.length) {
+    parts.push(inlined.map(skill => {
       const attachments = skill.files.length
         ? `\n\nSupporting files for this skill, to read only if the procedure sends you there:\n`
           + skill.files.map(file => `- \`${file}\``).join('\n')
         : '';
       return section(`Skill: ${skill.name}`, skill.body + attachments);
     }).join(SEPARATOR));
+  }
+
+  // The description is the only trigger the worker gets, which is why it is
+  // sent verbatim: it was written to say WHEN a procedure applies. The worker
+  // is told to read before acting, because a gotcha recorded from memory of
+  // what the skill probably says is the failure this experiment measures.
+  if (lazy.length) {
+    parts.push(section('Skills to read when needed',
+      'These skills are part of your procedure, but their text is not inlined here. Each one is committed in '
+      + 'your workspace at the path shown, so reading it stays inside your scope. When the situation a '
+      + 'description names comes up, read that file with your file tools **before you act** on it, and follow it '
+      + 'as if it were written above. A description says when a procedure applies, not what it says — do not '
+      + 'work from a guess at its content.\n\n'
+      + lazy.map(skill => `- **${skill.name}** — \`.agents/skills/${skill.name}/SKILL.md\`. ${skill.description}`).join('\n')
+      + '\n\nNo other file under `.agents/` is part of your assignment unless this prompt names it.'));
   }
 
   // The allowlist goes IN the prompt, not just into the argv. A worker that does
@@ -178,6 +209,7 @@ export function composePrompt(canonical, input = {}) {
     profile: role.profile,
     command: command?.name ?? null,
     skills: skills.map(skill => skill.name),
+    lazy_skills: lazy.map(skill => skill.name),
     owned_paths: owned
   };
 }

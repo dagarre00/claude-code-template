@@ -106,6 +106,13 @@ function verdictFor({ record, outcome, report, worktree, decision }) {
     warnings.push(`The worker read outside its workspace (${audit.reads_outside_workspace.length}): `
       + `${audit.reads_outside_workspace.slice(0, 5).join('; ')}. For a reviewer, that can void its independence.`);
   }
+  // Records from before skills were recorded carry no list, and say nothing.
+  const unsent = Array.isArray(record?.skills)
+    ? (audit?.skill_reads ?? []).filter(name => !record.skills.includes(name)) : [];
+  if (unsent.length) {
+    warnings.push(`The worker read skills it was not sent: ${unsent.join(', ')}. Every worktree holds every `
+      + 'committed skill; for a reviewer, reading another role\'s procedures can void its independence.');
+  }
   if (audit?.commands_not_allowlisted?.length) {
     warnings.push(`Commands not on the allowlist verbatim: ${audit.commands_not_allowlisted.join('; ')}.`);
   }
@@ -151,6 +158,10 @@ function summarise(root, task_id, dir, listing, { archived = false } = {}) {
     base_sha: record?.base_sha ?? worktreeRecord?.base_sha ?? null,
     integration_branch: record?.integration_branch ?? worktreeRecord?.integration_branch ?? null,
     owned_paths: record?.owned_paths ?? null, prompt_bytes: record?.prompt_bytes ?? null,
+    skills: record?.skills ?? null, lazy_skills: record?.lazy_skills ?? null,
+    // null where the engine gives no transcript to read it from — not "none read".
+    lazy_skills_read: audit?.skill_reads && record?.lazy_skills
+      ? record.lazy_skills.filter(name => audit.skill_reads.includes(name)) : null,
     created_at: record?.created_at ?? worktreeRecord?.created_at ?? null,
     run: outcome ? { started_at: outcome.started_at ?? null, finished_at: outcome.finished_at ?? null,
       duration_ms: outcome.duration_ms ?? null, exit_code: outcome.exit_code ?? null,

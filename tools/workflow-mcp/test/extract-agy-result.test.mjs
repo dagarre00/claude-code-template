@@ -114,6 +114,23 @@ test('the audit lists commands that were not on the allowlist verbatim', () => {
   assert.deepEqual(report.workflow_mcp_audit.commands_not_allowlisted, ['cd src && npm test']);
 });
 
+// `.agents/` is committed, so every worktree holds every skill whether or not
+// the prompt sent it. Which ones a worker actually opened is what separates a
+// deferred skill that was used from one that was ignored — and a reviewer that
+// opened the author's procedures from one that read independently.
+test('the audit names every skill the worker read, by any tool, inside the workspace or not', () => {
+  const { status, report } = run([
+    step(2, 'view_file', { AbsolutePath: `${WS}\\.agents\\skills\\gotcha-recording\\SKILL.md` }),
+    step(3, 'view_file', { AbsolutePath: 'c:/work/repo/.worktrees/t1/.agents/skills/tdd-loop/SKILL.md' }),
+    step(4, 'run_command', { CommandLine: 'cat .agents/skills/gotcha-recording/SKILL.md', Cwd: WS }),
+    step(5, 'grep_search', { SearchPath: `${WS}\\docs`, Query: 'skills' }),
+    result({})
+  ], { dispatch });
+  assert.equal(status, 0);
+  assert.deepEqual(report.workflow_mcp_audit.skill_reads, ['gotcha-recording', 'tdd-loop']);
+  assert.equal(report.workflow_mcp_audit.clean, false, 'the cat is still not allowlisted');
+});
+
 test('a clean run carries a clean audit', () => {
   const { status, report } = run([step(2, 'run_command', { CommandLine: 'git status', Cwd: WS }), result({})], { dispatch });
   assert.equal(status, 0);

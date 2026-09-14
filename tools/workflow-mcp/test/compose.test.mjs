@@ -40,6 +40,42 @@ test('an explicit skill list narrows the command default rather than adding to i
   assert.doesNotMatch(prompt, /Check for an existing page first\./);
 });
 
+// The experiment: a skill the role rarely uses is committed in every worktree
+// anyway, so it can be named by path instead of inlined. It is still the role's
+// skill — deferring changes when the worker reads it, never which skills it has.
+test('a lazy skill is named by path and trigger instead of inlined, and still counts as sent', () => {
+  const { prompt, skills, lazy_skills } = compose({ ...base, command: 'work', lazy_skills: ['wiki-update'] });
+  assert.deepEqual(skills, ['tdd-loop', 'wiki-update']);
+  assert.deepEqual(lazy_skills, ['wiki-update']);
+  assert.match(prompt, /Write the failing test first\./);
+  assert.doesNotMatch(prompt, /Check for an existing page first\./);
+  assert.doesNotMatch(prompt, /## Skill: wiki-update/);
+  assert.match(prompt, /## Skills to read when needed/);
+  assert.match(prompt, /`\.agents\/skills\/wiki-update\/SKILL\.md`/);
+  assert.match(prompt, /How to structure a wiki page\./, 'the description is the trigger the worker reads by');
+  assert.match(prompt, /before you act/i);
+});
+
+test('only a skill this dispatch sends can be deferred', () => {
+  assert.throws(() => compose({ ...base, command: 'work', skills: ['tdd-loop'], lazy_skills: ['wiki-update'] }),
+    /wiki-update.*not sent|not sent.*wiki-update/i);
+  assert.throws(() => compose({ ...base, command: 'work', lazy_skills: 'wiki-update' }), /lazy_skills must be an array/);
+});
+
+test('without lazy_skills the prompt is unchanged: no deferred section', () => {
+  const { prompt, lazy_skills } = compose({ ...base, command: 'work' });
+  assert.deepEqual(lazy_skills, []);
+  assert.doesNotMatch(prompt, /## Skills to read when needed/);
+});
+
+test('the deferred list sits in the cacheable prefix, before anything per-dispatch', () => {
+  const a = compose({ ...base, command: 'work', lazy_skills: ['wiki-update'], instructions: 'First.' }).prompt;
+  const b = compose({ ...base, command: 'work', lazy_skills: ['wiki-update'], instructions: 'Second.' }).prompt;
+  assert.equal(a.slice(0, a.indexOf('## Assignment')), b.slice(0, b.indexOf('## Assignment')));
+  const deferred = a.indexOf('## Skills to read when needed');
+  assert.ok(deferred > a.indexOf('## Skill: tdd-loop') && deferred < a.indexOf('## Assignment'));
+});
+
 test('no command and no skills means no skill section at all', () => {
   const { prompt, skills } = compose(base);
   assert.deepEqual(skills, []);

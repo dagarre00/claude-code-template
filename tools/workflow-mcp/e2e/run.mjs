@@ -6,6 +6,7 @@
 //   npm run e2e -- --engine codex --conductor claude
 //   npm run e2e -- --dry-run                       (compose everything, launch nothing)
 //   npm run e2e -- --keep                          (leave the fixture for inspection)
+//   npm run e2e -- --skills inline|lazy            (one arm of the lazy-skills experiment)
 //
 // It spends real model calls — three dispatches — so it is not part of `npm
 // test`. Run it after upgrading an engine CLI, after changing an adapter, and
@@ -64,10 +65,29 @@ const frontmatter = (aliases, type = 'reference') =>
   `---\naliases: [${aliases}]\ntype: ${type}\ndomains: [software]\nstatus: stable\nsources: []\ncontradicts: []\n`
   + 'open_questions: []\ncreated: 2026-09-14\nupdated: 2026-09-14\n---\n\n';
 
+// The developer's full skill set on /project:work, and the two it rarely uses —
+// the arms of the lazy-skills experiment differ only in whether those two are
+// inlined or named by path.
+const DEVELOPER_SKILLS = ['tdd-loop', 'wiki-update', 'gotcha-recording', 'decision-recording'];
+const RARELY_USED = ['gotcha-recording', 'decision-recording'];
+
+// The trap an experiment run needs, so that "no gotcha was recorded" means
+// something: the module the wiki names is generated from another file by a
+// pretest step the wiki never mentions, so an edit to it is silently undone on
+// every `npm test`. The committed copy is byte-identical to what the build
+// writes, so a green run leaves the tree clean.
+const TRAP_FILES = {
+  'package.json': JSON.stringify({ name: 'e2e-slug', version: '0.0.0', private: true, type: 'module',
+    scripts: { pretest: 'node scripts/build.mjs', test: 'node --test' } }, null, 2) + '\n',
+  'scripts/build.mjs': "import { copyFileSync } from 'node:fs';\n\n"
+    + "copyFileSync(new URL('../src/slugify.src.mjs', import.meta.url), new URL('../src/slugify.mjs', import.meta.url));\n",
+  'src/slugify.src.mjs': 'export function slugify(text) {\n  return text;\n}\n'
+};
+
 // A one-module Node project with an unimplemented stub, so a worker's Red is an
 // assertion failure rather than an import error, and the conductor can re-run the
 // worker's test against the base stub to prove that Red was real.
-export function buildFixture(dir) {
+export function buildFixture(dir, { trap = false } = {}) {
   mkdirSync(dir, { recursive: true });
   cpSync(resolve(TEMPLATE_ROOT, '.agents'), resolve(dir, '.agents'), { recursive: true });
   for (const file of ['AGENTS.md', 'CLAUDE.md']) cpSync(resolve(TEMPLATE_ROOT, file), resolve(dir, file));
@@ -89,7 +109,8 @@ export function buildFixture(dir) {
       + '- [ ] **B2** — Drops every character that is not `a-z` or `0-9` and trims hyphens: `slugify(\'  Rock & Roll!  \')` returns `\'rock-roll\'`.\n\n'
       + '## Implementation\n\n- `src/slugify.mjs` — stub, returns its input.\n\n## Tests\n\n_None yet._\n',
     'docs/wiki/todos.md': frontmatter('Work queue') + '# Todos\n\n## Now (P0 — next)\n\n- [ ] Implement `slugify` — entity `slugify`, case B1.\n',
-    'docs/wiki/log.md': frontmatter('Log') + '# Log\n\n## [2026-09-14 00:00] init\n\n- e2e fixture.\n'
+    'docs/wiki/log.md': frontmatter('Log') + '# Log\n\n## [2026-09-14 00:00] init\n\n- e2e fixture.\n',
+    ...(trap ? TRAP_FILES : {})
   };
   for (const [path, body] of Object.entries(files)) {
     mkdirSync(dirname(resolve(dir, path)), { recursive: true });
@@ -109,12 +130,21 @@ export function buildFixture(dir) {
 // runs `script` through the real wrapper — outcome, report, inspection — instead
 // of the engine, after `effect` has edited the worktree the way a worker would.
 // Given at all, every dispatch must have one: a test never falls back to a paid run.
+//
+// `skills` runs one arm of the lazy-skills experiment: 'inline' or 'lazy'. Either
+// one sends the developer its full skill set over the trap fixture; 'lazy' names
+// the rarely used two by path. Its outcome — prompt size, tokens, whether a
+// well-formed gotcha about the trap was recorded, which deferred skills were
+// read — goes in `experiment`, never in the checks: the measurement must not
+// decide whether the case is integrated.
 export async function runE2E({ engine = 'antigravity', conductor = 'claude', dryRun = false, keep = false,
-  log = console.log, standIns = null } = {}) {
+  log = console.log, standIns = null, skills = null } = {}) {
   if (!engineNames.includes(engine)) throw new Error(`Unknown engine "${engine}"; expected ${engineNames.join(', ')}`);
+  if (skills !== null && !['inline', 'lazy'].includes(skills)) throw new Error(`Unknown skills arm "${skills}"; expected inline or lazy`);
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const base = mkdtempSync(resolve(tmpdir(), 'wmcp-e2e-'));
-  const root = buildFixture(resolve(base, 'fx'));
+  const root = buildFixture(resolve(base, 'fx'), { trap: skills !== null });
+  let experiment = null;
   const tools = makeTools(root, conductor);
   const checks = [];
   // A check this engine gives no evidence for is `unobserved` — counted as
@@ -235,11 +265,18 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
     // 3 — developer: one Behavior case, Red proven by the conductor
     from = checks.length;
     scenario('dev', () => {
-    const owned = ['src/slugify.mjs', 'test/slugify.test.mjs', 'docs/wiki/entities/slugify.md'];
+    const owned = ['src/slugify.mjs', 'test/slugify.test.mjs', 'docs/wiki/entities/slugify.md',
+      ...(skills ? ['src/slugify.src.mjs', 'docs/wiki/gotchas.md'] : [])];
+    const lazySkills = skills === 'lazy' ? RARELY_USED : [];
     const dev = dispatch('dev-b1', { role: 'developer', command: 'work', owned_paths: owned,
-      skills: ['tdd-loop'], commit_message: 'feat(slugify): lowercase and hyphen-join words',
+      skills: skills ? DEVELOPER_SKILLS : ['tdd-loop'], ...(lazySkills.length ? { lazy_skills: lazySkills } : {}),
+      commit_message: 'feat(slugify): lowercase and hyphen-join words',
       instructions: 'Implement Behavior case B1 of entity `slugify` (docs/wiki/entities/slugify.md) and nothing else — '
         + 'B2 is a later dispatch. Simple cycle, no plan. Test command: `npm test`.' });
+    if (skills) {
+      experiment = { skills_mode: skills, skills: dev.built.skills, lazy_skills: dev.built.lazy_skills,
+        prompt_bytes: dev.built.prompt_bytes };
+    }
     if (!dryRun) {
       const ws = dev.wt.workspace;
       record('dev.verdict', 'inspect_dispatch passes the developer', dev.inspected.verdict.mechanical === 'pass', dev.inspected.verdict.reasons);
@@ -249,11 +286,17 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
       const testPath = resolve(ws, 'test/slugify.test.mjs');
       record('dev.test_named', 'a test named after B1 exists', existsSync(testPath) && /B1/.test(readFileSync(testPath, 'utf8')));
       // Red, proven: the worker's test against the base stub must fail on an assertion.
-      const srcPath = resolve(ws, 'src/slugify.mjs');
-      const workerSource = existsSync(srcPath) ? readFileSync(srcPath, 'utf8') : '';
-      writeFileSync(srcPath, git(root, 'show', `${dev.wt.base_sha}:src/slugify.mjs`) + '\n');
+      // On the trap fixture the stub is its source as well, or the build would
+      // copy the worker's implementation back over it before the test ran.
+      const stubbed = skills ? ['src/slugify.mjs', 'src/slugify.src.mjs'] : ['src/slugify.mjs'];
+      const workerSources = stubbed.map(path => {
+        const full = resolve(ws, path);
+        const text = existsSync(full) ? readFileSync(full, 'utf8') : '';
+        writeFileSync(full, git(root, 'show', `${dev.wt.base_sha}:${path}`) + '\n');
+        return [full, text];
+      });
       const red = npmTest(ws);
-      writeFileSync(srcPath, workerSource);
+      for (const [full, text] of workerSources) writeFileSync(full, text);
       const redOutput = `${red.stdout}${red.stderr}`;
       record('dev.red_real', 'the worker\'s test fails against the base stub, on an assertion',
         red.status !== 0 && /AssertionError|Expected values/.test(redOutput) && !/ERR_MODULE_NOT_FOUND|does not provide an export/.test(redOutput),
@@ -261,6 +304,20 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
       const entityPath = resolve(ws, 'docs/wiki/entities/slugify.md');
       const entity = existsSync(entityPath) ? readFileSync(entityPath, 'utf8') : '';
       record('dev.scope', 'B1 ticked, B2 untouched', /\[x\]\s*\*\*B1\*\*/.test(entity) && /\[ \]\s*\*\*B2\*\*/.test(entity));
+      if (skills) {
+        // The base page mentions none of these, so the whole file can be read.
+        const gotchasPath = resolve(ws, 'docs/wiki/gotchas.md');
+        const gotchas = existsSync(gotchasPath) ? readFileSync(gotchasPath, 'utf8') : '';
+        const recorded = gotchas !== git(root, 'show', `${dev.wt.base_sha}:docs/wiki/gotchas.md`) + '\n' && /^###\s/m.test(gotchas);
+        const inspected = tools.inspect_dispatch({ task_id: 'dev-b1' });
+        Object.assign(experiment, {
+          gotcha: { recorded,
+            well_formed: recorded && ['When', 'Symptom', 'Cause', 'Fix'].every(field => gotchas.includes(`**${field}:**`)),
+            on_topic: recorded && /pretest|build\.mjs|slugify\.src|generated/i.test(gotchas) },
+          lazy_skills_read: inspected.lazy_skills_read,
+          usage: inspected.usage, duration_ms: inspected.run?.duration_ms ?? null
+        });
+      }
       if (decide('dev-b1', from)) {
         git(ws, 'add', '--', ...owned);
         git(ws, 'commit', '-qm', 'feat(slugify): lowercase and hyphen-join words');
@@ -314,9 +371,10 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
       unobserved: checks.filter(check => check.status === 'unobserved').length,
       checks, dispatches: [...inspections.keys()].map(task_id => tools.inspect_dispatch({ task_id })).map(({ task_id, role, engine: ran, model, effort, attempt, run: outcome, usage, verdict, decision }) =>
         ({ task_id, role, engine: ran, model, effort, attempt, run: outcome, usage, verdict: verdict.mechanical, decision: decision?.decision ?? null })),
-      stats: stats.by_engine_role };
-    const out = resolve(base, `result-${engine}-${stamp}.json`);
+      stats: stats.by_engine_role, ...(experiment ? { experiment } : {}) };
+    const out = resolve(base, `result-${engine}${skills ? `-${skills}` : ''}-${stamp}.json`);
     writeFileSync(out, JSON.stringify(result, null, 2) + '\n');
+    if (experiment) log(`\nexperiment (${skills}): ${JSON.stringify(experiment)}`);
     log(`\n${result.passed} passed, ${result.failed} failed, ${result.unobserved} unobserved on ${engine}${dryRun ? ' (dry run)' : ''}. Result: ${out}`
       + `\nReports and transcripts: ${resolve(base, 'dispatch')}`);
     return { ...result, result_file: out };
@@ -335,7 +393,7 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
   const args = process.argv.slice(2);
   const value = flag => { const at = args.indexOf(flag); return at === -1 ? undefined : args[at + 1]; };
   runE2E({ engine: value('--engine') ?? 'antigravity', conductor: value('--conductor') ?? 'claude',
-    dryRun: args.includes('--dry-run'), keep: args.includes('--keep') })
+    dryRun: args.includes('--dry-run'), keep: args.includes('--keep'), skills: value('--skills') ?? null })
     .then(result => { process.exitCode = result.failed ? 1 : 0; })
     .catch(error => { console.error(error.stack ?? error.message); process.exitCode = 2; });
 }

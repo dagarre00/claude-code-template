@@ -146,9 +146,18 @@ if (existsSync(dispatchFile)) {
     const absolute = path => /^([a-zA-Z]:[\\/]|[\\/])/.test(path);
     const allowed = Array.isArray(record.worker_commands) ? new Set(record.worker_commands) : null;
 
-    const reads = [], writes = [], subagents = [], commands = [];
+    // Every worktree holds every committed skill, sent or not. Which ones a worker
+    // opened — by a file tool or a command, anywhere — is what shows whether a
+    // deferred skill was used, and whether a reviewer read the author's procedures.
+    const SKILL_PATH = /\.agents[\\/]+skills[\\/]+([A-Za-z0-9._-]+)[\\/]/g;
+    const reads = [], writes = [], subagents = [], commands = [], skills = [];
     for (const call of calls) {
       const tool = canon(call.tool);
+      if (!WRITE_TOOLS.has(tool)) {
+        for (const value of Object.values(call.parameters)) {
+          if (typeof value === 'string') for (const match of value.matchAll(SKILL_PATH)) skills.push(match[1]);
+        }
+      }
       if (SUBAGENT_TOOLS.has(tool)) subagents.push(call.tool);
       if (tool === 'runcommand' && allowed && typeof call.parameters.CommandLine === 'string'
         && !allowed.has(call.parameters.CommandLine)) commands.push(call.parameters.CommandLine);
@@ -164,7 +173,8 @@ if (existsSync(dispatchFile)) {
       reads_outside_workspace: unique(reads),
       writes_outside_workspace: unique(writes),
       subagent_calls: unique(subagents),
-      commands_not_allowlisted: unique(commands)
+      commands_not_allowlisted: unique(commands),
+      skill_reads: unique(skills).sort()
     };
   }
 }

@@ -136,6 +136,41 @@ test('an agy SUCCESS with a denied read is rejected, and its usage counters are 
   });
 });
 
+// Every worktree holds every committed skill. A reviewer that opens one it was
+// not sent is reading with the author's procedures in its head, which is the
+// independence the per-role skill split exists to protect — so it is a warning,
+// and a deferred skill the worker did or did not open is part of the record.
+const agyTranscript = (workspace, paths) => [
+  ...paths.map((path, i) => JSON.stringify({ event: 'step_update', step_update: { step_index: i, state: 'DONE',
+    step_type: 'tool', tool_name: 'view_file', tool_info: { parameters: { AbsolutePath: `${workspace}/${path}` } } } })),
+  JSON.stringify({ event: 'result', result: { status: 'SUCCESS', response: 'a report' } })
+].join('\n') + '\n';
+
+test('a skill the worker read but was not sent is warned about; a deferred skill it read is recorded', () => {
+  repo((root, tools) => {
+    const run = (task_id, role, paths, extra = {}) => {
+      const { built, run: go } = dispatch(tools, { task_id, role, engine: 'antigravity', script: 'cat "$T"', ...extra });
+      const file = resolve(built.report_file, '..', 't.json');
+      writeFileSync(file, agyTranscript(built.workspace, paths));
+      process.env.T = file;
+      try { go(); } finally { delete process.env.T; }
+      return tools.inspect_dispatch({ task_id });
+    };
+
+    const reviewer = run('peek', 'adversary', ['.agents/skills/tdd-loop/SKILL.md']);
+    assert.equal(reviewer.verdict.mechanical, 'pass', 'a read is evidence, never a failure');
+    assert.match(reviewer.verdict.warnings.join(' '), /read skills it was not sent: tdd-loop/);
+    assert.deepEqual(reviewer.skills, []);
+
+    const developer = run('lazy', 'developer', ['.agents/skills/wiki-update/SKILL.md'],
+      { command: 'work', lazy_skills: ['wiki-update'] });
+    assert.deepEqual(developer.skills, ['tdd-loop', 'wiki-update']);
+    assert.deepEqual(developer.lazy_skills, ['wiki-update']);
+    assert.deepEqual(developer.lazy_skills_read, ['wiki-update']);
+    assert.doesNotMatch(developer.verdict.warnings.join(' '), /not sent/);
+  });
+});
+
 // codex's transcript ends its run with `tokens used` and the count on the next
 // line, grouped by locale — measured on this machine as `14.771` for 14,771.
 // claude's plain-text report carries no counter at all, which stays null.

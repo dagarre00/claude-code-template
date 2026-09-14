@@ -341,6 +341,32 @@ test('an antigravity dispatch writes its agent definition beside the prompt, nev
 
 // The extraction step audits commands against the allowlist the worker was
 // given, and it can only read that from the record beside the transcript.
+// A deferred skill is read from the worker's own checkout, so the prompt only
+// tells the truth if that checkout holds the same procedure the conductor
+// composed from. A missing or different file is refused before anything is
+// written, rather than discovered as a worker following a stale procedure.
+test('a lazy skill must exist in the workspace exactly as composed', () => {
+  withRepo(root => {
+    const workspace = resolve(root, '.worktrees/lazy');
+    const lazy = { ...base, command: 'work', conductorEngine: 'claude', workspace, lazy_skills: ['wiki-update'] };
+    assert.throws(() => prepareDispatch(root, { ...lazy, task_id: 'lazy-missing' }), /wiki-update.*not in the workspace/i);
+
+    mkdirSync(resolve(workspace, '.agents/skills/wiki-update'), { recursive: true });
+    writeFileSync(resolve(workspace, '.agents/skills/wiki-update/SKILL.md'),
+      '---\nname: wiki-update\ndescription: How to structure a wiki page.\n---\n\nAn older procedure.\n');
+    assert.throws(() => prepareDispatch(root, { ...lazy, task_id: 'lazy-stale' }), /wiki-update.*differs/i);
+
+    // CRLF from a Windows checkout is the same procedure, not a stale one.
+    writeFileSync(resolve(workspace, '.agents/skills/wiki-update/SKILL.md'),
+      '---\r\nname: wiki-update\r\ndescription: How to structure a wiki page.\r\n---\r\n\r\nCheck for an existing page first.\r\n');
+    const result = prepareDispatch(root, { ...lazy, task_id: 'lazy-ok' });
+    assert.deepEqual(result.lazy_skills, ['wiki-update']);
+    const record = JSON.parse(readFileSync(resolve(root, '.worktrees/.dispatch/lazy-ok/dispatch.json'), 'utf8'));
+    assert.deepEqual(record.skills, ['tdd-loop', 'wiki-update']);
+    assert.deepEqual(record.lazy_skills, ['wiki-update']);
+  });
+});
+
 test('the dispatch record carries the allowlist the worker was given', () => {
   withRepo(root => {
     const workspace = resolve(root, '.worktrees/x');

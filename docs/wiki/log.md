@@ -15,6 +15,15 @@ updated: 2026-09-11
 > Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd — `init`, `interview`, `work`, `pr`, `adversary`, `review`, `wiki-ingest`, `wiki-maintenance`, or `chore` when nothing else fits (behavioral rule 19).
 > Entries are written by the command that did the work, in the same commit as the work. `/project:wiki` archives this file once it passes ~100 entries.
 
+## [2026-09-14 09:48] chore
+
+- Change: `build_worker_prompt` takes an experimental `lazy_skills` — a subset of the skills the dispatch already sends, named by path and description in a `Skills to read when needed` section instead of inlined. Refused for a skill not sent (the per-role split stays the command's decision), and for one missing from or different in the worker's workspace (it would read a procedure other than the one composed). No command declares it; nothing changes for existing dispatches.
+- Change: `dispatch.json` records `skills` and `lazy_skills`. agy's audit gains `skill_reads` — every `.agents/skills/<name>/` a worker touched, by file tool or command — and `inspect_dispatch` returns `lazy_skills_read` (null where the engine has no transcript) and warns when a worker read a skill it was not sent. Every worktree holds every committed skill, so that warning covers reviewer independence on every dispatch, not only lazy ones.
+- Change: `npm run e2e -- --skills inline|lazy` runs one arm of the experiment. Both send the developer its full `/project:work` set over a trap fixture — the module the wiki names is regenerated from `src/slugify.src.mjs` by an undocumented pretest step — and differ only in whether `gotcha-recording` and `decision-recording` are inlined. The outcome (prompt bytes, tokens, duration, whether a well-formed gotcha about the trap was recorded, which deferred skills were read) goes in `experiment` in the result, never in the checks, so it cannot gate integration. The default run is unchanged.
+- Why: the human asked whether each CLI should discover skills natively. Answer: yes for the conductor (already true, from one folder), no for workers (it would undo the per-role skill split, the prompt-as-record property, and it behaves differently on every engine). The one variant worth testing was prompt size, since a developer prompt is ~52 KB of mostly unused skills — built as an experiment rather than a switch, because the risk is a worker that needs a skill and does not read it.
+- Measured (dry run, agy): developer prompt 52,445 bytes inline → 45,032 lazy (−14%). No live arm run yet.
+- Verified: workflow-mcp suite 209/209 (10 new tests: composition, workspace check, audit, inspection warning, trap fixture, both arms dry-run, a stand-in run scoring the experiment). Default and both-arm dry runs pass 7/7 on antigravity.
+
 ## [2026-09-14 06:38] chore
 
 - Change: `.agents/config.json` `roles.developer.engine` `["codex", "claude"]` → `["antigravity", "codex", "claude"]` — agy first, on the human's instruction to add it to the developer role.
