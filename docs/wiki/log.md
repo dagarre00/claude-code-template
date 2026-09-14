@@ -15,6 +15,12 @@ updated: 2026-09-11
 > Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd — `init`, `interview`, `work`, `pr`, `adversary`, `review`, `wiki-ingest`, `wiki-maintenance`, or `chore` when nothing else fits (behavioral rule 19).
 > Entries are written by the command that did the work, in the same commit as the work. `/project:wiki` archives this file once it passes ~100 entries.
 
+## [2026-09-14 11:05] chore
+
+- Change: removed the lazy-skills experiment on the human's instruction, after the results below — `build_worker_prompt`'s `lazy_skills`, its workspace check, `lazy_skills`/`lazy_skills_read` in the dispatch record and `inspect_dispatch`, and the e2e `--skills` arms with their trap fixture and `experiment` block. `compose.mjs`, `server.mjs`, `e2e/run.mjs` and their tests are back to `1c6454f`.
+- Kept: `dispatch.json` records the `skills` a worker was sent; agy's audit lists `skill_reads`; `inspect_dispatch` returns `skills` and warns when a worker read a skill it was not sent. Every worktree holds every committed skill, so that warning is the only computed check on a reviewer opening the author's procedures.
+- Verified: workflow-mcp suite 201/201 (199 before the experiment, plus the audit and the warning tests). Default e2e dry run on antigravity 7/7.
+
 ## [2026-09-14 10:45] chore
 
 - Measured: the lazy-skills experiment (entry below), 3 live runs per arm on antigravity, alternating inline/lazy from 10:11 to 10:41 so a quota or latency drift lands on both. All 6 runs passed 22/22 checks; no retries.

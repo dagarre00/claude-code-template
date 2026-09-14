@@ -148,7 +148,7 @@ if (existsSync(dispatchFile)) {
 
     // Every worktree holds every committed skill, sent or not. Which ones a worker
     // opened — by a file tool or a command, anywhere — is what shows whether a
-    // deferred skill was used, and whether a reviewer read the author's procedures.
+    // reviewer read the author's procedures instead of reading independently.
     const SKILL_PATH = /\.agents[\\/]+skills[\\/]+([A-Za-z0-9._-]+)[\\/]/g;
     const reads = [], writes = [], subagents = [], commands = [], skills = [];
     for (const call of calls) {

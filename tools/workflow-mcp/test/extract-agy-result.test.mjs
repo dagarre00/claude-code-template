@@ -116,8 +116,7 @@ test('the audit lists commands that were not on the allowlist verbatim', () => {
 
 // `.agents/` is committed, so every worktree holds every skill whether or not
 // the prompt sent it. Which ones a worker actually opened is what separates a
-// deferred skill that was used from one that was ignored — and a reviewer that
-// opened the author's procedures from one that read independently.
+// reviewer that opened the author's procedures from one that read independently.
 test('the audit names every skill the worker read, by any tool, inside the workspace or not', () => {
   const { status, report } = run([
     step(2, 'view_file', { AbsolutePath: `${WS}\\.agents\\skills\\gotcha-recording\\SKILL.md` }),

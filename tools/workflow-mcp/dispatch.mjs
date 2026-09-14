@@ -10,7 +10,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync,
 import { randomUUID } from 'node:crypto';
 import { isAbsolute, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadCanonical, parseFrontmatter } from './canonical.mjs';
+import { loadCanonical } from './canonical.mjs';
 import { engineAvailability } from './availability.mjs';
 import { loadConfig, resolveEngineChain } from './config.mjs';
 import { composePrompt } from './compose.mjs';
@@ -191,24 +191,6 @@ export function prepareDispatch(root, input = {}) {
     ...input, instructions, context: context ?? '', diff,
     task_id, workspace, workerCommands, commandNotes });
 
-  // A deferred skill is read from the worker's checkout, not from the prompt, so
-  // the prompt is only honest if that checkout holds the procedure composed here.
-  // A worktree cut before a skill changed — or never holding it — would have the
-  // worker follow a different procedure than the one the record says it was sent.
-  for (const name of composed.lazy_skills) {
-    const where = `.agents/skills/${name}/SKILL.md`;
-    const path = resolve(workspace, where);
-    if (!existsSync(path)) {
-      throw new Error(`Lazy skill "${name}" is not in the workspace (${where}); a worker told to read it there `
-        + 'would find nothing. Commit it, prepare a fresh worktree, or inline it.');
-    }
-    const canonicalBody = canonical.skills.find(skill => skill.name === name).body;
-    if (parseFrontmatter(readFileSync(path, 'utf8'), where).body.trim() !== canonicalBody) {
-      throw new Error(`Lazy skill "${name}" in the workspace differs from .agents/ in this checkout (${where}); `
-        + 'the worker would read a procedure other than the one composed. Prepare a fresh worktree, or inline it.');
-    }
-  }
-
   // All four files live beside each other so a human can read exactly what was
   // sent and re-run it byte for byte. The prompt is the readable form; the stdin
   // file is the wire form, which differs only for antigravity's NDJSON envelope.
@@ -268,9 +250,9 @@ export function prepareDispatch(root, input = {}) {
   writeFileSync(resolve(dir, 'dispatch.json'), JSON.stringify({
     task_id, role: composed.role, access: composed.access, profile: composed.profile,
     owned_paths: composed.owned_paths, engine, model: command.model, effort: command.effort,
-    // What the worker was given, so the audit can tell a deferred skill it read
-    // from a skill it was never sent.
-    skills: composed.skills, lazy_skills: composed.lazy_skills,
+    // What the worker was given. Every worktree holds every committed skill, so
+    // this is what inspect_dispatch reads a skill the worker opened against.
+    skills: composed.skills,
     workspace: workspace ?? null,
     base_sha: input.base_sha ?? worktreeRecord?.base_sha ?? null,
     integration_branch: worktreeRecord?.integration_branch ?? null,

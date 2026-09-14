@@ -158,10 +158,7 @@ function summarise(root, task_id, dir, listing, { archived = false } = {}) {
     base_sha: record?.base_sha ?? worktreeRecord?.base_sha ?? null,
     integration_branch: record?.integration_branch ?? worktreeRecord?.integration_branch ?? null,
     owned_paths: record?.owned_paths ?? null, prompt_bytes: record?.prompt_bytes ?? null,
-    skills: record?.skills ?? null, lazy_skills: record?.lazy_skills ?? null,
-    // null where the engine gives no transcript to read it from — not "none read".
-    lazy_skills_read: audit?.skill_reads && record?.lazy_skills
-      ? record.lazy_skills.filter(name => audit.skill_reads.includes(name)) : null,
+    skills: record?.skills ?? null,
     created_at: record?.created_at ?? worktreeRecord?.created_at ?? null,
     run: outcome ? { started_at: outcome.started_at ?? null, finished_at: outcome.finished_at ?? null,
       duration_ms: outcome.duration_ms ?? null, exit_code: outcome.exit_code ?? null,
