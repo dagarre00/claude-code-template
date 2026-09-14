@@ -13,6 +13,12 @@ import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from
 import { dirname, resolve } from 'node:path';
 
 const WORKSPACES = '.worktrees';
+// A worktree sits one level deeper than the checkout, and what it holds that git
+// ignores — a virtualenv, node_modules — goes deeper still. On Windows that passes
+// MAX_PATH, and without this `git worktree remove` fails half-way: measured, it
+// unregistered the worktree, deleted part of the tracked tree, and left the
+// directory and branch behind. A no-op on any OS without the limit.
+const LONG_PATHS = ['-c', 'core.longpaths=true'];
 const SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
 // `trim: false` is for column-sensitive output. Porcelain status starts a
@@ -22,7 +28,8 @@ export function git(root, args, { allowFailure = false, trim = true } = {}) {
   const result = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
   if (result.error || result.status !== 0) {
     if (allowFailure) return null;
-    throw new Error(`git ${args[0]} failed: ${(result.error?.message ?? result.stderr ?? result.stdout ?? '').trim()}`);
+    const subcommand = args[0] === '-c' ? args[2] : args[0];
+    throw new Error(`git ${subcommand} failed: ${(result.error?.message ?? result.stderr ?? result.stdout ?? '').trim()}`);
   }
   return trim ? result.stdout.trim() : result.stdout;
 }
@@ -100,7 +107,7 @@ export function prepareWorktree(root, { task_id } = {}) {
   if (existsSync(workspace)) throw new Error(`Workspace already exists: ${workspace}`);
   const branch = `worker/${task_id}`;
   const base_sha = git(root, ['rev-parse', 'HEAD']);
-  git(root, ['worktree', 'add', '-b', branch, workspace, base_sha]);
+  git(root, [...LONG_PATHS, 'worktree', 'add', '-b', branch, workspace, base_sha]);
   trustForCodex(root, workspace);
   return { task_id, workspace, branch, base_sha,
     integration_branch: git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], { allowFailure: true }) };
@@ -181,7 +188,7 @@ export function removeWorktree(root, task_id) {
   if (!isClean(workspace)) {
     throw new Error(`Worker checkout has uncommitted work; inspect ${workspace} before removing it`);
   }
-  git(root, ['worktree', 'remove', workspace]);
+  git(root, [...LONG_PATHS, 'worktree', 'remove', workspace]);
   // -d, never -D: it refuses when the branch holds commits that are not merged
   // anywhere, which is precisely the case where deleting would lose delivered work.
   const deleted = git(root, ['branch', '-d', branch], { allowFailure: true });

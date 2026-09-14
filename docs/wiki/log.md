@@ -15,6 +15,14 @@ updated: 2026-09-11
 > Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd — `init`, `interview`, `work`, `pr`, `adversary`, `review`, `wiki-ingest`, `wiki-maintenance`, or `chore` when nothing else fits (behavioral rule 19).
 > Entries are written by the command that did the work, in the same commit as the work. `/project:wiki` archives this file once it passes ~100 entries.
 
+## [2026-09-13 23:10] chore
+
+- Source: three Python fixtures (src-layout package, editable install) run through real worktrees, first by the conductor and then with one agy developer each, at the human's request after trouble with virtualenvs and worktrees. No raw research document, per the same instruction as the entry below.
+- Measured: borrowing the root `.venv` imports the **main checkout's** `src/` from inside a worktree. The agy developer's correct B2 implementation stayed Red; it patched `sys.path` inside the test module to reach Green, and Python wrote `__pycache__` into the main checkout. Adding `pythonpath = ["src"]` under pytest, or giving each worktree its own `.venv` (uv, under 3 s), both produced a clean Red → Green with no reads outside the worktree.
+- Fix: a per-worktree `.venv` holds paths past Windows' 260-character limit, and `git worktree remove` then failed half-way — worktree unregistered, part of the tracked tree deleted, directory and branch left behind. `prepare_worktree`/`remove_worktree` now pass `core.longpaths=true`; test reproduces the failure without it.
+- Docs: `tools/workflow-mcp/engine-setup.md § Projects with a Python virtualenv` — the three layouts, which to use, and the commands.
+- Verified: MCP suite 161/161; the new `check` preflight flagged the per-worktree command as ungranted before the agy run, and passed once granted.
+
 ## [2026-09-13 22:27] chore
 
 - Source: an end-to-end run of agy (1.2.2, `gemini-3.8-flash`) workers against a throwaway fixture — 24 real dispatches across all seven roles, up to 10 concurrent worktrees, plus capability probes; transcripts scored mechanically and every developer suite re-run by the conductor. No raw research document was written, at the human's instruction; the measurements are pinned in the tests and in `tools/workflow-mcp/engine-setup.md`.

@@ -87,6 +87,29 @@ test('removes a clean worktree and its unused branch', () => {
   });
 });
 
+// A per-worktree virtualenv (or node_modules) is ignored, so it does not make the
+// worktree dirty — but on Windows it holds paths past MAX_PATH, and without
+// core.longpaths `git worktree remove` fails half-way: measured, it unregistered
+// the worktree, deleted part of the tracked tree, and left the directory and the
+// branch behind. Harmless on any OS without the limit.
+test('removes a worktree holding an ignored tree deeper than the Windows path limit', () => {
+  repo(root => {
+    writeFileSync(resolve(root, '.gitignore'), '.venv/\n');
+    git(root, 'add', '.gitignore');
+    git(root, 'commit', '-qm', 'ignore venv');
+    const wt = prepareWorktree(root, { task_id: 'deep' });
+    const deep = resolve(wt.workspace, '.venv', ...Array(12).fill('site-packages-nested-dir'));
+    mkdirSync(deep, { recursive: true });
+    writeFileSync(resolve(deep, 'module.py'), 'x = 1\n');
+    assert.ok(resolve(deep, 'module.py').length > 260, 'the fixture must actually exceed MAX_PATH');
+
+    removeWorktree(root, 'deep');
+    assert.ok(!existsSync(wt.workspace), 'the directory must be gone, not orphaned');
+    assert.ok(!listWorktrees(root).some(w => w.branch === 'worker/deep'));
+    assert.equal(git(root, 'branch', '--list', 'worker/deep').stdout.trim(), '', 'the branch must be gone too');
+  });
+});
+
 test('refuses to remove a worktree with uncommitted work, so nothing is lost', () => {
   repo(root => {
     const wt = prepareWorktree(root, { task_id: 'fff' });

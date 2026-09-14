@@ -289,6 +289,58 @@ GenerateContent`), and `read_url_content` is auto-denied in headless mode unless
 each URL is granted in advance, which a research task cannot know. The agent
 definition carries no web tools for that reason. Keep `researcher` off agy.
 
+## Projects with a Python virtualenv
+
+A worktree is a fresh checkout, so it has no `.venv` — it is gitignored. The
+worker still has to run the suite from its own worktree, and there are two
+layouts that work and one that looks like it works. Measured 2026-09-13 on a
+src-layout package with an editable install, agy workers, Windows:
+
+| Layout | Worker command | What the tests import | Outcome |
+| --- | --- | --- | --- |
+| Borrow the root `.venv`, nothing else | `../../.venv/Scripts/python.exe -m pytest` | **the main checkout's `src/`** | the new test stayed Red after a correct implementation; the worker patched `sys.path` inside the test file to get Green, and Python wrote `__pycache__` into the main checkout |
+| Borrow the root `.venv` + `pythonpath = ["src"]` | `../../.venv/Scripts/python.exe -m pytest` | the worktree's `src/` | clean Red → Green |
+| A `.venv` per worktree | `.venv/Scripts/python.exe -m pytest` | the worktree's `src/` | clean Red → Green |
+
+**Never the first layout.** An editable install writes an absolute path to the
+root checkout's `src/` into the venv, and it wins over the worktree. The failure
+runs both ways: a correct change stays Red, and a Red can pass on code the worker
+never touched.
+
+**Borrowing the root venv** needs one line in `pyproject.toml`, which puts the
+rootdir's `src` ahead of the editable install whenever pytest runs:
+
+```toml
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+```
+
+(A root `conftest.py` that prepends `src` to `sys.path` does the same.) The
+command is relative to `.worktrees/<id>/`, so it is a different string from the
+one you run at the root, and both need their own `workerCommands` entry and agy
+grant. The venv is shared, so a cycle that adds a dependency cannot test it in
+its worktree until someone installs it at the root. On codex, the sandbox cannot
+resolve a venv whose base interpreter lives outside the worktree (measured in an
+adopting project) — prefer a per-worktree venv for roles pinned there.
+
+**A venv per worktree** is self-contained: the worker command is the same string
+as at the root, dependency changes are testable inside the cycle, and nothing
+reads outside the worktree. With `uv` and a warm cache it took under 3 seconds:
+
+```bash
+uv venv --python 3.11 .venv
+uv pip install --python .venv/Scripts/python.exe -e . pytest    # or: uv sync, with a uv.lock
+```
+
+The conductor runs that in the worktree after `prepare_worktree` and before
+dispatch; the `.venv` is ignored, so the worktree still reads as clean. A
+virtualenv is also deep enough to pass Windows' 260-character path limit, which
+used to make `remove_worktree` fail half-way and leave the directory and branch
+behind; worktrees are now created and removed with `core.longpaths=true`.
+
+Either way, `check`'s `setup` block lists the command if agy has no exact grant
+for it.
+
 ## When an engine is unavailable
 
 Two different problems wear the same face, and only one of them is computable.
