@@ -130,9 +130,12 @@ test('a truncated diff says so in the prompt rather than ending mid-hunk in sile
 // the suite's completed output had already come back, and re-ran it with nothing
 // changed (resume-report 2026-09-10, §6). Completion has to be unambiguous in the
 // one place every worker reads.
-test('the command section says returned output is complete and a rerun needs a reason', () => {
+// Adversary F4 (round 1) narrowed it: a command tool may hand back a session
+// for a command that is still running (codex's does), and collecting that result
+// is not the redundant wait this rule exists to stop.
+test('the command section says finished output is complete, still-running output is collected, and a rerun needs a reason', () => {
   const { prompt } = compose({ ...base, workerCommands: ['npm test'] });
-  assert.match(prompt, /output .*complete/i);
-  assert.match(prompt, /never wait for|do not wait for/i);
+  assert.match(prompt, /finished.*output is complete/i);
+  assert.match(prompt, /still running.*collect/i);
   assert.match(prompt, /re-?run .*only after .*(chang|edit)/i);
 });

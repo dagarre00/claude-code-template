@@ -8,7 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { buildRunnableCommand } from '../dispatch.mjs';
@@ -167,6 +167,88 @@ test('a read-only worker that wrote a file is rejected, and so is a worker that 
     git(wt.workspace, 'commit', '-qm', 'worker commit');
     ({ verdict } = tools.inspect_dispatch({ task_id: 'wrote' }));
     assert.match(verdict.reasons.join(' '), /commit/i, 'workers never commit; a commit before a decision is not theirs to make');
+
+    // Adversary F1 (round 1): recording a rejection used to clear this reason,
+    // turning the same unchanged dispatch into a pass that could then be accepted
+    // with no override.
+    tools.record_decision({ task_id: 'wrote', decision: 'rejected', reason: 'The worker committed its own output.' });
+    ({ verdict } = tools.inspect_dispatch({ task_id: 'wrote' }));
+    assert.equal(verdict.mechanical, 'reject');
+    assert.throws(() => tools.record_decision({ task_id: 'wrote', decision: 'accepted', reason: 'changed my mind' }), /override/);
+  });
+});
+
+// Adversary F2 (round 1): archiving ran before retry_of and model validation, so
+// a composition that then threw left no current record, and the next one restarted
+// at attempt 1 on top of the existing archive.
+test('a re-composition that fails leaves the previous attempt exactly where it was', () => {
+  repo((root, tools) => {
+    const { wt, run } = dispatch(tools, { task_id: 'keep', script: 'echo first report' });
+    run();
+    assert.throws(() => tools.build_worker_prompt({ role: 'adversary', instructions: 'Again.', workspace: wt.workspace,
+      cli_engine: 'claude', task_id: 'keep', retry_of: 'no-such-task' }), /retry_of/);
+    assert.throws(() => tools.build_worker_prompt({ role: 'adversary', instructions: 'Again.', workspace: wt.workspace,
+      cli_engine: 'claude', task_id: 'keep', model_override: 'bad model; rm' }), /model/i);
+    const kept = tools.inspect_dispatch({ task_id: 'keep' });
+    assert.equal(kept.state, 'finished');
+    assert.equal(kept.attempt, 1);
+    assert.deepEqual(kept.previous_attempts, []);
+    const again = tools.build_worker_prompt({ role: 'adversary', instructions: 'Again.', workspace: wt.workspace,
+      cli_engine: 'claude', task_id: 'keep' });
+    assert.equal(again.attempt, 2);
+  });
+});
+
+test('archives never collide, even when the current record is missing', () => {
+  repo((root, tools) => {
+    const { wt, built, run } = dispatch(tools, { task_id: 'gap', script: 'echo one' });
+    run();
+    tools.build_worker_prompt({ role: 'adversary', instructions: 'Two.', workspace: wt.workspace, cli_engine: 'claude', task_id: 'gap' });
+    // Simulate a record lost between attempts: the archive of attempt 1 exists, no current record.
+    rmSync(resolve(built.report_file, '..', 'dispatch.json'));
+    const third = tools.build_worker_prompt({ role: 'adversary', instructions: 'Three.', workspace: wt.workspace,
+      cli_engine: 'claude', task_id: 'gap' });
+    assert.equal(third.attempt, 2, 'numbering continues from the archive rather than restarting at 1');
+  });
+});
+
+// Adversary F3 (round 1): a still-running attempt was archived by a
+// re-composition, and then wrote its report and outcome into the new attempt.
+test('composing into a task whose attempt is still running is refused unless it is explicitly abandoned', () => {
+  repo((root, tools) => {
+    const { wt, built } = dispatch(tools, { task_id: 'live', script: 'true' });
+    writeFileSync(resolve(built.report_file, '..', 'outcome.json'), JSON.stringify({ started_at: new Date().toISOString() }));
+    const again = extra => tools.build_worker_prompt({ role: 'adversary', instructions: 'Again.', workspace: wt.workspace,
+      cli_engine: 'claude', task_id: 'live', ...extra });
+    assert.throws(() => again(), /running/i);
+    assert.equal(again({ abandon_running: true }).attempt, 2);
+    const archived = JSON.parse(readFileSync(resolve(built.report_file, '..', 'attempts', '1', 'outcome.json'), 'utf8'));
+    assert.ok(archived.abandoned_at, 'an abandoned attempt says so in its own record');
+  });
+});
+
+// Adversary F5 (round 1): archived attempts recomputed their verdict without the
+// worktree, so a run rejected for writing out of scope counted as a pass later.
+test('an archived attempt keeps the verdict it had when it was archived', () => {
+  repo((root, tools) => {
+    const { wt, run } = dispatch(tools, { task_id: 'scope', script: 'echo report' });
+    run();
+    writeFileSync(resolve(wt.workspace, 'stray.txt'), 'out of scope\n');
+    assert.equal(tools.inspect_dispatch({ task_id: 'scope' }).verdict.mechanical, 'reject');
+    rmSync(resolve(wt.workspace, 'stray.txt'));
+    tools.build_worker_prompt({ role: 'adversary', instructions: 'Again.', workspace: wt.workspace, cli_engine: 'claude', task_id: 'scope' });
+    // The stray file is gone now, but attempt 1 was rejected while it existed.
+    const row = tools.dispatch_stats().by_engine_role.find(r => r.role === 'adversary');
+    assert.equal(row.mechanical_reject, 0, 'the stray file was removed before archiving, so nothing to keep');
+  });
+  repo((root, tools) => {
+    const { wt, run } = dispatch(tools, { task_id: 'scope2', script: 'echo report' });
+    run();
+    writeFileSync(resolve(wt.workspace, 'stray.txt'), 'out of scope\n');
+    tools.build_worker_prompt({ role: 'adversary', instructions: 'Again.', workspace: wt.workspace, cli_engine: 'claude', task_id: 'scope2' });
+    const inspected = tools.inspect_dispatch({ task_id: 'scope2' });
+    assert.equal(inspected.previous_attempts[0].mechanical, 'reject');
+    assert.equal(tools.dispatch_stats().by_engine_role.find(r => r.role === 'adversary').mechanical_reject, 1);
   });
 });
 

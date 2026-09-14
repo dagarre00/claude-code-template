@@ -61,6 +61,7 @@ export function createServer(root, conductorEngine) {
       workspace: z.string().describe('Worktree path from prepare_worktree. Required: the command that starts a worker begins by entering its checkout.'),
       task_id: z.string().optional().describe('The id prepare_worktree was given. Composing again into a task whose last attempt already ran archives that attempt and counts this one as a retry.'),
       retry_of: z.string().optional().describe('task_id of an attempt in another worktree that this dispatch replaces, so retries are counted per engine and role.'),
+      abandon_running: z.boolean().optional().describe('Composing into a task whose attempt started and never finished is refused, because a live process would finish into the new attempt. Pass true only when that process is gone; the attempt is archived as abandoned.'),
       cli_engine: z.enum([...engineNames]).optional(),
       model_override: z.string().optional(),
       thinking_budget: z.string().optional()

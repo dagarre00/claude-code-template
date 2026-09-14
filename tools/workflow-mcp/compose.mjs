@@ -108,9 +108,11 @@ export function composePrompt(canonical, input = {}) {
       + 'else - reading, searching, listing, editing - you do with your own file tools, which need '
       + 'no permission. If the task genuinely needs a command that is not on this list, stop and '
       + 'report that as a blocker rather than trying a variation of it.'
-      + '\n\nWhen a command returns, its output is complete: never wait for it, poll it, or run it again '
-      + 'to see whether it finished. Re-run the test command only after you have changed or edited a file '
-      + 'since the last run, or to answer one specific doubt — and name that doubt in your report.'
+      + '\n\nOnce a command has finished and returned its exit status, its output is complete: do not wait '
+      + 'on it or run it again to see whether it finished. If your tool reports that a command is still running, '
+      + 'collect its result through that tool until it exits — then it is complete. Re-run the test command only '
+      + 'after you have changed or edited a file since the last run, or to answer one specific doubt — and name '
+      + 'that doubt in your report.'
       + commandNotes.map(note => `\n\n${note}`).join('')));
   }
 

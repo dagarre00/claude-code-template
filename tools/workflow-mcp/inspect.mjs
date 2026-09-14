@@ -86,8 +86,11 @@ function verdictFor({ record, outcome, report, worktree, decision }) {
   if (worktree.exists && worktree.violations?.length) {
     reasons.push(`A ${record.access} worker changed paths outside its scope: ${worktree.violations.join(', ')}.`);
   }
-  if (worktree.exists && worktree.commits_since_base > 0 && !decision) {
-    reasons.push(`The worker branch holds ${worktree.commits_since_base} commit(s) and no decision accounts for them — `
+  // Only an acceptance accounts for commits: the conductor commits after
+  // accepting. A rejection leaves them exactly as unexplained as before
+  // (adversary F1, round 1).
+  if (worktree.exists && worktree.commits_since_base > 0 && decision?.decision !== 'accepted') {
+    reasons.push(`The worker branch holds ${worktree.commits_since_base} commit(s) and no acceptance accounts for them — `
       + 'workers never commit, so these were not made by the conductor after accepting.');
   }
   const audit = report.audit;
@@ -124,7 +127,11 @@ function summarise(root, task_id, dir, listing, { archived = false } = {}) {
   const state = !record ? 'prepared' : !outcome ? 'composed' : !outcome.finished_at ? 'running' : 'finished';
   const report = record ? readReport(record, dir) : { path: resolve(dir, 'report.txt'), exists: false, bytes: 0, empty: true };
   const worktree = archived ? { exists: false } : worktreeState(root, record ?? worktreeRecord, listing);
-  const verdict = verdictFor({ record, outcome, report, worktree, decision });
+  // An archived attempt keeps the verdict it had when it was archived: its
+  // worktree has moved on, so recomputing would forget any change outside scope
+  // (adversary F5, round 1).
+  const verdict = (archived && readJson(resolve(dir, 'verdict.json')))
+    || verdictFor({ record, outcome, report, worktree, decision });
   const { audit, usage, ...reportSummary } = report;
   return {
     task_id, state,
@@ -169,9 +176,16 @@ export function inspectDispatch(root, task_id) {
     previous_attempts: archivedAttempts(dir).map(path => {
       const summary = summarise(root, task_id, path, null, { archived: true });
       return { attempt: summary.attempt, engine: summary.engine, exit_code: summary.run?.exit_code ?? null,
-        duration_ms: summary.run?.duration_ms ?? null, decision: summary.decision?.decision ?? null };
+        duration_ms: summary.run?.duration_ms ?? null, mechanical: summary.verdict.mechanical,
+        decision: summary.decision?.decision ?? null };
     })
   };
+}
+
+// The verdict the current attempt of a task has right now, worktree included —
+// what dispatch.mjs saves beside an attempt when it archives it.
+export function currentVerdict(root, task_id) {
+  return summarise(root, task_id, dispatchDir(root, task_id), listingFor(root).get(task_id)).verdict;
 }
 
 export function recordDecision(root, { task_id, decision, reason, override_mechanical = false } = {}) {
@@ -220,7 +234,7 @@ export function dispatchStats(root) {
   }
   const rows = new Map();
   for (const attempt of attempts) {
-    const key = `${attempt.engine} ${attempt.role}`;
+    const key = JSON.stringify([attempt.engine, attempt.role]);
     if (!rows.has(key)) {
       rows.set(key, { engine: attempt.engine, role: attempt.role, dispatches: 0, finished: 0, exit_nonzero: 0,
         mechanical_pass: 0, mechanical_reject: 0, accepted: 0, rejected: 0, undecided: 0, retries: 0,

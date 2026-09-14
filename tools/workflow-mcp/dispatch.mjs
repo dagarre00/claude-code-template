@@ -6,7 +6,7 @@
 // process itself. It keeps the control plane small enough to reason about, and
 // means a failed worker is debugged by re-running a command line a human can
 // read, not by reading a supervisor's logs.
-import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { isAbsolute, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +17,7 @@ import { composePrompt } from './compose.mjs';
 import { computeDiff } from './diff.mjs';
 import { ENGINES, buildCommand, stdinPayload } from './engines/index.mjs';
 import { dispatchDir } from './worktree.mjs';
+import { currentVerdict } from './inspect.mjs';
 
 // Quote one argument for the shell the conductor will paste this into. Only ever
 // used to build the human-readable/runnable `command` string; the `args` array
@@ -75,28 +76,40 @@ const readJson = path => {
 const ATTEMPT_FILES = ['dispatch.json', 'prompt.txt', 'stdin.txt', 'report.txt', 'raw.txt',
   'outcome.json', 'decision.json', 'agent'];
 
-// Which attempt this composition is. A dispatch directory that already holds a
-// run is archived under attempts/<n>/ first — resuming re-dispatches into the
-// worktree that holds the partial work, and composing again used to overwrite the
-// previous attempt's prompt, report and record. Composing twice without running
-// in between is one attempt, overwritten. `retry_of` names an attempt in another
-// worktree that this one replaces.
-function nextAttempt(root, dir, task_id, retry_of) {
+const archivedNumbers = dir => existsSync(resolve(dir, 'attempts'))
+  ? readdirSync(resolve(dir, 'attempts')).filter(name => /^\d+$/.test(name)).map(Number)
+  : [];
+
+// Which attempt this composition is, decided without touching anything. Resuming
+// re-dispatches into the worktree that holds the partial work, and composing
+// again used to overwrite the previous attempt's prompt, report and record, so a
+// directory holding a run is archived under attempts/<n>/ — but only once the new
+// composition has fully validated (adversary F2, round 1), and never over an
+// archive that already exists. Composing twice without running in between is one
+// attempt, overwritten. A run that has started and not finished is refused unless
+// the conductor abandons it, because it would otherwise finish into its
+// replacement's record (adversary F3, round 1). `retry_of` names an attempt in
+// another worktree that this one replaces.
+function planAttempt(root, dir, task_id, { retry_of, abandon_running = false }) {
   const previous = readJson(resolve(dir, 'dispatch.json'));
-  let attempt = 1;
-  let replaces = null;
+  const outcome = readJson(resolve(dir, 'outcome.json'));
+  const highestArchived = Math.max(0, ...archivedNumbers(dir));
+  let attempt = highestArchived + 1;
+  let replaces = highestArchived ? task_id : null;
+  let archive = null;
   if (previous) {
-    if (existsSync(resolve(dir, 'outcome.json'))) {
-      const archive = resolve(dir, 'attempts', String(previous.attempt ?? 1));
-      mkdirSync(archive, { recursive: true });
-      for (const name of ATTEMPT_FILES) {
-        if (existsSync(resolve(dir, name))) renameSync(resolve(dir, name), resolve(archive, name));
+    if (outcome) {
+      if (!outcome.finished_at && !abandon_running) {
+        throw new Error(`Task "${task_id}" has an attempt that started at ${outcome.started_at} and has not finished. `
+          + 'Wait for it and inspect it — or, if the process is gone, pass abandon_running: true to archive it as abandoned.');
       }
-      attempt = (previous.attempt ?? 1) + 1;
+      const number = Math.max(previous.attempt ?? 1, highestArchived + 1);
+      archive = { number, abandoned: !outcome.finished_at };
+      attempt = number + 1;
       replaces = task_id;
     } else {
-      attempt = previous.attempt ?? 1;
-      replaces = previous.retry_of ?? null;
+      attempt = Math.max(previous.attempt ?? 1, highestArchived + 1);
+      replaces = previous.retry_of ?? replaces;
     }
   }
   if (retry_of != null && retry_of !== task_id) {
@@ -107,7 +120,24 @@ function nextAttempt(root, dir, task_id, retry_of) {
     attempt = Math.max(attempt, (replaced.attempt ?? 1) + 1);
     replaces = retry_of;
   }
-  return { attempt, retry_of: replaces };
+  return { attempt, retry_of: replaces, archive };
+}
+
+// Moves the current attempt aside, with the verdict it has right now: once
+// archived, its worktree moves on and the verdict could no longer be recomputed
+// (adversary F5, round 1).
+function archiveAttempt(root, dir, task_id, { number, abandoned }) {
+  const target = resolve(dir, 'attempts', String(number));
+  const verdict = currentVerdict(root, task_id);
+  mkdirSync(target, { recursive: true });
+  for (const name of ATTEMPT_FILES) {
+    if (existsSync(resolve(dir, name))) renameSync(resolve(dir, name), resolve(target, name));
+  }
+  writeFileSync(resolve(target, 'verdict.json'), JSON.stringify(verdict, null, 2) + '\n');
+  if (abandoned) {
+    const outcomePath = resolve(target, 'outcome.json');
+    writeFileSync(outcomePath, JSON.stringify({ ...readJson(outcomePath), abandoned_at: new Date().toISOString() }, null, 2) + '\n');
+  }
 }
 
 export function prepareDispatch(root, input = {}) {
@@ -171,28 +201,20 @@ export function prepareDispatch(root, input = {}) {
   // for the rare case of debugging a failed run. Computed before buildCommand
   // so codex's adapter can wire report_file into its own argv.
   const dir = dispatchDir(root, task_id);
-  const { attempt, retry_of } = nextAttempt(root, dir, task_id, input.retry_of);
-  mkdirSync(dir, { recursive: true });
+  const plan = planAttempt(root, dir, task_id, input);
+  const { attempt, retry_of } = plan;
   const prompt_file = resolve(dir, 'prompt.txt');
   const stdin_file = resolve(dir, 'stdin.txt');
   const report_file = resolve(dir, 'report.txt');
   const raw_file = resolve(dir, 'raw.txt');
-  writeFileSync(prompt_file, composed.prompt);
-  writeFileSync(stdin_file, stdinPayload(engine, composed.prompt));
 
-  // An engine that launches as a custom agent gets its definition written here,
-  // in its own directory so the engine is handed that folder and nothing else of
+  // An engine that launches as a custom agent gets its definition written into
+  // its own directory, so the engine is handed that folder and nothing else of
   // the dispatch's files. Outside the worktree on purpose: inside, it would be an
   // untracked file the worker appears to have written.
   const adapter = ENGINES[engine];
-  let agent;
-  if (adapter.agentDefinition) {
-    const definition = adapter.agentDefinition({ role: composed.role, access: composed.access, workspace });
-    const agentDir = resolve(dir, 'agent');
-    mkdirSync(resolve(agentDir, '.agents', 'agents'), { recursive: true });
-    writeFileSync(resolve(agentDir, '.agents', 'agents', `${definition.name}.md`), definition.content);
-    agent = { name: definition.name, dir: agentDir };
-  }
+  const definition = adapter.agentDefinition?.({ role: composed.role, access: composed.access, workspace }) ?? null;
+  const agent = definition ? { name: definition.name, dir: resolve(dir, 'agent') } : undefined;
 
   const roleConfig = config.roles?.[composed.role] ?? {};
   const command = buildCommand(config, {
@@ -205,6 +227,17 @@ export function prepareDispatch(root, input = {}) {
     model: input.model_override ?? roleConfig.models?.[engine] ?? undefined,
     effort: input.thinking_budget ?? roleConfig.effort?.[engine] ?? undefined
   });
+
+  // Everything that can refuse this composition has run by now. Only from here
+  // does anything on disk change.
+  if (plan.archive) archiveAttempt(root, dir, task_id, plan.archive);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(prompt_file, composed.prompt);
+  writeFileSync(stdin_file, stdinPayload(engine, composed.prompt));
+  if (definition) {
+    mkdirSync(resolve(agent.dir, '.agents', 'agents'), { recursive: true });
+    writeFileSync(resolve(agent.dir, '.agents', 'agents', `${definition.name}.md`), definition.content);
+  }
 
   // What this dispatch was allowed to do and what it ran on, written where
   // list_worktrees and inspect_dispatch read it back. Without it a worktree is
