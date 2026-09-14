@@ -15,6 +15,14 @@ updated: 2026-09-11
 > Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd — `init`, `interview`, `work`, `pr`, `adversary`, `review`, `wiki-ingest`, `wiki-maintenance`, or `chore` when nothing else fits (behavioral rule 19).
 > Entries are written by the command that did the work, in the same commit as the work. `/project:wiki` archives this file once it passes ~100 entries.
 
+## [2026-09-14 04:50] adversary
+
+- Commit reviewed: `08de0d9..c983a52` (dispatch record) and `c983a52..0de81a6` (e2e run), each by a read-only `adversary` on codex (`gpt-6-astra`, medium), dispatched and judged through `inspect_dispatch`/`record_decision` — the first real use of the tools under review.
+- Attempt 1 of both was rejected: exit 0 and a non-empty report, so the mechanical verdict passed, but both reports said "review blocked" — codex has no file tool besides its shell and read the allowlist as a ban on reading. Fixed in `4ca8aef` (`filesThroughShell`). Attempt 2 of each was archived-and-retried in the same worktree.
+- Findings: 8 (0 critical, 6 major, 2 minor), triaged by the new read-only `triage` role on agy (2 dispatches, accepted): it agreed with 7, contested F4, and noticed the probe's `decide(…, true)` twin of e2e F1.
+- Disposition: 8 fixed, 0 filed, 0 rejected. Fixing rather than filing the majors and minors was the human's instruction for this work ("todos list must be empty"), which is the approval at that scope.
+- Verified: MCP suite 195/195; the e2e fixes are exercised by stand-ins through the real wrapper.
+
 ## [2026-09-14 04:16] chore
 
 - Human instruction: build the integration proposals from the agy e2e (conductor acts on `check` and a validated result, worktree setup commands, a repeatable engine e2e) and empty `docs/wiki/todos.md`. All five open todos are done and removed; git history is their record.
