@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Composes worker prompts from the canonical .agents/ source and generates the per-CLI root files.",
   "scripts": {
-    "test": "node --test \"test/*.test.mjs\""
+    "test": "node --test \"test/*.test.mjs\"",
+    "e2e": "node e2e/run.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.22.0",
