@@ -50,7 +50,10 @@ for (const engine of registered) {
     || (engine.providesWeb !== undefined && typeof engine.providesWeb !== 'boolean')
     // Optional: how a worker on this engine must spell a configured command on a
     // given platform, where the engine's own shell cannot run it as written.
-    || (engine.spellCommand !== undefined && typeof engine.spellCommand !== 'function')) {
+    || (engine.spellCommand !== undefined && typeof engine.spellCommand !== 'function')
+    // Optional: true where the engine's only way to read or search a file is its
+    // shell, so the prompt must not read as forbidding that.
+    || (engine.filesThroughShell !== undefined && typeof engine.filesThroughShell !== 'boolean')) {
     throw new Error(`Malformed engine adapter: ${engine?.name ?? 'unnamed'}`);
   }
 }

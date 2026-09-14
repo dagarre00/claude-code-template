@@ -149,6 +149,13 @@ export function prepareDispatch(root, input = {}) {
       + `${respelled.map(command => `\`${spell(command, platform)}\``).join(', ')} instead. It is the same command; `
       + 'the plain spelling is refused by this shell before it starts.']
     : [];
+  if (ENGINES[engine]?.filesThroughShell) {
+    commandNotes.push('On this engine you have no separate file tools: reading, listing and searching files happen '
+      + 'through your shell. Read-only shell commands that only read inside your workspace — printing a file, listing a '
+      + 'directory, searching with rg or Select-String, `git show`, `git log` — are those file tools, and you run them '
+      + 'freely; the list above governs commands that execute the project or change anything. Never use the shell to '
+      + 'write, move or delete a file, and never to read outside your workspace.');
+  }
 
   const composed = composePrompt(canonical, {
     ...input, instructions, context: context ?? '', diff,

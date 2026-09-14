@@ -41,6 +41,12 @@ export default {
   // told the .cmd spelling; claude and agy ran `npm test` on the same machine and
   // are left alone. Anything that already names a shim, or is not npm/npx, is
   // returned unchanged.
+  // Codex has no file-reading tool apart from its shell: a worker reads with
+  // `Get-Content`/`cat` and searches with `rg`. Measured 2026-09-14: two read-only
+  // adversaries told that everything off the allowlist is forbidden stopped with
+  // "this session exposes no dedicated filesystem-reading tool" and reviewed
+  // nothing. So its prompt says read-only shell reads are its file tools.
+  filesThroughShell: true,
   spellCommand(command, platform) {
     return platform === 'win32' ? command.replace(/^(npm|npx)(?= )/, '$1.cmd') : command;
   },

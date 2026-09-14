@@ -273,3 +273,13 @@ test('codex on Windows respells npm and npx to their .cmd shims, and nothing els
   assert.equal(ENGINES.claude.spellCommand, undefined);
   assert.equal(ENGINES.antigravity.spellCommand, undefined);
 });
+
+// Measured 2026-09-14: two codex adversaries stopped with "this session exposes
+// no dedicated filesystem-reading tool, and the exact command allowlist excludes
+// file-reading commands" — codex reads files only through its shell
+// (Get-Content, rg), so the allowlist wording read as a ban on reading at all.
+test('codex declares that its file access goes through the shell, and the others do not', () => {
+  assert.equal(ENGINES.codex.filesThroughShell, true);
+  assert.equal(ENGINES.claude.filesThroughShell, undefined);
+  assert.equal(ENGINES.antigravity.filesThroughShell, undefined);
+});

@@ -562,3 +562,16 @@ test('a codex worker on Windows is told the spelling of each command that actual
     assert.doesNotMatch(agyOnWindows, /npm.cmd/, 'agy runs npm test on Windows as written');
   });
 });
+
+test('a worker whose engine reads files through the shell is told reading is not an allowlist command', () => {
+  withRepo(root => {
+    const workspace = resolve(root, '.worktrees/x');
+    const prompt = engine => readFileSync(prepareDispatch(root, { role: 'adversary', instructions: 'Review it.',
+      cli_engine: engine, conductorEngine: 'claude', workspace, platform: 'linux' }).prompt_file, 'utf8');
+    const codex = prompt('codex');
+    assert.match(codex, /no separate file tools/i);
+    assert.match(codex, /read-only shell commands .*inside your workspace/i);
+    assert.match(codex, /never .*(write|move|delete)/i);
+    for (const engine of ['claude', 'antigravity']) assert.doesNotMatch(prompt(engine), /no separate file tools/i);
+  });
+});
