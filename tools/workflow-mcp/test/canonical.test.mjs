@@ -303,3 +303,23 @@ test('roles are not published as native subagent types', () => {
     '.agents/agents/ is scanned by the Claude Code plugin loader and would republish '
     + 'every role as a dispatchable subagent, bypassing the MCP. Keep roles in .agents/roles/.');
 });
+
+// Workers receive the rules renumbered around the conductor-only ones, so a role
+// or skill that says "behavioral rule 12" sends a worker to a different rule —
+// measured: asked to quote rule 12, agy workers quoted "One agent owns the TDD
+// loop" (canonical rule 15). .agents/rules.md says to cite rules by name in any
+// text a worker can receive; this holds the real .agents/ to it.
+test('text a worker can receive never cites a behavioral rule by bare number', () => {
+  const root = resolve(import.meta.dirname, '../../..');
+  const canonical = loadCanonical(root);
+  const workerSkills = new Set(canonical.commands.flatMap(command =>
+    canonical.roles.flatMap(role => command.skillsFor(role.name))));
+  const sources = [
+    ['.agents/worker-contract.md', canonical.contract],
+    ...canonical.roles.map(role => [`role ${role.name}`, role.body]),
+    ...canonical.skills.filter(skill => workerSkills.has(skill.name)).map(skill => [`skill ${skill.name}`, skill.body])
+  ];
+  const offenders = sources.flatMap(([where, body]) =>
+    [...body.matchAll(/(?:behavioral[ \t]+)?rules?[ \t]+#?\d+|rules\.md`?[ \t]+#\d+/gi)].map(match => `${where}: "${match[0]}"`));
+  assert.deepEqual(offenders, []);
+});

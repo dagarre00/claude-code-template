@@ -39,7 +39,7 @@ If any fails: run `human-checkpoint`.
    - The current `docs/wiki/wiki-todos.md` (so it sees outstanding queue items as input).
    - Explicit instruction: fresh context, no developer assumptions, verify claims independently.
 
-3. **Reviewer writes** `docs/wiki/decisions/review-YYYY-MM-DD.md` with structured findings (see reviewer agent definition).
+3. **Save the reviewer's report** verbatim to `docs/wiki/decisions/review-YYYY-MM-DD.md`. The reviewer is read-only and returns the report in its final message, already shaped for that file (see its role definition) — it never writes the file itself, and a review file appearing in its worktree is a read-only violation, not a delivery. Before saving, read the report's `workflow_mcp_audit` if it has one: a reviewer that read outside its workspace (another worker's report, the conductor's dispatch files) has lost the fresh context this command exists for — say so in the log entry.
 
 4. **Process findings in the wiki.**
    - Read the report.

@@ -1,53 +1,48 @@
 // Antigravity (agy) adapter.
 //
-// This is the engine that validates the architecture: agy discovers no
-// repository files in print mode at all — not AGENTS.md, not `.agents/skills/`,
-// not `.gemini/skills/` or `.gemini/commands/`, and `agy agents` lists nothing.
-// Measured with sentinel files, and agy says so itself: "no active workspace is
-// currently loaded, workspace-level skills from .agents/skills/ are not
-// present". Loading them needs the folder registered as a project, which is
-// user-global state this template will not write.
+// agy discovers no AGENTS.md and no `.agents/skills/` in print mode — measured
+// with sentinel files, and agy says so itself: "no active workspace is currently
+// loaded, workspace-level skills from .agents/skills/ are not present". What it
+// does load in print mode, by name, is a custom agent from `.agents/agents/` in
+// one of its workspace folders when --agent names it. Every worker is launched as
+// one, defined per dispatch by agentDefinition() below and written by dispatch.mjs
+// beside the prompt — never in the worktree, and never in the repository's own
+// `.agents/`, where Claude Code's plugin loader would publish it as a native
+// subagent (see AGENTS.md § Delegating work).
 //
-// So there is nothing to suppress here, and nothing to generate for it. A worker
-// on agy runs on the composed prompt and only the composed prompt, which is what
-// every other engine is configured above to imitate.
+// The agent definition is what earns the two enforcement claims below. Measured
+// 2026-09-13 (agy 1.2.2): a read-only worker told to create a file and define a
+// subagent did both when launched plainly, and answered NO SUCH TOOL to both, with
+// nothing created, when launched as this agent. It also drops agy's default
+// prompt sections, which is where two measured failures came from: the artifacts
+// section, which invites `ArtifactMetadata` on an ordinary write and gets it
+// refused as "not a valid artifact path", and the file-link section, which filled
+// reports with absolute file:/// links into the worker's own worktree — carried
+// into a plan, those pointed the next worker at someone else's checkout.
+//
+// What it does NOT do is confine reads. A worker can still read outside its
+// worktree, with or without `allowNonWorkspaceAccess: false` (measured with a
+// canary file). extract-agy-result.mjs audits that on every run instead.
+const READ_TOOLS = ['view_file', 'list_dir', 'grep_search', 'find_by_name', 'run_command'];
+const WRITE_TOOLS = ['write_to_file', 'replace_file_content', 'multi_replace_file_content'];
+
 export default {
   name: 'antigravity',
   efforts: ['low', 'medium', 'high'],
   readsProjectDocs: false,
-  // The one place agy is weaker than the other two. Its workers are handed
-  // `define_subagent` and `invoke_subagent` — measured by asking one — and agy
-  // exposes no flag to remove them: there is no tool allowlist, and its
-  // permission rules live only in user-global config this template will not
-  // write. So the leaf-worker rule is prompt-level here and process-level
-  // elsewhere, and dispatch says so out loud rather than implying parity.
-  //
-  // Bounded, not unbounded: a spawned subagent inherits this process's --sandbox
-  // and its worktree, so it cannot commit, push, or reach outside the checkout.
-  // The exposure is wasted tokens and unbounded work, capped by --print-timeout,
-  // not a privilege escalation.
-  enforcesLeafWorker: false,
-  // The second thing agy cannot enforce below the prompt. `--mode plan` does
-  // bind on its own — a worker told to create a file refuses and creates
-  // nothing — but agy prints "warning: --mode plan has no effect while slash
-  // command expansion is disabled", and it means it: with the flag below set,
-  // the mode is inert and a read-only worker can call write_to_file. Dropping
-  // --disable-slash-commands to recover the mode would load agy's own commands
-  // and skills on top of the composed prompt, trading the context guarantee for
-  // the access one. The prompt keeps read-only roles honest here; dispatch says
-  // so out loud rather than implying parity. Re-measured on 1.2.0 (up from
-  // 1.1.27 when this file was first written): same warning, same inert plan mode.
-  enforcesReadOnly: false,
-  // stdout is the NDJSON event stream --output-format stream-json requires (see
-  // below) — not just the final message, and `agy --help` (1.1.27) has no flag
-  // to write it to its own file the way codex's -o does (measured: --input-format
-  // stream-json refuses to pair with --output-format text — "Error: --input-format
-  // stream-json requires --output-format stream-json" — so this isn't optional).
-  // But the stream's own terminal line already isolates what matters: one
-  // {"event":"result","result":{...}} object per run, with response, status and
-  // denied_actions — everything before it is per-turn progress. dispatch.mjs
-  // wraps this engine's command to capture stdout to a file and run
-  // extractReportFrom over it instead of leaving that extraction undone.
+  // Earned by the agent's `tools:` list, which leaves out define_subagent,
+  // invoke_subagent and every other agent-spawning tool. agy validates that list
+  // strictly — an unknown name fails the run with "tool ... not found in
+  // registry" rather than being ignored — so a typo cannot quietly widen it.
+  enforcesLeafWorker: true,
+  // Earned the same way: a read-only agent has no tool that writes a file.
+  // `--mode plan` is still passed, but it is inert while slash command expansion
+  // is disabled ("warning: --mode plan has no effect..."), and nothing relies on it.
+  enforcesReadOnly: true,
+  // stdout is the NDJSON event stream --output-format stream-json requires —
+  // --input-format stream-json refuses to pair with any other output format. The
+  // terminal {"event":"result"} line carries response, status and denied_actions,
+  // so dispatch.mjs captures stdout to a file and runs extractReportFrom over it.
   reportIsStdout: false,
   writesReportFile: true,
   extractReportFrom: 'extract-agy-result.mjs',
@@ -56,19 +51,53 @@ export default {
   // ~32K Windows limit. stream-json takes the prompt from stdin instead, with
   // no size limit, so --print is given an empty value.
   promptFormat: 'stream-json',
-  buildArgs({ settings, readOnly, workspace, model, effort }) {
+
+  // The custom agent a worker runs as. `excludeDefaultComponents` drops agy's
+  // own prompt sections and built-in tools, `inheritMcp: false` keeps the user's
+  // global MCP servers out of the worker, and `tools:` is the whole toolset. No
+  // web tools: headless agy denies read_url_content unless each URL is granted,
+  // and search_web failed on its own in the one measured researcher run.
+  agentDefinition({ role, access, workspace }) {
+    const name = `workflow-${role}`;
+    const tools = access === 'write' ? [...READ_TOOLS, ...WRITE_TOOLS] : READ_TOOLS;
+    const content = [
+      '---',
+      `name: ${name}`,
+      `description: Workflow leaf worker for the ${role} role (${access}).`,
+      'excludeDefaultComponents: true',
+      'inheritMcp: false',
+      'tools:',
+      ...tools.map(tool => `  - ${tool}`),
+      '---',
+      'You are a leaf worker dispatched by a conductor. Your complete instructions arrive as the first user message. '
+        + `Your workspace is ${workspace}; resolve every relative path against it, and pass it as Cwd to run_command. `
+        + 'Your final message is your report.',
+      ''
+    ].join('\n');
+    return { name, content };
+  },
+
+  buildArgs({ settings, readOnly, workspace, model, effort, agent }) {
+    // Both enforcement claims rest on the agent, so a command without one is
+    // refused rather than quietly launched with every default tool.
+    if (!agent?.name || !agent?.dir) {
+      throw new Error('antigravity workers run as a custom agent: pass the agent that agentDefinition() '
+        + 'produced and dispatch wrote, or the worker gets every default tool');
+    }
     const args = [
       '--add-dir', workspace,
+      // agy resolves --agent by name from its workspace folders; this one holds
+      // only the definition. An absolute path to the file is accepted and
+      // silently ignored (measured), so the name is the only form that works.
+      '--agent', agent.name, '--add-dir', agent.dir,
       // No --sandbox, and this is the flag that decides whether agy workers run
       // at all. With it, every shell call needs the `escalate_admin` permission
       // rather than `command`, and headless mode cannot prompt for either — the
       // worker exits 0, reports SUCCESS, and returns an empty response with
-      // `denied_actions: [{action: "escalate_admin"}]`. Measured on both a
-      // read-only and a write role. `escalate_admin` also cannot be granted per
-      // command (its target is the tool, not the command line), so keeping the
-      // sandbox would mean granting Bash escalation wholesale — broader than the
-      // exact-match `command(<line>)` rules that replace it. Isolation rests on
-      // --add-dir, the worktree, and that allowlist. See tools/workflow-mcp/engine-setup.md.
+      // `denied_actions: [{action: "escalate_admin"}]`. `escalate_admin` also
+      // cannot be granted per command, so keeping the sandbox would mean granting
+      // Bash escalation wholesale — broader than the exact-match `command(<line>)`
+      // rules that replace it. See tools/workflow-mcp/engine-setup.md.
       '--mode', readOnly ? 'plan' : 'accept-edits',
       // agy carries its own print-mode timeout rather than relying on the
       // caller to kill it.

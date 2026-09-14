@@ -60,8 +60,8 @@ Code and wiki ship together:
 On `[complex]` and batched cycles, a read-only `adversary` returns numbered findings in its report, which the conductor passes to you. The protocol — dispositions, severity vocabulary, the critical/major gate, the round commit — is the `adversarial-review` skill; follow it. Your half:
 
 - **Recommend a disposition per finding** — Filed (the default), Fixed (approved only), or Rejected with a stated reason — plus, for `critical`/`major`, the failure scenario and what a fix would touch. Hand that back to the conductor, which owns the `human-checkpoint` and the round-closing commit; you then make whatever fix the human approved.
-- **An approved fix is ordinary work**: failing test first (rule 2); a finding that contradicts the entity spec means fixing the Behavior case before the code (rule 3); full suite re-run after each fix.
-- **You may reject** a finding that misreads the code or that a documented invariant rules out — cite the invariant, and if it isn't written down anywhere, write it into the entity page or `gotchas.md` as part of the rejection. Silence is not a disposition and "unlikely" is not a reason (rule 20).
+- **An approved fix is ordinary work**: failing test first (tests before implementation); a finding that contradicts the entity spec means fixing the Behavior case before the code (never modify tests to make them pass); full suite re-run after each fix.
+- **You may reject** a finding that misreads the code or that a documented invariant rules out — cite the invariant, and if it isn't written down anywhere, write it into the entity page or `gotchas.md` as part of the rejection. Silence is not a disposition and "unlikely" is not a reason (every finding gets a written disposition).
 
 ## Finishing
 

@@ -118,11 +118,28 @@ export function prepareDispatch(root, input = {}) {
   // "a read-only role wrote something" and "a developer wrote outside its owned
   // paths" are both computable afterwards instead of being the conductor's job
   // to remember (dispatch-findings F-F).
+  // worker_commands is what extract-agy-result.mjs audits run_command calls
+  // against; it reads this file from beside the transcript.
   writeFileSync(resolve(dir, 'dispatch.json'), JSON.stringify({
     task_id, role: composed.role, access: composed.access, owned_paths: composed.owned_paths,
     engine, workspace: workspace ?? null, base_sha: input.base_sha ?? null,
+    worker_commands: config.workerCommands ?? [],
     created_at: new Date().toISOString()
   }, null, 2) + '\n');
+
+  // An engine that launches as a custom agent gets its definition written here,
+  // in its own directory so the engine is handed that folder and nothing else of
+  // the dispatch's files. Outside the worktree on purpose: inside, it would be an
+  // untracked file the worker appears to have written.
+  const adapter = ENGINES[engine];
+  let agent;
+  if (adapter.agentDefinition) {
+    const definition = adapter.agentDefinition({ role: composed.role, access: composed.access, workspace });
+    const agentDir = resolve(dir, 'agent');
+    mkdirSync(resolve(agentDir, '.agents', 'agents'), { recursive: true });
+    writeFileSync(resolve(agentDir, '.agents', 'agents', `${definition.name}.md`), definition.content);
+    agent = { name: definition.name, dir: agentDir };
+  }
 
   const roleConfig = config.roles?.[composed.role] ?? {};
   const command = buildCommand(config, {
@@ -131,6 +148,7 @@ export function prepareDispatch(root, input = {}) {
     access: composed.access,
     workspace,
     reportFile: report_file,
+    agent,
     model: input.model_override ?? roleConfig.models?.[engine] ?? undefined,
     effort: input.thinking_budget ?? roleConfig.effort?.[engine] ?? undefined
   });
@@ -138,7 +156,6 @@ export function prepareDispatch(root, input = {}) {
   // Stated per dispatch, not buried in a doc: the conductor is the one choosing
   // an engine for a task, and it can only weigh that choice if it is told what
   // the engine cannot enforce below the prompt.
-  const adapter = ENGINES[engine];
   const warnings = [];
   if (!adapter.enforcesLeafWorker) {
     warnings.push(`${engine} exposes subagent tools to workers and offers no flag to remove them, so the `

@@ -15,7 +15,10 @@ const settings = {
   }
 };
 const task = { profile: 'balanced', access: 'write', workspace: '/tmp/wt' };
-const build = (engine, over = {}) => buildCommand(settings, { engine, ...task, ...over });
+// antigravity only launches as a custom agent (see its adapter), so its builds
+// carry the agent a dispatch would have written. Other engines ignore it.
+const agent = { name: 'workflow-developer', dir: '/tmp/dispatch/agent' };
+const build = (engine, over = {}) => buildCommand(settings, { engine, ...task, agent, ...over });
 
 test('every registered engine builds a clean argv', () => {
   for (const engine of engineNames) {
@@ -45,9 +48,11 @@ test('no engine may request a permission bypass', () => {
 test('every engine suppresses project context', () => {
   assert.ok(build('claude').args.includes('--safe-mode'));           // no CLAUDE.md, skills, plugins, MCP
   assert.ok(build('codex').args.includes('project_doc_max_bytes=0')); // no AGENTS.md
-  // antigravity reads no repository files in print mode at all — measured, so
-  // there is nothing to pass; the assertion is that we did not invent a flag.
+  // antigravity reads no AGENTS.md or skills in print mode, and its own default
+  // prompt sections are dropped by the agent definition it launches as.
   assert.equal(ENGINES.antigravity.readsProjectDocs, false);
+  assert.match(ENGINES.antigravity.agentDefinition({ role: 'developer', access: 'write', workspace: '/tmp/wt' }).content,
+    /^excludeDefaultComponents: true$/m);
 });
 
 // Each engine denies writes its own way, and only two of the three do it below
@@ -198,13 +203,47 @@ test('agy runs workers without the sandbox that silently swallows them', () => {
   assert.ok(!build('antigravity').args.includes('--sandbox'));
 });
 
+// agy's claim is earned by the agent definition, not a flag: measured 2026-09-13,
+// a read-only worker told to write a file and define a subagent answered NO SUCH
+// TOOL to both and created nothing, where the same prompt without the agent did
+// both. The tests below pin the definition that earns it.
 test('each engine declares honestly what it can enforce below the prompt', () => {
   assert.equal(ENGINES.claude.enforcesLeafWorker, true);
   assert.equal(ENGINES.codex.enforcesLeafWorker, true);
-  assert.equal(ENGINES.antigravity.enforcesLeafWorker, false);
+  assert.equal(ENGINES.antigravity.enforcesLeafWorker, true);
   assert.equal(ENGINES.claude.enforcesReadOnly, true);
   assert.equal(ENGINES.codex.enforcesReadOnly, true);
-  assert.equal(ENGINES.antigravity.enforcesReadOnly, false);
+  assert.equal(ENGINES.antigravity.enforcesReadOnly, true);
+});
+
+const frontmatterTools = content => [...content.split('---')[1].matchAll(/^  - (\S+)$/gm)].map(m => m[1]);
+
+test('an agy read-only agent has no tool that writes a file or spawns an agent', () => {
+  const { name, content } = ENGINES.antigravity.agentDefinition({ role: 'adversary', access: 'read-only', workspace: '/tmp/wt' });
+  assert.equal(name, 'workflow-adversary');
+  assert.match(content, /^name: workflow-adversary$/m);
+  assert.match(content, /^inheritMcp: false$/m, 'user-global MCP servers must not reach a worker');
+  assert.deepEqual(frontmatterTools(content), ['view_file', 'list_dir', 'grep_search', 'find_by_name', 'run_command']);
+});
+
+test('an agy write agent adds the file-editing tools and still nothing that spawns an agent', () => {
+  const tools = frontmatterTools(ENGINES.antigravity.agentDefinition({ role: 'developer', access: 'write', workspace: '/tmp/wt' }).content);
+  assert.deepEqual(tools, ['view_file', 'list_dir', 'grep_search', 'find_by_name', 'run_command',
+    'write_to_file', 'replace_file_content', 'multi_replace_file_content']);
+  assert.ok(!tools.some(tool => /subagent|browser|mcp|url|web/.test(tool)));
+});
+
+// agy resolves --agent by name from its workspace folders. Measured: an absolute
+// path is accepted and silently ignored — the worker ran with every default tool.
+test('antigravity launches the agent by name, from a directory it is given with --add-dir', () => {
+  const { args } = build('antigravity');
+  assert.equal(args[args.indexOf('--agent') + 1], 'workflow-developer');
+  assert.ok(args.some((arg, i) => arg === '--add-dir' && args[i + 1] === '/tmp/dispatch/agent'));
+  assert.match(args.at(-1), /^--print=/, '--print must still be last');
+});
+
+test('antigravity refuses to build a command without its agent, since the enforcement claims rest on it', () => {
+  assert.throws(() => build('antigravity', { agent: undefined }), /agent/i);
 });
 
 test('claude and codex argv actually carry the flag that earns the claim', () => {

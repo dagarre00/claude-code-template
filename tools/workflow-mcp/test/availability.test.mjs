@@ -120,6 +120,52 @@ test('check reports which engines are installed and which roles that leaves disp
   });
 });
 
+// agy denies any command without an exact `command(<line>)` grant in its
+// user-global settings, and headless mode cannot ask: the run ends and the report
+// is discarded. That is computable before a single token is spent, so check does it.
+test('check names every worker command agy has no exact grant for', () => {
+  const home = fixture({ '.gemini/antigravity-cli/settings.json': JSON.stringify({
+    permissions: { allow: ['command(npm test)', 'command(git status --porcelain)', 'read_file(C:/x)'] } }) });
+  const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+  process.env.HOME = home; process.env.USERPROFILE = home;
+  try {
+    const root = fixture({ '.agents/config.json': JSON.stringify({ ...JSON.parse(config({})),
+      workerCommands: ['npm test', 'git status', 'git status --porcelain'] }) });
+    try {
+      const agy = makeTools(root, 'claude').check().engines.find(engine => engine.name === 'antigravity');
+      assert.deepEqual(agy.setup.missing_command_grants, ['git status'],
+        'matching is exact: `git status --porcelain` does not grant `git status`');
+      assert.equal(agy.setup.ok, false);
+      assert.match(agy.setup.settings_file, /antigravity-cli[\\/]settings\.json$/);
+    } finally { cleanup(root); }
+  } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+    cleanup(home);
+  }
+});
+
+test('check reports a missing agy settings file as every grant missing, not as fine', () => {
+  const home = fixture();
+  const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+  process.env.HOME = home; process.env.USERPROFILE = home;
+  try {
+    withRepo({}, root => {
+      const agy = makeTools(root, 'claude').check().engines.find(engine => engine.name === 'antigravity');
+      assert.deepEqual(agy.setup.missing_command_grants, ['npm test']);
+      assert.equal(agy.setup.ok, false);
+      const claude = makeTools(root, 'claude').check().engines.find(engine => engine.name === 'claude');
+      assert.equal(claude.setup, undefined, 'engines with nothing to set up carry no setup block');
+    });
+  } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+    cleanup(home);
+  }
+});
+
 test('list_roles reports the chain, not just the winner', () => {
   withRepo({ developer: { engine: ['codex', 'claude'] } }, root => {
     const developer = makeTools(root, 'claude').list_roles().find(role => role.name === 'developer');

@@ -2,7 +2,7 @@
 // as plain functions and so the transport stays a thin shell over them.
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { engineAvailability } from './availability.mjs';
+import { engineAvailability, engineSetup } from './availability.mjs';
 import { loadCanonical } from './canonical.mjs';
 import { loadConfig, resolveEngineChain } from './config.mjs';
 import { engineNames } from './engines/index.mjs';
@@ -58,7 +58,8 @@ export function makeTools(root, conductorEngine) {
         .map(role => [role.name, resolveEngineChain(config, role.name, conductorEngine)]));
       const engines = engineNames.map(name => ({
         ...engineAvailability(config, name),
-        roles: Object.keys(chains).filter(role => chains[role].includes(name)).sort()
+        roles: Object.keys(chains).filter(role => chains[role].includes(name)).sort(),
+        setup: engineSetup(config, name)
       }));
       const available = new Set(engines.filter(engine => engine.available).map(engine => engine.name));
 

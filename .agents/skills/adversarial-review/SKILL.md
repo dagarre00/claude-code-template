@@ -23,7 +23,7 @@ Runs over the commits just landed. A read-only `adversary` (fresh context, and b
 
 - **Automatically:** during a development cycle's own post-implementation step, when the todo is tagged `[complex]` or 2+ todos are batched — the same trigger that dispatched the `planner`.
 - **On demand:** a human asking for an adversarial review directly, for any branch or dirty tree.
-- **Never:** as a substitute for Red (behavioral rule 2), for the periodic whole-repo review, or for the pre-implementation pass — the brief was already reviewed before any test existed (`plan-review`), and this round reads only what the code did with it.
+- **Never:** as a substitute for Red (tests before implementation), for the periodic whole-repo review, or for the pre-implementation pass — the brief was already reviewed before any test existed (`plan-review`), and this round reads only what the code did with it.
 
 ## Steps
 
@@ -42,7 +42,7 @@ Runs over the commits just landed. A read-only `adversary` (fresh context, and b
 
 4. **Triage every finding** — see the protocol below. Keep your running dispositions wherever you like; only the commit in the next step is durable. Default is **Filed as a todo**, not fixed. Sort the findings by severity first: if any is `critical` or `major`, run one `human-checkpoint` covering all of them and get an explicit answer before touching code. Everything `minor` and below goes straight to the queue.
 
-5. **Commit the dispositions — this is the record** (behavioral rule 20). Any approved fix is its own commit; the todo lines and the round summary land together:
+5. **Commit the dispositions — this is the record** (every finding gets a written disposition). Any approved fix is its own commit; the todo lines and the round summary land together:
 
    ```bash
    git add <fixed-files>                                           # approved criticals/majors only
@@ -145,10 +145,10 @@ Two guards against this becoming a quality cut:
 
 **The default disposition is Filed, not Fixed.** A review is a triage pass, not a work order: it tells you what is wrong, and the queue decides when that gets addressed. Fixing findings the moment they land is what turns one review into an open-ended fix-and-re-review loop, and it lets a reviewer silently reprioritise work you already scheduled.
 
-Every finding ends in exactly one disposition, written into the commit that answers it. Behavioral rule 20: silence is not a disposition.
+Every finding ends in exactly one disposition, written into the commit that answers it. The written-disposition behavioral rule: silence is not a disposition.
 
 - **Filed** *(the default)* — append a line to `docs/wiki/todos.md` at the priority its severity maps to (below). Do not fix it now, regardless of how small it looks; a two-line fix is still a change nobody reviewed, made outside the Red-first loop.
-- **Fixed** — only for a `critical` or `major` the human explicitly approved fixing now. Name what changed. A behavior fix still needs its failing test first (rule 2).
+- **Fixed** — only for a `critical` or `major` the human explicitly approved fixing now. Name what changed. A behavior fix still needs its failing test first (tests before implementation).
 - **Rejected** — state the reason in one sentence. Legitimate: the scenario cannot occur given a documented invariant (cite it); the finding misreads the code (say what it missed); it is out of scope for this entity's Behavior cases. **Not** legitimate: "unlikely", "we can fix later" (that is Filed), or silence. If the invariant you cite is not written down anywhere, it is not an invariant — write it into the entity page or `gotchas.md` as part of the rejection.
 
 ### The approval gate — `critical` and `major` only
@@ -156,7 +156,7 @@ Every finding ends in exactly one disposition, written into the commit that answ
 Do not fix a `critical` or `major` on your own initiative, and do not quietly file it either. Run `human-checkpoint` with: the finding's claim, its concrete failure scenario, what fixing it now would touch, and your recommendation. Then:
 
 - **Approved** → fix it now, in its own commit, failing test first. Disposition: Fixed.
-- **Declined, or you cannot reach the human** → Filed at P0 (`critical`) or P1 (`major`), and say so prominently in your report. A `critical` may be filed rather than fixed **only** on this path — an unapproved `critical` that quietly becomes a todo is the exact silence rule 20 forbids.
+- **Declined, or you cannot reach the human** → Filed at P0 (`critical`) or P1 (`major`), and say so prominently in your report. A `critical` may be filed rather than fixed **only** on this path — an unapproved `critical` that quietly becomes a todo is the exact silence the written-disposition rule forbids.
 
 Batch the asks: one checkpoint listing every `critical`/`major` from the round, not one interruption per finding.
 
@@ -188,11 +188,11 @@ Cross-vendor independence is stronger than a second context on the same family. 
 - **Leaking author context into the dispatch.** Pasting the plan or "here's what I was going for" turns the adversary into a rubber stamp. The Behavior case IDs are the whole brief.
 - **Letting the adversary fix things.** It raises, you decide. A reviewer that edits erases both the decision and the record of it.
 - **Absorbing findings silently.** Filing three and ignoring two without a written reason is how a review becomes theatre.
-- **Filing as if it were disposal.** Filed findings have exactly one consumer — the periodic wiki-maintenance re-triage pass (behavioral rule 22) — and it only runs if someone runs it. When your filing pushes the open `[adversary]` count to `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`), say so in the cycle report. A backlog that grows every round and drains never means the reviews are producing paperwork, not fixes.
+- **Filing as if it were disposal.** Filed findings have exactly one consumer — the periodic wiki-maintenance re-triage pass (a filed backlog needs a consumer) — and it only runs if someone runs it. When your filing pushes the open `[adversary]` count to `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`), say so in the cycle report. A backlog that grows every round and drains never means the reviews are producing paperwork, not fixes.
 - **Fixing findings because they are small.** A `minor` that takes two lines is still filed. "While I'm here" is how a review becomes an unplanned refactor, and it skips the Red-first loop.
 - **Fixing a `critical` without asking.** The gate is not paperwork — it is the human's call whether the branch stops for this. Fix without approval and you have made a scheduling decision that was not yours.
 - **Inflating severity to force a fix.** Severity drives the interruption, so grading a `minor` as `major` spends the human's attention on your preference.
-- **Letting the record evaporate.** Closing the round before the dispositions are in commit messages leaves only a count in `log.md`. Counts are not dispositions: a rejection with no surviving reason is indistinguishable from silence a cycle later, which is exactly what rule 20 forbids.
+- **Letting the record evaporate.** Closing the round before the dispositions are in commit messages leaves only a count in `log.md`. Counts are not dispositions: a rejection with no surviving reason is indistinguishable from silence a cycle later, which is exactly what the written-disposition rule forbids.
 - **Re-reviewing the whole diff each round.** The fixes made it bigger, so round 2 finds new surface and you never converge. Round 2 reads the fixes only.
 - **Treating round 3 as the next step.** Findings surviving two rounds mean the unit is too big. Split it and review the pieces; a third lap on the same oversized diff produces a fourth.
 - **Round three.** Two rounds, then the human. A third lap is two agents negotiating, not reviewing.

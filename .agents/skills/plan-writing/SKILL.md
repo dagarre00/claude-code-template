@@ -69,7 +69,7 @@ You do not write tests or code — the `developer` does, reading your plan first
 
 ## Update on retry
 
-When re-dispatched after a failed `developer` attempt (two-strike rule — behavioral rule 5), **overwrite the plan with a fundamentally different approach**. Do not tweak. In the new `## Approach` section, explicitly name the prior approach, why it failed, and why the new approach should succeed. Keep `## Behavior cases covered` identical; only the sequencing and shape change.
+When re-dispatched after a failed `developer` attempt (the two-strike pivot behavioral rule), **overwrite the plan with a fundamentally different approach**. Do not tweak. In the new `## Approach` section, explicitly name the prior approach, why it failed, and why the new approach should succeed. Keep `## Behavior cases covered` identical; only the sequencing and shape change.
 
 ## Anti-patterns
 

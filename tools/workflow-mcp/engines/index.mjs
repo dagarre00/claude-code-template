@@ -41,7 +41,10 @@ for (const engine of registered) {
     // transcript into a report, for an engine that needs post-processing
     // rather than a native flag (antigravity). Absent for an engine whose
     // buildArgs writes reportFile itself (codex) or that needs neither (claude).
-    || (engine.extractReportFrom !== undefined && typeof engine.extractReportFrom !== 'string')) {
+    || (engine.extractReportFrom !== undefined && typeof engine.extractReportFrom !== 'string')
+    // Optional: a per-dispatch agent definition the engine launches as
+    // (antigravity), which dispatch.mjs writes before the command is built.
+    || (engine.agentDefinition !== undefined && typeof engine.agentDefinition !== 'function')) {
     throw new Error(`Malformed engine adapter: ${engine?.name ?? 'unnamed'}`);
   }
 }
@@ -55,7 +58,7 @@ export const engineNames = Object.freeze(registered.map(e => e.name));
 const MODEL = /^[a-zA-Z0-9][a-zA-Z0-9._:/-]{0,159}$/;
 
 export function buildCommand(settings, task) {
-  const { engine: name, profile, access, workspace, reportFile } = task;
+  const { engine: name, profile, access, workspace, reportFile, agent } = task;
   const engine = ENGINES[name];
   const config = settings.engines?.[name];
   if (!engine || !config) throw new Error(`Unknown engine: ${name}`);
@@ -75,7 +78,7 @@ export function buildCommand(settings, task) {
   // because there is no argv flag agy accepts for this. Harmless for claude
   // to receive and ignore.
   const args = engine.buildArgs({ settings, config, profile, access, workspace, model, effort,
-    reportFile, readOnly: access === 'read-only' });
+    reportFile, agent, readOnly: access === 'read-only' });
 
   // The adapter is the only engine-specific code in the tool, so the contract it
   // must honour is checked here rather than trusted.

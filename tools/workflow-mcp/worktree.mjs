@@ -15,13 +15,16 @@ import { dirname, resolve } from 'node:path';
 const WORKSPACES = '.worktrees';
 const SLUG = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 
-export function git(root, args, { allowFailure = false } = {}) {
+// `trim: false` is for column-sensitive output. Porcelain status starts a
+// modified tracked file with a space, and trimming the whole output removes it
+// from the first line only.
+export function git(root, args, { allowFailure = false, trim = true } = {}) {
   const result = spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', windowsHide: true, maxBuffer: 8 * 1024 * 1024 });
   if (result.error || result.status !== 0) {
     if (allowFailure) return null;
     throw new Error(`git ${args[0]} failed: ${(result.error?.message ?? result.stderr ?? result.stdout ?? '').trim()}`);
   }
-  return result.stdout.trim();
+  return trim ? result.stdout.trim() : result.stdout;
 }
 
 const isClean = root => git(root, ['status', '--porcelain=v1', '--untracked-files=all']) === '';
@@ -49,6 +52,17 @@ function trustForCodex(root, workspace) {
   const existing = git(root, ['config', '--global', '--get-all', 'safe.directory'], { allowFailure: true });
   const already = (existing ?? '').split('\n').some(line => resolve(line.trim()) === resolve(workspace));
   if (!already) git(root, ['config', '--global', '--add', 'safe.directory', forwardSlashPath], { allowFailure: true });
+}
+
+// The inverse, run when the worktree goes away. Every entry naming this exact
+// path is removed, in whichever slash direction it was written; nothing else in
+// the list is touched. Never fatal, for the same reason trusting is not.
+function untrust(root, workspace) {
+  const existing = git(root, ['config', '--global', '--get-all', 'safe.directory'], { allowFailure: true }) ?? '';
+  for (const value of new Set(existing.split('\n').map(line => line.trim()).filter(Boolean))) {
+    if (value === '*' || resolve(value) !== resolve(workspace)) continue;
+    git(root, ['config', '--global', '--fixed-value', '--unset-all', 'safe.directory', value], { allowFailure: true });
+  }
 }
 
 function taskDir(root, task_id) {
@@ -104,8 +118,8 @@ function dispatchRecord(root, task_id) {
 // `git status --porcelain=v1` pads a two-column status before the path, and a
 // rename carries `old -> new`. The destination is the path that exists now,
 // which is the one a violation is about.
-const changedPaths = workspace => (git(workspace, ['status', '--porcelain=v1', '--untracked-files=all']) || '')
-  .split('\n').filter(Boolean)
+const changedPaths = workspace => (git(workspace, ['status', '--porcelain=v1', '--untracked-files=all'], { trim: false }) || '')
+  .split('\n').filter(line => line.trim())
   .map(line => line.slice(3).trim().replace(/^.* -> /, '').replace(/^"|"$/g, ''));
 
 const under = (path, owned) => owned.some(base => path === base || path.startsWith(`${base}/`));
@@ -177,5 +191,6 @@ export function removeWorktree(root, task_id) {
     git(root, ['worktree', 'add', workspace, branch], { allowFailure: true });
     throw new Error(`Branch ${branch} holds unmerged commits; merge or drop it before cleanup`);
   }
+  untrust(root, workspace);
   return { task_id, removed: workspace, branch };
 }

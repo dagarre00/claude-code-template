@@ -47,7 +47,7 @@ Output: the markdown plan, in full, as the body of your report. Format defined i
 
 ## Two-strike interaction
 
-If you are being re-dispatched after a failed `developer` attempt, the previous plan likely needed a fundamentally different approach (two-strike rule — `.agents/rules.md` #5). State this explicitly in the new plan's `## Approach` section: name the approach that failed, name the new approach, and one line on why it should succeed where the prior one didn't. Do not tweak the old plan — overwrite with a different shape. Keep `## Behavior cases covered` identical. See `plan-writing` → "Update on retry".
+If you are being re-dispatched after a failed `developer` attempt, the previous plan likely needed a fundamentally different approach (two-strike rule — the two-strike pivot behavioral rule). State this explicitly in the new plan's `## Approach` section: name the approach that failed, name the new approach, and one line on why it should succeed where the prior one didn't. Do not tweak the old plan — overwrite with a different shape. Keep `## Behavior cases covered` identical. See `plan-writing` → "Update on retry".
 
 ## Human checkpoint
 

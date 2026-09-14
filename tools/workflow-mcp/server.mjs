@@ -45,7 +45,9 @@ export function createServer(root, conductorEngine) {
     'Compose the complete prompt for one worker from .agents/ and return the exact command to run it. '
     + 'Writes prompt.txt (readable) and stdin.txt (the bytes to pipe). The worker receives this prompt and '
     + 'nothing else — every engine is launched with project-file discovery suppressed. Run the returned '
-    + 'command yourself; this server never spawns anything.',
+    + 'command yourself; this server never spawns anything. Read `report_file` afterwards: a nonzero exit '
+    + 'means reject the report, and on engines whose transcript can be read it carries a '
+    + '`workflow_mcp_audit` naming anything the worker touched outside its workspace.',
     {
       role: z.string().describe('Role name from list_roles.'),
       instructions: z.string().min(1).max(100000).optional().describe('What this worker must do. Use instructions_file instead for anything large.'),
@@ -88,9 +90,10 @@ export function createServer(root, conductorEngine) {
 
   register('check',
     'Report whether AGENTS.md and CLAUDE.md still match .agents/, which engine CLIs are actually installed, '
-    + 'and which roles that leaves undispatchable. Call it before a cycle: a role whose whole engine chain '
-    + 'is missing is cheaper to learn about here than from a composed prompt that could never have run. '
-    + 'A usage limit is not visible to it — only a missing executable is.',
+    + 'which roles that leaves undispatchable, and — in an engine\'s `setup` block — machine setup that would '
+    + 'make its workers fail, such as agy worker commands with no exact permission grant. Call it before a '
+    + 'cycle: all of that is cheaper to learn here than from a composed prompt that could never have run. '
+    + 'A usage limit is not visible to it — only a missing executable or a missing grant is.',
     {}, () => api.check());
 
   return server;

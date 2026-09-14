@@ -8,7 +8,7 @@ type: skill
 
 Runs **before Red**, over the intent rather than the code. A read-only `plan-adversary` reads the plan (`[complex]`/batched cycles) or the todo line and the human's instruction (simple ones) and returns numbered findings; each one is applied, escalated, or rejected in writing before the `developer` is dispatched.
 
-**Why before rather than after.** The diff `adversary` finds what the code got wrong; by then the cycle is spent. This pass finds what the *cycle* will get wrong — a Behavior case no step covers, a step that cannot be tested Red-first, an instruction that admits two readings — while the fix is still a paragraph. The two are complements and never substitutes (behavioral rule 12).
+**Why before rather than after.** The diff `adversary` finds what the code got wrong; by then the cycle is spent. This pass finds what the *cycle* will get wrong — a Behavior case no step covers, a step that cannot be tested Red-first, an instruction that admits two readings — while the fix is still a paragraph. The two are complements and never substitutes (three review roles, never merged).
 
 **The default disposition inverts here.** `adversarial-review` defaults to Filed because fixing committed code mid-cycle skips Red-first and reorders the queue. Neither cost exists before any code is written, so the default is **Applied**: you change the plan, the todo, or the spec and proceed. Filing a plan finding for later is almost always wrong — you are about to implement the thing it is about.
 
@@ -42,7 +42,7 @@ Runs **before Red**, over the intent rather than the code. A read-only `plan-adv
 
 3. **Read the findings.** A pass must still say what was checked — an unexplained "the plan looks fine" is a failed review, so re-dispatch once demanding the `Checked:` line.
 
-4. **Dispose of every finding** — Applied / Escalated / Rejected, one each, no silence (behavioral rule 20).
+4. **Dispose of every finding** — Applied / Escalated / Rejected, one each, no silence (every finding gets a written disposition).
 
    | Disposition | When | What you do |
    | --- | --- | --- |
@@ -54,7 +54,7 @@ Runs **before Red**, over the intent rather than the code. A read-only `plan-adv
 
 5. **Re-plan only for a structural blocker.** If the findings show the plan's *approach* is wrong rather than its details — wrong decomposition, a step order that cannot work — re-dispatch the `planner` once with the findings attached. Anything smaller you apply yourself. **One round either way**: this review never re-reviews its own corrections. If a second dispatch would be round three on the same disagreement, that is a `human-checkpoint` with both positions stated.
 
-6. **Record it in the cycle's log entry.** No commit exists yet to carry the dispositions, so the `work` log entry the conductor writes at the end of the cycle is the committed record (rule 20 — the record is committed, and here that is the log):
+6. **Record it in the cycle's log entry.** No commit exists yet to carry the dispositions, so the `work` log entry the conductor writes at the end of the cycle is the committed record (the written-disposition rule — the record is committed, and here that is the log):
 
    ```markdown
    - Plan review: 3 findings — 2 applied, 1 rejected
@@ -72,7 +72,7 @@ Ordered by what actually costs a cycle. Categories 1–3 are where re-work comes
 | # | Category | Look for |
 | - | --- | --- |
 | 1 | **spec fidelity** | A named Behavior case with no step that implements it; a step implementing something no case asks for; a plan that restates the case instead of decomposing it |
-| 2 | **testability** | A step with no observable outcome to assert; a step that cannot fail Red on its own (rule 2); "add validation" with no stated input that must be rejected |
+| 2 | **testability** | A step with no observable outcome to assert; a step that cannot fail Red on its own (tests before implementation); "add validation" with no stated input that must be rejected |
 | 3 | **sequencing** | A step depending on something a later step builds; a hidden prerequisite (migration, fixture, config, seeded data); two steps that must land together but are listed apart |
 | 4 | **scope** | Creep past the todo; a step touching files outside the entity; under-scope — a case that needs work no step mentions |
 | 5 | **known traps** | The plan walks into an entry in `docs/wiki/gotchas.md`, contradicts an ADR in `docs/wiki/decisions/`, or breaks a `## Conventions` rule in `architecture.md` |
@@ -101,7 +101,7 @@ Doubt grades **up** here, the opposite of the diff review. A false `blocker` cos
 
 - **Defending the plan in the dispatch.** "Here's why step 3 is fine" produces agreement, which is not a review.
 - **Filing plan findings for later.** You are about to implement the subject of the finding. Applied or Escalated; a filed plan finding is a cycle that knowingly starts wrong.
-- **Letting it write the plan.** It raises; the `planner` or the conductor edits. A reviewer that rewrites the plan has authored the thing it was checking (rule 12).
+- **Letting it write the plan.** It raises; the `planner` or the conductor edits. A reviewer that rewrites the plan has authored the thing it was checking (three review roles, never merged).
 - **Running it after Red.** Once tests exist the subject is code, and the right role is the diff `adversary`.
 - **Skipping it on simple todos.** A one-line todo is where an unstated assumption travels furthest — it is precisely the cheap case to check.
 - **Escalating everything.** A `human-checkpoint` per finding trains the human to approve without reading. One checkpoint, all escalations, once.

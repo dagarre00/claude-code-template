@@ -125,6 +125,24 @@ test('trusts the new worktree path for Codex on Windows, without duplicating on 
   });
 });
 
+// The trust entry is global state this tool wrote, so removing the worktree has
+// to take it back. Measured on a real machine: 14 of 26 global safe.directory
+// entries pointed at worktrees that no longer existed.
+test('removing a worktree also removes the trust entry prepare wrote for it', () => {
+  repo(root => {
+    const wt = prepareWorktree(root, { task_id: 'trust' });
+    const expected = wt.workspace.replaceAll('\\', '/');
+    const trusted = () => git(root, 'config', '--global', '--get-all', 'safe.directory').stdout
+      .split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    git(root, 'config', '--global', '--add', 'safe.directory', 'C:/somewhere/else');
+    assert.ok(trusted().includes(expected));
+
+    removeWorktree(root, 'trust');
+    assert.ok(!trusted().includes(expected), 'the removed worktree must no longer be trusted');
+    assert.ok(trusted().includes('C:/somewhere/else'), 'entries this tool did not write stay untouched');
+  });
+});
+
 // F-F: read-only is a promise the prompt makes, not a property two of three
 // engines can enforce, and verifying it was left to the conductor remembering to
 // run `git status --porcelain` in the worktree afterwards. The MCP owns the
@@ -158,6 +176,25 @@ test('a write worker is measured against its owned paths, not against being dirt
     listed = listWorktrees(root).find(entry => entry.task_id === 'rw');
     assert.deepEqual(listed.violations, ['elsewhere.js'],
       'a path nobody will commit is exactly what the conductor needs told');
+  });
+});
+
+// `git status --porcelain` starts a modified tracked file with a space (` M
+// path`). Trimming the whole output ate that space on the first line only, so
+// the fixed-width slice took the path's first letter with it — measured on every
+// real developer dispatch: `ocs/wiki/entities/slugify.md`, reported as a
+// violation of owned_paths that contained `docs/wiki/entities/slugify.md`.
+test('a modified tracked file listed first keeps its full path and is not a false violation', () => {
+  repo(root => {
+    const wt = prepareWorktree(root, { task_id: 'mod' });
+    record(root, 'mod', { role: 'developer', access: 'write', owned_paths: ['.agents/rules.md', 'src'] });
+    writeFileSync(resolve(wt.workspace, '.agents/rules.md'), 'edited in place\n');
+    mkdirSync(resolve(wt.workspace, 'src'), { recursive: true });
+    writeFileSync(resolve(wt.workspace, 'src/new.js'), 'created\n');
+
+    const listed = listWorktrees(root).find(entry => entry.task_id === 'mod');
+    assert.deepEqual(listed.changed_paths, ['.agents/rules.md', 'src/new.js']);
+    assert.deepEqual(listed.violations, []);
   });
 });
 

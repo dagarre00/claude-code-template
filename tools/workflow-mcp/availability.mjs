@@ -11,7 +11,8 @@
 // "try again at 9:05 PM", so this deliberately does not try — it reports what is
 // installed, the chain reports what to fall back to, and a usage limit stays a
 // failed dispatch the conductor answers with `cli_engine`.
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { delimiter, isAbsolute, resolve } from 'node:path';
 
 const isFile = path => { try { return statSync(path).isFile(); } catch { return false; } };
@@ -41,4 +42,22 @@ export function engineAvailability(config, name) {
   const executable = config.engines?.[name]?.executable ?? null;
   const path = executable ? findExecutable(executable) : null;
   return { name, executable, available: path !== null, path };
+}
+
+// The other computable half: an installed engine that will deny its worker's
+// first command. agy reads permissions only from its user-global settings,
+// matches `command(<line>)` exactly, and cannot prompt headless — the run ends
+// and the report is discarded (engine-setup.md). Engines with nothing to set up
+// return undefined, so `check` carries no block for them.
+export function engineSetup(config, name) {
+  if (name !== 'antigravity') return undefined;
+  const settings_file = resolve(homedir(), '.gemini', 'antigravity-cli', 'settings.json');
+  let allow = [];
+  try {
+    const parsed = JSON.parse(readFileSync(settings_file, 'utf8'));
+    if (Array.isArray(parsed?.permissions?.allow)) allow = parsed.permissions.allow;
+  } catch { /* missing or unreadable: nothing is granted */ }
+  const granted = new Set(allow.filter(rule => typeof rule === 'string'));
+  const missing_command_grants = (config.workerCommands ?? []).filter(command => !granted.has(`command(${command})`));
+  return { settings_file, ok: missing_command_grants.length === 0, missing_command_grants };
 }

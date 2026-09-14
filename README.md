@@ -119,14 +119,14 @@ Run the returned `command`, read the report, commit the worker's owned paths you
 
 **Which model runs which role.** `.agents/config.json` is the only place model choice lives — a role declares a `profile` (`reasoning` / `balanced` / `fast`), never a model. `engines.<engine>.models.<profile>` sets each CLI's default; `roles.<role>.engine` pins a role to one CLI, and `roles.<role>.models.<engine>` / `.effort.<engine>` pin the exact model and effort for it. As shipped, three roles are pinned across all three CLIs and the rest follow whichever CLI is conducting:
 
-| Role | Engine | Model | Effort |
+| Role | Engine chain | Pinned model | Effort |
 | --- | --- | --- | --- |
-| `planner` | claude | `claude-opus-5` | high |
-| `developer` | agy | `gemini-3.8-flash` | medium |
-| `plan-adversary` | agy | `gemini-3.8-flash` | high |
-| `adversary` | codex | `gpt-6-astra` | medium |
+| `planner` | claude → codex | `claude-opus-5` on claude | high |
+| `developer` | codex → claude | profile default | profile default |
+| `plan-adversary` | agy → codex → claude | `gemini-3.8-flash` on agy | high |
+| `adversary` | codex → agy → claude | `gpt-6-astra` on codex | medium |
 
-Pinning roles to agy is the one trade-off worth naming: agy enforces neither the leaf-worker rule nor read-only below the prompt, and its workers need a one-time user-global permission grant before they can run a command at all. Every dispatch says so in its `warnings`; the setup is in [`tools/workflow-mcp/engine-setup.md`](tools/workflow-mcp/engine-setup.md).
+Pinning roles to agy is the one trade-off worth naming: its workers need a one-time user-global permission grant before they can run a command at all (`check` lists any that are missing), and a worktree is not a read boundary on agy — its report carries an audit of every read outside the workspace instead. The setup is in [`tools/workflow-mcp/engine-setup.md`](tools/workflow-mcp/engine-setup.md).
 
 **Workers get no ambient context.** Each engine is launched with its own project-file discovery switched off, so the composed prompt is the whole of what the worker sees. Verified by dispatching the same self-test to all three:
 
@@ -144,11 +144,11 @@ Conductor-only rules — branch, commit, push, open a PR — are withheld from w
 | --- | --- | --- | --- | --- |
 | claude | process (`--disallowedTools Agent,Task`) | process (no approval surface for edits) | allowlisted from `workerCommands` | stdout already is the report |
 | codex | process (`agents.enabled=false`) | process (OS sandbox) | free inside the sandbox | `report_file`, via `-o` |
-| agy | **prompt only** | **prompt only** | allowlisted, needs one-time user-global setup | `report_file`, via command wrapping + `extract-agy-result.mjs` |
+| agy | process (custom agent with no subagent tools) | process (custom agent with no write tools) | allowlisted, needs one-time user-global setup | `report_file`, via command wrapping + `extract-agy-result.mjs`, plus an audit of reads outside the workspace |
 
-`build_worker_prompt` returns a `warnings` entry for every box in that table it cannot back, so a conductor is told per dispatch rather than having to remember this. **A worker cannot run anything that is not in `workerCommands`** (`.agents/config.json`), and on agy that list also has to be mirrored into a user-global settings file or its workers return an empty response with exit code 0. One page, all of it: [`tools/workflow-mcp/engine-setup.md`](tools/workflow-mcp/engine-setup.md).
+agy earns its two process-level boxes by launching every worker as a per-dispatch custom agent (`--agent`), whose tool list is the whole toolset — measured: a read-only worker told to write a file and define a subagent answered NO SUCH TOOL to both. `build_worker_prompt` returns a `warnings` entry for any box an engine cannot back, so a conductor is told per dispatch rather than having to remember this. **A worker cannot run anything that is not in `workerCommands`** (`.agents/config.json`), and on agy that list also has to be mirrored into a user-global settings file or its workers return an empty response with exit code 0. One page, all of it: [`tools/workflow-mcp/engine-setup.md`](tools/workflow-mcp/engine-setup.md).
 
-One caveat worth knowing: a worker's own account of its context is unreliable. agy first claimed it *had* been given AGENTS.md; asked instead to quote a withheld rule and name a command from the catalog, it correctly answered `ABSENT` to both. Test with questions only the real thing could answer.
+One caveat worth knowing: a worker's own account of its context is unreliable. agy first claimed it *had* been given AGENTS.md; asked instead to quote a withheld rule and name a command from the catalog, it correctly answered `ABSENT` to both. Test with questions only the real thing could answer — and ask for a rule by what it says, never by number, because workers receive the rules renumbered.
 
 ## What's in the box
 

@@ -24,6 +24,13 @@ not assume it exists. Read files in your worktree freely — that is your eviden
 - **Edit outside your owned paths.** Anything you change outside them is
   committed by nobody and fails integration — it is a lost change and a raised
   alarm, not a shortcut.
+- **Read outside your workspace.** Your workspace path is in the assignment
+  below; "the repository" means that directory and nothing above it. Not the
+  parent checkout, not a sibling worktree, not the conductor's dispatch files —
+  and never go searching the filesystem for context about your own task. The
+  only exception is a path this prompt explicitly names. A read outside is
+  listed in the conductor's audit of your run, and on some engines it is denied,
+  which ends your run and discards your report.
 
 ## Running commands
 

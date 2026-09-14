@@ -120,22 +120,21 @@ test('the returned command runs in the worktree, not the conductor checkout', ()
 
 // The conductor decides whether an engine is appropriate for a task, and it can
 // only do that if the dispatch states what the engine cannot enforce.
-test('dispatch warns when the engine cannot enforce the leaf-worker rule', () => {
+test('no engine carries an enforcement warning once each earns its claims below the prompt', () => {
   withRepo(root => {
     const workspace = resolve(root, '.worktrees/x');
-    const agy = prepareDispatch(root, { ...base, cli_engine: 'antigravity', conductorEngine: 'claude', workspace });
-    assert.ok(agy.warnings.some(w => /subagent|leaf/i.test(w)), 'no warning for antigravity');
-    for (const cli_engine of ['claude', 'codex']) {
+    for (const cli_engine of ['claude', 'codex', 'antigravity']) {
       // Availability warnings are excluded deliberately: whether the real
       // `claude`/`codex` binaries happen to be installed on the machine running
       // this suite says nothing about what an engine can enforce, and asserting
       // an empty array here made this test pass or fail on that.
       //
-      // The conductor is a third engine on purpose: dispatching claude from a
-      // claude conductor now carries a shared-quota warning, which is true but
-      // says nothing about what an engine enforces below the prompt. Keeping it
-      // out of the fixture beats filtering it back out of the result.
-      const warnings = prepareDispatch(root, { ...base, cli_engine, conductorEngine: 'antigravity', workspace })
+      // The conductor is always a different engine on purpose: dispatching an
+      // engine from a conductor on the same one carries a shared-quota warning,
+      // which is true but says nothing about what an engine enforces below the
+      // prompt. Keeping it out of the fixture beats filtering it back out.
+      const conductorEngine = cli_engine === 'antigravity' ? 'codex' : 'antigravity';
+      const warnings = prepareDispatch(root, { ...base, cli_engine, conductorEngine, workspace })
         .warnings.filter(warning => !/not installed|not found on PATH/i.test(warning));
       assert.deepEqual(warnings, [], `${cli_engine} claims a guarantee it does not have`);
     }
@@ -320,6 +319,34 @@ test('a missing result event fails the wrapped command, not just an already-nonz
     const outcome = spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
     assert.notEqual(outcome.status, 0, 'no result event must not report success');
     assert.match(outcome.stdout, /No "result" event found/);
+  });
+});
+
+// The agent definition is what takes away agy's write and subagent tools, so it
+// has to exist before the command runs — and outside the worktree, where it would
+// otherwise read as a file the worker wrote.
+test('an antigravity dispatch writes its agent definition beside the prompt, never in the worktree', () => {
+  withRepo(root => {
+    const workspace = resolve(root, '.worktrees/x');
+    const result = prepareDispatch(root, { role: 'adversary', instructions: 'Review it.', cli_engine: 'antigravity',
+      conductorEngine: 'claude', workspace, task_id: 'agent-test' });
+    const agentDir = resolve(root, '.worktrees/.dispatch/agent-test/agent');
+    const definition = readFileSync(resolve(agentDir, '.agents/agents/workflow-adversary.md'), 'utf8');
+    assert.match(definition, /^excludeDefaultComponents: true$/m);
+    assert.doesNotMatch(definition, /write_to_file/, 'a read-only role gets no write tool');
+    assert.equal(result.args[result.args.indexOf('--agent') + 1], 'workflow-adversary');
+    assert.ok(result.args.includes(agentDir));
+  });
+});
+
+// The extraction step audits commands against the allowlist the worker was
+// given, and it can only read that from the record beside the transcript.
+test('the dispatch record carries the allowlist the worker was given', () => {
+  withRepo(root => {
+    const workspace = resolve(root, '.worktrees/x');
+    prepareDispatch(root, { ...base, cli_engine: 'antigravity', conductorEngine: 'claude', workspace, task_id: 'record-test' });
+    const record = JSON.parse(readFileSync(resolve(root, '.worktrees/.dispatch/record-test/dispatch.json'), 'utf8'));
+    assert.deepEqual(record.worker_commands, ['npm test']);
   });
 });
 

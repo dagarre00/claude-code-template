@@ -178,23 +178,38 @@ jetski: no output produced — a tool required the "command" permission that
 headless mode cannot prompt for, so it was auto-denied.
 ```
 
-**The wrapped command turns this into a real failure.** `extract-agy-result.mjs`
-reads the `result` event, and now exits non-zero when `denied_actions` is
-non-empty or no `result` event was found at all; `dispatch.mjs` folds that into
-the exit code of the whole runnable command, unless the underlying process
-itself already failed (that `ec` still wins). So a denied grant is no longer
-something the conductor has to notice by reading — a nonzero exit is the
-signal — but the report is still where you find *which* action was denied.
+**`check` tells you before a cycle.** Its `antigravity` entry carries a `setup`
+block listing every `workerCommands` entry with no exact grant in that file, so a
+missing grant is found without spending a dispatch on it.
+
+**The wrapped command turns every silent agy failure into a real one.**
+`extract-agy-result.mjs` exits non-zero when `denied_actions` is non-empty (and
+names the refused target, recovered from the transcript), when no `result` event
+was found, when the response is empty with no denial at all (measured: a tool
+call rejected as malformed, after which the run simply ended `SUCCESS`), and when
+the worker wrote outside its workspace or called a subagent tool. `dispatch.mjs`
+folds that into the exit code of the whole runnable command, unless the
+underlying process itself already failed (that `ec` still wins). A nonzero exit
+is the signal to reject the report; the report is where you find why.
 
 ### Read grants for files outside the worktree
 
 Each worker's workspace is its isolated worktree (from `prepare_worktree`).
-Anything it needs to read that lives outside that tree — a shared virtualenv,
-a `vendor/` directory, a monorepo dependency the worktree doesn't include — is
-invisible to it unless granted, **separately from `workerCommands`**: allowing
-`pytest` does not grant reading the interpreter's own packages, and a denied
-read fails exactly like a denied command (exit 0, `SUCCESS`, empty response,
-now caught by the check above).
+A read outside that tree — a shared virtualenv, a `vendor/` directory, a
+monorepo dependency the worktree doesn't include — **may** be denied, and when
+it is, it fails exactly like a denied command (the run ends, the report is
+discarded, the wrapped command exits non-zero and names the target). Allowing
+`pytest` does not grant reading the interpreter's own packages.
+
+Which reads are denied is not fully established. Measured on agy 1.2.2: reads
+into an adopting project's own `.venv` and `vendor/` were denied, and so was a
+read into another registered agy workspace; reads into a scratch directory agy
+had no record of were allowed — including the conductor's own dispatch files —
+and `allowNonWorkspaceAccess: false` changed nothing. So a worktree is not a read
+boundary on agy. `extract-agy-result.mjs` lists every read outside the workspace
+under `workflow_mcp_audit.reads_outside_workspace` in the report, on every run;
+read it, especially for a reviewer whose value is not having seen the author's
+material.
 
 Grant it as `read_file(<absolute path>)` in the same
 `~/.gemini/antigravity-cli/settings.json` `permissions.allow` list as the
@@ -222,9 +237,8 @@ imply, and grant all of them up front. Also check that nothing in `deny` or
 `ask` shadows the path you just added — agy's own precedence puts `deny` and
 `ask` ahead of `allow`, so a broader deny rule elsewhere silently wins.
 
-Prefer this over setting `allowNonWorkspaceAccess: true` below: that flag
-grants every path on the machine, where a handful of `read_file(...)` entries
-grant only the ones this project actually needs.
+Prefer this over setting `allowNonWorkspaceAccess: true`: a handful of
+`read_file(...)` entries name only the paths this project actually needs.
 
 ### Why agy workers run without `--sandbox`
 
@@ -232,25 +246,48 @@ With `--sandbox`, every shell call needs the `escalate_admin` permission instead
 of `command`, and headless mode cannot prompt for that either — the worker
 returns nothing. `escalate_admin` also cannot be scoped to a command line (its
 target is the tool), so keeping the sandbox would mean granting Bash escalation
-wholesale: strictly broader than the exact-match rules above. Isolation for agy
-workers therefore rests on the worktree, `--add-dir`, and this allowlist.
+wholesale: strictly broader than the exact-match rules above.
 
-Two consequences worth knowing, both surfaced in `build_worker_prompt`'s
-`warnings`:
+### Why every agy worker runs as a custom agent
 
-- **Read-only is prompt-level on agy.** `--mode plan` binds on its own, but agy
-  prints `warning: --mode plan has no effect while slash command expansion is
-  disabled` and means it. Recovering the mode would require dropping
-  `--disable-slash-commands`, which loads agy's own commands and skills on top of
-  the composed prompt — trading the context guarantee for the access one. Check
-  `git status --porcelain` in the worktree after a read-only agy dispatch.
-- **The leaf-worker rule is prompt-level on agy.** Its workers get
-  `define_subagent`/`invoke_subagent` and there is no flag to remove them.
+`--mode plan` does not make a worker read-only — agy prints `warning: --mode plan
+has no effect while slash command expansion is disabled` and means it — and a
+plain agy worker is handed `define_subagent`/`invoke_subagent`, browser tools and
+your user-global MCP servers. What does remove them is a custom agent, which agy
+loads by name from `.agents/agents/` in any of its workspace folders, even in
+print mode. So `build_worker_prompt` writes one per dispatch to
+`.worktrees/.dispatch/<task_id>/agent/.agents/agents/workflow-<role>.md` and the
+command passes `--agent workflow-<role> --add-dir <that agent dir>`:
 
-If your `~/.gemini/antigravity-cli/settings.json` sets
-`"allowNonWorkspaceAccess": true`, an agy worker can read and write outside its
-worktree. Set it to `false` if you want that boundary enforced rather than
-promised.
+- `excludeDefaultComponents: true` drops agy's own prompt sections and tools. Two
+  measured failures lived there: the artifacts section, which invites an
+  `ArtifactMetadata` argument on an ordinary write that agy then refuses as "not a
+  valid artifact path", and the file-link section, which filled reports with
+  absolute `file:///` links into the worker's own worktree.
+- `inheritMcp: false` keeps the user's global MCP servers away from workers.
+- `tools:` is the whole toolset: read, search and `run_command` for every role,
+  plus `write_to_file`/`replace_file_content`/`multi_replace_file_content` for
+  write roles. No subagent tools, no browser, no web.
+
+Measured 2026-09-13: told to create a file and define a subagent, a read-only
+worker did both when launched plainly and answered NO SUCH TOOL to both, creating
+nothing, when launched as its agent. Across 9 real-task agy dispatches run this
+way (plan-adversary, developer, adversary, reviewer, wiki-maintainer), none lost
+a capability it needed. Two limits:
+
+- **The agent must be named, not given as a path.** `--agent C:/…/x.md` is
+  accepted and silently ignored — the worker ran with every default tool.
+- **agy validates `tools:` strictly.** An unknown tool name fails the run with
+  `tool "<name>" not found in registry`, so a typo cannot quietly widen the set.
+
+It does not confine reads — see [Read grants](#read-grants-for-files-outside-the-worktree).
+
+### The researcher role cannot run on agy headless
+
+Measured once: `search_web` failed inside agy (`no summary returned from
+GenerateContent`), and `read_url_content` is auto-denied in headless mode unless
+each URL is granted in advance, which a research task cannot know. The agent
+definition carries no web tools for that reason. Keep `researcher` off agy.
 
 ## When an engine is unavailable
 

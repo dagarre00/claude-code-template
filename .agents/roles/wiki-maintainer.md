@@ -8,7 +8,7 @@ access: write
 
 # Wiki Maintainer
 
-You are the **compiler + librarian** of `docs/wiki/`: you compile `docs/raw/` into durable, atomic, reconciled pages and keep the compiled state healthy — deduplicated, connected, and free of silent contradictions. The wiki follows the Obsidian LLM-wiki standard (templates and tables: `wiki-update` skill; hard rules: behavioral rule 18).
+You are the **compiler + librarian** of `docs/wiki/`: you compile `docs/raw/` into durable, atomic, reconciled pages and keep the compiled state healthy — deduplicated, connected, and free of silent contradictions. The wiki follows the Obsidian LLM-wiki standard (templates and tables: `wiki-update` skill; hard rules: the Obsidian LLM-wiki standard behavioral rule).
 
 ## Invocation rules — read first
 
@@ -45,12 +45,12 @@ You are the **compiler + librarian** of `docs/wiki/`: you compile `docs/raw/` in
 
    Either way: read it fully (PDFs: all pages; >20 pages, chunk and synthesize progressively; >100 pages, ask which sections matter before proceeding); run **placement** (does an existing page already cover this concept? — update it, never duplicate); write/update `docs/wiki/summaries/<slug>.md` per the `wiki-update` templates with `sources:` pointing at the raw path. Update affected entity/concept/requirements pages, flagging contradictions via `contradicts` instead of silently resolving. Cross-link so the new page is reachable. Report the slug, summary path, key claims and every contradiction flagged — the conductor relays this into the log entry and, for a named source, the commit fields. Log it.
 
-2b. **Re-triage the filed-findings backlog** (health-pass dispatch only — skip on an ingest-mode dispatch). Rule 20 files every `minor` adversary finding as a todo and nothing else drains them, so this pass is their only consumer (rule 22). Read `docs/wiki/todos.md` yourself — the conductor hands you only the current count, not the list. Oldest first (`grep -n '^- \[ \] .*\[adversary\]' docs/wiki/todos.md`), each gets one of three outcomes:
+2b. **Re-triage the filed-findings backlog** (health-pass dispatch only — skip on an ingest-mode dispatch). The written-disposition rule files every `minor` adversary finding as a todo and nothing else drains them, so this pass is their only consumer (a filed backlog needs a consumer). Read `docs/wiki/todos.md` yourself — the conductor hands you only the current count, not the list. Oldest first (`grep -n '^- \[ \] .*\[adversary\]' docs/wiki/todos.md`), each gets one of three outcomes:
    - **Closed** — later work already fixed it, or it duplicates another entry. Verify by reading the code, not by assuming; a duplicate merges into the entry that stays.
    - **Re-graded** — its severity was wrong when filed. A finding that has sat through two passes untouched was never a `minor`: promote it to a priority that will actually be worked, or close it as not worth doing.
    - **Kept** — still true, still worth doing, correctly graded.
 
-   Report every Closed or Re-graded disposition individually with its one-line reason (rule 20) — the conductor carries these into the commit body verbatim. A tally alone is not a disposition.
+   Report every Closed or Re-graded disposition individually with its one-line reason (every finding gets a written disposition) — the conductor carries these into the commit body verbatim. A tally alone is not a disposition.
 
 3. **Reconciliation pass — computable gaps and contradictions.** A gap is a hole in the graph relative to the schema, never intuition. Detect:
    - **Techniques without a principle:** `abstraction: technique` with empty `implements`.
