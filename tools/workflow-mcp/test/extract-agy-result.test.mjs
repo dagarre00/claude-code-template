@@ -120,3 +120,25 @@ test('a clean run carries a clean audit', () => {
   assert.equal(report.workflow_mcp_audit.clean, true);
   assert.equal(report.response, 'a real report');
 });
+
+// Measured twice (a wiki-maintainer and an adversary, 2026-09-13/14): agy's last
+// tool call came back "invalid arguments: - missing property 'Pattern'", and the
+// run ended SUCCESS with nothing. The engine rejected its own malformed call; the
+// brief was fine. Naming that is what lets a conductor retry once unchanged
+// instead of rewriting a brief that was never the problem.
+test('an empty run that ended on a rejected tool call is marked transient, with the call', () => {
+  const { status, report } = run([
+    step(26, 'view_file', { AbsolutePath: `${WS}\\package.json` }, { output: '10 lines' }),
+    step(28, 'find_by_name', { SearchDirectory: `${WS}\\test` }, { output: "invalid arguments:\n- missing property 'Pattern'" }),
+    result({ response: '' })
+  ]);
+  assert.notEqual(status, 0);
+  assert.equal(report.workflow_mcp_extraction.transient, true);
+  assert.equal(report.workflow_mcp_extraction.last_tool_call.tool, 'find_by_name');
+  assert.match(report.workflow_mcp_extraction.last_tool_call.output, /missing property/);
+});
+
+test('an empty run that did not end on a rejected call is not called transient', () => {
+  const { report } = run([step(2, 'view_file', { AbsolutePath: `${WS}\a.md` }, { output: '3 lines' }), result({ response: '' })]);
+  assert.equal(report.workflow_mcp_extraction.transient, false);
+});

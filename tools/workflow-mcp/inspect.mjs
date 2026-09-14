@@ -39,7 +39,8 @@ function readReport(record, dir) {
         denied_actions: Array.isArray(parsed.denied_actions) ? parsed.denied_actions : [],
         usage: parsed.usage ?? null,
         engine_seconds: parsed.duration_seconds ?? null,
-        audit: parsed.workflow_mcp_audit ?? null
+        audit: parsed.workflow_mcp_audit ?? null,
+        transient: parsed.workflow_mcp_extraction?.transient === true
       });
     } else {
       summary.empty = true;
@@ -78,7 +79,10 @@ function verdictFor({ record, outcome, report, worktree, decision }) {
       + `${outcome.extraction_exit_code == null ? '' : `, report extraction ${outcome.extraction_exit_code}`}).`);
   }
   if (!report.exists) reasons.push(`No report was written to ${report.path}.`);
-  else if (report.empty) reasons.push('The report is empty — there is nothing to accept.');
+  else if (report.empty && report.transient) {
+    reasons.push('The report is empty because the engine ended the run right after rejecting its own malformed tool call '
+      + '— a transient engine fault, not a problem with the brief. Retry once unchanged.');
+  } else if (report.empty) reasons.push('The report is empty — there is nothing to accept.');
   if (report.denied_actions?.length) {
     reasons.push(`The engine denied ${report.denied_actions.map(a => a.display_name ?? a.action).join(', ')}; `
       + 'the run ended there and its work is unfinished.');
@@ -105,7 +109,13 @@ function verdictFor({ record, outcome, report, worktree, decision }) {
   if (audit?.commands_not_allowlisted?.length) {
     warnings.push(`Commands not on the allowlist verbatim: ${audit.commands_not_allowlisted.join('; ')}.`);
   }
-  return { mechanical: reasons.length ? 'reject' : 'pass', reasons, warnings };
+  // Transient only when that fault is the whole story: the report extraction's
+  // own nonzero exit is the same fault seen twice, but a crashed process, a
+  // denial or a change outside scope alongside it is something a retry cannot fix.
+  const sameFault = outcome.process_exit_code === 0 ? 2 : 1;
+  return { mechanical: reasons.length ? 'reject' : 'pass', reasons, warnings,
+    transient: !!report.transient && reasons.length <= sameFault
+      && !report.denied_actions?.length && !(worktree.exists && worktree.violations?.length) };
 }
 
 function worktreeState(root, record, listing) {

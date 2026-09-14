@@ -15,6 +15,13 @@ updated: 2026-09-11
 > Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd — `init`, `interview`, `work`, `pr`, `adversary`, `review`, `wiki-ingest`, `wiki-maintenance`, or `chore` when nothing else fits (behavioral rule 19).
 > Entries are written by the command that did the work, in the same commit as the work. `/project:wiki` archives this file once it passes ~100 entries.
 
+## [2026-09-14 05:05] chore
+
+- Re-review (round 2) of the fix commits `6048bcf..60feb4c` by the codex adversary: every one of the 8 round-1 fixes confirmed, no findings above nit; 1 nit tallied (e2e acceptance wording says every check passed when some are unobserved), not filed.
+- Live e2e after the round-1 fixes: codex 20 passed, 1 unobserved (probe subagent check — codex exposes no transcript), 0 failed. agy failed its adversary: empty `SUCCESS` right after agy rejected its own malformed `find_by_name` call (`missing property 'Pattern'`) — the second time in about thirty agy runs, the first being a wiki-maintainer on 2026-09-13.
+- Change: `extract-agy-result.mjs` marks an empty run that ended on a rejected tool call `transient` and names the call; `inspect_dispatch` carries `verdict.transient` when that fault is the whole story; the `worker-dispatch` skill allows exactly one unchanged retry for it; the e2e run retries a transient dispatch once and counts the retry. Tested with agy-shaped stand-in transcripts through the real wrapper.
+- Verified: MCP suite 199/199; generated files match `.agents/`.
+
 ## [2026-09-14 04:50] adversary
 
 - Commit reviewed: `08de0d9..c983a52` (dispatch record) and `c983a52..0de81a6` (e2e run), each by a read-only `adversary` on codex (`gpt-6-astra`, medium), dispatched and judged through `inspect_dispatch`/`record_decision` — the first real use of the tools under review.

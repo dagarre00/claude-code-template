@@ -348,3 +348,21 @@ test('a malformed worktreeSetup fails at load, not in the middle of a cycle', ()
     } finally { cleanup(root); }
   }
 });
+
+test('an agy run that the extraction marks transient says a single unchanged retry is reasonable', () => {
+  repo((root, tools) => {
+    const transcript = [
+      JSON.stringify({ event: 'step_update', step_update: { step_index: 4, state: 'DONE', step_type: 'tool', tool_name: 'find_by_name',
+        tool_info: { name: 'find_by_name', parameters: {}, output: "invalid arguments:\n- missing property 'Pattern'" } } }),
+      JSON.stringify({ event: 'result', result: { status: 'SUCCESS', response: '' } })
+    ].join('\n') + '\n';
+    const { built, run } = dispatch(tools, { task_id: 'flaky', engine: 'antigravity', script: 'cat "$T"' });
+    writeFileSync(resolve(built.report_file, '..', 't.json'), transcript);
+    process.env.T = resolve(built.report_file, '..', 't.json');
+    try { run(); } finally { delete process.env.T; }
+    const inspected = tools.inspect_dispatch({ task_id: 'flaky' });
+    assert.equal(inspected.verdict.mechanical, 'reject');
+    assert.equal(inspected.verdict.transient, true);
+    assert.match(inspected.verdict.reasons.join(' '), /transient|retry once/i);
+  });
+});

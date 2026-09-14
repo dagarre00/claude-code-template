@@ -192,6 +192,14 @@ folds that into the exit code of the whole runnable command, unless the
 underlying process itself already failed (that `ec` still wins). A nonzero exit
 is the signal to reject the report; the report is where you find why.
 
+One of those failures is not about the brief at all. Twice in about thirty agy
+runs — with and without the custom agent — the last tool call came back
+`invalid arguments: missing property …`, agy rejecting the model's own malformed
+call, and the run ended there with nothing. The extraction marks that
+`transient`, `inspect_dispatch` carries `verdict.transient: true`, and the
+`worker-dispatch` skill allows exactly one unchanged retry for it. The e2e run
+does the same.
+
 ### Read grants for files outside the worktree
 
 Each worker's workspace is its isolated worktree (from `prepare_worktree`).

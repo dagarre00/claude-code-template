@@ -24,9 +24,8 @@ import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildRunnableCommand } from '../dispatch.mjs';
-import { ENGINES } from '../engines/index.mjs';
+import { ENGINES, engineNames } from '../engines/index.mjs';
 import { makeTools } from '../tools.mjs';
-import { engineNames } from '../engines/index.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_ROOT = resolve(HERE, '..', '..', '..');
@@ -105,7 +104,8 @@ export function buildFixture(dir) {
   return dir;
 }
 
-// `standIns` is for this tool's own tests: { <task id>: { script, effect(workspace) } }
+// `standIns` is for this tool's own tests: { <task id>: { script, effect(workspace) } },
+// or an array of those, one per attempt, to exercise the transient-fault retry. Each
 // runs `script` through the real wrapper — outcome, report, inspection — instead
 // of the engine, after `effect` has edited the worktree the way a worker would.
 // Given at all, every dispatch must have one: a test never falls back to a paid run.
@@ -128,7 +128,8 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
   const offline = dryRun || !!standIns;
   const shell = dryRun ? null : findPosixShell();
   const timeoutMs = (JSON.parse(readFileSync(resolve(root, '.agents/config.json'), 'utf8')).workerTimeoutSeconds + 120) * 1000;
-  const inspections = [];
+  const inspections = new Map();
+  let runs = 0;
 
   const dispatch = (task_id, spec) => {
     const wt = tools.prepare_worktree({ task_id });
@@ -140,20 +141,33 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
     record(`${task_id}.compose`, `${spec.role} prompt composed for ${engine}`, built.prompt_bytes > 0 && built.engine === engine,
       { engine: built.engine, prompt_bytes: built.prompt_bytes, warnings: built.warnings });
     if (dryRun) return { wt, built, inspected: tools.inspect_dispatch({ task_id }) };
-    const started = Date.now();
-    let command = built.command;
-    if (standIns) {
-      const standIn = standIns[task_id];
-      if (!standIn) throw new Error(`standIns given, but none for "${task_id}" — refusing to fall back to a real engine`);
-      standIn.effect?.(wt.workspace);
-      command = buildRunnableCommand({ workspace: wt.workspace, command: { executable: 'sh', args: ['-c', standIn.script] },
-        stdin_file: built.stdin_file, report_file: built.report_file, raw_file: resolve(built.report_file, '..', 'raw.txt'),
-        adapter: ENGINES[engine] });
+    const runOnce = (attempt, current) => {
+      const started = Date.now();
+      let command = current.command;
+      if (standIns) {
+        const entry = standIns[task_id];
+        const standIn = Array.isArray(entry) ? entry[attempt - 1] : entry;
+        if (!standIn) throw new Error(`standIns given, but none for "${task_id}" attempt ${attempt} — refusing to fall back to a real engine`);
+        standIn.effect?.(wt.workspace);
+        command = buildRunnableCommand({ workspace: wt.workspace, command: { executable: 'sh', args: ['-c', standIn.script] },
+          stdin_file: current.stdin_file, report_file: current.report_file,
+          raw_file: resolve(current.report_file, '..', 'raw.txt'), adapter: ENGINES[engine] });
+      }
+      const run = spawnSync(shell, ['-c', command], { encoding: 'utf8', timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024 });
+      runs += 1;
+      const inspected = tools.inspect_dispatch({ task_id });
+      log(`      ${task_id}: attempt ${attempt}, exit ${run.status} in ${Math.round((Date.now() - started) / 1000)}s — verdict ${inspected.verdict.mechanical}`);
+      return inspected;
+    };
+    let inspected = runOnce(1, built);
+    // The one unchanged retry the worker-dispatch skill allows: a run the
+    // inspection marks transient failed on the engine, not on the brief.
+    if (inspected.verdict.transient) {
+      tools.record_decision({ task_id, decision: 'rejected', reason: `Transient engine fault: ${inspected.verdict.reasons.join(' ')}` });
+      log(`      ${task_id}: transient engine fault — retrying once, unchanged`);
+      inspected = runOnce(2, tools.build_worker_prompt({ ...spec, task_id, workspace: wt.workspace, cli_engine: engine }));
     }
-    const run = spawnSync(shell, ['-c', command], { encoding: 'utf8', timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024 });
-    const inspected = tools.inspect_dispatch({ task_id });
-    inspections.push(inspected);
-    log(`      ${task_id}: exit ${run.status} in ${Math.round((Date.now() - started) / 1000)}s — verdict ${inspected.verdict.mechanical}`);
+    inspections.set(task_id, inspected);
     return { wt, built, inspected };
   };
   const failedSince = from => checks.slice(from).filter(check => check.status === 'fail').map(check => check.id);
@@ -286,7 +300,7 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
     if (!dryRun) {
       const rows = stats.by_engine_role.filter(row => row.engine === engine);
       record('stats.recorded', 'dispatch_stats counts every finished dispatch on this engine',
-        rows.reduce((sum, row) => sum + row.finished, 0) === inspections.length, rows);
+        rows.reduce((sum, row) => sum + row.finished, 0) === runs, rows);
     }
     for (const leftover of tools.list_worktrees()) retire(leftover.task_id);
     record('cleanup.worktrees', 'no worktree is left behind', tools.list_worktrees().length === 0);
@@ -298,8 +312,8 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
       passed: checks.filter(check => check.status === 'pass').length,
       failed: checks.filter(check => check.status === 'fail').length,
       unobserved: checks.filter(check => check.status === 'unobserved').length,
-      checks, dispatches: inspections.map(({ task_id }) => tools.inspect_dispatch({ task_id })).map(({ task_id, role, engine: ran, model, effort, run: outcome, usage, verdict, decision }) =>
-        ({ task_id, role, engine: ran, model, effort, run: outcome, usage, verdict: verdict.mechanical, decision: decision?.decision ?? null })),
+      checks, dispatches: [...inspections.keys()].map(task_id => tools.inspect_dispatch({ task_id })).map(({ task_id, role, engine: ran, model, effort, attempt, run: outcome, usage, verdict, decision }) =>
+        ({ task_id, role, engine: ran, model, effort, attempt, run: outcome, usage, verdict: verdict.mechanical, decision: decision?.decision ?? null })),
       stats: stats.by_engine_role };
     const out = resolve(base, `result-${engine}-${stamp}.json`);
     writeFileSync(out, JSON.stringify(result, null, 2) + '\n');

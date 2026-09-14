@@ -74,6 +74,44 @@ test('failed checks reject their dispatch, a writing probe does not abort the ru
   }
 });
 
+// Measured on a live agy run: the adversary ended SUCCESS with nothing right
+// after agy rejected its own malformed tool call. A conductor retries that once,
+// unchanged; so does the e2e, and the retry shows up in the numbers.
+test('a transient engine fault is retried once, and the retry is counted', async () => {
+  const base = mkdtempSync(resolve(tmpdir(), 'wmcp-retry-'));
+  const previous = process.env.GIT_CONFIG_GLOBAL;
+  process.env.GIT_CONFIG_GLOBAL = resolve(base, 'gitconfig');
+  const event = (i, tool, output) => JSON.stringify({ event: 'step_update', step_update: { step_index: i, state: 'DONE',
+    step_type: 'tool', tool_name: tool, tool_info: { name: tool, parameters: {}, output } } });
+  const done = response => JSON.stringify({ event: 'result', result: { status: 'SUCCESS', response, usage: { total_tokens: 10 } } });
+  const transcript = (ws, task, lines) => writeFileSync(resolve(ws, '..', `${task}.transcript`), lines.join('\n') + '\n');
+  try {
+    const result = await runE2E({ engine: 'antigravity', log: () => {}, standIns: {
+      probe: [
+        { script: 'cat ../probe.transcript', effect: ws => transcript(ws, 'probe',
+          [event(2, 'find_by_name', "invalid arguments:\n- missing property 'Pattern'"), done('')]) },
+        { script: 'cat ../probe.transcript', effect: ws => transcript(ws, 'probe',
+          [event(2, 'view_file', '3 lines'), done('(a) NO SUCH TOOL (b) NO SUCH TOOL')]) }
+      ],
+      'dev-b1': { script: 'cat ../dev-b1.transcript', effect: ws => transcript(ws, 'dev-b1', [done('Blocked: nothing done.')]) }
+    } });
+    const check = id => result.checks.find(entry => entry.id === id);
+    assert.equal(check('probe.verdict').pass, true, JSON.stringify(result.checks.filter(c => c.status === 'fail')));
+    assert.equal(check('probe.no_subagent').status, 'pass', 'agy exposes an audit, so this is observed');
+    const probe = result.dispatches.find(d => d.task_id === 'probe');
+    assert.equal(probe.attempt, 2);
+    assert.equal(probe.decision, 'accepted');
+    const row = result.stats.find(r => r.role === 'planner');
+    assert.equal(row.retries, 1);
+    assert.equal(row.rejected, 1);
+    assert.equal(check('stats.recorded').pass, true);
+    rmSync(resolve(result.result_file, '..'), { recursive: true, force: true });
+  } finally {
+    if (previous === undefined) delete process.env.GIT_CONFIG_GLOBAL; else process.env.GIT_CONFIG_GLOBAL = previous;
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
 for (const engine of ['antigravity', 'codex', 'claude']) {
   test(`a dry run on ${engine} composes every dispatch and leaves nothing behind`, async () => {
     const base = mkdtempSync(resolve(tmpdir(), 'wmcp-dry-'));

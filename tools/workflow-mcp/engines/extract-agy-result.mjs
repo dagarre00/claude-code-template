@@ -186,10 +186,22 @@ if (denied.length) {
         + 'the tool call may use an event shape this extraction does not recognise.'
   };
 } else if (empty) {
+  // Measured twice: the last tool call came back "invalid arguments: ..." — agy
+  // rejected the model's own malformed call — and the run simply ended. The brief
+  // was not the problem, so this is marked transient: one unchanged retry is the
+  // right answer, where rewriting the brief would be chasing nothing.
+  const lastCall = [...steps.values()].sort((a, b) => a.step_index - b.step_index).at(-1);
+  const lastOutput = String(lastCall?.tool_info?.output ?? lastCall?.tool_info?.error?.message ?? '');
+  const transient = /^\s*invalid (arguments|tool call)/i.test(lastOutput) || lastCall?.state === 'ERROR';
   report.workflow_mcp_extraction = {
     raw_file: rawFile,
-    note: 'The run ended SUCCESS with an empty response and no denied action — there is no report to accept. '
-      + `The last tool calls in ${rawFile} usually show why (a malformed tool call the model never recovered from).`
+    transient,
+    ...(lastCall ? { last_tool_call: { tool: lastCall.tool_name, state: lastCall.state, output: lastOutput.slice(0, MAX_TARGET_LENGTH) } } : {}),
+    note: transient
+      ? 'The run ended SUCCESS with an empty response right after the engine rejected its own malformed tool call '
+        + '(last_tool_call). That is an engine fault, not a problem with the brief: retry once unchanged.'
+      : 'The run ended SUCCESS with an empty response and no denied action — there is no report to accept. '
+        + `Read the last tool calls in ${rawFile} for why.`
   };
 }
 if (audit) report.workflow_mcp_audit = audit;
