@@ -15,6 +15,14 @@ updated: 2026-09-11
 > Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd — `init`, `interview`, `work`, `pr`, `adversary`, `review`, `wiki-ingest`, `wiki-maintenance`, or `chore` when nothing else fits (behavioral rule 19).
 > Entries are written by the command that did the work, in the same commit as the work. `/project:wiki` archives this file once it passes ~100 entries.
 
+## [2026-09-14 10:45] chore
+
+- Measured: the lazy-skills experiment (entry below), 3 live runs per arm on antigravity, alternating inline/lazy from 10:11 to 10:41 so a quota or latency drift lands on both. All 6 runs passed 22/22 checks; no retries.
+- Gotcha recorded (well-formed, on the trap): inline 2 of 3, lazy 1 of 3. The one lazy developer that recorded it opened `gotcha-recording` first; the two that did not record never opened it. Inline run 3 missed with the skill in its prompt.
+- Developer tokens (input + output, agy `total_tokens`): inline 121,675 / 168,380 / 125,143 (mean 138.4k); lazy 140,606 / 145,286 / 123,795 (mean 136.6k, −1.3%). Duration: inline 118 / 134 / 105 s, lazy 91 / 131 / 103 s. The 7.4 KB prompt saving is inside run-to-run noise.
+- Limit: no developer was actually burned — all six found the pretest step before editing, plausibly because `src/slugify.src.mjs` is in both arms' owned paths. So this measured whether a developer judges a surprising setup worth a gotcha, not whether it records one after being bitten. n=3 cannot separate 2/3 from 1/3.
+- Reading: no measurable saving, and the one miss pattern the experiment exists to catch appeared twice in the lazy arm. Not adopted; no command declares `lazy_skills`.
+
 ## [2026-09-14 09:48] chore
 
 - Change: `build_worker_prompt` takes an experimental `lazy_skills` — a subset of the skills the dispatch already sends, named by path and description in a `Skills to read when needed` section instead of inlined. Refused for a skill not sent (the per-role split stays the command's decision), and for one missing from or different in the worker's workspace (it would read a procedure other than the one composed). No command declares it; nothing changes for existing dispatches.
