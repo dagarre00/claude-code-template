@@ -130,7 +130,7 @@ Run the returned `command`, `inspect_dispatch`, read the report, `record_decisio
 | Role | Engine chain | Pinned model | Effort |
 | --- | --- | --- | --- |
 | `planner` | claude → codex | `claude-opus-5` on claude | high |
-| `developer` | codex → claude | profile default | profile default |
+| `developer` | agy → codex → claude | profile default (`gemini-3.8-flash`, medium, on agy) | profile default |
 | `plan-adversary` | agy → codex → claude | `gemini-3.8-flash` on agy | high |
 | `adversary` | codex → agy → claude | `gpt-6-astra` on codex | medium |
 

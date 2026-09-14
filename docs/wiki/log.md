@@ -15,6 +15,13 @@ updated: 2026-09-11
 > Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd — `init`, `interview`, `work`, `pr`, `adversary`, `review`, `wiki-ingest`, `wiki-maintenance`, or `chore` when nothing else fits (behavioral rule 19).
 > Entries are written by the command that did the work, in the same commit as the work. `/project:wiki` archives this file once it passes ~100 entries.
 
+## [2026-09-14 05:30] chore
+
+- Change: `.agents/config.json` `roles.developer.engine` `["codex", "claude"]` → `["antigravity", "codex", "claude"]` — agy first, on the human's instruction to add it to the developer role.
+- Why first rather than a fallback: the `adversary` starts on codex, so a codex developer put author and reviewer on one provider (`adversarial-review` wants a different model by default) and both roles behind one usage limit. With agy first, each of the three providers is first for at least one role again.
+- Evidence it rests on: every agy developer dispatch in the 2026-09-13/14 runs passed — 5 B1 and 2 B2 fixture cases, 3 Python-venv layouts (the broken-layout run excepted, which was the environment), and 3 live e2e runs (126 s median, conductor-verified Red and Green). The artifact-path failure that took it off the chain did not recur and its prompt trigger is removed. `dispatch_stats` will show whether that holds on real cycles.
+- Docs: README role table; the gotcha that recorded agy as off the chain.
+
 ## [2026-09-14 05:05] chore
 
 - Re-review (round 2) of the fix commits `6048bcf..60feb4c` by the codex adversary: every one of the 8 round-1 fixes confirmed, no findings above nit; 1 nit tallied (e2e acceptance wording says every check passed when some are unobserved), not filed.

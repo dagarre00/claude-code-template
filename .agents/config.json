@@ -26,6 +26,7 @@
     },
     "developer": {
       "engine": [
+        "antigravity",
         "codex",
         "claude"
       ],
