@@ -59,6 +59,7 @@ test('failed checks reject their dispatch, a writing probe does not abort the ru
     assert.ok(existsSync(result.result_file), 'the result is written even though a probe wrote a file');
     assert.equal(check('probe.no_write').pass, false);
     assert.equal(check('probe.no_subagent').status, 'unobserved');
+    assert.equal(check('dev.red_real').pass, true, JSON.stringify(check('dev.red_real')));
     assert.equal(check('dev.integrated').pass, true, JSON.stringify(result.checks.filter(c => c.status === 'fail')));
     assert.equal(check('adversary.format').pass, false);
     assert.equal(check('cleanup.worktrees').pass, true);

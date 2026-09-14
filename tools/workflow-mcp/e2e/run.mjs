@@ -26,6 +26,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildRunnableCommand } from '../dispatch.mjs';
 import { ENGINES, engineNames } from '../engines/index.mjs';
 import { makeTools } from '../tools.mjs';
+import { runRedCheck } from '../red-check.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_ROOT = resolve(HERE, '..', '..', '..');
@@ -237,27 +238,26 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
     scenario('dev', () => {
     const owned = ['src/slugify.mjs', 'test/slugify.test.mjs', 'docs/wiki/entities/slugify.md'];
     const dev = dispatch('dev-b1', { role: 'developer', command: 'work', owned_paths: owned,
+      test_paths: ['test/slugify.test.mjs'], test_command: 'npm test',
       skills: ['tdd-loop'], commit_message: 'feat(slugify): lowercase and hyphen-join words',
       instructions: 'Implement Behavior case B1 of entity `slugify` (docs/wiki/entities/slugify.md) and nothing else — '
         + 'B2 is a later dispatch. Simple cycle, no plan. Test command: `npm test`.' });
+    record('dev.red_command', 'a developer that declares test paths gets a red check command', /red-check\.mjs/.test(dev.built.red_check_command ?? ''));
     if (!dryRun) {
       const ws = dev.wt.workspace;
-      record('dev.verdict', 'inspect_dispatch passes the developer', dev.inspected.verdict.mechanical === 'pass', dev.inspected.verdict.reasons);
+      // Red, proven the way every real cycle proves it: everything but the test
+      // reverted to base, and the test must then fail on an assertion.
+      const red = dev.inspected.state === 'finished' ? runRedCheck(dirname(dev.built.report_file)) : null;
+      record('dev.red_real', 'the red check fails the worker\'s test against the base stub, on an assertion',
+        !!red?.proven && /AssertionError|Expected values/.test(red.output_tail) && !/ERR_MODULE_NOT_FOUND|does not provide an export/.test(red.output_tail),
+        red ? red.output_tail.split('\n').filter(line => /not ok|AssertionError|ERR_/.test(line)).slice(0, 4) : 'not finished');
+      const verdict = tools.inspect_dispatch({ task_id: 'dev-b1' }).verdict;
+      record('dev.verdict', 'inspect_dispatch passes the developer once Red is proven', verdict.mechanical === 'pass', verdict.reasons);
       const suite = npmTest(ws);
       record('dev.green', 'the conductor re-runs the suite in the worktree: green', suite.status === 0,
         (suite.stdout ?? '').split('\n').filter(line => /ℹ (tests|pass|fail)/.test(line)));
       const testPath = resolve(ws, 'test/slugify.test.mjs');
       record('dev.test_named', 'a test named after B1 exists', existsSync(testPath) && /B1/.test(readFileSync(testPath, 'utf8')));
-      // Red, proven: the worker's test against the base stub must fail on an assertion.
-      const srcPath = resolve(ws, 'src/slugify.mjs');
-      const workerSource = existsSync(srcPath) ? readFileSync(srcPath, 'utf8') : '';
-      writeFileSync(srcPath, git(root, 'show', `${dev.wt.base_sha}:src/slugify.mjs`) + '\n');
-      const red = npmTest(ws);
-      writeFileSync(srcPath, workerSource);
-      const redOutput = `${red.stdout}${red.stderr}`;
-      record('dev.red_real', 'the worker\'s test fails against the base stub, on an assertion',
-        red.status !== 0 && /AssertionError|Expected values/.test(redOutput) && !/ERR_MODULE_NOT_FOUND|does not provide an export/.test(redOutput),
-        redOutput.split('\n').filter(line => /not ok|AssertionError|ERR_/.test(line)).slice(0, 4));
       const entityPath = resolve(ws, 'docs/wiki/entities/slugify.md');
       const entity = existsSync(entityPath) ? readFileSync(entityPath, 'utf8') : '';
       record('dev.scope', 'B1 ticked, B2 untouched', /\[x\]\s*\*\*B1\*\*/.test(entity) && /\[ \]\s*\*\*B2\*\*/.test(entity));

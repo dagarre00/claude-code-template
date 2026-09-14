@@ -33,6 +33,17 @@ test('AGENTS.md carries the project, the full rules, and both catalogs', () => {
   });
 });
 
+// Claude Code lists plugin skills and Codex lists .agents/skills/ natively, each
+// with its description, so a catalog here was paid for twice in every session.
+test('AGENTS.md points at the skills directory instead of repeating every description', () => {
+  withRepo(root => {
+    generate(root);
+    const agents = read(root, 'AGENTS.md');
+    assert.match(agents, /\.agents\/skills\/<name>\/SKILL\.md/);
+    assert.doesNotMatch(agents, /Red-green-refactor for this project/);
+  });
+});
+
 test('CLAUDE.md imports AGENTS.md rather than restating it', () => {
   withRepo(root => {
     generate(root);

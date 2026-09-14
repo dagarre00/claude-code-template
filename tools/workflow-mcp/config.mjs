@@ -9,6 +9,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { engineNames } from './engines/index.mjs';
 import { PROFILES } from './canonical.mjs';
+import { isSafeRepoPath } from './compose.mjs';
 
 const ROLE_KEYS = ['engine', 'models', 'effort'];
 
@@ -68,6 +69,38 @@ export function loadConfig(root) {
       }
     }
   }
+  // Paths no worker may change, even inside its owned paths — the architecture
+  // rules a developer is judged by, the workflow's own text. Checked at
+  // composition (an owned path inside one is refused) and at inspection (a
+  // change under one rejects the dispatch).
+  if (config.protectedPaths == null) config.protectedPaths = [];
+  if (!Array.isArray(config.protectedPaths) || config.protectedPaths.some(path => !isSafeRepoPath(path))) {
+    throw new Error('protectedPaths must be an array of repository-relative paths (no absolute paths, no ..)');
+  }
+  // The project's architecture check: one exact command that fails on a
+  // dependency the declared layers forbid, and the files that define those
+  // rules. The command is granted to every worker; the rule files are protected.
+  const architecture = config.architecture ?? { command: null, rules: [] };
+  if (typeof architecture !== 'object' || Array.isArray(architecture)) {
+    throw new Error('architecture must be an object: { "command": <exact command line or null>, "rules": [<paths>] }');
+  }
+  for (const key of Object.keys(architecture)) {
+    if (!['command', 'rules'].includes(key)) throw new Error(`Unknown key "${key}" in architecture; expected command, rules`);
+  }
+  if (architecture.command != null && (typeof architecture.command !== 'string' || !architecture.command.trim()
+    || architecture.command.length > 200 || /[\r\n\0;&|<>`]|\$\(/.test(architecture.command))) {
+    throw new Error('architecture.command must be one plain command line (it joins the worker allowlist, which matches exactly)');
+  }
+  const rules = architecture.rules ?? [];
+  if (!Array.isArray(rules) || rules.some(path => !isSafeRepoPath(path))) {
+    throw new Error('architecture.rules must be an array of repository-relative paths');
+  }
+  config.architecture = { command: architecture.command ?? null, rules };
+  if (config.architecture.command && !config.workerCommands.includes(config.architecture.command)) {
+    config.workerCommands = [...config.workerCommands, config.architecture.command];
+  }
+  config.protectedPaths = [...new Set([...config.protectedPaths, ...rules])];
+
   if (!config.roles || typeof config.roles !== 'object' || Array.isArray(config.roles)) {
     throw new Error('roles must be an object keyed by role name');
   }

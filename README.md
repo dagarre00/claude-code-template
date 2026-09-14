@@ -103,6 +103,18 @@ code: both raise findings only, and the periodic `/project:review` never runs
 inside `/project:work`. The wiki-maintainer is never auto-invoked; health passes
 are yours to trigger.
 
+## What is enforced, not just asked for
+
+| Practice | Mechanism |
+| --- | --- |
+| Tests fail before implementation | Every developer dispatch declares `test_paths`; `red-check.mjs` reverts every other changed file to the base commit and the tests must fail. Until it runs, `inspect_dispatch` is `incomplete`; if the tests pass, the case is rejected. |
+| Workers stay in scope | Worktrees, `owned_paths`, read-only sandboxes, no subagent tools, and a transcript audit on agy and codex. |
+| Clean architecture | `docs/wiki/architecture.md § Layers` declares the dependency rule; `/project:init` step 5b installs a stack-specific check (dependency-cruiser, import-linter, ArchUnit, …), proves it fails on a planted violation, grants it to every worker, and marks its rule files protected — no worker can loosen them, and `verify.mjs` fails a branch that changes them without an ADR. `check` reports whether it is enforced. |
+| Wiki ships with code, log ships with change | `tools/workflow-mcp/verify.mjs --base <branch>` in CI — plus drift, wikilinks and log order. |
+| Review yield is measured | Finding counts recorded with each review decision; `dispatch_stats` reports findings raised vs. acted on, and findings against each developer engine. |
+
+What stays discipline: the conductor itself. Nothing stops a conductor from writing code directly or skipping a step between CI runs — CI is the backstop.
+
 ## Running work on another CLI
 
 The conductor — usually Claude Code — delegates through the workflow MCP server in `tools/workflow-mcp`. It is a prompt factory, not a process supervisor: it composes the worker's prompt from `.agents/` and hands back a command you run.
@@ -119,7 +131,7 @@ dispatch_stats       # per engine and role: accepted, retries, durations, tokens
 list_worktrees / remove_worktree / list_roles / sync
 ```
 
-Run the returned `command`, `inspect_dispatch`, read the report, `record_decision`, commit the worker's owned paths yourself, then `remove_worktree` — the full procedure is the `worker-dispatch` skill. The server never spawns, commits, merges or pushes — you keep all of that, and a failed worker is debugged by re-running a command line you can read.
+Run the returned `command`, `inspect_dispatch` (and, for a developer, the returned `red_check_command`), read the report, `record_decision`, commit the worker's owned paths yourself, then `remove_worktree` — the full procedure is the `worker-dispatch` skill. The server never spawns, commits, merges or pushes — you keep all of that, and a failed worker is debugged by re-running a command line you can read.
 
 **Checking an engine end to end.** `npm --prefix tools/workflow-mcp run e2e -- --engine <antigravity|codex|claude>` runs one small real cycle on that engine — a capability probe, a developer case whose Red the conductor re-proves, and an adversary — in a throwaway fixture, and exits non-zero if any check fails. Run it after upgrading an engine CLI and before changing which engine a role runs on.
 
@@ -134,7 +146,7 @@ Run the returned `command`, `inspect_dispatch`, read the report, `record_decisio
 | `plan-adversary` | agy → codex → claude | `gemini-3.8-flash` on agy | high |
 | `adversary` | codex → agy → claude | `gpt-6-astra` on codex | medium |
 
-Pinning roles to agy is the one trade-off worth naming: its workers need a one-time user-global permission grant before they can run a command at all (`check` lists any that are missing), and a worktree is not a read boundary on agy — its report carries an audit of every read outside the workspace instead. The setup is in [`tools/workflow-mcp/engine-setup.md`](tools/workflow-mcp/engine-setup.md).
+Pinning roles to agy is the one trade-off worth naming: its workers need a one-time user-global permission grant before they can run a command at all (`check` lists any that are missing), and a worktree is not a read boundary on agy — nor on codex, whose read-only sandbox bounds writes but not reads (measured) — so `inspect_dispatch` audits both engines' transcripts for reads outside the workspace and skills a worker opened without being sent them. The setup is in [`tools/workflow-mcp/engine-setup.md`](tools/workflow-mcp/engine-setup.md).
 
 **Workers get no ambient context.** Each engine is launched with its own project-file discovery switched off, so the composed prompt is the whole of what the worker sees. Verified by dispatching the same self-test to all three:
 
@@ -144,7 +156,7 @@ Pinning roles to agy is the one trade-off worth naming: its workers need a one-t
 | codex (`project_doc_max_bytes=0`) | ✅ | `tdd-loop` only | no | — |
 | agy (reads no repo files) | ✅ | `tdd-loop` only | no | 16 of 22 |
 
-Conductor-only rules — branch, commit, push, open a PR — are withheld from workers, because the worker contract forbids git and handing it both would be a contradiction. 22 rules become 16.
+Conductor-only rules — branch, commit, push, open a PR — are withheld from workers, because the worker contract forbids git and handing it both would be a contradiction (the table above was measured when there were 22 rules; there are now 23, of which 17 reach a worker). A test composes every worker prompt the commands can produce and fails if one names a skill that worker was not sent, tells it to run a git command that changes the repository, or points it outside its worktree.
 
 **What each engine can enforce, and what it only promises.** Context suppression is not the only guarantee a worker prompt makes, and the three CLIs do not honour the rest equally:
 

@@ -28,7 +28,7 @@ export const isSafeRepoPath = path =>
 export function composePrompt(canonical, input = {}) {
   const { role: roleName, command: commandName, instructions, context = '',
     owned_paths = [], commit_message, task_id, workspace, base_sha, diff = null,
-    workerCommands = [], commandNotes = [] } = input;
+    workerCommands = [], commandNotes = [], protectedPaths = [], test_paths = null, test_command = null } = input;
 
   const role = canonical.roles.find(entry => entry.name === roleName);
   if (!role) {
@@ -72,6 +72,34 @@ export function composePrompt(canonical, input = {}) {
   const owned = [...new Set(owned_paths)];
   for (const path of owned) if (!isSafeRepoPath(path)) throw new Error(`Invalid owned path: ${path}`);
   if (writes && !owned.length) throw new Error(`Write role "${role.name}" requires explicit owned_paths`);
+
+  // Declaring test paths is what lets the conductor prove Red after the fact
+  // (red-check.mjs): everything else the worker changed is reverted and these
+  // tests must then fail. So they must be the worker's to write, and the check
+  // needs the command that runs them.
+  const tests = test_paths == null ? [] : [...new Set(test_paths)];
+  if (tests.length) {
+    if (!writes) throw new Error(`Role "${role.name}" is read-only and writes no tests; test_paths does not apply`);
+    for (const path of tests) {
+      if (!isSafeRepoPath(path)) throw new Error(`Invalid test path: ${path}`);
+      if (!owned.some(base => path === base || path.startsWith(`${base}/`))) {
+        throw new Error(`Test path "${path}" is not inside owned_paths — the worker could not write the tests it is judged by`);
+      }
+    }
+    if (typeof test_command !== 'string' || !test_command.trim() || test_command.length > 500 || /[\r\n\0]/.test(test_command)) {
+      throw new Error('test_paths needs test_command — the exact command that runs them, which the Red check re-runs');
+    }
+  }
+
+  // Paths no worker may change even inside its owned paths: the architecture
+  // rules a developer is judged by, the workflow itself. An owned path inside
+  // one is refused outright; one that merely contains a protected path is
+  // allowed, and inspect_dispatch rejects any change under the protected part.
+  const protectedHere = [...new Set(protectedPaths)];
+  for (const path of owned) {
+    const guard = protectedHere.find(base => path === base || path.startsWith(`${base}/`));
+    if (guard) throw new Error(`Owned path "${path}" is protected (${guard}); no worker may change it — that is a human decision recorded as an ADR`);
+  }
 
   const parts = [
     section('Behavioral rules', workerRules(canonical.rules)),
@@ -125,7 +153,11 @@ export function composePrompt(canonical, input = {}) {
       + 'Anything you changed outside your owned paths is committed by nobody and fails integration, '
       + 'so keep every edit inside that scope. Report changed paths, the verification commands you '
       + 'ran and their results, and any blockers. Leaving work unfinished is a blocker; leaving it '
-      + 'uncommitted is expected.'));
+      + 'uncommitted is expected.'
+      + (protectedHere.length ? `\n\nNever change these, even where they sit inside your owned paths: ${protectedHere.map(path => `\`${path}\``).join(', ')}. `
+        + 'They hold the rules your work is judged by; a change under them rejects the whole dispatch. If the task seems to need one, stop and report why.' : '')
+      + (tests.length ? `\n\nYour test paths are ${tests.map(path => `\`${path}\``).join(', ')}. After you finish, the conductor reverts every other file you changed `
+        + `to the base commit and runs \`${test_command.trim()}\`: your tests must fail then. Keep every test inside those paths and no test code anywhere else.` : '')));
   }
 
   // Per-dispatch, so it sits after everything cacheable and before the
@@ -162,6 +194,7 @@ export function composePrompt(canonical, input = {}) {
     role: role.name,
     ...(command ? { command: command.name } : {}),
     owned_paths: owned,
+    ...(tests.length ? { test_paths: tests, test_command: test_command.trim() } : {}),
     instructions: instructions.trim(),
     user_context: context
   };
@@ -178,6 +211,8 @@ export function composePrompt(canonical, input = {}) {
     profile: role.profile,
     command: command?.name ?? null,
     skills: skills.map(skill => skill.name),
-    owned_paths: owned
+    owned_paths: owned,
+    test_paths: tests.length ? tests : null,
+    test_command: tests.length ? test_command.trim() : null
   };
 }

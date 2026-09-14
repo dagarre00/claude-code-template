@@ -65,6 +65,8 @@ This table is the whole decision. Getting it wrong either drops the project's ow
 
 8. **Report what was left behind.** Name the files that exist only in this project, and any generic file the human chose to keep customized in step 4. These are the reasons the next sync will show drift again, and an unexplained recurring diff is how a project stops trusting this command.
 
+   Then name the **project-side setup the new version expects but this project lacks** — project-owned files are never synced, so nothing else will tell the human: `check` reporting `architecture.enforced: false`, a `docs/wiki/architecture.md` with no `## Layers` section, no `.gitattributes` union line for `docs/wiki/log.md`, or no CI step running `tools/workflow-mcp/verify.mjs`. Each maps to `/project:init` step 5b or 5c; recommend it, don't do it here.
+
 9. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `chore`, subject `chore(workflow): sync <scope> from the template`, fields `Source: <path> @ <sha>`, `Changed: <N> files`, `Kept local: <list or none>`, `Config: loads | REJECTED — <rule>`. The SHA is the load-bearing field: it is what the next run compares against, and without it "are we current?" costs a full tree diff.
 
 ## Failure modes

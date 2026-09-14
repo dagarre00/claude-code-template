@@ -58,6 +58,8 @@ export function createServer(root, conductorEngine) {
       diff_range: z.string().optional().describe('Revision range (e.g. `<sha>..<sha>`, `develop..HEAD`). The diff is computed and embedded in the prompt as data. Pass this for every review dispatch: a ranged `git diff` matches nothing on the worker allowlist, so a reviewer without it reviews whole post-change files and infers what changed.'),
       owned_paths: z.array(z.string()).optional().describe('Repository-relative paths this worker may write. Required for write roles.'),
       commit_message: z.string().max(200).optional().describe('Subject the conductor will use when committing this worker\'s output. Rejected for read-only roles.'),
+      test_paths: z.array(z.string()).optional().describe('For a developer: the paths (inside owned_paths) that hold its tests. The response then carries red_check_command, and inspect_dispatch stays `incomplete` until you run it — it reverts every other changed file to the base commit and the tests must fail.'),
+      test_command: z.string().max(500).optional().describe('The exact command that runs the tests — required with test_paths.'),
       workspace: z.string().describe('Worktree path from prepare_worktree. Required: the command that starts a worker begins by entering its checkout.'),
       task_id: z.string().optional().describe('The id prepare_worktree was given. Composing again into a task whose last attempt already ran archives that attempt and counts this one as a retry.'),
       retry_of: z.string().optional().describe('task_id of an attempt in another worktree that this dispatch replaces, so retries are counted per engine and role.'),
@@ -88,7 +90,15 @@ export function createServer(root, conductorEngine) {
     + 'something whose mechanical verdict is not `pass` is refused unless override_mechanical is set and the reason '
     + 'says why each rejection reason does not apply. These decisions are what dispatch_stats counts.',
     { task_id: z.string(), decision: z.enum(['accepted', 'rejected']), reason: z.string().min(3).max(1000),
-      override_mechanical: z.boolean().optional() },
+      override_mechanical: z.boolean().optional(),
+      findings: z.object({
+        raised: z.record(z.string(), z.number().int().min(0)).optional(),
+        dispositions: z.record(z.string(), z.number().int().min(0)).optional()
+      }).optional().describe('For a review dispatch (adversary, plan-adversary, reviewer): counts per severity raised '
+        + '(critical/major/minor/nit or blocker/risk/note) and per disposition (filed/fixed/rejected or applied/escalated/rejected). '
+        + 'dispatch_stats turns these into review yield.'),
+      reviewed_task_ids: z.array(z.string()).optional().describe('The dispatches whose output this review read — '
+        + 'its findings are charged to their engine and role as findings_against.') },
     input => api.record_decision(input), false);
 
   register('dispatch_stats',

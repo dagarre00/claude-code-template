@@ -53,31 +53,11 @@ Example:
 
 3. If the gotcha is severe (silent data corruption, security risk), also tag it `#critical` and add it to the top of `gotchas.md`, not the bottom.
 
-4. If the gotcha implies a missing skill or command (e.g. "add a skill covering fixture scope"), append to `docs/wiki/wiki-todos.md`.
+4. If the gotcha implies a missing skill or command, add a line for `docs/wiki/wiki-todos.md` (appended, or handed back under `Follow-ups:` if that file is not yours to edit).
 
-5. **Size check.** After appending, count the non-blank, non-header content lines in `gotchas.md`:
+5. **Size check.** Count the `**When:**` field lines in `gotchas.md` with your search tool. At **20 or more** (four entries), add the wiki-todo `- [ ] YYYY-MM-DD agent: gotchas.md has N entries — compact it during the next wiki health pass` the same way. A long gotchas file is one nobody reads.
 
-   ```bash
-   grep -cE "^\*\*(When|Symptom|Cause|Fix|Related):\*\*" docs/wiki/gotchas.md 2>/dev/null || true
-   ```
-
-   (The colon is inside the bold markers — `**When:**`. Omitting it from the pattern makes the count silently return 0 and the size check never fires.)
-
-   If the result is **≥ 20** (4 entries × 5 fields each), append a wiki-todo:
-
-   ```
-   - [ ] YYYY-MM-DD agent: gotchas.md has N field-lines — compact it during the next wiki health pass
-   ```
-
-   This keeps the file scannable before it degrades model attention. (the periodic wiki health pass compacts `gotchas.md`; there is no standalone prune command.)
-
-6. **Ship it in the commit that discovered it** — never a commit of its own. A gotcha is a wiki edit, and wiki edits ride with the change that produced them ("Wiki-first, code-second" in the behavioral rules; `wiki-update` → "Inline vs maintainer"). You run no git yourself — leave `docs/wiki/gotchas.md` edited alongside that case's test and implementation, and report all four paths together so the conductor commits them as one case:
-
-   ```
-   <the test>, <the implementation>, docs/wiki/entities/<slug>.md, docs/wiki/gotchas.md
-   ```
-
-   If the trap surfaced during adversary triage rather than during the work, it goes in that round's commit instead (`adversarial-review` step 6). A separate `docs: gotcha — …` commit is the "update docs at the end" anti-pattern, and — worse — a gotcha nobody stages is one that sits unstaged until it trips the next clean-tree gate.
+6. **Ship it with the change that discovered it** — never on its own. Leave `docs/wiki/gotchas.md` edited alongside that case's test, implementation and entity page, and list it with them in your report so all of it is committed as one case.
 
 ## Format rules
 

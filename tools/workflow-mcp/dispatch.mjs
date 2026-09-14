@@ -16,7 +16,7 @@ import { loadConfig, resolveEngineChain } from './config.mjs';
 import { composePrompt } from './compose.mjs';
 import { computeDiff } from './diff.mjs';
 import { ENGINES, buildCommand, stdinPayload } from './engines/index.mjs';
-import { dispatchDir } from './worktree.mjs';
+import { dispatchDir, trustWorktree } from './worktree.mjs';
 import { currentVerdict } from './inspect.mjs';
 
 // Quote one argument for the shell the conductor will paste this into. Only ever
@@ -30,6 +30,7 @@ const quote = value => /^[A-Za-z0-9_@%+=:,./-]+$/.test(value) ? value : `'${valu
 // something looked up inside the target project's own tree.
 const ENGINES_DIR = fileURLToPath(new URL('./engines', import.meta.url));
 const RECORD_OUTCOME = fileURLToPath(new URL('./record-outcome.mjs', import.meta.url));
+const RED_CHECK = fileURLToPath(new URL('./red-check.mjs', import.meta.url));
 
 // Generous for a plan, bounded enough that a mistyped path cannot turn a binary
 // into a prompt. The inline parameters cap at 100k characters; a file is allowed
@@ -74,7 +75,7 @@ const readJson = path => {
 // Everything one attempt leaves in its dispatch directory. `worktree.json`
 // belongs to the worktree, not the attempt, and `attempts/` is the archive itself.
 const ATTEMPT_FILES = ['dispatch.json', 'prompt.txt', 'stdin.txt', 'report.txt', 'raw.txt',
-  'outcome.json', 'decision.json', 'agent'];
+  'outcome.json', 'decision.json', 'agent', 'red.json', 'red'];
 
 const archivedNumbers = dir => existsSync(resolve(dir, 'attempts'))
   ? readdirSync(resolve(dir, 'attempts')).filter(name => /^\d+$/.test(name)).map(Number)
@@ -189,7 +190,7 @@ export function prepareDispatch(root, input = {}) {
 
   const composed = composePrompt(canonical, {
     ...input, instructions, context: context ?? '', diff,
-    task_id, workspace, workerCommands, commandNotes });
+    task_id, workspace, workerCommands, commandNotes, protectedPaths: config.protectedPaths });
 
   // All four files live beside each other so a human can read exactly what was
   // sent and re-run it byte for byte. The prompt is the readable form; the stdin
@@ -231,6 +232,7 @@ export function prepareDispatch(root, input = {}) {
   // Everything that can refuse this composition has run by now. Only from here
   // does anything on disk change.
   if (plan.archive) archiveAttempt(root, dir, task_id, plan.archive);
+  if (engine === 'codex') trustWorktree(root, workspace);
   mkdirSync(dir, { recursive: true });
   writeFileSync(prompt_file, composed.prompt);
   writeFileSync(stdin_file, stdinPayload(engine, composed.prompt));
@@ -249,7 +251,10 @@ export function prepareDispatch(root, input = {}) {
   const worktreeRecord = readJson(resolve(dir, 'worktree.json'));
   writeFileSync(resolve(dir, 'dispatch.json'), JSON.stringify({
     task_id, role: composed.role, access: composed.access, profile: composed.profile,
-    owned_paths: composed.owned_paths, engine, model: command.model, effort: command.effort,
+    owned_paths: composed.owned_paths, protected_paths: config.protectedPaths,
+    test_paths: composed.test_paths, test_command: composed.test_command,
+    red_check_command: composed.test_paths ? redCheckCommand(dir) : null,
+    engine, model: command.model, effort: command.effort,
     // What the worker was given. Every worktree holds every committed skill, so
     // this is what inspect_dispatch reads a skill the worker opened against.
     skills: composed.skills,
@@ -377,7 +382,10 @@ export function prepareDispatch(root, input = {}) {
     // written still differs per engine; that the conductor reads one file does
     // not. raw_file keeps the full transcript for the engines that produce one.
     report_file,
-    command: buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter })
+    command: buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter }),
+    // Run after the worker finishes and before accepting it: inspect_dispatch
+    // stays `incomplete` until Red is proven for a dispatch that declared tests.
+    ...(composed.test_paths ? { red_check_command: redCheckCommand(dir) } : {})
   };
 }
 
@@ -413,6 +421,8 @@ export function prepareDispatch(root, input = {}) {
 // dispatch directory, which is what inspect_dispatch reads back. A process
 // launched from the structured executable/args fields bypasses that, and
 // inspect_dispatch says so rather than guessing.
+export const redCheckCommand = dir => `node ${quote(RED_CHECK)} ${quote(dir)}`;
+
 export function buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter }) {
   const base = `cd ${quote(workspace)} && ${quote(command.executable)} `
     + `${command.args.map(quote).join(' ')} < ${quote(stdin_file)}`;

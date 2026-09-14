@@ -140,6 +140,7 @@ What is specific to init is the **agenda**: ask only about topics the pre-interv
 9. **Deployment** — how will this ship? (CI, target environment, release process)
 10. **Non-functional** — perf targets, security requirements, observability, compliance.
 11. **Design intention** — **ask only if the project has a UI surface** (web, mobile, desktop, TUI). Three questions, no more: what should it feel like (three adjectives), what must it never feel like, and is there an existing design system / component library to adopt. Deeper token work is not an init topic — it goes to `/project:interview the design system` once the stack is real.
+12. **Architecture** — clean architecture is the default. Recommend the four layers of `architecture.md § Layers` (`domain`, `application`, `adapters`, `infrastructure`) mapped to directories for this stack, and ask only: the directory per layer, the composition root, and whether any layer should be merged for a project this size (a CLI script may reasonably fold `adapters` into `infrastructure`). A deviation from the default is an ADR. On an existing codebase, propose the mapping from what the stack scan found and ask how to treat current violations (step 5b.4).
 
 The transcript is `docs/raw/interviews/YYYY-MM-DD-init.md`, opened before the first question and streamed exactly as operating rule #7 requires. Skip creating it only if the scan left no questions to ask.
 
@@ -164,14 +165,14 @@ docs/wiki/summaries/
 Create or update these pages with **real content from the pre-scan and interview combined** (no `<TBD>` placeholders except for topics genuinely not discussed):
 
 - `docs/wiki/requirements.md` — fill **all** sections: `## Vision`, `## Users`, `## User stories` (one per user-capability pair in `- As a <user type>, I want <capability>, so that <benefit>` format with Acceptance + `Maps to:` link), `## Functional requirements`, `## Non-functional requirements`, `## Out of scope`, `## Open questions`.
-- `docs/wiki/architecture.md` — fill `## Stack`, `## Layout`, `## Data`, `## External services`, `## Testing strategy`, `## Conventions`, `## Deployment`. Leave a section as `<TBD>` only if it was genuinely not discussed.
+- `docs/wiki/architecture.md` — fill `## Stack`, `## Layout`, `## Layers` (topic 12), `## Data`, `## External services`, `## Testing strategy`, `## Conventions`, `## Deployment`. Leave a section as `<TBD>` only if it was genuinely not discussed. `## Layers` is filled in step 5b if not here.
 - `docs/wiki/git-conventions.md` — default branch, branch prefixes, commit format.
 - `docs/wiki/commands.md` — test command, build command, lint command (whatever was detected/confirmed).
 - `docs/wiki/todos.md` — seeded with first work items from the interview.
 - `docs/wiki/gotchas.md` — create with empty headings (`## Critical`, `## Runtime`, `## Testing`, `## Tooling`) **only if missing. Never clear existing entries** — the template ships this file empty, but a re-run of `/project:init` on an established project must not wipe the traps that project has accumulated.
 - `docs/wiki/wiki-todos.md` — create empty only if missing; keep any pending lines.
 - `docs/wiki/log.md` — init entry (see step 6).
-- `docs/wiki/design-system.md` — **conditional.** Create it only if the project has a UI surface (web, mobile, desktop, TUI). Use the design-system template in the `wiki-update` skill, filled with the topic-11 answers; leave the token sections `<TBD>` and file a todo to run `/project:interview the design system`. A library, CLI, or headless service project does not get this page — do not create it "for later".
+- `docs/wiki/design-system.md` — **conditional.** Create it only if the project has a UI surface (web, mobile, desktop, TUI). Use the design-system template beside the `wiki-update` skill, filled with the topic-11 answers; leave the token sections `<TBD>` and file a todo to run `/project:interview the design system`. A library, CLI, or headless service project does not get this page — do not create it "for later".
 
 Create entity pages under `docs/wiki/entities/` for each feature/module identified in the interview, with Behavior cases (see `spec-writing` skill).
 
@@ -201,6 +202,45 @@ Every page gets correct frontmatter per the Obsidian LLM-wiki standard (see the 
 6. **If the test command needs an environment a fresh checkout does not have** — a Python virtualenv, `node_modules` — decide how a worker's worktree gets one, with the human, using `tools/workflow-mcp/engine-setup.md § Projects with a Python virtualenv`. For a per-worktree environment, put the commands that build it in `.agents/config.json` `worktreeSetup` (`prepare_worktree` hands them back to run), and make sure what they create is gitignored. For a shared one, the worker's command is relative to `.worktrees/<id>/` and is a separate `workerCommands` entry. Then call `check` and resolve any `setup` block it reports for the engines your roles use.
 
 If the human declines the bootstrap, leave `commands.md ## Test` as `<TBD>` and `workerCommands` unchanged, and say plainly in the report that `/project:work` will refuse to start until a test command runs.
+
+### 5b. Enforce the architecture
+
+A layer table nobody checks is a suggestion. Make the dependency rule a command that fails, give it to every worker, and put its rules out of any worker's reach.
+
+1. **Pick the enforcement for the stack**, strongest first, and confirm with the human:
+
+   | Stack | Strongest (compiler) | Tool check |
+   | --- | --- | --- |
+   | TypeScript / JavaScript | workspace packages per layer (npm/pnpm workspaces, TS project references) | `dependency-cruiser` (`npx depcruise src --config .dependency-cruiser.cjs`), or `eslint-plugin-boundaries` |
+   | Python | — | `import-linter` with a `layers` contract (`lint-imports`) |
+   | Java / Kotlin | Gradle/Maven modules per layer | ArchUnit `layeredArchitecture()` test; Konsist for Kotlin |
+   | C# / .NET | one project per layer, references only inward | NetArchTest or ArchUnitNET test |
+   | Go | `internal/` packages | `go-arch-lint`, or `depguard` in golangci-lint |
+   | Rust | one crate per layer in a workspace | — (the compiler is the check) |
+   | PHP | — | `deptrac` |
+   | Ruby | — | `packwerk` |
+
+   A compiler boundary needs no separate command when it lives in the build the test command already runs; record the test command as the architecture command then. A tool check is a separate command, or a test in the suite (ArchUnit, NetArchTest), which is better still: every Red and Green run enforces it.
+
+2. **Write the rules from `§ Layers`**, install the tool, and record the exact command in `docs/wiki/commands.md § Architecture` and `architecture.md § Layers → Enforced by`.
+
+3. **Prove it fires — Red for the check itself.** Create a throwaway file in the innermost layer that imports the outermost one, run the command, and confirm it **fails naming that import**. Delete the file, run again, confirm it passes. A check that passes on a planted violation watches the wrong paths; never record it.
+
+4. **Existing code with violations.** Never block adoption on them: use the tool's baseline or ignore list (`dependency-cruiser --ignore-known`, `import-linter ignore_imports`, a `deptrac` baseline), list the baselined violations under `§ Layers → Exceptions`, and file one `[infra]` todo per module to retire them. The baseline file is an architecture rule like any other.
+
+5. **Wire it into the workflow.** In `.agents/config.json` set `"architecture": { "command": "<the exact command>", "rules": ["<rule file>", "<baseline file, if any>"] }`. The command joins every worker's allowlist automatically and the rule files become protected — no worker may change them, and `verify.mjs` fails a branch that changes them without an ADR. Keep `protectedPaths` at least `[".agents"]`. Then call `check`: `architecture.enforced` must be `true`.
+
+6. **File the ADR** `decisions/<date>-clean-architecture.md` recording the layer mapping, the tool, and any merged layers.
+
+If the human declines enforcement, leave `architecture.command` null and say in the report that layers are enforced by review alone — `check` and `verify.mjs` will keep saying so.
+
+### 5c. Continuous integration
+
+The conductor's own discipline has no other enforcement, so CI is not optional polish.
+
+1. **Add `.gitattributes`** with `docs/wiki/log.md merge=union` if missing: every cycle appends to the log, and without it two branches conflict on every merge.
+2. **Write the CI workflow** for the project's host (GitHub Actions: `.github/workflows/verify.yml`), running on every pull request: check out with full history, set up the stack, install, then the test command, the architecture command, and `node tools/workflow-mcp/verify.mjs --base origin/${{ github.base_ref }}`. Use the template's own `.github/workflows/verify.yml` as the shape; it runs the same verify step.
+3. Record the verify command in `docs/wiki/commands.md § Verify` and the pipeline in `architecture.md § Deployment`. No hosted CI → say so in the report; the conductor then runs verify before every PR (`/project:work` step 10) and nothing else backs it.
 
 ### 6. Fill in project.md and regenerate AGENTS.md / CLAUDE.md
 
@@ -258,6 +298,8 @@ Append to `docs/wiki/log.md`:
 
 - Stack: <stack>
 - Test command: <command>
+- Architecture: <tool and command, proven to fail on a planted violation — or "not enforced">
+- CI: <workflow path — or "none">
 - Interview transcript: [YYYY-MM-DD-init](../raw/interviews/YYYY-MM-DD-init.md) (omit if no questions were needed)
 - Pages created: <count>
 - ADRs: <count>
@@ -271,7 +313,7 @@ Stage and commit everything created or modified, then push:
 ```bash
 # Include any skeleton files created in step 5a (manifest, lockfile, empty test dir),
 # and .agents/config.json if step 0a changed it.
-git add docs/ CLAUDE.md AGENTS.md .agents/project.md .agents/config.json <manifest-and-skeleton-paths>
+git add docs/ CLAUDE.md AGENTS.md .agents/project.md .agents/config.json .gitattributes <manifest-and-skeleton-paths> <architecture-rule-files> <ci-workflow>
 git commit -m "chore(init): scaffold wiki, regenerate AGENTS.md/CLAUDE.md, and a runnable test command"
 git push -u origin main
 ```

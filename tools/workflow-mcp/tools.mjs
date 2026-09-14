@@ -1,6 +1,6 @@
 // The tool implementations, kept separate from MCP wiring so they can be tested
 // as plain functions and so the transport stays a thin shell over them.
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { engineAvailability, engineSetup } from './availability.mjs';
 import { loadCanonical } from './canonical.mjs';
@@ -10,6 +10,19 @@ import { prepareDispatch } from './dispatch.mjs';
 import { generate, checkGenerated } from './generate.mjs';
 import { dispatchStats, inspectDispatch, recordDecision } from './inspect.mjs';
 import { listWorktrees, prepareWorktree, removeWorktree } from './worktree.mjs';
+
+function architectureStatus(root, config) {
+  const { command, rules } = config.architecture;
+  const missing_rules = rules.filter(path => !existsSync(resolve(root, path)));
+  const enforced = !!command && !missing_rules.length;
+  return { enforced, command, rules, missing_rules, protected_paths: config.protectedPaths,
+    message: !command
+      ? 'No architecture check is configured: layer rules in docs/wiki/architecture.md are enforced by review only. '
+        + 'Set architecture.command and architecture.rules in .agents/config.json (/project:init step 5b).'
+      : missing_rules.length
+        ? `The architecture rule files ${missing_rules.join(', ')} do not exist, so the check cannot be guarding what the wiki declares.`
+        : 'The architecture check is granted to workers and its rule files are protected.' };
+}
 
 export function makeTools(root, conductorEngine) {
   return {
@@ -94,7 +107,10 @@ export function makeTools(root, conductorEngine) {
         capability_gaps: loadCanonical(root).roles.flatMap(role => (chains[role.name] ?? []).map(engine => ({
           role: role.name, engine,
           missing: role.capabilities.filter(capability => capability === 'web' && ENGINES[engine].providesWeb === false)
-        }))).filter(gap => gap.missing.length)
+        }))).filter(gap => gap.missing.length),
+        // Whether the layers the wiki declares are enforced by anything a
+        // worker runs. A missing rule file means the check guards nothing.
+        architecture: architectureStatus(root, config)
       };
     },
 

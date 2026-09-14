@@ -7,7 +7,7 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-09-10
+updated: 2026-09-14
 ---
 
 # Gotchas
@@ -57,12 +57,12 @@ updated: 2026-09-10
 **Fix:** On Windows, run `command` only through a shell that shares the Windows filesystem namespace (Git Bash, not WSL). If that isn't guaranteed — a generic "run this shell command" tool might silently prefer WSL when both are installed — bypass the composed string entirely and invoke the structured fields `executable`, `args`, `cwd`, and `stdin_file` directly (e.g. `spawnSync`/`child_process`, or a native process launch), which is what `dispatch.mjs` already returns for exactly this reason. Never try to translate the Windows path into a `/mnt/c/...` form yourself — the workspace path in `args`/`cwd` is the one the rest of the toolchain (git, the engine CLI) expects natively.
 **Related:** [[decisions/2026-09-08-drop-commands-from-mcp-surface]]
 
-### An agy worker can read outside its worktree, and no setting stops it
+### An agy or codex worker can read outside its worktree, and no setting stops it
 
-**When:** Any dispatch to the `antigravity` engine — most often a role told to "read the repository" (`reviewer`, `wiki-maintainer`) or a worker asked about its own context.
-**Symptom:** The transcript shows `find_by_name`/`list_dir`/`view_file` calls on the parent checkout, a sibling worktree, or the conductor's `.worktrees/.dispatch/` files. Measured 2026-09-13: 5 of 22 real dispatches did it, on both launch styles; three read the conductor's own scoring script mid-run. Where the path belongs to a registered agy project the read is denied instead, and that denial ends the run with an empty report.
-**Cause:** A worktree is not a read boundary on agy, and `allowNonWorkspaceAccess: false` does not make it one — a canary file outside the workspace was read with the setting on and off. The custom agent removes write and subagent tools, not read tools.
-**Fix:** Detected, not prevented. The worker contract says not to read outside the workspace, and `extract-agy-result.mjs` lists every such read in `report_file` under `workflow_mcp_audit.reads_outside_workspace`. Check it before accepting a reviewer's findings: a reviewer that read the author's plan or another worker's report is no longer independent. A write outside the workspace, or any subagent call, fails the command outright.
+**When:** Any dispatch to the `antigravity` or `codex` engine — most often a role told to "read the repository" (`reviewer`, `wiki-maintainer`), a reviewer curious about the change's intent, or a worker asked about its own context.
+**Symptom:** agy: the transcript shows `find_by_name`/`list_dir`/`view_file` calls on the parent checkout, a sibling worktree, or `.worktrees/.dispatch/` — 5 of 22 real dispatches did it (2026-09-13); where the path belongs to a registered agy project the read is denied and the run ends empty. codex: a read-only worker read a file in the parent checkout and a file outside the repository and reported both contents (measured 2026-09-14, codex 0.154.0, Windows).
+**Cause:** A worktree is not a read boundary on either engine. agy's custom agent removes write and subagent tools, not read tools, and `allowNonWorkspaceAccess: false` does not confine reads (canary read with it on and off). Codex's `--sandbox read-only` bounds writes and network, not reads. The worktree also sits inside the conductor's checkout, so `.handoff/` plans and every earlier worker's report are two directories up. Claude workers were denied reads outside the worktree in every permission mode tried, but leave no transcript to audit.
+**Fix:** Detected, not prevented. The worker contract forbids it; agy's `extract-agy-result.mjs` and codex's `engines/codex-audit.mjs` list every read outside the workspace, and every skill file a worker opened, in `inspect_dispatch` → `audit`, with a verdict warning. Check it before accepting a reviewer's findings: a reviewer that read the author's plan, another worker's report, or another role's skill is no longer independent. On agy, a write outside the workspace or any subagent call fails the command outright. The codex audit reads command text, so a path assembled at run time can escape it.
 **Related:** [[gotchas#Antigravity can refuse to create a new file in a worktree — cause found, mitigated by the agent launch]]
 
 ### Antigravity can refuse to create a new file in a worktree — cause found, mitigated by the agent launch

@@ -10,6 +10,13 @@
     "git rev-parse HEAD",
     "git branch --show-current"
   ],
+  "protectedPaths": [
+    ".agents"
+  ],
+  "architecture": {
+    "command": null,
+    "rules": []
+  },
   "roles": {
     "adversary": {
       "engine": [

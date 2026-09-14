@@ -19,3 +19,4 @@ Stop conditions — all go to `human-checkpoint`, never proceed past them:
 - **Any checkout failure.** Most likely a fresh clone whose only branch is `main`, but a conflicting uncommitted file hits the same message. `main` is the release branch — never work from it.
 - **`merge --ff-only` fails.** `develop` has diverged from origin in a non-fast-forward way. Committing on a stale `develop` and failing the push is the unpushed-commit loss behavioral rule 19 exists to prevent.
 - No remote is fine: the fetch and merge are both skipped and the block works off local `develop`.
+- **After merging `develop` into a feature branch**, `docs/wiki/log.md` merges by union (`.gitattributes`), so both branches' entries survive but may sit out of time order. Run `node tools/workflow-mcp/verify.mjs --sort-log` and commit the result with the merge.

@@ -28,7 +28,9 @@ Read 2–3 existing files of the target kind before writing, to mirror tone, len
 3. **Placement.** Every skill is a directory with a `SKILL.md` entrypoint: `.agents/skills/<name>/SKILL.md`. A flat `.agents/skills/<name>.md` or a grouping subfolder (`.agents/skills/meta/<name>/SKILL.md`) is **silently ignored** — the skill never loads and nothing tells you why. Supporting files (templates, scripts) live next to `SKILL.md`.
 4. **Test the trigger.** Could a real session task contain the `description`'s words? If not, rewrite.
 5. **Cross-link.** If the skill points at a wiki page that doesn't exist yet, file a `docs/wiki/wiki-todos.md` line.
-6. **Commit** `feat: add <name> skill — <one-line reason>`.
+6. **Decide who reads it — a worker, or only the conductor.** A skill a command declares for a role is inlined into that worker's prompt, so its text must be something that worker can obey: no named skill the role is not sent, no git command that changes the repository, no path outside its worktree (`.handoff/`), no writes to the conductor's queues (`todos.md`, `wiki-todos.md`, `log.md` — those go under `Follow-ups:`). `tools/workflow-mcp/test/canonical.test.mjs` fails on the first three. If one procedure has a worker half and a conductor half, it is two skills: the reviewer's sweep (`adversarial-review`) and the conductor's disposition protocol (`finding-disposition`) are the pattern. A conductor-only skill says so in its `description`.
+7. **Keep rationale out of the body.** "Measured on …" and "this exists because …" belong in the log entry or an ADR; every worker that receives the skill pays for each sentence on every dispatch.
+8. **Commit** `feat: add <name> skill — <one-line reason>`.
 
 ### The "how-to not what-is" rule
 

@@ -16,6 +16,7 @@
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { dispatchDir, git, listWorktrees } from './worktree.mjs';
+import { auditCodexTranscript } from './engines/codex-audit.mjs';
 
 const readJson = path => {
   if (!existsSync(path)) return null;
@@ -46,7 +47,14 @@ function readReport(record, dir) {
       summary.empty = true;
     }
   }
-  if (record?.engine === 'codex') summary.usage = codexUsage(resolve(dir, 'raw.txt'));
+  if (record?.engine === 'codex') {
+    summary.usage = codexUsage(resolve(dir, 'raw.txt'));
+    // Codex's sandbox does not bound reads (measured), so its transcript is
+    // audited the way agy's is.
+    if (record.workspace && existsSync(resolve(dir, 'raw.txt'))) {
+      summary.audit = auditCodexTranscript(readFileSync(resolve(dir, 'raw.txt'), 'utf8'), { workspace: record.workspace });
+    }
+  }
   return summary;
 }
 
@@ -61,7 +69,22 @@ function codexUsage(rawFile) {
   return Number.isFinite(total) ? { total_tokens: total } : null;
 }
 
-function verdictFor({ record, outcome, report, worktree, decision }) {
+// Where Red stands for a dispatch that declared test paths (red-check.mjs).
+// null for every other dispatch: nothing is claimed about Red there.
+function readRed(record, dir) {
+  if (!record?.test_paths?.length) return null;
+  const command = record.red_check_command ?? null;
+  if (existsSync(resolve(dir, 'red', 'manifest.json'))) {
+    return { state: 'interrupted', command, restore_command: command ? `${command} --restore` : null };
+  }
+  const result = readJson(resolve(dir, 'red.json'));
+  if (!result) return { state: 'not_run', command };
+  return { state: result.timed_out ? 'timed_out' : result.proven ? 'proven' : 'refuted', command,
+    exit_code: result.exit_code, checked_at: result.checked_at, reverted_paths: result.reverted_paths,
+    output_tail: result.output_tail };
+}
+
+function verdictFor({ record, outcome, report, worktree, decision, red }) {
   const reasons = [];
   const warnings = [];
   if (!record) return { mechanical: 'incomplete', reasons: ['No prompt has been composed for this task yet.'], warnings };
@@ -116,10 +139,25 @@ function verdictFor({ record, outcome, report, worktree, decision }) {
   if (audit?.commands_not_allowlisted?.length) {
     warnings.push(`Commands not on the allowlist verbatim: ${audit.commands_not_allowlisted.join('; ')}.`);
   }
+  if (red?.state === 'refuted') {
+    reasons.push(`The declared tests pass with the implementation reverted to ${record.base_sha} (\`${record.test_command}\` `
+      + `exited 0) — they do not test the change, whatever the report says about Red.`);
+  }
+  if (red?.state === 'interrupted') {
+    reasons.push(`A red check was interrupted with the implementation still reverted. Put the worker's files back first: ${red.restore_command}`);
+  }
   // Transient only when that fault is the whole story: the report extraction's
   // own nonzero exit is the same fault seen twice, but a crashed process, a
   // denial or a change outside scope alongside it is something a retry cannot fix.
   const sameFault = outcome.process_exit_code === 0 ? 2 : 1;
+  // Nothing else wrong, but a developer's Red is still only a claim until the
+  // check has run: not a rejection, and not yet something to accept.
+  if (!reasons.length && red && red.state !== 'proven') {
+    return { mechanical: 'incomplete', warnings, transient: false,
+      reasons: [red.state === 'timed_out'
+        ? `The red check timed out, so Red is not proven. Investigate, then re-run: ${red.command}`
+        : `Red has not been proven. Run the red check before accepting: ${red.command}`] };
+  }
   return { mechanical: reasons.length ? 'reject' : 'pass', reasons, warnings,
     transient: !!report.transient && reasons.length <= sameFault
       && !report.denied_actions?.length && !(worktree.exists && worktree.violations?.length) };
@@ -144,11 +182,12 @@ function summarise(root, task_id, dir, listing, { archived = false } = {}) {
   const state = !record ? 'prepared' : !outcome ? 'composed' : !outcome.finished_at ? 'running' : 'finished';
   const report = record ? readReport(record, dir) : { path: resolve(dir, 'report.txt'), exists: false, bytes: 0, empty: true };
   const worktree = archived ? { exists: false } : worktreeState(root, record ?? worktreeRecord, listing);
+  const red = readRed(record, dir);
   // An archived attempt keeps the verdict it had when it was archived: its
   // worktree has moved on, so recomputing would forget any change outside scope
   // (adversary F5, round 1).
   const verdict = (archived && readJson(resolve(dir, 'verdict.json')))
-    || verdictFor({ record, outcome, report, worktree, decision });
+    || verdictFor({ record, outcome, report, worktree, decision, red });
   const { audit, usage, ...reportSummary } = report;
   return {
     task_id, state,
@@ -157,7 +196,8 @@ function summarise(root, task_id, dir, listing, { archived = false } = {}) {
     attempt: record?.attempt ?? 1, retry_of: record?.retry_of ?? null,
     base_sha: record?.base_sha ?? worktreeRecord?.base_sha ?? null,
     integration_branch: record?.integration_branch ?? worktreeRecord?.integration_branch ?? null,
-    owned_paths: record?.owned_paths ?? null, prompt_bytes: record?.prompt_bytes ?? null,
+    owned_paths: record?.owned_paths ?? null, test_paths: record?.test_paths ?? null,
+    prompt_bytes: record?.prompt_bytes ?? null,
     skills: record?.skills ?? null,
     created_at: record?.created_at ?? worktreeRecord?.created_at ?? null,
     run: outcome ? { started_at: outcome.started_at ?? null, finished_at: outcome.finished_at ?? null,
@@ -169,6 +209,7 @@ function summarise(root, task_id, dir, listing, { archived = false } = {}) {
     usage: usage ?? null,
     audit: audit ?? null,
     worktree,
+    red,
     verdict,
     decision
   };
@@ -206,7 +247,44 @@ export function currentVerdict(root, task_id) {
   return summarise(root, task_id, dispatchDir(root, task_id), listingFor(root).get(task_id)).verdict;
 }
 
-export function recordDecision(root, { task_id, decision, reason, override_mechanical = false } = {}) {
+const SEVERITIES = ['critical', 'major', 'minor', 'nit', 'blocker', 'risk', 'note'];
+const DISPOSITIONS = ['filed', 'fixed', 'rejected', 'applied', 'escalated'];
+// Dispositions that changed something: a fix, a brief edit, or a spec question
+// put to the human. Filed and rejected change nothing in this cycle.
+const ACTED = ['fixed', 'applied', 'escalated'];
+
+function validFindings(root, current, findings, reviewed_task_ids) {
+  if (findings == null && reviewed_task_ids == null) return {};
+  if (current.access !== 'read-only') {
+    throw new Error(`Finding counts belong to a review dispatch; "${current.task_id}" is a ${current.access} ${current.role}, not read-only`);
+  }
+  const counts = (value, allowed, field) => {
+    if (value == null) return {};
+    if (typeof value !== 'object' || Array.isArray(value)) throw new Error(`findings.${field} must be an object of counts`);
+    for (const [key, count] of Object.entries(value)) {
+      if (!allowed.includes(key)) throw new Error(`Unknown findings.${field} key "${key}"; expected ${allowed.join(', ')}`);
+      if (!Number.isInteger(count) || count < 0) throw new Error(`findings.${field}.${key} must be a whole number ≥ 0`);
+    }
+    return value;
+  };
+  const result = {};
+  if (findings != null) {
+    result.findings = { raised: counts(findings.raised, SEVERITIES, 'raised'),
+      dispositions: counts(findings.dispositions, DISPOSITIONS, 'dispositions') };
+  }
+  if (reviewed_task_ids != null) {
+    if (!Array.isArray(reviewed_task_ids)) throw new Error('reviewed_task_ids must be an array of task ids');
+    for (const id of reviewed_task_ids) {
+      if (!existsSync(resolve(dispatchDir(root, id), 'dispatch.json'))) {
+        throw new Error(`reviewed_task_ids names "${id}", which is no composed dispatch in this checkout`);
+      }
+    }
+    result.reviewed_task_ids = [...new Set(reviewed_task_ids)];
+  }
+  return result;
+}
+
+export function recordDecision(root, { task_id, decision, reason, override_mechanical = false, findings, reviewed_task_ids } = {}) {
   if (!['accepted', 'rejected'].includes(decision)) throw new Error('decision must be "accepted" or "rejected"');
   if (typeof reason !== 'string' || reason.trim().length < 3) {
     throw new Error('A decision needs a reason — the one sentence a later reader needs to trust it.');
@@ -219,10 +297,11 @@ export function recordDecision(root, { task_id, decision, reason, override_mecha
     throw new Error(`The mechanical verdict is "${current.verdict.mechanical}": ${current.verdict.reasons.join(' ')} `
       + 'Accepting anyway needs override_mechanical: true, with a reason that says why each of those does not apply.');
   }
+  const yieldRecord = validFindings(root, current, findings, reviewed_task_ids);
   const path = resolve(dispatchDir(root, task_id), 'decision.json');
   const previous = readJson(path);
   const entry = { decision, reason: reason.trim(), override_mechanical: !!override_mechanical,
-    mechanical_verdict: current.verdict.mechanical, decided_at: new Date().toISOString() };
+    mechanical_verdict: current.verdict.mechanical, ...yieldRecord, decided_at: new Date().toISOString() };
   const history = [...(previous?.history ?? []), ...(previous ? [{ ...previous, history: undefined }] : [])];
   writeFileSync(path, JSON.stringify({ ...entry, ...(history.length ? { history } : {}) }, null, 2) + '\n');
   return { task_id, ...entry };
@@ -256,11 +335,14 @@ export function dispatchStats(root) {
     if (!rows.has(key)) {
       rows.set(key, { engine: attempt.engine, role: attempt.role, dispatches: 0, finished: 0, exit_nonzero: 0,
         mechanical_pass: 0, mechanical_reject: 0, accepted: 0, rejected: 0, undecided: 0, retries: 0,
-        durations: [], tokens: [] });
+        red_proven: 0, red_refuted: 0, reviews_with_findings_recorded: 0, findings_raised: 0, findings_acted_on: 0,
+        findings_against: {}, durations: [], tokens: [] });
     }
     const row = rows.get(key);
     row.dispatches += 1;
     if (attempt.attempt > 1) row.retries += 1;
+    if (attempt.red?.state === 'proven') row.red_proven += 1;
+    if (attempt.red?.state === 'refuted') row.red_refuted += 1;
     if (attempt.state === 'finished') {
       row.finished += 1;
       if (attempt.run.exit_code !== 0) row.exit_nonzero += 1;
@@ -271,6 +353,29 @@ export function dispatchStats(root) {
       if (attempt.decision?.decision === 'accepted') row.accepted += 1;
       else if (attempt.decision?.decision === 'rejected') row.rejected += 1;
       else row.undecided += 1;
+      const found = attempt.decision?.findings;
+      if (found) {
+        row.reviews_with_findings_recorded += 1;
+        row.findings_raised += Object.values(found.raised ?? {}).reduce((sum, count) => sum + count, 0);
+        row.findings_acted_on += ACTED.reduce((sum, key) => sum + (found.dispositions?.[key] ?? 0), 0);
+      }
+    }
+  }
+  // Findings a review raised, charged to the engine and role of each dispatch it
+  // reviewed — once per distinct author row, so a review of three cases by one
+  // developer engine is not counted three times.
+  const byTask = new Map(attempts.map(attempt => [attempt.task_id, attempt]));
+  for (const attempt of attempts) {
+    const found = attempt.decision?.findings;
+    if (!found || !attempt.decision?.reviewed_task_ids?.length) continue;
+    const authors = new Set(attempt.decision.reviewed_task_ids
+      .map(id => byTask.get(id)).filter(Boolean).map(author => JSON.stringify([author.engine, author.role])));
+    for (const key of authors) {
+      const row = rows.get(key);
+      if (!row) continue;
+      for (const [severity, count] of Object.entries(found.raised ?? {})) {
+        row.findings_against[severity] = (row.findings_against[severity] ?? 0) + count;
+      }
     }
   }
   const by_engine_role = [...rows.values()].map(({ durations, tokens, ...row }) => ({

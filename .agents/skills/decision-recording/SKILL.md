@@ -78,17 +78,13 @@ Accepted as of YYYY-MM-DD.
 - Relates to: [[entities/<slug>]], [[concepts/<pattern>]]
 ```
 
-3. Backlink from affected entity pages: add `"[[decisions/<slug>]]"` to the relevant frontmatter relation (or reference it in the body) — that's what makes the ADR reachable (there is no central index). If the ADR resolves a `contradicts` pair, clear the property on both pages and state the resolution here.
+3. Backlink from the entity page you are working on: add `"[[decisions/<slug>]]"` to its frontmatter relations or reference it in the body — that is what makes the ADR reachable (there is no central index). Other pages that should link to it are a wiki-todo, not an edit outside your scope. If the ADR resolves a `contradicts` pair, state the resolution here and name both pages in a wiki-todo.
 
-4. If the decision created new work, file todos in `docs/wiki/todos.md`.
+4. If the decision creates new work, write the todo line for `docs/wiki/todos.md` — appended if that file is yours to edit, otherwise handed back under `Follow-ups:`.
 
-5. **Ship it in the commit that made the decision** — never a commit of its own. An ADR is a wiki edit, and wiki edits ride with the change they describe ("Wiki-first, code-second" in the behavioral rules; `wiki-update` → "Inline vs maintainer"). You run no git yourself — leave the new file alongside the code and report all three paths together so the conductor stages them as one commit:
+5. **Ship it with the change that made the decision** — never on its own. Leave the new ADR beside the code and list it with the case's other paths in your report.
 
-   ```
-   <the implementation>, docs/wiki/entities/<slug>.md, docs/wiki/decisions/<adr-slug>.md
-   ```
-
-   If the stance came out of adversary triage instead, it goes in that round's commit (`adversarial-review` step 6). An ADR left unreported is one that sits in the tree until it trips the next clean-tree gate — or lands in an unrelated commit later.
+6. **Architecture rules are decisions.** Changing a layer, an allowed dependency, or the architecture check's configuration always takes an ADR, and those files are never a worker's to edit. Report the need instead.
 
 ## Superseding an ADR
 

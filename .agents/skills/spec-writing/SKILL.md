@@ -48,7 +48,7 @@ Examples (bad):
 
 ## Behavior case states
 
-A case carries one of three states in its checkbox. The `developer` flips these as work progresses; this notation is the **single source of truth** — `tdd-loop` and `wiki-update` reference back here.
+A case carries one of three states in its checkbox. The developer flips these as work progresses.
 
 - `[ ]` — defined, no test yet.
 - `[~]` — test exists and is failing (Red phase).

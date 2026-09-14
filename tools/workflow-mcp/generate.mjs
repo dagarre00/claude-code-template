@@ -33,8 +33,6 @@ function renderAgents(canonical) {
   const roles = canonical.roles.map(role =>
     `| \`${role.name}\` | ${role.profile} | ${role.access} | ${role.description.replace(/\|/g, '\\|')} |`).join('\n');
 
-  const skills = canonical.skills.map(skill => `- \`${skill.name}\` — ${skill.description}`).join('\n');
-
   return `${BANNER}
 
 ${canonical.project}
@@ -120,7 +118,10 @@ ${roles}
 
 ## Skills
 
-${skills}
+Each skill is \`.agents/skills/<name>/SKILL.md\`, with its trigger in the
+\`description\` frontmatter. Claude Code (as \`project:<name>\`) and Codex list
+them natively; a conductor on a CLI that does not should list that directory.
+Skills marked conductor-only in their description are never sent to a worker.
 
 ## Wiki map
 

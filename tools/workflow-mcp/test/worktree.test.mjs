@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { listWorktrees, prepareWorktree, removeWorktree } from '../worktree.mjs';
+import { listWorktrees, prepareWorktree, removeWorktree, trustWorktree } from '../worktree.mjs';
 import { cleanup, fixture } from './helpers.mjs';
 
 const git = (root, ...args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
@@ -129,22 +129,46 @@ test('refuses to remove a branch holding commits that are not merged', () => {
   });
 });
 
-test('trusts the new worktree path for Codex on Windows, without duplicating on re-dispatch', () => {
+// Codex is the only engine whose sandbox account trips git's ownership check,
+// so trust is registered when a codex dispatch is composed, never for every
+// worktree: a claude- or agy-only project should not have its global git config
+// edited at all.
+test('preparing a worktree writes nothing to the global git config', () => {
+  repo(root => {
+    prepareWorktree(root, { task_id: 'quiet' });
+    assert.equal(git(root, 'config', '--global', '--get-all', 'safe.directory').stdout.trim(), '');
+  });
+});
+
+test('trusting a worktree for Codex uses forward slashes and never duplicates', () => {
   repo(root => {
     const wt = prepareWorktree(root, { task_id: 'hhh' });
     // git for Windows does not reliably match a safe.directory value written
     // with backslashes — measured against two real dispatches that still hit
-    // "dubious ownership" with exactly that form already registered. The
-    // registered entry must use forward slashes regardless of what OS-native
-    // separator `wt.workspace` itself carries.
+    // "dubious ownership" with exactly that form already registered.
     const expected = wt.workspace.replaceAll('\\', '/');
     const trusted = () => git(root, 'config', '--global', '--get-all', 'safe.directory').stdout;
     const entries = () => trusted().split(/\r?\n/).filter(line => line.trim() === expected);
+    trustWorktree(root, wt.workspace);
     assert.equal(entries().length, 1, 'the forward-slash form of the path must be registered');
     assert.doesNotMatch(trusted(), /\\/, 'no entry may be written with backslashes');
-    removeWorktree(root, 'hhh');
-    prepareWorktree(root, { task_id: 'hhh' });
+    trustWorktree(root, wt.workspace);
     assert.equal(entries().length, 1, 'the same path must not accumulate duplicate entries');
+  });
+});
+
+// An abandoned worktree never reaches remove_worktree, so its trust entry used to
+// outlive it (14 of 26 entries on one machine). Entries under this checkout's
+// .worktrees/ that point at nothing are this tool's own leftovers.
+test('stale trust entries for this checkout\'s vanished worktrees are pruned; others are untouched', () => {
+  repo(root => {
+    const gone = resolve(root, '.worktrees', 'long-gone').replaceAll('\\', '/');
+    git(root, 'config', '--global', '--add', 'safe.directory', gone);
+    git(root, 'config', '--global', '--add', 'safe.directory', 'C:/somewhere/else');
+    prepareWorktree(root, { task_id: 'fresh' });
+    const entries = git(root, 'config', '--global', '--get-all', 'safe.directory').stdout.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    assert.ok(!entries.includes(gone));
+    assert.ok(entries.includes('C:/somewhere/else'));
   });
 });
 
@@ -154,6 +178,7 @@ test('trusts the new worktree path for Codex on Windows, without duplicating on 
 test('removing a worktree also removes the trust entry prepare wrote for it', () => {
   repo(root => {
     const wt = prepareWorktree(root, { task_id: 'trust' });
+    trustWorktree(root, wt.workspace);
     const expected = wt.workspace.replaceAll('\\', '/');
     const trusted = () => git(root, 'config', '--global', '--get-all', 'safe.directory').stdout
       .split(/\r?\n/).map(line => line.trim()).filter(Boolean);

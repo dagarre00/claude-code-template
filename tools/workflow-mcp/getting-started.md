@@ -392,4 +392,6 @@ The wiki is the project's source of truth — code that disagrees with it is the
 - [`.agents/roles/developer.md`](../../.agents/roles/developer.md) — the developer agent definition
 - [`.agents/roles/adversary.md`](../../.agents/roles/adversary.md) — the read-only diff reviewer
 - [`.agents/skills/plan-writing/SKILL.md`](../../.agents/skills/plan-writing/SKILL.md) — how plans are structured
-- [`.agents/skills/adversarial-review/SKILL.md`](../../.agents/skills/adversarial-review/SKILL.md) — sweep order, severity vocabulary, triage protocol
+- [`.agents/skills/adversarial-review/SKILL.md`](../../.agents/skills/adversarial-review/SKILL.md) — the adversary's sweep, severity vocabulary and report format
+- [`.agents/skills/finding-disposition/SKILL.md`](../../.agents/skills/finding-disposition/SKILL.md) — the conductor's triage protocol for both review rounds
+- [`.agents/skills/clean-architecture/SKILL.md`](../../.agents/skills/clean-architecture/SKILL.md) — placing code in layers, ports and adapters

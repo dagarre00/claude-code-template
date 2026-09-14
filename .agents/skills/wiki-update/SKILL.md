@@ -6,7 +6,7 @@ type: skill
 
 # Wiki Update — Standard, Templates, Routing
 
-The wiki follows the **Obsidian LLM-wiki standard**. This skill is the **single source of truth** for that standard; the non-negotiable invariants are also restated as their own behavioral rule ("Obsidian LLM-wiki standard — hard rules"). Routine ticks (`[ ]` → `[~]` → `[x]`, checking off a todo, appending a log line) are documented in `tdd-loop`. This skill covers: **placement**, the **templates**, the **facet/ontology tables**, and **inline-vs-maintainer routing**.
+The wiki follows the **Obsidian LLM-wiki standard**. This skill is the **single source of truth** for that standard; the non-negotiable invariants are also restated as their own behavioral rule ("Obsidian LLM-wiki standard — hard rules"). Routine ticks on an entity page's Behavior cases are not structure and need nothing from here. This skill covers: **placement**, the **templates**, the **facet/ontology tables**, and **inline-vs-maintainer routing**.
 
 ## Placement — before creating any page
 
@@ -14,7 +14,7 @@ The wiki follows the **Obsidian LLM-wiki standard**. This skill is the **single 
 2. Compare it against existing pages: walk the tree and `grep -r "aliases:" -A3 docs/wiki/` for matching names. Ask: "does this concept already exist under another name?"
 3. **Exists** → update that page: merge the new information into the section where it belongs, add any new name to its `aliases`, extend `sources`, bump `updated`.
 4. **Doesn't exist** → create it from the template below. Filename = canonical concept name, no illegal characters (`* " \ / < > : | ? # ^ [ ]`); symbol-bearing variants go in `aliases`.
-5. If you link a page that doesn't exist yet, **stub it** (template frontmatter with `status: stub` + one-line placeholder) before committing. Broken `[[wikilinks]]` are the #1 lint item.
+5. If you link a page that doesn't exist yet, **stub it** (template frontmatter with `status: stub` + one-line placeholder) in the same change. Broken `[[wikilinks]]` are the #1 lint item — and a lint failure in CI. If the stub would sit outside the paths you may edit, don't add the link: record it as a wiki-todo instead.
 6. **Merge** (two pages, one concept): fuse into the more canonical filename, preserving the **union** of links and provenance; add the discarded name to `aliases`; leave a note of what was merged. **Ask the human first if the contents are ambiguous.** **Split** (one page, two concepts): make two pages and rewire the links.
 
 ## Canonical page template
@@ -98,7 +98,7 @@ updated: YYYY-MM-DD
 - [ ] B1: <observable behavior, no implementation detail>
 - [ ] B2: ...
 
-(States `[ ]` / `[~]` / `[x]` defined in `spec-writing` skill → "Behavior case states".)
+(States: `[ ]` not started · `[~]` test written and confirmed failing · `[x]` passing.)
 
 ## Implementation
 
@@ -122,170 +122,9 @@ updated: YYYY-MM-DD
 
 Behavior plays the role of Model (the spec is the mental model); Implementation + Tests are the Detail. Related concepts/decisions link via the frontmatter relations (`depends_on`, `implements`, …) — that's what the graph and the gap queries read.
 
-## Design-system page template (`docs/wiki/design-system.md`) — project extension, conditional
+## Design-system page
 
-**Only for projects with a UI surface.** The project-init command creates this page when it detects one (web, mobile, desktop, TUI); a library, CLI, or service project never gets it. Do not create it speculatively — an empty design system on a backend project is the noise progressive disclosure exists to prevent.
-
-**The page asserts; the code holds the values.** Literal hex/px/ms live in the project's token file — this page owns the *role names*, the *step counts*, and the *checkable constraints* every UI commit must satisfy. That split is deliberate: token tables hand-maintained in markdown rot within weeks, but "`text` on `bg` is ≥ 7:1" and "there are exactly seven type steps" are assertions a test can verify against the code. Write constraints, not copies.
-
-```markdown
----
-aliases: [Design system, Frontend specs, Style guide, Design tokens]
-type: reference
-domains: [design, software]
-status: stub
-sources: []
-depends_on:
-  - "[[requirements]]"
-  - "[[architecture]]"
-contradicts: []
-open_questions: []
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
----
-
-# Design System
-
-> [!abstract] Essence
-> The visual and interaction contract for this project's UI — intention, token roles, and the
-> constraints every UI commit must satisfy. Values live in code; this page says what must be
-> true of them.
-
-## Design intention
-
-_(Three to five sentences. The section that settles subjective calls without a human — so the
-anti-goals matter more than the goals.)_
-
-- **Feels like:** `<three adjectives>`
-- **Never:** `<explicit anti-goals — "not playful", "not enterprise-grey">`
-- **Reference points:** `<products whose feel we're aiming at>`
-
-## Token binding
-
-_(Where the literal values live. Every row names a real file, or this page is decorative.)_
-
-| Token group       | Code location |
-| ----------------- | ------------- |
-| Color             | `<TBD>`       |
-| Typography        | `<TBD>`       |
-| Spacing           | `<TBD>`       |
-| Shape / elevation | `<TBD>`       |
-| Motion            | `<TBD>`       |
-
-**Rule:** a UI commit that hard-codes a raw value instead of referencing a token is the bug.
-
-## Color
-
-_(Semantic roles, not colour names. `blue-500` is a value; `accent` is a role. Code references
-roles only.)_
-
-| Role                    | Used for                             |
-| ----------------------- | ------------------------------------ |
-| `bg`                    | page ground                          |
-| `surface`               | cards, panels, raised areas          |
-| `text`                  | primary copy                         |
-| `text-muted`            | secondary copy, captions             |
-| `border`                | dividers, input outlines             |
-| `accent`                | primary action, focus ring           |
-| `accent-fg`             | text on `accent`                     |
-| `success` `warn` `danger` `info` | state feedback              |
-
-**Contrast assertions** — measured, never assumed:
-
-| Pair                   | Required           | Measured |
-| ---------------------- | ------------------ | -------- |
-| `text` on `bg`         | ≥ `<4.5:1 \| 7:1>` | `<TBD>`  |
-| `text-muted` on `bg`   | ≥ 4.5:1            | `<TBD>`  |
-| `accent-fg` on `accent`| ≥ 4.5:1            | `<TBD>`  |
-| `border` on `bg`       | ≥ 3:1              | `<TBD>`  |
-
-Themes supported: `<light | dark | both>`. Every role resolves in every theme.
-
-## Typography
-
-- **Families:** `<TBD>` (+ fallback stack, + loading strategy)
-- **Scale:** `<N>` steps. Nothing outside the scale.
-
-| Step    | Size / line-height | Weight  | Tracking | Role                          |
-| ------- | ------------------ | ------- | -------- | ----------------------------- |
-| `<TBD>` | `<TBD>`            | `<TBD>` | `<TBD>`  | page title / heading / body / caption / code |
-
-## Spacing & layout
-
-- **Base unit:** `<TBD>` — every spacing value is a multiple of it
-- **Scale:** `<TBD>`
-- **Container widths:** `<TBD>`
-- **Breakpoints:** `<TBD>` (name → min-width, and what changes at each)
-
-## Shape & elevation
-
-- **Radii:** `<TBD>` (named steps; which component uses which)
-- **Border widths:** `<TBD>`
-- **Elevation:** `<TBD>` (steps and their meaning — resting, hover, overlay, modal)
-
-## Motion
-
-- **Durations:** `<TBD>` (named steps)
-- **Easing:** `<TBD>` (curve per intent — enter, exit, move)
-- **Animates:** `<TBD>`
-- **Never animates:** `<TBD>`
-- **`prefers-reduced-motion`:** `<TBD>` — a stated behavior, not an omission
-
-## Iconography & imagery
-
-- **Icon set:** `<TBD>` (source, licence)
-- **Stroke weight / sizes:** `<TBD>`
-- **Imagery:** `<TBD>` (aspect ratios, treatment, placeholder behavior)
-
-## Component inventory
-
-_(Manifest, not specs — Behavior cases live on each component's entity page. A component absent
-from this table does not exist yet; spec it as an entity before building it.)_
-
-| Component | Entity page          | Status                    |
-| --------- | -------------------- | ------------------------- |
-| `<TBD>`   | `[[entities/<slug>]]`| stub / developing / stable |
-
-## State & feedback patterns
-
-_(Where UI inconsistency actually starts — one screen invents a spinner, the next a skeleton.)_
-
-- **Loading:** `<TBD>`
-- **Empty:** `<TBD>` (copy, illustration, primary action)
-- **Error:** `<TBD>` (inline vs toast vs page; retry affordance)
-- **Success:** `<TBD>`
-- **Disabled:** `<TBD>` (and when an explained error must be used instead)
-
-## Accessibility contract
-
-_(Targets live in [[requirements#Non-functional requirements]]; this is what follows from them
-at the UI level.)_
-
-- **WCAG target:** `<TBD>`
-- **Focus visible:** `<TBD>` (token, offset — never removed without a replacement)
-- **Minimum hit target:** `<TBD>`
-- **Keyboard:** `<TBD>` (tab order, escape/enter conventions, focus trapping in overlays)
-- **Screen reader:** `<TBD>` (labelling conventions, live-region use)
-
-## Content & voice
-
-- **Capitalization:** `<TBD>` (sentence vs title case, per surface)
-- **Tone:** `<TBD>`
-- **Button labels:** `<TBD>` (verb-first? "Save" vs "Save changes")
-- **Error messages:** `<TBD>` (shape: what happened + what to do about it)
-- **Dates / numbers / currency:** `<TBD>` (locale, format)
-
-## Boundaries
-
-- Surfaces this system does NOT cover (marketing site, transactional email, third-party embeds),
-  known inconsistencies, unverified claims.
-
-## Provenance
-
-- Token / choice ← `docs/raw/...` or [[decisions/<slug>]].
-```
-
-Like `requirements.md` and `architecture.md`, this page keeps its own body format — the Essence → Model → Detail → Boundaries spine does not apply, but the frontmatter hard rules do. Route the neighbouring frontend material to its existing home rather than restating it here: stack and styling approach → `architecture.md § Stack` and `architecture.md § Conventions`; a11y level, browser matrix, and perf budgets → `requirements.md § Non-functional requirements`; per-component specs → `entities/`; an interaction pattern recurring 3+ times → `concepts/`; "why this palette / framework" → `decisions/`.
+**Only for projects with a UI surface** (web, mobile, desktop, TUI) — never created speculatively. Its template is the supporting file `design-system-template.md` beside this skill; open it only when creating or restructuring that page.
 
 ## Facet vocabulary (closed)
 
@@ -316,11 +155,11 @@ A gap is a hole in the graph relative to this schema — computable by the perio
 
 ## Inline vs maintainer routing
 
-You — the `developer` — own **small, in-scope** wiki edits and make them in the same commit as the code. (The `reviewer` and `adversary` do not: they are findings-only by design — a conductor-only invariant — and the command that dispatched them files what they raise.) The wiki-maintainer is **manual only** and handles large or cross-page work.
+Whoever changes code owns **small, in-scope** wiki edits and makes them in the same change as the code. Review roles do not: they are findings-only, and whoever dispatched them files what they raise. The wiki-maintainer is **manual only** and handles large or cross-page work.
 
-**Inline** (same commit, no dispatch): single ADR via `decision-recording`; single gotcha via `gotcha-recording`; entity-page edit on the entity you're working on; fixing a single broken `[[link]]` you happened to notice; stubbing a missing link target.
+**Inline** (same change, no dispatch): a single ADR in `docs/wiki/decisions/`; a single entry in `docs/wiki/gotchas.md`; an edit to the entity page you're working on; fixing a single broken `[[link]]` you happened to notice; stubbing a missing link target.
 
-**Defer to maintainer** (append a line to `docs/wiki/wiki-todos.md`):
+**Defer to maintainer** (a line for `docs/wiki/wiki-todos.md` — appended by you if that file is yours to edit, otherwise handed back under `Follow-ups:`):
 
 - Orphan pages across many sections.
 - Contradictions between two existing pages — set `contradicts` on both, flag, don't auto-resolve.
@@ -329,4 +168,4 @@ You — the `developer` — own **small, in-scope** wiki edits and make them in 
 - Mass cross-link cleanup, migration of legacy pages to this standard.
 - Any change that needs reading 5+ pages to do safely.
 
-**Discovery quick routing**: project pitfall → `gotcha-recording`. Design fork → `decision-recording`. Repeated pattern → wiki-todos line. **Never** dispatch the wiki-maintainer from another agent.
+**Discovery quick routing**: project pitfall → `gotchas.md` entry. Design fork → ADR. Repeated pattern → wiki-todos line. **Never** dispatch the wiki-maintainer from another agent.

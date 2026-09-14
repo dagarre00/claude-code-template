@@ -85,7 +85,9 @@ const CONDUCTOR_ONLY_ALL = /<!--\s*conductor-only\s*-->/g;
 const RULE_START = /^\d+\.\s+\*\*/;
 
 export function workerRules(rules) {
-  const lines = rules.replace(/\r\n/g, '\n').split('\n');
+  // Frontmatter describes the file to its loaders ("Loaded at session start"),
+  // not a rule to a worker.
+  const lines = parseFrontmatter(rules, '.agents/rules.md').body.split('\n');
   const preamble = [];
   const blocks = [];
   for (const line of lines) {
@@ -99,7 +101,11 @@ export function workerRules(rules) {
   const kept = blocks
     .filter(block => !CONDUCTOR_ONLY.test(block.join('\n')))
     .map((block, index) => block.join('\n').replace(RULE_START, `${index + 1}. **`));
-  return [preamble.join('\n').trim(), kept.join('\n\n').trim()]
+  // A preamble paragraph can be conductor-only too: the note explaining that
+  // rules are withheld and renumbered is for whoever edits this file, and handing
+  // it to a worker defeats the renumbering it describes.
+  const intro = preamble.join('\n').split(/\n\s*\n/).filter(paragraph => !CONDUCTOR_ONLY.test(paragraph));
+  return [intro.join('\n\n').trim(), kept.join('\n\n').trim()]
     .filter(Boolean).join('\n\n').replace(CONDUCTOR_ONLY_ALL, '').trimEnd() + '\n';
 }
 

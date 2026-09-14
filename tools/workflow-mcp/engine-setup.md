@@ -219,6 +219,14 @@ under `workflow_mcp_audit.reads_outside_workspace` in the report, on every run;
 read it, especially for a reviewer whose value is not having seen the author's
 material.
 
+Codex is no different for reads. Measured 2026-09-14 (codex 0.154.0, Windows): a
+`--sandbox read-only` worker read a file in the parent checkout and a file
+outside the repository and reported both. `engines/codex-audit.mjs` recovers
+every command from codex's transcript (`exec` + `<shell> … in <cwd>`) and
+`inspect_dispatch` returns the same `audit.reads_outside_workspace` and
+`audit.skill_reads`, with the same warnings. It reads command text, so a path
+assembled at run time can escape it.
+
 Grant it as `read_file(<absolute path>)` in the same
 `~/.gemini/antigravity-cli/settings.json` `permissions.allow` list as the
 `command(...)` entries — a directory grant covers its descendants, so one

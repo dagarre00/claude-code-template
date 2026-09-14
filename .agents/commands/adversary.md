@@ -14,11 +14,11 @@ skills:
 The argument **sets what gets reviewed**, resolved in step 1:
 
 - **A base ref** (`develop`, `against main`, `HEAD~3`) → review `<ref>...HEAD` instead of the working tree. This is the "or you were given a base ref" case in the preconditions — with a ref, a clean tree is reviewable rather than a stop condition.
-- **A lens** (`concurrency only`, `error handling`) → pass it to the adversary as an emphasis on top of the six-category sweep. It **narrows nothing**: the full sweep still runs, because a sweep the author gets to shrink is one the author gets to steer. Say in the report that a lens was applied.
+- **A lens** (`concurrency only`, `error handling`) → pass it to the adversary as an emphasis on top of the category sweep. It **narrows nothing**: the full sweep still runs, because a sweep the author gets to shrink is one the author gets to steer. Say in the report that a lens was applied.
 
 A lens never reaches the adversary as intent, rationale, or a summary of what the change is meant to do — that would leak exactly the context step 2 exists to withhold. If you cannot phrase it as a category to weight, drop it and say so. Empty argument means the standard sweep over the unshipped change, resolved in step 1.
 
-You run one adversarial review of the change in the working directory. Findings only — the adversary never edits. You triage, fix, and re-dispatch once. Follow the `adversarial-review` skill for the report format, sweep order, severity vocabulary, and triage protocol.
+You run one adversarial review of the change in the working directory. Findings only — the adversary never edits. You triage, fix, and re-dispatch once. Follow the diff round of the `finding-disposition` skill for what to send, triage, dispositions, the round commit and re-review. The adversary's own sweep, severity vocabulary and report format are `adversarial-review`, which only it receives.
 
 ## When to use
 
@@ -49,7 +49,7 @@ Clean tree, nothing unshipped, and no base ref: stop and say there is nothing to
 
    Run the dispatch per the `worker-dispatch` skill: `inspect_dispatch` must `pass` before the findings count as a review, and a report whose audit shows reads outside the worktree may not be independent — say so if you use it.
 
-3. **Read the report and triage** every finding to Filed / Fixed / Rejected-with-reason (behavioral rule 20). For a technical second opinion on a finding, dispatch the read-only `triage` role with the same `diff_range` and the findings verbatim; it recommends, you decide. **Filed is the default** — a line in `docs/wiki/todos.md` at the priority its severity maps to, not a fix. For every `critical` and `major`, run one `human-checkpoint` with the failure scenarios and your recommendation, and let the human choose fix-now or queue; only an approved finding gets fixed, and then by the normal loop (failing test first; spec first if the finding contradicts the entity page).
+3. **Read the report and triage** every finding — then pass its counts to `record_decision` (`findings`, `reviewed_task_ids` when the diff came from known dispatches) — to Filed / Fixed / Rejected-with-reason (behavioral rule 20). For a technical second opinion on a finding, dispatch the read-only `triage` role with the same `diff_range` and the findings verbatim; it recommends, you decide. **Filed is the default** — a line in `docs/wiki/todos.md` at the priority its severity maps to, not a fix. For every `critical` and `major`, run one `human-checkpoint` with the failure scenarios and your recommendation, and let the human choose fix-now or queue; only an approved finding gets fixed, and then by the normal loop (failing test first; spec first if the finding contradicts the entity page).
 
 4. **Re-dispatch only if a fix landed** — and then pass `diff_range: <sha-before-fixes>...HEAD`, the fix commits only, never the original range: re-reading the whole thing is what makes each round surface new findings instead of converging. If everything was filed or rejected, no code changed and the review is already done. **Two rounds maximum** — findings surviving round two mean the unit was too big, so split it and review the pieces.
 

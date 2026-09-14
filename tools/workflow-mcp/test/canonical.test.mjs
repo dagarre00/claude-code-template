@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { loadCanonical, workerRules } from '../canonical.mjs';
+import { composePrompt } from '../compose.mjs';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { cleanup, fixture } from './helpers.mjs';
@@ -201,6 +202,21 @@ test('worker rules keep the heading and renumber contiguously', () => {
   assert.deepEqual(worker.match(/^\d+\./gm), ['1.', '2.']);
 });
 
+// The preamble of the real rules file is written for whoever edits it: it says
+// rules are withheld from workers, which is the one thing the contiguous
+// renumbering exists to keep a worker from dwelling on. Frontmatter ("Loaded at
+// session start") is equally not the worker's.
+test('worker rules carry no frontmatter and no preamble paragraph marked conductor-only', () => {
+  const rules = '---\nname: behavioral-rules\ndescription: Loaded at session start.\n---\n\n# Behavioral Rules\n\n'
+    + 'Hard constraints.\n\n**Numbering is positional.** Some rules are stripped. <!-- conductor-only -->\n\n'
+    + '1. **One.** Body.\n';
+  const worker = workerRules(rules);
+  assert.match(worker, /^# Behavioral Rules/);
+  assert.match(worker, /Hard constraints/);
+  assert.doesNotMatch(worker, /Loaded at session start|behavioral-rules/);
+  assert.doesNotMatch(worker, /stripped|positional/);
+});
+
 test('rules with no markers are returned intact apart from the meta section', () => {
   const plain = '# Behavioral Rules\n\n1. **One.** Body.\n\n2. **Two.** Body.\n';
   const worker = workerRules(plain);
@@ -322,6 +338,44 @@ test('text a worker can receive never cites a behavioral rule by bare number', (
   const offenders = sources.flatMap(([where, body]) =>
     [...body.matchAll(/(?:behavioral[ \t]+)?rules?[ \t]+#?\d+|rules\.md`?[ \t]+#\d+/gi)].map(match => `${where}: "${match[0]}"`));
   assert.deepEqual(offenders, []);
+});
+
+// Every worker prompt this repository can actually compose — each role with the
+// skills its command declares for it, and each undeclared role with none — must
+// be something a worker can obey. Measured contradictions this holds shut: a
+// developer told to `git tag` a checkpoint (not allowlisted, and on agy one
+// denied command discards the whole report), sent to skills it never received,
+// and told to delete `.handoff/` scratch that sits outside its worktree.
+test('every composable worker prompt is one a worker can obey', () => {
+  const root = resolve(import.meta.dirname, '../../..');
+  const canonical = loadCanonical(root);
+  const shapes = [];
+  const declared = new Set();
+  for (const command of canonical.commands) {
+    for (const [role, skills] of Object.entries(command.skillsByRole ?? {})) {
+      shapes.push({ where: `/project:${command.name} → ${role}`, role, skills });
+      declared.add(role);
+    }
+  }
+  for (const role of canonical.roles) {
+    if (!declared.has(role.name)) shapes.push({ where: `${role.name} (no command skills)`, role: role.name, skills: [] });
+  }
+  const offenders = [];
+  for (const { where, role, skills } of shapes) {
+    const input = { role, skills, instructions: 'x', task_id: 't', workspace: '/w' };
+    if (canonical.roles.find(r => r.name === role).access === 'write') input.owned_paths = ['src'];
+    const { prompt } = composePrompt(canonical, input);
+    for (const skill of canonical.skills) {
+      if (!skills.includes(skill.name) && prompt.includes(`\`${skill.name}\``)) {
+        offenders.push(`${where}: names skill \`${skill.name}\`, which it is not sent`);
+      }
+    }
+    for (const match of prompt.matchAll(/\bgit (?:add|commit|tag|reset|rm|stash|checkout|switch|merge|rebase|push|worktree|restore|clean|cherry-pick|branch -[dDmM])\b/g)) {
+      offenders.push(`${where}: tells a worker to run \`${match[0]}\``);
+    }
+    if (prompt.includes('.handoff')) offenders.push(`${where}: mentions .handoff/, which is outside every worktree`);
+  }
+  assert.deepEqual([...new Set(offenders)], []);
 });
 
 // A role that cannot do its job without the web says so, so the MCP can refuse

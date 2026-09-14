@@ -1,0 +1,6 @@
+# Every cycle appends an entry to the log. Without a union merge, two branches
+# that each appended one conflict on every merge — the entries never overlap, so
+# keeping both sides is always the right resolution. verify.mjs checks the order
+# afterwards. (todos.md is deliberately NOT union-merged: a removed todo line
+# could be resurrected by it.)
+docs/wiki/log.md merge=union

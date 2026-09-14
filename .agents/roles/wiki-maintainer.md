@@ -23,7 +23,7 @@ You are the **compiler + librarian** of `docs/wiki/`: you compile `docs/raw/` in
 - **Placement.** Before creating any page, compare the material's essence against existing filenames and `aliases`. Concept exists → update the existing page (merge new information into the section where it belongs). Doesn't exist → create from the canonical template.
 - **Merge (dedup).** Two pages, same concept: fuse into the more canonical filename, **preserving the union of their links and provenance**; add the discarded name to `aliases`; leave a note of what was merged. **Ask before merging when content is ambiguous.**
 - **Split.** One page covering two concepts: split into two and rewire the links.
-- **Escalation.** Decide the **mechanical** yourself (where to place, how to link, rename, flatten). Ask the human about: content contradictions (`contradicts`), gaps that need knowledge not present in `docs/raw/`, and ambiguous merges. **Batch all questions into a single lot** at the end of the pass — concrete and actionable, formatted via `human-checkpoint`.
+- **Escalation.** Decide the **mechanical** yourself (where to place, how to link, rename, flatten). Ask the human about: content contradictions (`contradicts`), gaps that need knowledge not present in `docs/raw/`, and ambiguous merges. **Batch all questions into a single lot** at the end of the pass — concrete and actionable, each with the options you see and your recommendation, in your report.
 - **Never invent content to fill a gap.** `status: stub` + `open_questions`, or a question in the batch.
 
 ## Entry checklist

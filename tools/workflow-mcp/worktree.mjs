@@ -54,11 +54,29 @@ const isClean = root => git(root, ['status', '--porcelain=v1', '--untracked-file
 // for the dedup check below still goes through `resolve()` on both sides, so it
 // stays correct regardless of which slash direction an existing entry (old or
 // new) happens to use.
-function trustForCodex(root, workspace) {
+//
+// Called when a codex dispatch is composed, not when a worktree is prepared: a
+// project that never dispatches to codex has no reason to have its global git
+// config edited.
+export function trustWorktree(root, workspace) {
   const forwardSlashPath = workspace.replaceAll('\\', '/');
   const existing = git(root, ['config', '--global', '--get-all', 'safe.directory'], { allowFailure: true });
-  const already = (existing ?? '').split('\n').some(line => resolve(line.trim()) === resolve(workspace));
+  const already = (existing ?? '').split('\n').some(line => line.trim() && resolve(line.trim()) === resolve(workspace));
   if (!already) git(root, ['config', '--global', '--add', 'safe.directory', forwardSlashPath], { allowFailure: true });
+}
+
+// Trust entries this tool wrote for worktrees of this checkout that no longer
+// exist — an abandoned worktree never reaches remove_worktree. Only paths
+// directly under <root>/.worktrees/ are candidates; nothing else is touched.
+function pruneStaleTrust(root) {
+  const existing = git(root, ['config', '--global', '--get-all', 'safe.directory'], { allowFailure: true }) ?? '';
+  const base = resolve(root, WORKSPACES);
+  for (const value of new Set(existing.split('\n').map(line => line.trim()).filter(Boolean))) {
+    if (value === '*') continue;
+    const path = resolve(value);
+    if (dirname(path) !== base || existsSync(path)) continue;
+    git(root, ['config', '--global', '--fixed-value', '--unset-all', 'safe.directory', value], { allowFailure: true });
+  }
 }
 
 // The inverse, run when the worktree goes away. Every entry naming this exact
@@ -117,7 +135,7 @@ export function prepareWorktree(root, { task_id } = {}) {
   const branch = `worker/${task_id}`;
   const base_sha = git(root, ['rev-parse', 'HEAD']);
   git(root, [...LONG_PATHS, 'worktree', 'add', '-b', branch, workspace, base_sha]);
-  trustForCodex(root, workspace);
+  pruneStaleTrust(root);
   const record = { task_id, workspace, branch, base_sha,
     integration_branch: git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], { allowFailure: true }) };
   // Written now, so a worktree that is prepared and then abandoned — an
@@ -168,8 +186,11 @@ export function listWorktrees(root) {
     // write role the same check has a different shape: anything outside
     // owned_paths is work nobody will commit, which fails integration silently.
     const owned = Array.isArray(record?.owned_paths) ? record.owned_paths : null;
+    // Protected paths win over ownership: an owned directory that contains the
+    // architecture rules still may not change them.
+    const guarded = Array.isArray(record?.protected_paths) ? record.protected_paths : [];
     const violations = record?.access === 'read-only' ? changed
-      : owned ? changed.filter(file => !under(file, owned))
+      : owned ? changed.filter(file => !under(file, owned) || under(file, guarded))
         : null;
 
     // Provably holding nothing unique: nothing uncommitted, and every commit on

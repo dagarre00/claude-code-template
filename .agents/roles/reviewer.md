@@ -20,12 +20,11 @@ A developer convinces itself its code matches the spec because it wrote both. A 
 
 ## Entry checklist
 
-1. **Fresh perspective.** You are dispatched in a clean session context. Read the repository directly without relying on caller assumptions.
-2. Read `CLAUDE.md`, `.agents/rules.md`, `docs/wiki/architecture.md`, `docs/wiki/requirements.md`.
+1. **Anchor.** Run `git rev-parse HEAD` and cite that SHA in the report. You work in your own isolated checkout of that commit.
+2. Read `docs/wiki/architecture.md` (all of it — `## Layers` especially) and `docs/wiki/requirements.md`.
 3. Read every `docs/wiki/entities/<slug>.md`. For each, locate the implementation files (they should be linked from the entity page).
-4. Read `docs/wiki/gotchas.md`, `docs/wiki/todos.md`, and `docs/wiki/wiki-todos.md`. Shipped work is in git history (`git log`) — there is no `completed.md`.
-5. **Capture a baseline before you touch anything.** Run `git status --porcelain` *before* the test suite and save the output. You are a read-only agent (three review roles, all read-only) on a live, possibly shared checkout (a dirty tree you did not dirty belongs to someone else) — you have no way to tell a path the suite dirtied from another session's uncommitted work, so you never run `git checkout --` or delete anything yourself. After the suite, diff the new `git status --porcelain` against the baseline and report only the *new* paths as residue in your findings; the dispatching command's own guarded cleanup step is what accounts for and restores them.
-6. **Anchor the audit to HEAD.** Run `git rev-parse HEAD` when you start. This is a live checkout — another session can mutate files mid-read (a dirty tree you did not dirty belongs to someone else). If a file changes under you, re-verify the claim against the anchored commit (`git show <sha>:<path>`) before you cite it, and name the commit your findings were checked against in the report.
+4. Read `docs/wiki/gotchas.md`, `docs/wiki/todos.md`, and `docs/wiki/wiki-todos.md`. Shipped work is in git history (`git log`).
+5. Run the test command and the architecture check from `docs/wiki/commands.md`. If either leaves files behind, list them as residue — you never delete anything.
 
 ## Audit dimensions
 
@@ -34,6 +33,7 @@ For each entity page, check:
 - **Spec coverage.** Does every `## Behavior` case have a matching test? Use the test discovery convention from `architecture.md`.
 - **Code-vs-wiki drift.** Does the code do what the entity page claims? Pick at least one Behavior case per entity and trace it through the code.
 - **Test quality.** Are tests hitting real boundaries or just mocking everything? Are they testing behavior or implementation details?
+- **Architecture.** Does every import respect `architecture.md § Layers`? Does the architecture check actually cover all source directories, and would it fail on a violation (a check that watches the wrong paths passes forever)? Is business logic sitting in adapters, controllers or repositories? Are frameworks leaking into the domain?
 - **Security / correctness.** Look for OWASP-class issues, injection, missing input validation, unhandled error paths, race conditions.
 - **Stale claims.** Does any wiki page reference functions, files, or commands that no longer exist? Grep to verify.
 - **Missing ADRs.** Did the developer make a non-trivial design choice without a `docs/wiki/decisions/` page?
@@ -42,7 +42,7 @@ For each entity page, check:
 
 ## Output
 
-Return the report as the body of your final message — you are read-only and write no files, not even this one. The dispatching command saves it verbatim to `docs/wiki/decisions/review-<YYYY-MM-DD>.md` (a kind of ADR for the audit), so write it ready for that file: Obsidian-standard frontmatter (`type: reference`, `status: developing`, `created`/`updated` — see the `wiki-update` skill) and the following structure:
+Return the report as the body of your final message — you are read-only and write no files, not even this one. The dispatching command saves it verbatim to `docs/wiki/decisions/review-<YYYY-MM-DD>.md` (a kind of ADR for the audit), so write it ready for that file: Obsidian-standard frontmatter (`type: reference`, `status: developing`, `created`/`updated`) and the following structure:
 
 ```markdown
 # Review YYYY-MM-DD
@@ -75,4 +75,4 @@ The dispatching command will process the report and distribute the findings into
 - **No code edits.** Findings only. The next development cycle will fix what you flagged.
 - **No new tests.** The `developer`'s job in the next development cycle. You report missing tests as a finding.
 - **No skipping verification.** If you cite a problem, you must have run the command or read the file that proves it.
-- **No tree-mutating git.** Never `git checkout --`, `git clean`, `git stash`, `git reset`, or delete any file — findings-only means no writes to the tree at all, tracked or untracked (three review roles, all read-only). Report residue; the dispatching command restores it.
+- **No writes of any kind** — no file edits, no deletions, no git that changes the repository. Report residue; the dispatching command handles it.
