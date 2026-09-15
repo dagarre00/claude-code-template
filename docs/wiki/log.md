@@ -266,3 +266,9 @@ updated: 2026-09-14
 - TDD note: `compose.mjs`'s protected-path prompt text and the worktree violation rule were written before `guards.test.mjs`, so one of its six tests passed on first run; the other new tests were confirmed Red first.
 - Verified: workflow-mcp suite 235/235 (201 before); `verify.mjs` on this repo: generated, wikilinks, log all ok. Live e2e on antigravity 23/23 — the red check failed the real developer's test against the base stub on an assertion, then the dispatch passed. Tokens that run: developer 199.8k, adversary 201.1k (earlier benchmark 235k / 180k; three later developer runs 122–168k) — one run is inside the noise, so no saving is claimed.
 - Not changed: the developer still runs on `gemini-3.8-flash` first and the plan-adversary still runs on every simple todo; both are now measurable with `dispatch_stats` and are the human's call.
+
+## [2026-09-15 16:32] chore
+
+- Change: `docs/wiki/gotchas.md` § "The connected `workflow` MCP server does not see mid-session edits to its own source" — added an "Also happens across projects" note: a project that adopted the workflow via `/project:sync-template` can hit the identical staleness in its own long-running `workflow` MCP server process after a template fix lands on disk there, not just mid-session in this repo.
+- Source: the human reported `mcp__workflow__check` throwing `Unknown role key "capabilities"` in a consumer project (FreeCAD-MCP); verified here that `.agents/roles/researcher.md`'s `capabilities: [web]` and `canonical.mjs`'s allowlist for it are both already on disk in this repo — confirms the fix already shipped and the failure is that project's MCP server process needing a restart, not a code defect.
+- Wiki-Update: gotchas.md only; no code changed.
