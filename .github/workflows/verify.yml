@@ -1,0 +1,47 @@
+# The conductor side of the workflow has no other mechanical check: this is what
+# stops a change landing without its wiki update or log entry, a broken wikilink,
+# drifted AGENTS.md/CLAUDE.md, or an architecture rule loosened without an ADR.
+#
+# In this template it also runs the workflow-mcp suite. An adopting project's
+# /project:init (step 5c) writes its own version: install, the project's test
+# command, its architecture command, then the same verify step — never this
+# template's test suite.
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install workflow-mcp
+        run: npm ci
+        working-directory: tools/workflow-mcp
+
+      - name: Configure git for the test fixtures
+        run: |
+          git config --global user.email "ci@example.invalid"
+          git config --global user.name "ci"
+
+      - name: workflow-mcp test suite (template only)
+        run: npm test
+        working-directory: tools/workflow-mcp
+
+      - name: Workflow checks
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            node tools/workflow-mcp/verify.mjs --base "origin/${{ github.base_ref }}"
+          else
+            node tools/workflow-mcp/verify.mjs
+          fi

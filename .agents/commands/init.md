@@ -1,0 +1,357 @@
+---
+name: init
+description: Detect project state, interview for requirements, scaffold docs/wiki, fill in .agents/project.md and regenerate AGENTS.md/CLAUDE.md. Run once at project start, or to recover from a broken wiki layout.
+argument-hint: [context — e.g. "review the legacy files" | "stack is Django + Postgres"]
+type: command
+---
+
+# /project:init
+
+**Argument:** `$ARGUMENTS`
+
+You are initializing this project. This command detects state, interviews the human for requirements, scaffolds the wiki with real answers (not placeholders), and fills in `.agents/project.md` so `AGENTS.md`/`CLAUDE.md` regenerate as project-specific.
+
+If the argument is non-empty, treat it as **context that steers the init**, not as a separate task. Resolve it before step 3 and fold it into the pre-interview scan:
+
+- **Points at existing material** (`review the legacy files`, `read src/ and the old README`, `the spec is in docs/spec.pdf`) → read those paths first, extract every answer you can, and mark those interview topics **covered** so you don't ask what the human already wrote down. Cite the file in the wiki page you fill from it.
+- **States a fact** (`stack is Django + Postgres`, `no CI yet`) → record it as a given, skip the matching question, and confirm it in the report rather than the interview.
+- **Narrows the scope** (`wiki only, skip the test bootstrap`) → honour it and say in the report which steps you skipped.
+
+If the argument is empty, run the full procedure below. If it names a path that doesn't exist, say so and ask — don't silently proceed as if it were empty.
+
+## Preconditions
+
+- The current directory is the project root.
+- `AGENTS.md` and `.agents/` exist (the schema is on disk).
+
+## Steps
+
+### 0. Verify workflow-mcp wiring
+
+Skip this in seconds on a project cloned fresh from the template — everything
+is already wired and this just confirms it. It matters on a project adopted
+into an existing codebase (`scripts/adopt.sh`, or a manual copy per
+`README.md § Quick start → Existing project`), where the mechanical steps can
+land only partway:
+
+- Call any `mcp__workflow__*` tool (`list_roles` is cheapest). If it errors or
+  isn't available, the server isn't reachable — stop and check:
+  - `.mcp.json` exists at the repo root and registers `workflow`.
+  - **Claude Code only:** `.claude/settings.json` has both
+    `extraKnownMarketplaces.workflow` and `enabledPlugins["project@workflow"]`.
+    Codex and Antigravity read `.agents/` directly and don't need this — if
+    you're conducting on either and this command is running at all, this file
+    is a non-issue by construction.
+  - Point the human at `README.md § Quick start → Existing project` for the
+    exact snippet, or re-run `scripts/adopt.sh`.
+- Confirm `tools/workflow-mcp/node_modules/` exists. Missing → run
+  `npm install` there before dispatching any worker; every later `/project:work`
+  cycle needs a live dispatch.
+
+Report what you found in one line ("workflow-mcp reachable, wiring intact") and
+continue. A failure here is a hard stop — `human-checkpoint` — because nothing
+past this point can dispatch a worker.
+
+### 0a. Configure per-role models
+
+`.agents/config.json` ships with the template maintainer's own working
+defaults — real engines they had installed and models they were testing, not
+a recommendation for this project. Every adopting project needs its own
+answer, and model IDs churn often enough that guessing from memory is how
+`config.json` ends up pointing at a retired slug. **Skip this step entirely
+on a re-run** if `config.json`'s `roles`/`engines` blocks no longer match a
+fresh template checkout — the human already made this choice; don't
+re-litigate it without being asked.
+
+1. **Detect installed engines.** Check `claude`, `codex`, `agy` on PATH (same
+   probe as step 0). A role can only be pinned to an engine that's actually
+   installed on this machine.
+2. **Ask, per role** in `.agents/config.json` (`adversary`, `developer`,
+   `plan-adversary`, `planner`, `researcher`, `reviewer`, `wiki-maintainer`):
+   which installed engine runs it, and which tier — `reasoning`, `balanced`,
+   or `fast` — fits the role's weight, or a specific model the human names
+   instead of a tier. Present the shipped `config.json` value as the
+   recommended default for each question rather than asking blind; a human
+   who wants the defaults should be able to accept all of them in one
+   answer. `researcher`, `reviewer`, and `wiki-maintainer` default to
+   `"engine": null` (inherit the conductor) — only pin them if asked.
+3. **Verify every model slug before writing it, including defaults.** Do not
+   trust a model ID from memory — yours or the shipped file's. `WebSearch`
+   for the engine's current model list or changelog (e.g. "`<engine>` model
+   IDs API" or the vendor's docs page) and confirm the exact slug is real and
+   current. If you can't confirm one, say so to the human instead of writing
+   an unverified guess into config.
+4. **Write the confirmed `engine` / `models` / `effort` per role** into
+   `.agents/config.json`, matching its existing shape.
+
+Report the resolved engine + model per role in one line each. This step
+produces no commit of its own — it lands in step 8 with everything else.
+
+### 1. Git state
+
+Run `git status`.
+
+- If not a git repo — the **expected state** when starting from this template (the quick start erases the cloned `.git` so the project begins its own history):
+  1. `git init -b main` — always pass `-b main`; a bare `git init` may create `master` depending on the machine's `init.defaultBranch`.
+  2. **Keep the template's shipped `.gitignore`** — it carries entries the workflow relies on (the plan scratch, `settings.local.json`, `docs/.obsidian/`). Append stack-specific entries (Node, Python, OS, IDE) to it; never replace it.
+  3. Stage everything including dotfiles (`git add -A`) and commit `chore: initial commit` on `main` — the template's `.agents/`, `CLAUDE.md`, and `docs/` must all land in that first commit.
+  4. If the human has a remote URL, `git remote add origin <url>`; otherwise continue without one — every later push step is skipped and noted in the report until a remote exists.
+- If on `main` with uncommitted changes: stop and run `human-checkpoint`. Ask whether to commit, stash, or discard.
+- If on a feature branch: warn; don't switch.
+
+### 2. Stack detection
+
+Look for: `pyproject.toml`, `package.json`, `Cargo.toml`, `go.mod`, `Gemfile`, `composer.json`, `pom.xml`, `build.gradle`, `Dockerfile`, etc. Note what you find.
+
+Look for a test command in `pyproject.toml` / `package.json` scripts / `Makefile`. Record it.
+
+Note the project directory layout: `src/`, `tests/`, `lib/`, `app/`, etc.
+
+### 3. Pre-interview wiki scan
+
+Before asking anything, check whether `docs/wiki/requirements.md` and `docs/wiki/architecture.md` already exist and contain real content (not just placeholder headings).
+
+**Read anything the argument pointed you at first** — legacy source, an old README, a spec file, existing docs. Those are sources for the same extraction pass, and answers derived from them count as covered exactly like answers from the wiki.
+
+If they do, read them and extract answers for every interview topic below. Mark each topic as either:
+- **covered** — the doc has a concrete, non-placeholder answer; no question needed.
+- **partial** — some content exists but is incomplete or ambiguous; ask a focused follow-up only.
+- **missing** — no content; ask the full question.
+
+Print a one-line summary of what you found before starting the interview, e.g.:
+> "Found existing requirements.md and architecture.md. Vision, users, stack, and data are covered. I'll ask about: user stories, out-of-scope, deployment, and non-functional requirements."
+
+If both files are fully populated and all topics are covered, skip the interview entirely and go straight to step 4.
+
+### 4. Interview
+
+**Run `/project:interview`'s Operating rules as written** — one question at a time, each with your recommended answer, dependencies before breadth, transcript streamed to disk Q-by-Q. They are not restated here; read them from `.agents/commands/interview.md` and follow them.
+
+What is specific to init is the **agenda**: ask only about topics the pre-interview scan found **missing** or **partial**, and cover these in order:
+
+1. **Project vision** — one sentence. What does this project do and why does it exist?
+2. **Users** — who uses it? (user types, contexts)
+3. **Core user stories** — what must each user type be able to do? (priority order, enough to fill `## User stories`)
+4. **Out of scope** — what explicitly won't this project do?
+5. **Stack** — confirm detected stack. If nothing detected, ask: language, framework, package manager.
+6. **Test framework and command** — confirm detected. If none, ask what to use.
+7. **Data** — where does state live? (DB, files, in-memory, external services)
+8. **External services** — APIs, auth providers, infra dependencies.
+9. **Deployment** — how will this ship? (CI, target environment, release process)
+10. **Non-functional** — perf targets, security requirements, observability, compliance.
+11. **Design intention** — **ask only if the project has a UI surface** (web, mobile, desktop, TUI). Three questions, no more: what should it feel like (three adjectives), what must it never feel like, and is there an existing design system / component library to adopt. Deeper token work is not an init topic — it goes to `/project:interview the design system` once the stack is real.
+12. **Architecture** — clean architecture is the default. Recommend the four layers of `architecture.md § Layers` (`domain`, `application`, `adapters`, `infrastructure`) mapped to directories for this stack, and ask only: the directory per layer, the composition root, and whether any layer should be merged for a project this size (a CLI script may reasonably fold `adapters` into `infrastructure`). A deviation from the default is an ADR. On an existing codebase, propose the mapping from what the stack scan found and ask how to treat current violations (step 5b.4).
+
+The transcript is `docs/raw/interviews/YYYY-MM-DD-init.md`, opened before the first question and streamed exactly as operating rule #7 requires. Skip creating it only if the scan left no questions to ask.
+
+Stop conditions:
+
+- Human says stop.
+- All sections needed for wiki scaffolding have concrete answers (from pre-scan + interview combined).
+- You have enough to write Behavior cases for the first entity.
+
+### 5. Scaffold wiki
+
+Create directories that don't exist:
+
+```
+docs/raw/interviews/
+docs/wiki/entities/
+docs/wiki/concepts/
+docs/wiki/decisions/
+docs/wiki/summaries/
+```
+
+Create or update these pages with **real content from the pre-scan and interview combined** (no `<TBD>` placeholders except for topics genuinely not discussed):
+
+- `docs/wiki/requirements.md` — fill **all** sections: `## Vision`, `## Users`, `## User stories` (one per user-capability pair in `- As a <user type>, I want <capability>, so that <benefit>` format with Acceptance + `Maps to:` link), `## Functional requirements`, `## Non-functional requirements`, `## Out of scope`, `## Open questions`.
+- `docs/wiki/architecture.md` — fill `## Stack`, `## Layout`, `## Layers` (topic 12), `## Data`, `## External services`, `## Testing strategy`, `## Conventions`, `## Deployment`. Leave a section as `<TBD>` only if it was genuinely not discussed. `## Layers` is filled in step 5b if not here.
+- `docs/wiki/git-conventions.md` — default branch, branch prefixes, commit format.
+- `docs/wiki/commands.md` — test command, build command, lint command (whatever was detected/confirmed).
+- `docs/wiki/todos.md` — seeded with first work items from the interview.
+- `docs/wiki/gotchas.md` — create with empty headings (`## Critical`, `## Runtime`, `## Testing`, `## Tooling`) **only if missing. Never clear existing entries** — the template ships this file empty, but a re-run of `/project:init` on an established project must not wipe the traps that project has accumulated.
+- `docs/wiki/wiki-todos.md` — create empty only if missing; keep any pending lines.
+- `docs/wiki/log.md` — init entry (see step 6).
+- `docs/wiki/design-system.md` — **conditional.** Create it only if the project has a UI surface (web, mobile, desktop, TUI). Use the design-system template beside the `wiki-update` skill, filled with the topic-11 answers; leave the token sections `<TBD>` and file a todo to run `/project:interview the design system`. A library, CLI, or headless service project does not get this page — do not create it "for later".
+
+Create entity pages under `docs/wiki/entities/` for each feature/module identified in the interview, with Behavior cases (see `spec-writing` skill).
+
+File ADRs under `docs/wiki/decisions/` for non-trivial choices made during the interview (see `decision-recording` skill).
+
+Every page gets correct frontmatter per the Obsidian LLM-wiki standard (see the `wiki-update` skill).
+
+### 5a. Bootstrap a runnable test command
+
+`/project:work` cannot start a Red phase until the test command actually executes. On a greenfield repo the interview answer (`pytest -q`, `npm test`, …) names a command that does not yet run: no dependency manifest, no test directory, nothing installed. Close that gap here — it is the one precondition every later cycle depends on.
+
+1. **Check whether it already runs.** Execute the test command from `docs/wiki/commands.md`. If it exits with "no tests collected" / "0 passing" (or any clean zero-test result), the loop is already runnable — record that and skip to step 6.
+
+2. **If it doesn't run, propose the minimum skeleton.** Present the exact file list and install command to the human via `human-checkpoint` before creating anything. The minimum is only what makes an empty suite executable:
+   - the dependency manifest for the detected stack (`pyproject.toml`, `package.json`, `Cargo.toml`, …) declaring the test framework chosen in the interview,
+   - the test directory the framework expects (`tests/`, `__tests__/`, …) with nothing in it,
+   - the source directory named in `architecture.md ## Layout`, empty.
+
+   No application code, no example module, no placeholder test. The first real test comes from the first `/project:work` Red phase.
+
+3. **Install and verify.** Run the install command, then the test command. Confirm it exits cleanly on an empty suite. If installation fails (no network, missing toolchain), stop and run `human-checkpoint` — do not paper over it by writing a fake test command.
+
+4. **Record the verified commands** in `docs/wiki/commands.md`: `## Install`, `## Test`, and whatever else you confirmed. Only commands you have actually run go in this file.
+
+5. **Update the worker allowlist.** `.agents/config.json`'s `workerCommands` ships with the template maintainer's own placeholder (`"npm test"`) — every worker's composed prompt names this list as what it may run, so a Python or Rust project left with `npm test` there is a Red phase no worker can ever confirm. Replace that placeholder entry with the exact command you just verified in step 5a.3, keeping the rest of the array (the read-only `git` entries) as shipped.
+
+6. **If the test command needs an environment a fresh checkout does not have** — a Python virtualenv, `node_modules` — decide how a worker's worktree gets one, with the human, using `tools/workflow-mcp/engine-setup.md § Projects with a Python virtualenv`. For a per-worktree environment, put the commands that build it in `.agents/config.json` `worktreeSetup` (`prepare_worktree` hands them back to run), and make sure what they create is gitignored. For a shared one, the worker's command is relative to `.worktrees/<id>/` and is a separate `workerCommands` entry. Then call `check` and resolve any `setup` block it reports for the engines your roles use.
+
+If the human declines the bootstrap, leave `commands.md ## Test` as `<TBD>` and `workerCommands` unchanged, and say plainly in the report that `/project:work` will refuse to start until a test command runs.
+
+### 5b. Enforce the architecture
+
+A layer table nobody checks is a suggestion. Make the dependency rule a command that fails, give it to every worker, and put its rules out of any worker's reach.
+
+1. **Pick the enforcement for the stack**, strongest first, and confirm with the human:
+
+   | Stack | Strongest (compiler) | Tool check |
+   | --- | --- | --- |
+   | TypeScript / JavaScript | workspace packages per layer (npm/pnpm workspaces, TS project references) | `dependency-cruiser` (`npx depcruise src --config .dependency-cruiser.cjs`), or `eslint-plugin-boundaries` |
+   | Python | — | `import-linter` with a `layers` contract (`lint-imports`) |
+   | Java / Kotlin | Gradle/Maven modules per layer | ArchUnit `layeredArchitecture()` test; Konsist for Kotlin |
+   | C# / .NET | one project per layer, references only inward | NetArchTest or ArchUnitNET test |
+   | Go | `internal/` packages | `go-arch-lint`, or `depguard` in golangci-lint |
+   | Rust | one crate per layer in a workspace | — (the compiler is the check) |
+   | PHP | — | `deptrac` |
+   | Ruby | — | `packwerk` |
+
+   A compiler boundary needs no separate command when it lives in the build the test command already runs; record the test command as the architecture command then. A tool check is a separate command, or a test in the suite (ArchUnit, NetArchTest), which is better still: every Red and Green run enforces it.
+
+2. **Write the rules from `§ Layers`**, install the tool, and record the exact command in `docs/wiki/commands.md § Architecture` and `architecture.md § Layers → Enforced by`.
+
+3. **Prove it fires — Red for the check itself.** Create a throwaway file in the innermost layer that imports the outermost one, run the command, and confirm it **fails naming that import**. Delete the file, run again, confirm it passes. A check that passes on a planted violation watches the wrong paths; never record it.
+
+4. **Existing code with violations.** Never block adoption on them: use the tool's baseline or ignore list (`dependency-cruiser --ignore-known`, `import-linter ignore_imports`, a `deptrac` baseline), list the baselined violations under `§ Layers → Exceptions`, and file one `[infra]` todo per module to retire them. The baseline file is an architecture rule like any other.
+
+5. **Wire it into the workflow.** In `.agents/config.json` set `"architecture": { "command": "<the exact command>", "rules": ["<rule file>", "<baseline file, if any>"] }`. The command joins every worker's allowlist automatically and the rule files become protected — no worker may change them, and `verify.mjs` fails a branch that changes them without an ADR. Keep `protectedPaths` at least `[".agents"]`. Then call `check`: `architecture.enforced` must be `true`.
+
+6. **File the ADR** `decisions/<date>-clean-architecture.md` recording the layer mapping, the tool, and any merged layers.
+
+If the human declines enforcement, leave `architecture.command` null and say in the report that layers are enforced by review alone — `check` and `verify.mjs` will keep saying so.
+
+### 5c. Continuous integration
+
+The conductor's own discipline has no other enforcement, so CI is not optional polish.
+
+1. **Add `.gitattributes`** with `docs/wiki/log.md merge=union` if missing: every cycle appends to the log, and without it two branches conflict on every merge.
+2. **Write the CI workflow** for the project's host (GitHub Actions: `.github/workflows/verify.yml`), running on every pull request: check out with full history, set up the stack, install, then the test command, the architecture command, and `node tools/workflow-mcp/verify.mjs --base origin/${{ github.base_ref }}`. Use the template's own `.github/workflows/verify.yml` as the shape; it runs the same verify step.
+3. Record the verify command in `docs/wiki/commands.md § Verify` and the pipeline in `architecture.md § Deployment`. No hosted CI → say so in the report; the conductor then runs verify before every PR (`/project:work` step 10) and nothing else backs it.
+
+### 6. Fill in project.md and regenerate AGENTS.md / CLAUDE.md
+
+`AGENTS.md` and `CLAUDE.md` are never hand-written — both carry a "DO NOT EDIT"
+banner and are mechanically rendered from `.agents/` by the workflow MCP's
+`sync()`. The only per-project input is `.agents/project.md`'s four fields; the
+rest (rules, roles, skills, commands tables) is derived automatically from
+`.agents/`, so a toolkit row added later via `update-toolkit` needs no manual
+carry-forward here — `sync()` always picks it up.
+
+**Re-run guard first.** Read `.agents/project.md`. If none of its four fields
+still carry the shipped placeholder text (`<set during project
+initialization>`, `<detect or ask during project initialization>`, `<verify
+during project initialization>`), this project was already initialized — stop
+and run `human-checkpoint` offering: update one named field / leave it as-is /
+regenerate anyway. Do not blindly overwrite an already-answered `project.md`.
+
+**Existing hand-written `CLAUDE.md` guard.** `sync()` overwrites `CLAUDE.md`
+unconditionally with the generated two-line `@AGENTS.md` import. If `CLAUDE.md`
+already exists here and does **not** carry the "Generated from `.agents/`"
+banner, it predates adopting this template and `sync()` would silently
+destroy it. Read it first: fold anything worth keeping into
+`docs/wiki/architecture.md` or `docs/wiki/gotchas.md` (wherever the content
+actually belongs — it is project knowledge, not boilerplate), then proceed.
+Never call `sync()` over unread, unpreserved content.
+
+Fill in exactly the four fields, from what this run already established:
+
+- **Name** — the project name.
+- **Vision** — the one-sentence vision from the interview.
+- **Stack** — the detected/confirmed stack (step 2).
+- **Application tests** — the verified test command (step 5a), or leave the
+  placeholder if the human declined the bootstrap.
+
+**Also replace the prose below the four fields.** As shipped, it describes
+*this template repository* ("This is a reusable development template for
+Claude Code, Codex, and Antigravity CLI…") — accurate for the template itself,
+false for a project adopting it. `canonical.mjs` renders `project.md` verbatim
+into `AGENTS.md`, so left untouched, an adopting project's own agent
+instructions would claim to be the template. Replace that paragraph with one
+or two sentences about what *this* project actually is (its vision line
+already says why it exists; this can be a pointer — "See `docs/wiki/` for the
+full spec" — rather than a restatement). Keep the wikilink-free plain prose
+style; this is the one place in `.agents/` meant to be rewritten per project.
+
+Then call the workflow MCP's `sync()` to render `AGENTS.md` and `CLAUDE.md`
+from `.agents/`, and `check()` to confirm it reports `ok: true`.
+
+### 7. Log it
+
+Append to `docs/wiki/log.md`:
+
+```markdown
+## [YYYY-MM-DD HH:MM] init
+
+- Stack: <stack>
+- Test command: <command>
+- Architecture: <tool and command, proven to fail on a planted violation — or "not enforced">
+- CI: <workflow path — or "none">
+- Interview transcript: [YYYY-MM-DD-init](../raw/interviews/YYYY-MM-DD-init.md) (omit if no questions were needed)
+- Pages created: <count>
+- ADRs: <count>
+- Next: run `/project:work` to pick up the first todo.
+```
+
+### 8. Commit
+
+Stage and commit everything created or modified, then push:
+
+```bash
+# Include any skeleton files created in step 5a (manifest, lockfile, empty test dir),
+# and .agents/config.json if step 0a changed it.
+git add docs/ CLAUDE.md AGENTS.md .agents/project.md .agents/config.json .gitattributes <manifest-and-skeleton-paths> <architecture-rule-files> <ci-workflow>
+git commit -m "chore(init): scaffold wiki, regenerate AGENTS.md/CLAUDE.md, and a runnable test command"
+git push -u origin main
+```
+
+If the repo has no remote yet, skip the push and note it in the report.
+
+### 8a. Create the `develop` branch
+
+`/project:work` always starts and ends on `develop`. If it doesn't exist yet, create it from `main` and push:
+
+```bash
+git checkout -b develop
+if git remote get-url origin >/dev/null 2>&1; then
+  git push -u origin develop
+fi
+```
+
+If `develop` already exists (locally or on the remote), check it out instead of recreating it.
+
+### 9. Report
+
+Print:
+
+- Stack and test command — and whether the test command was **verified to run** (step 5a) or is still `<TBD>`.
+- Per-role engine + model (step 0a), or "left at shipped defaults" if skipped.
+- Pages created vs already present.
+- Key decisions from the interview.
+- Recommended next step: `/project:work` to start on the first todo.
+
+## Failure modes
+
+- If git is broken (no remote, divergent main): stop and run `human-checkpoint`.
+- If you can't detect a stack: ask in the interview. Don't guess.
+- If a wiki page exists with conflicting frontmatter: append to `docs/wiki/wiki-todos.md`, don't auto-fix.
+- If the human won't answer interview questions: scaffold with what you have; mark the rest `<TBD>`.
+
+## What you do NOT do
+
+- **No application code.** This command sets up wiki and schema, plus the empty skeleton step 5a needs to make the test command runnable (manifest, empty `tests/`, empty source dir). It does not generate modules, example tests, or boilerplate — the first real test comes from `/project:work`'s Red phase.
+- **No assumptions about the stack.** Detect or ask.
+- **No second-guessing existing wiki.** If a page exists, leave it. Append to `wiki-todos.md` if it needs cleanup.

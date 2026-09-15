@@ -9,7 +9,7 @@ depends_on:
 contradicts: []
 open_questions: []
 created: 2026-04-08
-updated: 2026-07-21
+updated: 2026-09-14
 ---
 
 # Architecture
@@ -33,6 +33,22 @@ _(Languages, frameworks, key libraries, runtime.)_
 _(Top-level directories and what lives where. Add as the project grows.)_
 
 `<TBD>`
+
+## Layers
+
+_(Clean architecture: the dependency rule this project enforces. Every source file belongs to exactly one layer; a layer may import only the layers in its row. `/project:init` fills this from the stack and records the check that enforces it in [[commands#architecture]] and `.agents/config.json` `architecture`. Changing a row is an ADR, never a side effect of making a test pass.)_
+
+| Layer | Holds | Lives in | May depend on |
+| --- | --- | --- | --- |
+| `domain` | Entities, value objects, domain rules and errors. No I/O, no framework types. | `<TBD>` | nothing |
+| `application` | Use cases; the ports (interfaces) they need from the outside world. | `<TBD>` | `domain` |
+| `adapters` | Controllers, presenters, gateways, repository implementations — translate between ports and the outside. | `<TBD>` | `application`, `domain` |
+| `infrastructure` | Framework, database, HTTP, queues, SDK clients, configuration. | `<TBD>` | `adapters`, `application`, `domain` |
+
+- **Composition root:** `<TBD>` — the one place concrete adapters are constructed and wired into use cases.
+- **Enforced by:** `<TBD>` (the tool, its rule file, and the command — see [[commands#architecture]]). A check that nothing runs is not enforcement.
+- **Tests per layer:** domain and application are unit-tested with fakes of their ports, never with the real database or network; adapters get integration tests against the real boundary.
+- **Exceptions:** `<TBD>` — each one names its ADR. A project adopting this over existing code lists its baselined violations here, with the todo that retires them.
 
 ## Data
 

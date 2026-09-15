@@ -1,0 +1,6 @@
+{
+  "name": "project",
+  "version": "1.0.0",
+  "description": "Wiki-driven development workflow: spec, TDD, adversarial review, and wiki maintenance. The canonical source for every CLI.",
+  "author": { "name": "claude-code-template" }
+}

@@ -1,0 +1,285 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { ENGINES, engineNames, buildCommand, stdinPayload } from '../engines/index.mjs';
+
+const settings = {
+  workerTimeoutSeconds: 1800,
+  workerCommands: ['npm test'],
+  engines: {
+    claude: { executable: 'claude', models: { reasoning: 'opus', balanced: 'sonnet', fast: 'haiku' },
+      effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } },
+    codex: { executable: 'codex', models: { reasoning: null, balanced: null, fast: null },
+      effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } },
+    antigravity: { executable: 'agy', models: { reasoning: 'pro', balanced: 'inherit', fast: 'flash' },
+      effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } }
+  }
+};
+const task = { profile: 'balanced', access: 'write', workspace: '/tmp/wt' };
+// antigravity only launches as a custom agent (see its adapter), so its builds
+// carry the agent a dispatch would have written. Other engines ignore it.
+const agent = { name: 'workflow-developer', dir: '/tmp/dispatch/agent' };
+const build = (engine, over = {}) => buildCommand(settings, { engine, ...task, agent, ...over });
+
+test('every registered engine builds a clean argv', () => {
+  for (const engine of engineNames) {
+    const { executable, args } = build(engine);
+    assert.ok(executable, `${engine} has no executable`);
+    for (const arg of args) {
+      assert.equal(typeof arg, 'string', `${engine} produced a non-string arg`);
+      // argv is passed without a shell, but control characters would still
+      // corrupt logs and any command line reproduced for a human to re-run.
+      assert.doesNotMatch(arg, /[\0\r\n]/, `${engine} arg has a control character: ${arg}`);
+    }
+  }
+});
+
+test('no engine may request a permission bypass', () => {
+  for (const engine of engineNames) {
+    for (const access of ['read-only', 'write']) {
+      const { args } = build(engine, { access });
+      assert.doesNotMatch(args.join(' '), /dangerous|bypassPermissions|--yolo|full-access/i,
+        `${engine}/${access} asked for a bypass`);
+    }
+  }
+});
+
+// The whole design rests on the worker seeing only the composed prompt, so each
+// engine must actively suppress whatever project context it would otherwise read.
+test('every engine suppresses project context', () => {
+  assert.ok(build('claude').args.includes('--safe-mode'));           // no CLAUDE.md, skills, plugins, MCP
+  assert.ok(build('codex').args.includes('project_doc_max_bytes=0')); // no AGENTS.md
+  // antigravity reads no AGENTS.md or skills in print mode, and its own default
+  // prompt sections are dropped by the agent definition it launches as.
+  assert.equal(ENGINES.antigravity.readsProjectDocs, false);
+  assert.match(ENGINES.antigravity.agentDefinition({ role: 'developer', access: 'write', workspace: '/tmp/wt' }).content,
+    /^excludeDefaultComponents: true$/m);
+});
+
+// Each engine denies writes its own way, and only two of the three do it below
+// the prompt (see the enforcement test further down). Claude deliberately does
+// NOT use plan mode here: plan mode also refuses every Bash call, so a read-only
+// reviewer could not run the suite to check its own findings. What denies its
+// edits instead is the absence of an approval surface — measured: the Write tool
+// "was automatically denied because it requires user approval and there's no
+// approval interface in this session type", and no file appeared.
+test('read-only access maps to each engine\'s non-writing mode', () => {
+  const claude = build('claude', { access: 'read-only' }).args;
+  assert.equal(claude[claude.indexOf('--permission-mode') + 1], 'dontAsk');
+  assert.ok(claude.join(' ').includes('--permission-prompts none'));
+  assert.ok(!claude.includes('acceptEdits'));
+  assert.ok(build('codex', { access: 'read-only' }).args.includes('read-only'));
+  assert.ok(build('antigravity', { access: 'read-only' }).args.join(' ').includes('--mode plan'));
+});
+
+test('write access maps to each engine\'s editing mode', () => {
+  assert.ok(build('claude').args.includes('acceptEdits'));
+  assert.ok(build('codex').args.includes('workspace-write'));
+  assert.ok(build('antigravity').args.join(' ').includes('--mode accept-edits'));
+});
+
+test('model and effort come from the profile and can be overridden', () => {
+  const fromProfile = build('claude', { profile: 'reasoning' });
+  assert.ok(fromProfile.args.includes('opus'));
+  assert.equal(fromProfile.model, 'opus');
+  const overridden = build('claude', { model: 'sonnet', effort: 'low' });
+  assert.ok(overridden.args.includes('sonnet'));
+  assert.ok(overridden.args.includes('low'));
+});
+
+test('an effort the engine does not support is rejected by name', () => {
+  assert.throws(() => build('codex', { effort: 'max' }), /codex.*max|max.*codex/i);
+});
+
+test('a malformed model string is rejected rather than passed to argv', () => {
+  assert.throws(() => build('claude', { model: 'sonnet; rm -rf /' }), /model/i);
+  assert.throws(() => build('claude', { model: 'a\nb' }), /model/i);
+});
+
+test('"inherit" means do not pass a model flag at all', () => {
+  assert.ok(!build('antigravity', { profile: 'balanced' }).args.includes('--model'));
+});
+
+test('antigravity keeps --print last, because it swallows the next argument', () => {
+  const { args } = build('antigravity');
+  assert.match(args.at(-1), /^--print=/);
+});
+
+test('codex keeps the stdin marker last', () => {
+  assert.equal(build('codex').args.at(-1), '-');
+});
+
+// codex exec's default text output interleaves the worker's final message with
+// the full transcript of every command it ran — measured at 6.9MB/43,015 lines
+// for one real dispatch. -o isolates the final message into its own file so the
+// conductor's routine path never has to wade through the transcript to find it.
+test('codex writes the report to its own file, still ending in the stdin marker', () => {
+  const { args } = build('codex', { reportFile: '/tmp/wt/report.txt' });
+  const at = args.indexOf('-o');
+  assert.notEqual(at, -1, 'no -o flag for the given reportFile');
+  assert.equal(args[at + 1], '/tmp/wt/report.txt');
+  assert.equal(args.at(-1), '-', '-o must not push the stdin marker off the end');
+});
+
+test('codex omits -o entirely when no reportFile is given', () => {
+  assert.ok(!build('codex').args.includes('-o'));
+});
+
+// Neither flag has a default in this repo (no measured number to justify one,
+// unlike the -o transcript sizes above) — a project opts in per config.mjs's
+// validation of engines.codex.{toolOutputTokenLimit,modelAutoCompactTokenLimit}.
+test('codex passes the context-management overrides when configured, still ending in the stdin marker', () => {
+  const withLimits = { ...settings, engines: { ...settings.engines,
+    codex: { ...settings.engines.codex, toolOutputTokenLimit: 2000, modelAutoCompactTokenLimit: 50000 } } };
+  const { args } = buildCommand(withLimits, { engine: 'codex', ...task });
+  assert.ok(args.includes('tool_output_token_limit=2000'));
+  assert.ok(args.includes('model_auto_compact_token_limit=50000'));
+  assert.equal(args.at(-1), '-', 'the new -c flags must not push the stdin marker off the end');
+});
+
+test('codex omits both context-management overrides when not configured', () => {
+  const joined = build('codex').args.join(' ');
+  assert.doesNotMatch(joined, /tool_output_token_limit|model_auto_compact_token_limit/);
+});
+
+// Two ways an adapter can end up with a clean report_file: stdout already is
+// the report (claude, so writesReportFile is false — there is nothing to
+// write), or something isolates it into its own file. codex does that itself
+// via -o; antigravity has no such flag, so dispatch.mjs wraps its command and
+// runs extractReportFrom over the captured transcript instead — writesReportFile
+// is true either way, because from the conductor's side the outcome is the same.
+test('each engine declares honestly whether the conductor can read its report cleanly', () => {
+  assert.equal(ENGINES.claude.reportIsStdout, true);
+  assert.equal(ENGINES.claude.writesReportFile, false);
+  assert.equal(ENGINES.codex.reportIsStdout, false);
+  assert.equal(ENGINES.codex.writesReportFile, true);
+  assert.equal(ENGINES.codex.extractReportFrom, undefined, 'codex writes report_file itself, via -o');
+  assert.equal(ENGINES.antigravity.reportIsStdout, false);
+  assert.equal(ENGINES.antigravity.writesReportFile, true);
+  assert.equal(typeof ENGINES.antigravity.extractReportFrom, 'string', 'antigravity needs post-processing');
+});
+
+test('stdin is plain text everywhere except antigravity, which needs NDJSON', () => {
+  assert.equal(stdinPayload('claude', 'HELLO'), 'HELLO');
+  assert.equal(stdinPayload('codex', 'HELLO'), 'HELLO');
+  const agy = stdinPayload('antigravity', 'HELLO');
+  const parsed = JSON.parse(agy.trim());
+  assert.equal(parsed.message.content[0].text, 'HELLO');
+  assert.ok(agy.endsWith('\n'), 'NDJSON must be newline terminated');
+});
+
+test('an unknown engine fails by name', () => {
+  assert.throws(() => build('gemini'), /gemini/);
+});
+
+// Measured by dispatching a capability audit to each engine and asking what
+// agent-spawning tools it actually has. claude answered NONE, codex answered
+// NONE, agy answered `define_subagent`, `invoke_subagent`. The contract forbids
+// recursion on all three; only two can enforce it below the prompt, and pretending
+// otherwise would be the kind of unverified claim rule 7 exists to prevent.
+// A worker that cannot run the project's test command cannot confirm Red or
+// Green, so the allowlist is what makes rules 2 and 4 reachable at all. Measured:
+// without it, a developer reports "this session has no approval surface" and every
+// npm invocation is denied.
+test('claude grants each configured command narrowly, and nothing else', () => {
+  const args = build('claude').args;
+  const at = args.indexOf('--allowedTools');
+  assert.notEqual(at, -1, 'no --allowedTools for the configured workerCommands');
+  assert.equal(args[at + 1], 'Bash(npm test:*)');
+  assert.equal(args.filter(a => a === '--allowedTools').length, settings.workerCommands.length,
+    'one grant per configured command, no wildcards');
+});
+
+// Plan mode refuses every Bash call, which would leave a read-only reviewer
+// unable to verify the findings it reports.
+test('a read-only claude worker can still run the allowlisted commands', () => {
+  const args = build('claude', { access: 'read-only' }).args;
+  assert.equal(args[args.indexOf('--permission-mode') + 1], 'dontAsk');
+  assert.ok(args.includes('Bash(npm test:*)'));
+});
+
+// With --sandbox, agy routes every shell call through `escalate_admin`, which
+// headless mode cannot grant: the worker exits 0 and returns an empty response.
+test('agy runs workers without the sandbox that silently swallows them', () => {
+  assert.ok(!build('antigravity').args.includes('--sandbox'));
+});
+
+// agy's claim is earned by the agent definition, not a flag: measured 2026-09-13,
+// a read-only worker told to write a file and define a subagent answered NO SUCH
+// TOOL to both and created nothing, where the same prompt without the agent did
+// both. The tests below pin the definition that earns it.
+test('each engine declares honestly what it can enforce below the prompt', () => {
+  assert.equal(ENGINES.claude.enforcesLeafWorker, true);
+  assert.equal(ENGINES.codex.enforcesLeafWorker, true);
+  assert.equal(ENGINES.antigravity.enforcesLeafWorker, true);
+  assert.equal(ENGINES.claude.enforcesReadOnly, true);
+  assert.equal(ENGINES.codex.enforcesReadOnly, true);
+  assert.equal(ENGINES.antigravity.enforcesReadOnly, true);
+});
+
+const frontmatterTools = content => [...content.split('---')[1].matchAll(/^  - (\S+)$/gm)].map(m => m[1]);
+
+test('an agy read-only agent has no tool that writes a file or spawns an agent', () => {
+  const { name, content } = ENGINES.antigravity.agentDefinition({ role: 'adversary', access: 'read-only', workspace: '/tmp/wt' });
+  assert.equal(name, 'workflow-adversary');
+  assert.match(content, /^name: workflow-adversary$/m);
+  assert.match(content, /^inheritMcp: false$/m, 'user-global MCP servers must not reach a worker');
+  assert.deepEqual(frontmatterTools(content), ['view_file', 'list_dir', 'grep_search', 'find_by_name', 'run_command']);
+});
+
+test('an agy write agent adds the file-editing tools and still nothing that spawns an agent', () => {
+  const tools = frontmatterTools(ENGINES.antigravity.agentDefinition({ role: 'developer', access: 'write', workspace: '/tmp/wt' }).content);
+  assert.deepEqual(tools, ['view_file', 'list_dir', 'grep_search', 'find_by_name', 'run_command',
+    'write_to_file', 'replace_file_content', 'multi_replace_file_content']);
+  assert.ok(!tools.some(tool => /subagent|browser|mcp|url|web/.test(tool)));
+});
+
+// agy resolves --agent by name from its workspace folders. Measured: an absolute
+// path is accepted and silently ignored — the worker ran with every default tool.
+test('antigravity launches the agent by name, from a directory it is given with --add-dir', () => {
+  const { args } = build('antigravity');
+  assert.equal(args[args.indexOf('--agent') + 1], 'workflow-developer');
+  assert.ok(args.some((arg, i) => arg === '--add-dir' && args[i + 1] === '/tmp/dispatch/agent'));
+  assert.match(args.at(-1), /^--print=/, '--print must still be last');
+});
+
+test('antigravity refuses to build a command without its agent, since the enforcement claims rest on it', () => {
+  assert.throws(() => build('antigravity', { agent: undefined }), /agent/i);
+});
+
+test('claude and codex argv actually carry the flag that earns the claim', () => {
+  assert.ok(build('claude').args.join(' ').includes('--disallowedTools Agent,Task'));
+  assert.ok(build('codex').args.includes('agents.enabled=false'));
+});
+
+// Only a measured "no" is declared. agy's agent definition carries no web tools,
+// and headless agy denied read_url_content and failed search_web anyway; claude
+// and codex workers were never measured for web access, so they declare nothing.
+test('antigravity declares that its workers have no web tools', () => {
+  assert.equal(ENGINES.antigravity.providesWeb, false);
+  assert.equal(ENGINES.claude.providesWeb, undefined);
+  assert.equal(ENGINES.codex.providesWeb, undefined);
+});
+
+// Measured 2026-09-14 inside codex's Windows sandbox: `npm test` exits 1 with
+// PSSecurityException (PowerShell blocks npm.ps1 for the sandbox account) and
+// `npm.cmd test` exits 0. claude and agy ran `npm test` on the same machine.
+test('codex on Windows respells npm and npx to their .cmd shims, and nothing else', () => {
+  const spell = ENGINES.codex.spellCommand;
+  assert.equal(spell('npm test', 'win32'), 'npm.cmd test');
+  assert.equal(spell('npx vitest run', 'win32'), 'npx.cmd vitest run');
+  assert.equal(spell('git status', 'win32'), 'git status');
+  assert.equal(spell('npm.cmd test', 'win32'), 'npm.cmd test');
+  assert.equal(spell('npm test', 'linux'), 'npm test');
+  assert.equal(ENGINES.claude.spellCommand, undefined);
+  assert.equal(ENGINES.antigravity.spellCommand, undefined);
+});
+
+// Measured 2026-09-14: two codex adversaries stopped with "this session exposes
+// no dedicated filesystem-reading tool, and the exact command allowlist excludes
+// file-reading commands" — codex reads files only through its shell
+// (Get-Content, rg), so the allowlist wording read as a ban on reading at all.
+test('codex declares that its file access goes through the shell, and the others do not', () => {
+  assert.equal(ENGINES.codex.filesThroughShell, true);
+  assert.equal(ENGINES.claude.filesThroughShell, undefined);
+  assert.equal(ENGINES.antigravity.filesThroughShell, undefined);
+});

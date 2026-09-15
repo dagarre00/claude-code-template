@@ -17,7 +17,7 @@ updated: 2026-07-21
 
 ## When to file
 
-See the `decision-recording` skill (`.claude/skills/decision-recording/SKILL.md`) for triggers and the page template. Short version: file an ADR when picking between reasonable alternatives that will shape future work, or when resolving a `contradicts` pair.
+See the `decision-recording` skill (`.agents/skills/decision-recording/SKILL.md`) for triggers and the page template. Short version: file an ADR when picking between reasonable alternatives that will shape future work, or when resolving a `contradicts` pair.
 
 ## Naming
 

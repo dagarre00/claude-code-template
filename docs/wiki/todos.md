@@ -3,21 +3,23 @@ aliases: [Work queue]
 type: reference
 domains: [software]
 status: stable
-sources: []
+sources:
+  - docs/raw/research/2026-09-10-workflow-resume-report.md
+  - docs/raw/research/2026-09-10-workflow-review-followup.md
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-08-05
+updated: 2026-09-14
 ---
 
 # Todos
 
 > [!abstract] Essence
-> Priority-ordered work queue. `/project:work` takes the top item (or a batch sharing context). When complete, items are removed — git history is the record of shipped work. Lines tagged `[wiki]` are wiki-cleanup deferrals for `/project:wiki-lint`, not `/project:work`.
+> Priority-ordered work queue. `/project:work` takes the top item (or a batch sharing context). When complete, items are removed — git history is the record of shipped work. Lines tagged `[wiki]` are wiki-cleanup deferrals for `/project:wiki`, not `/project:work`.
 
 ## Tags
 
-- `[wiki]` — wiki cleanup; `/project:wiki-lint` processes these, not `/project:work`.
+- `[wiki]` — wiki cleanup; `/project:wiki` processes these, not `/project:work`.
 - `[complex]` — decompose with the `planner` before implementing.
 - `[infra]` — deployment, CI, environment, or configuration work. Maps to a `docs/wiki/concepts/<slug>.md` page instead of an entity page (`/project:work` step 1); everything else about the cycle is unchanged, tests included.
 - `[adversary]` — filed by an adversarial review rather than by a human. Format:
@@ -40,7 +42,7 @@ awk '/^## Now \(P0/{f=1;next} /^## /{f=0} f && /^- \[ \]/' docs/wiki/todos.md | 
 
 The count is **all** P0 items, not just `[adversary]` ones — a saturated P0 is a scheduling problem whoever filed it. Two places act on it, and only two, so the threshold does not become a nag:
 
-- **When filing** (`adversarial-review` skill, step 6a): crossing the threshold runs `human-checkpoint`. This is the moment of causation.
+- **When filing** (`finding-disposition` skill, diff round step 8): crossing the threshold runs `human-checkpoint`. This is the moment of causation.
 - **When `/project:work` is steered off P0** (step 1): its default is already to take the top item, so the normal path drains P0 first and needs no interruption. Only an argument that selects non-P0 work while P0 is saturated triggers a checkpoint.
 
 To change the threshold for a project, edit the number here — both call sites reference this section rather than hard-coding it.
@@ -52,15 +54,15 @@ To change the threshold for a project, edit the number here — both call sites 
 Count with:
 
 ```bash
-grep -c '^- \[ \] \[adversary\]' docs/wiki/todos.md 2>/dev/null || true
+grep -c '^- \[ \] .*\[adversary\]' docs/wiki/todos.md 2>/dev/null || true
 ```
 
-The `|| true` is not decoration: `grep -c` exits 1 when the count is zero, which is the *healthy* state of this queue. Without it the command fails in any chained or `set -e` context, and both call sites below carry the same guard.
+The `.*` before the tag is not decoration either: the Tags section above shows `[adversary]` right after the checkbox, but nothing enforces that a line filed by hand (or by a differently-worded skill copy) keeps it there rather than folding it in near the severity suffix — an anchor tied to exact token order silently undercounts the moment it drifts, which is worse than a wrong count because it looks healthy. Matching `[adversary]` anywhere on a checkbox line is robust to that drift while still being specific enough not to catch anything else. The `|| true` is not decoration: `grep -c` exits 1 when the count is zero, which is the *healthy* state of this queue. Without it the command fails in any chained or `set -e` context, and both call sites below carry the same guard.
 
 Unlike `P0_MAX`, this is not a saturation alarm — a long `minor` tail is normal and mostly harmless. It is a **re-triage trigger**, and exactly two things act on it:
 
-- **`/project:wiki-lint`** re-triages the whole `[adversary]` backlog on each pass: re-grade what was mis-severed, merge duplicates, close what later work already fixed. Closing a finding here needs the same one-line reason in the commit body that rejecting one needs (rule 20) — a queue pruned silently is a queue deleted.
-- **`/project:work` step 12** surfaces `/project:wiki-lint` as due once the count reaches `FINDINGS_MAX`.
+- **The `wiki-maintainer`, dispatched by `/project:wiki`'s health-pass mode,** re-triages the whole `[adversary]` backlog on each pass: re-grade what was mis-severed, merge duplicates, close what later work already fixed. Closing a finding here needs the same one-line reason in the commit body that rejecting one needs (rule 20) — a queue pruned silently is a queue deleted.
+- **`/project:work` step 12** surfaces `/project:wiki` as due once the count reaches `FINDINGS_MAX`.
 
 If a finding survives two re-triage passes untouched, its severity was wrong when it was filed. Close it with that as the reason, or promote it — leaving it is the only option that teaches nothing.
 
@@ -70,11 +72,11 @@ _(Empty — run `/project:interview` to populate.)_
 
 ## Next (P1)
 
-_(Items waiting for capacity. Should map to entity pages.)_
+_(Empty.)_
 
 ## Later (P2)
 
-_(Nice-to-have. Promote to Next when prioritized.)_
+_(Empty.)_
 
 ## Backlog
 
