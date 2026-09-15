@@ -11,14 +11,20 @@ equivalent of steps 3–8 and exits non-zero on any failed check.
 
 ## One-time setup per conductor
 
-Register the workflow MCP so the CLI can reach it. Run from the repository root:
+Register the workflow MCP so the CLI can reach it. Both `codex mcp add` and
+`agy mcp add` store the args verbatim and spawn the server later from a cwd
+that is **not** necessarily the repository root — on agy, measured as the
+antigravity install directory itself, which turns a relative `server.mjs`
+into `MODULE_NOT_FOUND` against that unrelated path (see
+`docs/wiki/gotchas.md`). Use absolute paths so registration survives
+regardless of that cwd:
 
 ```bash
-# Codex
-codex mcp add workflow -- node tools/workflow-mcp/server.mjs --root . --engine codex
+# Codex — replace /abs/path/to/repo with this repository's absolute path
+codex mcp add workflow -- node /abs/path/to/repo/tools/workflow-mcp/server.mjs --root /abs/path/to/repo --engine codex
 
 # Antigravity
-agy mcp add workflow node tools/workflow-mcp/server.mjs --root . --engine antigravity
+agy mcp add workflow node /abs/path/to/repo/tools/workflow-mcp/server.mjs --root /abs/path/to/repo --engine antigravity
 ```
 
 Claude Code needs nothing — `.mcp.json` already registers it with

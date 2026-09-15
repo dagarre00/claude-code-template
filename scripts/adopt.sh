@@ -134,7 +134,7 @@ else
 fi
 
 if command -v codex >/dev/null 2>&1; then
-  if (cd "$TARGET" && codex mcp add workflow -- node tools/workflow-mcp/server.mjs --root . --engine codex) 2>/dev/null; then
+  if codex mcp add workflow -- node "$TARGET/tools/workflow-mcp/server.mjs" --root "$TARGET" --engine codex 2>/dev/null; then
     echo "Step 3: registered workflow with codex (global config — see note below)"
   else
     echo "Step 3: 'codex mcp add' failed or was already registered — check manually if you conduct with codex." >&2
@@ -142,7 +142,7 @@ if command -v codex >/dev/null 2>&1; then
 fi
 
 if command -v agy >/dev/null 2>&1; then
-  if (cd "$TARGET" && agy mcp add workflow node tools/workflow-mcp/server.mjs --root . --engine antigravity) 2>/dev/null; then
+  if agy mcp add workflow node "$TARGET/tools/workflow-mcp/server.mjs" --root "$TARGET" --engine antigravity 2>/dev/null; then
     echo "Step 3: registered workflow with agy (global config — see note below)"
   else
     echo "Step 3: 'agy mcp add' failed or was already registered — check manually if you conduct with agy." >&2

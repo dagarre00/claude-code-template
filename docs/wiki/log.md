@@ -273,7 +273,7 @@ updated: 2026-09-14
 - Source: the human reported `mcp__workflow__check` throwing `Unknown role key "capabilities"` in a consumer project (FreeCAD-MCP); verified here that `.agents/roles/researcher.md`'s `capabilities: [web]` and `canonical.mjs`'s allowlist for it are both already on disk in this repo — confirms the fix already shipped and the failure is that project's MCP server process needing a restart, not a code defect.
 - Wiki-Update: gotchas.md only; no code changed.
 
-## [2026-09-15 16:47] fix
+## [2026-09-15 16:47] chore
 
 - Bug: `scripts/adopt.sh` and `/project:sync-template`'s copy table never copied `.claude-plugin/marketplace.json` (the root-level marketplace manifest) into an adopting project, only `.agents/.claude-plugin/plugin.json` (the plugin manifest). `.claude/settings.json`'s `extraKnownMarketplaces.workflow` declares `source.path: "."`, which needs that root file to resolve — without it `project@workflow` can never appear in `claude plugin list`, and restarting Claude Code does not help, since the file is genuinely absent rather than cached.
 - Found via: the human reported a consumer project (FreeCAD-MCP) where `claude plugin list`/`claude mcp list` showed no `workflow` entry even after a full restart. Verified directly in that project's checkout: `.claude-plugin/marketplace.json` did not exist at its root, `.claude/settings.json` matched this template's own adopt-time snippet exactly, and `.agents/.claude-plugin/plugin.json` was present and correct — isolating the gap to the missing marketplace manifest, not a stale process.
@@ -281,3 +281,11 @@ updated: 2026-09-14
 - Unblocked directly: copied `.claude-plugin/marketplace.json` into FreeCAD-MCP's root by hand (that project's own session/commit, not this repo's — not committed here).
 - Not verified by an automated test: `scripts/adopt.sh` has no existing test harness in this repo; checked with `bash -n` (syntax only) and by re-deriving the exact file-existence gap in FreeCAD-MCP. A future `/project:work` cycle should add coverage if one is warranted.
 - Wiki-Update: gotchas.md, this log entry; no application code changed (distribution tooling and .agents/ command text only).
+
+## [2026-09-15 17:10] chore
+
+- Bug: `scripts/adopt.sh` step 3 registered the `workflow` MCP server for codex/agy with relative args (`tools/workflow-mcp/server.mjs`, `--root .`), run inside `cd "$TARGET"`. Both `codex mcp add` and `agy mcp add` store `args` verbatim with no `cwd` field, and neither CLI has a `--cwd` flag (`agy mcp add --help` confirmed) — so the `cd` only affected the registration command, not the later spawn. At spawn time agy used its own install directory as cwd, turning the relative script path into `Cannot find module 'C:\...\antigravity\tools\workflow-mcp\server.mjs'` (`MODULE_NOT_FOUND`). Because agy's MCP registration is machine-global, this broke every agy session on the machine, including unrelated projects that never adopted this template.
+- Found via: the human reported the `MODULE_NOT_FOUND`/`connection closed` error surfacing while working in TEST_ACC_AI (an unrelated, non-adopting project on the same machine). Traced to `~/.gemini/config/mcp_config.json`'s `workflow` entry lacking a `cwd`, confirmed against the working `~/.codex/config.toml` `[mcp_servers.workflow]` entry on the same machine, which already used absolute paths (fixed by hand at some earlier, undocumented point) and worked.
+- Fix: `scripts/adopt.sh` now passes `$TARGET`-absolute paths to both `codex mcp add` and `agy mcp add` (no `cd` needed). `tools/workflow-mcp/conductor-e2e.md`'s one-time setup snippet updated to match. `docs/wiki/gotchas.md` gained a Tooling entry.
+- Unblocked directly: hand-edited `~/.gemini/config/mcp_config.json`'s `workflow` entry to absolute paths pointing at FreeCAD-MCP (the machine's other real adopting project, mirroring the already-working codex entry) — a machine-config change outside any repo, not committed here.
+- Wiki-Update: gotchas.md, this log entry; `scripts/adopt.sh` and `conductor-e2e.md` changed, no other application code.

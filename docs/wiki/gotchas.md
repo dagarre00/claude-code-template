@@ -7,7 +7,7 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-09-14
+updated: 2026-09-15
 ---
 
 # Gotchas
@@ -32,6 +32,13 @@ updated: 2026-09-14
 
 ## Tooling
 *(Build, lint, formatter, IDE, env quirks.)*
+
+### `codex mcp add` / `agy mcp add` with relative paths break at spawn time, not registration time
+
+**When:** Registering the `workflow` MCP server for a conducting CLI (`scripts/adopt.sh` step 3, or `tools/workflow-mcp/conductor-e2e.md`'s one-time setup), on Windows.
+**Symptom:** The server fails to initialize — on agy, `Cannot find module 'C:\...\antigravity\tools\workflow-mcp\server.mjs'` (`MODULE_NOT_FOUND`), followed by `connection closed: calling "initialize": client is closing: EOF`. It shows up while working in an *unrelated* project, because agy's MCP registration is machine-global (every registered server loads in every project) — so a broken `workflow` entry from adopting project A breaks the session in project B, C, ... too, even ones that never adopted this template.
+**Cause:** Both `codex mcp add` and `agy mcp add` store their `args` verbatim in a global config (`~/.codex/config.toml`'s `[mcp_servers.workflow]`; agy's `~/.gemini/config/mcp_config.json`) with no `cwd` field, and neither CLI exposes a `--cwd` flag to add one (`agy mcp add --help` confirmed no such flag). At spawn time the process launches with whatever cwd the host CLI happens to use — measured on agy: its own install directory, not the project root. `tools/workflow-mcp/server.mjs`'s own `--root` handling has the same exposure: `resolve(root)` falls back to `process.cwd()` for a relative value, so a relative `--root .` breaks the same way as the module path.
+**Fix:** Register with absolute paths for both the script path and `--root`, e.g. `agy mcp add workflow node C:/path/to/project/tools/workflow-mcp/server.mjs --root C:/path/to/project --engine antigravity`. `scripts/adopt.sh` step 3 does this now (previously passed the relative `tools/workflow-mcp/server.mjs` and `--root .`, inside a `cd "$TARGET"` subshell that only affected the registration command itself, not the later spawn). If you already have a broken relative-path `workflow` entry, it's simplest to hand-edit `args` to absolute paths directly in the global config file rather than re-running `mcp add` for the same name.
 
 ### Claude's `--allowedTools` Bash allowlist is a hint, not a hard gate — but the bound that actually matters still holds
 
