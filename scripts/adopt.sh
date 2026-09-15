@@ -122,6 +122,17 @@ else
   echo "Step 3: copied .mcp.json (registers the server with --engine claude)"
 fi
 
+if [[ -e "$TARGET/.claude-plugin/marketplace.json" ]]; then
+  echo "Step 3: '$TARGET/.claude-plugin/marketplace.json' already exists — leaving it untouched." >&2
+else
+  mkdir -p "$TARGET/.claude-plugin"
+  cp "$TEMPLATE_ROOT/.claude-plugin/marketplace.json" "$TARGET/.claude-plugin/marketplace.json"
+  echo "Step 3: copied .claude-plugin/marketplace.json (needed for Claude Code's" \
+       "extraKnownMarketplaces path \".\" in settings.json to resolve project@workflow" \
+       "— without this file the plugin never registers, no matter how many times the" \
+       "session restarts)"
+fi
+
 if command -v codex >/dev/null 2>&1; then
   if (cd "$TARGET" && codex mcp add workflow -- node tools/workflow-mcp/server.mjs --root . --engine codex) 2>/dev/null; then
     echo "Step 3: registered workflow with codex (global config — see note below)"

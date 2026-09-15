@@ -38,6 +38,7 @@ This table is the whole decision. Getting it wrong either drops the project's ow
 | `.agents/skills/`, `.agents/roles/`, `.agents/commands/` | **Copy**, subject to step 4 | The workflow itself. Usually identical; occasionally a project has deliberately diverged. |
 | `.agents/rules.md`, `.agents/worker-contract.md` | **Copy**, subject to step 4 | Behavioral rules are shared discipline. |
 | `.agents/.claude-plugin/plugin.json` | **Copy** | Plugin wiring, not project content. |
+| `.claude-plugin/marketplace.json` | **Copy** | Marketplace manifest that `.claude/settings.json`'s `extraKnownMarketplaces.workflow` (`source.path: "."`) resolves against at the project root. Without it, `project@workflow` never registers in `claude plugin list` — no session restart fixes this, since the file is genuinely missing, not cached. |
 | `.agents/config.json` | **Never** | Engine pins, `workerCommands`, model choices — all project facts. |
 | `.agents/project.md` | **Never** | This project's identity. |
 | `AGENTS.md`, `CLAUDE.md` | **Never copy — regenerate** (step 6) | Derived from `.agents/`. Copying them installs the template's project facts into this repo. |
