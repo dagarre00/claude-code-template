@@ -65,7 +65,7 @@ The reviewers' own procedures are `plan-review` and `adversarial-review`; they r
 
    `--allow-empty` when every finding was rejected. `git log --grep="adversary round"` is the audit.
 8. **P0 saturation.** After staging todo lines, count open P0 items (`docs/wiki/todos.md § P0 saturation threshold`). At or above `P0_MAX` → `human-checkpoint` with the count, the `[adversary]` share, the three oldest entries, and a recommendation (drain P0, re-grade, or pause adversarial review).
-9. **Re-review only if something was fixed**, with `diff_range` over the fix commits only. **Two rounds, then stop:** findings surviving round two mean the unit was too big — split it — or, for a specific `critical`/`major`, go back to the human.
+9. **Re-review only if something was fixed**, with `diff_range` over the fix commits only. **Three rounds, then stop.** Findings still open when the cap is hit: file the `critical`/`major` ones as todos per step 5 (the human gate in step 6 still applies) and let `minor`/`nit` ones go unfiled rather than opening a fourth round. A unit still generating findings at round three was too big — split it before the *next* review.
 
 ## Record the yield — every round
 

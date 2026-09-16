@@ -364,7 +364,7 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 | Plan looks wrong                                   | Tell the conductor the approach to take before it dispatches the developer — it edits `.handoff/<slug>-plan.md`, which is what gets sent — or just tell the developer directly                          |
 | A role's CLI isn't installed                       | `check` reports which engines are on PATH and which roles that leaves undispatchable; give the role a fallback chain (`"engine": ["codex", "claude"]`) or pass `cli_engine` for one dispatch |
 | Adversary found nothing and said only "looks good" | An unexplained pass is a failed review — it owes you a `**Checked:**` line per category. Re-dispatch demanding it          |
-| Adversary and developer keep going back and forth  | Two rounds is the cap — it should stop and ask you with both positions stated                                             |
+| Adversary and developer keep going back and forth  | Three rounds is the cap — past it, important findings get filed as todos and it stops; for a disputed critical/major it asks you with both positions stated |
 
 # The mental model in one paragraph
 

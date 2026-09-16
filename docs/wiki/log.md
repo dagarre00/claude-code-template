@@ -289,3 +289,10 @@ updated: 2026-09-14
 - Fix: `scripts/adopt.sh` now passes `$TARGET`-absolute paths to both `codex mcp add` and `agy mcp add` (no `cd` needed). `tools/workflow-mcp/conductor-e2e.md`'s one-time setup snippet updated to match. `docs/wiki/gotchas.md` gained a Tooling entry.
 - Unblocked directly: hand-edited `~/.gemini/config/mcp_config.json`'s `workflow` entry to absolute paths pointing at FreeCAD-MCP (the machine's other real adopting project, mirroring the already-working codex entry) — a machine-config change outside any repo, not committed here.
 - Wiki-Update: gotchas.md, this log entry; `scripts/adopt.sh` and `conductor-e2e.md` changed, no other application code.
+
+## [2026-09-15 20:51] chore
+
+- Source: bare human instruction — "when doing adversarial reviews, cap the maximum runs to 3, after that, only fill important findings as todos."
+- Change: raised the diff-round adversary review cap from two rounds to three. `.agents/skills/finding-disposition/SKILL.md` step 9, `.agents/commands/adversary.md` (step 1's note, step 4, and its failure mode), and `.agents/commands/work.md`'s failure-mode list all now stop at round three instead of round two. Past the cap, `critical`/`major` findings still open get filed as todos as usual (the human gate in finding-disposition step 6 is unchanged) and `minor`/`nit` findings go unfiled rather than opening a fourth round. `tools/workflow-mcp/getting-started.md`'s troubleshooting table updated to match.
+- Not changed: the brief round's re-plan cap (`plan-adversary`, capped at one re-plan) — the instruction named "findings filed as todos," which only the diff round (`adversary`) produces; the brief round's dispositions are Applied/Escalated/Rejected.
+- Wiki-Update: this log entry and the `.agents/` procedure text above; no entity, requirement, or application code changed.
