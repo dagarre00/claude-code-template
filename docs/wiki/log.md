@@ -7,7 +7,7 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-09-14
+updated: 2026-09-16
 ---
 
 # Log
@@ -296,3 +296,11 @@ updated: 2026-09-14
 - Change: raised the diff-round adversary review cap from two rounds to three. `.agents/skills/finding-disposition/SKILL.md` step 9, `.agents/commands/adversary.md` (step 1's note, step 4, and its failure mode), and `.agents/commands/work.md`'s failure-mode list all now stop at round three instead of round two. Past the cap, `critical`/`major` findings still open get filed as todos as usual (the human gate in finding-disposition step 6 is unchanged) and `minor`/`nit` findings go unfiled rather than opening a fourth round. `tools/workflow-mcp/getting-started.md`'s troubleshooting table updated to match.
 - Not changed: the brief round's re-plan cap (`plan-adversary`, capped at one re-plan) — the instruction named "findings filed as todos," which only the diff round (`adversary`) produces; the brief round's dispositions are Applied/Escalated/Rejected.
 - Wiki-Update: this log entry and the `.agents/` procedure text above; no entity, requirement, or application code changed.
+
+## [2026-09-16 09:06] chore
+
+- Source: bare human instruction — asked whether the codex/agy machine-global `workflow` MCP registration (`docs/wiki/gotchas.md` § "codex mcp add / agy mcp add with relative paths break at spawn time") could be automated across project switches, or made to work with two projects open at once, after hitting it in a second consumer project (tip-forces-calculator) whose `codex` session had inherited FreeCAD-MCP's registration.
+- Found: codex — unlike the global-only registration the existing gotcha describes — also loads a project-local `<project-root>/.codex/config.toml` for trusted directories, and a project-local `[mcp_servers.workflow]` entry there wins over the global one for that cwd; a directory with neither gets a clean "no MCP server named 'workflow'" instead of silently inheriting whichever project registered last. Verified empirically: `codex mcp get workflow` from inside two different project roots, each with its own `.codex/config.toml`, returned each project's own path; from an unrelated directory it errored cleanly. agy has no working equivalent — its project-local config is a known upstream no-op (google-antigravity/antigravity-cli#60, open).
+- Unblocked directly (not committed here, machine-local files with absolute paths): removed the global `workflow` entry from `~/.codex/config.toml` (`codex mcp remove workflow`) and wrote a project-local `.codex/config.toml` in both this repo's root and `C:\Users\dagar\Desktop\Proyectos\Personal\tip-forces-calculator`, each pointing `[mcp_servers.workflow]` at its own `tools/workflow-mcp/server.mjs --root <itself>`. This also fixes the "two projects at once" case: two concurrent codex sessions in different project roots now each resolve their own server with no collision, no re-registration needed on switch.
+- Not changed: `scripts/adopt.sh` still registers `workflow` globally for codex (`codex mcp add`) rather than writing the project-local file automatically for future adopters — filed as `[infra]` in `docs/wiki/todos.md` § Backlog rather than done here, since it's a checked-in script change (behavioral rule 19: code goes through a branch/PR, not a direct commit). agy's global-registration workaround is unchanged; no fix exists on that side until the upstream issue is resolved.
+- Wiki-Update: gotchas.md (new "Real fix for codex" + agy-limitation addendum), todos.md (new Backlog item), this log entry; no application code changed.
