@@ -12,7 +12,7 @@ updated: 2026-09-16
 
 # Log
 
-> Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd — `init`, `interview`, `work`, `pr`, `adversary`, `review`, `wiki-ingest`, `wiki-maintenance`, or `chore` when nothing else fits (behavioral rule 19).
+> Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd — `init`, `interview`, `work`, `pr`, `adversary`, `review`, `wiki-ingest`, `wiki-maintenance`, or `chore` when nothing else fits (behavioral rule 19). The stamp is **UTC** (`date -u`), not the writing session's local zone — see [log-and-commit](../../.agents/skills/feature-branching/log-and-commit.md).
 > Entries are written by the command that did the work, in the same commit as the work. `/project:wiki` archives this file once it passes ~100 entries.
 
 ## [2026-09-07 21:28] chore
@@ -304,3 +304,13 @@ updated: 2026-09-16
 - Unblocked directly (not committed here, machine-local files with absolute paths): removed the global `workflow` entry from `~/.codex/config.toml` (`codex mcp remove workflow`) and wrote a project-local `.codex/config.toml` in both this repo's root and `C:\Users\dagar\Desktop\Proyectos\Personal\tip-forces-calculator`, each pointing `[mcp_servers.workflow]` at its own `tools/workflow-mcp/server.mjs --root <itself>`. This also fixes the "two projects at once" case: two concurrent codex sessions in different project roots now each resolve their own server with no collision, no re-registration needed on switch.
 - Not changed: `scripts/adopt.sh` still registers `workflow` globally for codex (`codex mcp add`) rather than writing the project-local file automatically for future adopters — filed as `[infra]` in `docs/wiki/todos.md` § Backlog rather than done here, since it's a checked-in script change (behavioral rule 19: code goes through a branch/PR, not a direct commit). agy's global-registration workaround is unchanged; no fix exists on that side until the upstream issue is resolved.
 - Wiki-Update: gotchas.md (new "Real fix for codex" + agy-limitation addendum), todos.md (new Backlog item), this log entry; no application code changed.
+
+## [2026-09-17 18:40] chore — workflow-mcp-hardening
+
+- Source: bare human instruction — commit the hardening work the previous session left uncommitted on `fix/workflow-mcp-hardening`, review it, and fix what the review finds. The four changes below were already in the working tree; this session committed them as four logical commits and wrote this entry.
+- Change (verify): `tools/workflow-mcp/verify.mjs` gained an `encoding` check — a UTF-8 BOM, a U+FFFD replacement character, or a literal `?` sitting between two digits in wiki, `.agents/` or generated text now fails, measured from a Codex conductor's report on Windows whose stdout did not round-trip UTF-8. Its own `git()` helper passes a per-invocation `-c safe.directory=*` so a sandboxed conductor account does not hit `dubious ownership` on the root checkout before any worker exists.
+- Change (agy setup): new `grant_antigravity_setup` MCP tool writes the missing `command(<line>)` grants into `~/.gemini/antigravity-cli/settings.json`, strictly additively, because a conductor's own edit tools are commonly denied from touching a file under `$HOME`; `check` gained `roles_with_unmet_setup`. `tools/workflow-mcp/engine-setup.md` documents both, plus the conductor-side ownership exposure above and a note on spelling `worktreeSetup` entries for a PowerShell conductor.
+- Change (adopt): `scripts/adopt.sh` step 3 writes a project-local `<target>/.codex/config.toml` instead of running `codex mcp add`, closing the `[infra]` backlog todo filed 2026-09-16; `.gitignore` ignores that file. `docs/wiki/gotchas.md`: the codex entry now says adopt.sh does this, and a new entry records that dry-running adopt.sh against a scratch target overwrites the real global agy registration.
+- Change (log discipline): `.agents/skills/feature-branching/log-and-commit.md` and this file's header now say stamps are UTC, since `verify.mjs`'s `log` check enforces oldest-first across sessions in different zones.
+- Verified before committing: `npm test` in `tools/workflow-mcp` — 242 pass, 0 fail.
+- Wiki-Update: gotchas.md, todos.md, this log entry; code changed under `tools/workflow-mcp/` and `scripts/`.

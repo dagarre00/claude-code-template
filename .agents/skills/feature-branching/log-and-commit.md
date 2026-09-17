@@ -14,7 +14,10 @@ the **kind**, the **paths**, and the **commit subject**.
 - <field>: <value>
 ```
 
-Get the stamp from `date -u +'%Y-%m-%d %H:%M'` rather than guessing it. Drop the
+Get the stamp from `date -u +'%Y-%m-%d %H:%M'` rather than guessing it — `-u`
+means **UTC**, not the machine's local zone, so entries stay in true
+chronological order (`verify.mjs`'s `log` check enforces oldest-first) no
+matter which timezone the session that wrote them ran in. Drop the
 `— <slug>` when the mutation has no slug (`init`, `review`).
 
 **The kind names the mutation, not the command** (rule 19). A command with two

@@ -405,6 +405,23 @@ behind; worktrees are now created and removed with `core.longpaths=true`.
 Either way, `check`'s `setup` block lists the command if agy has no exact grant
 for it.
 
+**`worktreeSetup` runs in the conductor's own shell, not any engine's — a
+different Windows quirk from the one above.** The codex `npm`/`npx` respelling
+earlier in this doc is about a *worker's* command, spelled for the sandboxed
+account codex launches it under, and does not touch `worktreeSetup` at all:
+`prepareWorktree` returns these commands verbatim and neither runs nor spells
+them. If a conductor's own shell for running them is Windows PowerShell with
+an execution policy that blocks local scripts, `npm`/`npx` resolve to their
+`.ps1` shim there and fail the same underlying way codex's sandboxed account
+does — `npm.cmd`/`npx.cmd` sidestep it, being plain batch files with no
+PowerShell execution policy to trip. Not measured against a real dispatch the
+way the codex case is (this machine's own PowerShell already runs with an
+unrestricted process-scoped policy, so it doesn't reproduce here) — if you hit
+it, write the `.cmd` spelling directly in the `worktreeSetup` entry; unlike
+`workerCommands`, these are free-form command lines the conductor's shell runs
+as given, not matched against any engine's allowlist, so there is nothing else
+to keep in sync.
+
 ## When an engine is unavailable
 
 Two different problems wear the same face, and only one of them is computable.
