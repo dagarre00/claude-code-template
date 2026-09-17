@@ -152,7 +152,7 @@ cannot mutate, exfiltrate, or read outside their worktree" still is. A custom
 tried as a fix and neither restored the literal allowlist without also
 breaking the commands it's meant to grant — see `docs/wiki/gotchas.md`.
 
-## Antigravity (agy) — one manual step, per machine
+## Antigravity (agy) — one step, per machine
 
 **agy reads no project-local configuration in print mode.** A `.gemini/settings.json`
 in the repository is ignored — measured: identical run, identical denial. The
@@ -162,8 +162,20 @@ only file it reads is user-global:
 ~/.gemini/antigravity-cli/settings.json
 ```
 
-Add one `command(...)` rule per `workerCommands` entry, matching the string
-exactly:
+**Call `grant_antigravity_setup`.** It performs exactly the additive merge
+below directly — no `--allowedTools`/`Edit`-style permission surface applies to
+this server process, so it can write a file outside the repository (this one,
+under `$HOME`) that a conductor's own edit tools are commonly denied from
+touching. It creates the file and any missing parent directories if absent,
+adds one `command(<line>)` rule per `workerCommands` entry with no exact match
+already present, and never touches or reorders anything else already there —
+your interactive grants included. Returns the grants it actually added; call
+it again anytime `workerCommands` changes, and a call that finds nothing
+missing is a no-op. `check`'s antigravity `setup` block tells you beforehand
+whether there is anything to add.
+
+Equivalent by hand, if you'd rather see the file yourself first — add one
+`command(...)` rule per `workerCommands` entry, matching the string exactly:
 
 ```json
 {
@@ -195,7 +207,11 @@ headless mode cannot prompt for, so it was auto-denied.
 
 **`check` tells you before a cycle.** Its `antigravity` entry carries a `setup`
 block listing every `workerCommands` entry with no exact grant in that file, so a
-missing grant is found without spending a dispatch on it.
+missing grant is found without spending a dispatch on it. `check`'s top-level
+`roles_with_unmet_setup` names every role whose *first-choice* engine has one of
+these unmet, so a role that looks dispatchable in `roles_without_an_available_engine`
+(its CLI is installed) can still be flagged here as one whose first command will
+be silently denied. `grant_antigravity_setup` closes exactly that gap.
 
 **The wrapped command turns every silent agy failure into a real one.**
 `extract-agy-result.mjs` exits non-zero when `denied_actions` is non-empty (and

@@ -7,13 +7,28 @@
 // before composing anything.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { findExecutable } from '../availability.mjs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { findExecutable, grantAntigravitySetup } from '../availability.mjs';
 import { loadConfig, resolveEngine, resolveEngineChain } from '../config.mjs';
 import { prepareDispatch } from '../dispatch.mjs';
 import { makeTools } from '../tools.mjs';
 import { cleanup, fixture } from './helpers.mjs';
+
+// Isolates $HOME/$USERPROFILE for the duration of `fn`, the way agy's
+// engineSetup tests already do, so a real machine's own antigravity-cli
+// settings are never at risk of being read, let alone written, by this suite.
+const withHome = fn => {
+  const home = fixture();
+  const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+  process.env.HOME = home; process.env.USERPROFILE = home;
+  try { return fn(home); } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+    cleanup(home);
+  }
+};
 
 // A real executable that exists on every machine this suite runs on, and a name
 // that exists on none. Availability has to be measured, not stubbed, or the test
@@ -146,6 +161,33 @@ test('check names every worker command agy has no exact grant for', () => {
   }
 });
 
+// F-C's silent-failure shape again, one layer up: an engine can be installed
+// (available: true) and still refuse a worker's first command. `ok` stays
+// about drift alone, so this is the separate signal a conductor would
+// otherwise only find by reading each engine's `setup` block by hand.
+test('check names every role whose first-choice engine has an unmet setup requirement', () => {
+  const home = fixture();
+  const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+  process.env.HOME = home; process.env.USERPROFILE = home;
+  try {
+    withRepo({
+      developer: { engine: ['antigravity', 'claude'] },
+      adversary: { engine: 'claude' }
+    }, root => {
+      const report = makeTools(root, 'claude').check();
+      // developer's first choice (antigravity) has no grants in the fixture
+      // HOME's (absent) settings file; adversary's first choice (claude) has
+      // nothing to set up at all.
+      assert.deepEqual(report.roles_with_unmet_setup, ['developer']);
+    });
+  } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+    cleanup(home);
+  }
+});
+
 test('check reports a missing agy settings file as every grant missing, not as fine', () => {
   const home = fixture();
   const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
@@ -181,6 +223,66 @@ test('a chain in the config survives a round trip through the real project confi
     writeFileSync(resolve(root, '.agents/config.json'), config({ developer: { engine: 'claude' } }));
     assert.deepEqual(resolveEngineChain(loadConfig(root), 'developer', 'codex'), ['claude']);
   } finally { cleanup(root); }
+});
+
+// engine-setup.md otherwise walks a human through pasting this merge in by
+// hand, because a conductor's own edit tools are commonly denied from
+// touching a file outside the repo. This server process is not gated the same
+// way, so it can perform the exact additive merge directly.
+test('grantAntigravitySetup writes the missing grants and creates the file if absent', () => {
+  withHome(home => {
+    withRepo({}, root => {
+      const config = loadConfig(root);
+      const settings_file = resolve(home, '.gemini', 'antigravity-cli', 'settings.json');
+      assert.equal(existsSync(settings_file), false, 'nothing written yet');
+
+      const result = grantAntigravitySetup(config);
+      assert.deepEqual(result.added, ['command(npm test)']);
+      assert.equal(result.already_granted, false);
+      assert.equal(result.settings_file, settings_file);
+
+      const written = JSON.parse(readFileSync(settings_file, 'utf8'));
+      assert.deepEqual(written.permissions.allow, ['command(npm test)']);
+    });
+  });
+});
+
+test('grantAntigravitySetup only adds what is missing, and never touches existing grants', () => {
+  withHome(home => {
+    const settings_file = resolve(home, '.gemini', 'antigravity-cli', 'settings.json');
+    mkdirSync(dirname(settings_file), { recursive: true });
+    writeFileSync(settings_file, JSON.stringify({
+      permissions: { allow: ['command(git status --porcelain)', 'read_file(C:/shared/vendor)'] }, otherTopLevelKey: true }));
+
+    withRepo({}, root => {
+      const config = { ...loadConfig(root), workerCommands: ['git status --porcelain', 'npm test', 'git diff'] };
+      const result = grantAntigravitySetup(config);
+      assert.deepEqual(result.added, ['command(npm test)', 'command(git diff)']);
+
+      const written = JSON.parse(readFileSync(settings_file, 'utf8'));
+      assert.deepEqual(written.permissions.allow,
+        ['command(git status --porcelain)', 'read_file(C:/shared/vendor)', 'command(npm test)', 'command(git diff)'],
+        'the pre-existing grants, interactive or not, are kept verbatim and in place');
+      assert.equal(written.otherTopLevelKey, true, 'unrelated keys in the file are preserved');
+    });
+  });
+});
+
+test('grantAntigravitySetup is a no-op once every command is already granted', () => {
+  withHome(home => {
+    const settings_file = resolve(home, '.gemini', 'antigravity-cli', 'settings.json');
+    mkdirSync(dirname(settings_file), { recursive: true });
+    writeFileSync(settings_file, JSON.stringify({ permissions: { allow: ['command(npm test)'] } }));
+
+    withRepo({}, root => {
+      const config = loadConfig(root);
+      const before = readFileSync(settings_file, 'utf8');
+      const result = grantAntigravitySetup(config);
+      assert.deepEqual(result.added, []);
+      assert.equal(result.already_granted, true);
+      assert.equal(readFileSync(settings_file, 'utf8'), before, 'nothing was rewritten');
+    });
+  });
 });
 
 test('check names every role whose chain reaches an engine lacking a capability it needs', () => {

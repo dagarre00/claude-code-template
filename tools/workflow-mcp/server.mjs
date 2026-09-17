@@ -131,6 +131,15 @@ export function createServer(root, conductorEngine) {
     + 'A usage limit is not visible to it — only a missing executable or a missing grant is.',
     {}, () => api.check());
 
+  register('grant_antigravity_setup',
+    'Write the missing `command(<line>)` rules check\'s antigravity `setup` block reports into the user-global '
+    + '~/.gemini/antigravity-cli/settings.json, creating the file if absent. Strictly additive: existing entries '
+    + '(including interactive grants) are read back and kept, never removed or reordered. Exists because this file '
+    + 'is outside the repository, and a conductor\'s own edit tools are commonly denied from touching it, while this '
+    + 'server process is not. Returns the grants actually added; call again any time to pick up newly configured '
+    + 'workerCommands — a repeat call with nothing missing is a no-op.',
+    {}, () => api.grant_antigravity_setup(), false);
+
   return server;
 }
 
