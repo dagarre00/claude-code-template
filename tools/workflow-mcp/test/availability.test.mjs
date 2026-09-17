@@ -7,7 +7,7 @@
 // before composing anything.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { findExecutable, grantAntigravitySetup } from '../availability.mjs';
 import { loadConfig, resolveEngine, resolveEngineChain } from '../config.mjs';
@@ -294,4 +294,54 @@ test('check names every role whose chain reaches an engine lacking a capability 
     assert.deepEqual(makeTools(root, 'claude').check().capability_gaps,
       [{ role: 'researcher', engine: 'antigravity', missing: ['web'] }]);
   } finally { cleanup(root); }
+});
+
+// Adversary round 1 on fix/workflow-mcp-hardening, F2: every read failure used
+// to collapse to "nothing granted", and the additive merge then wrote that
+// nothing back over the file — a BOM from a Windows editor or one trailing
+// comma was enough to lose every interactive grant silently. The promise is
+// "never dropped", so an unparseable file is a refusal, not an empty one.
+test('grantAntigravitySetup refuses a settings file it cannot parse, and leaves it byte for byte', () => {
+  withHome(home => {
+    const settings_file = resolve(home, '.gemini', 'antigravity-cli', 'settings.json');
+    mkdirSync(dirname(settings_file), { recursive: true });
+    const original = '\uFEFF{ "permissions": { "allow": ["command(git status)", "read_file(C:/shared)",] } }';
+    writeFileSync(settings_file, original);
+    withRepo({}, root => {
+      assert.throws(() => grantAntigravitySetup(loadConfig(root)), /parse|by hand/i);
+      assert.equal(readFileSync(settings_file, 'utf8'), original, 'nothing was rewritten');
+      assert.deepEqual(readdirSync(dirname(settings_file)), ['settings.json'], 'no staging file left beside it');
+    });
+  });
+});
+
+test('grantAntigravitySetup refuses a permissions.allow that is not an array, and leaves it byte for byte', () => {
+  withHome(home => {
+    const settings_file = resolve(home, '.gemini', 'antigravity-cli', 'settings.json');
+    mkdirSync(dirname(settings_file), { recursive: true });
+    const original = JSON.stringify({ permissions: { allow: { 'command(npm test)': true } } });
+    writeFileSync(settings_file, original);
+    withRepo({}, root => {
+      assert.throws(() => grantAntigravitySetup(loadConfig(root)), /permissions\.allow/);
+      assert.equal(readFileSync(settings_file, 'utf8'), original, 'nothing was rewritten');
+    });
+  });
+});
+
+// The same failure one layer up: check used to report an unparseable file as
+// "every grant missing", which is what sends a conductor to grant_antigravity_setup
+// in the first place. A file that cannot be read is a setup problem in its own
+// right, named as such, and still not ok.
+test('check reports an unparseable agy settings file as a named problem, not as every grant missing', () => {
+  withHome(home => {
+    const settings_file = resolve(home, '.gemini', 'antigravity-cli', 'settings.json');
+    mkdirSync(dirname(settings_file), { recursive: true });
+    writeFileSync(settings_file, '{ not json');
+    withRepo({ developer: { engine: ['antigravity', 'claude'] } }, root => {
+      const agy = makeTools(root, 'claude').check().engines.find(engine => engine.name === 'antigravity');
+      assert.equal(agy.setup.ok, false);
+      assert.match(agy.setup.problem, /parse/i);
+      assert.deepEqual(agy.setup.missing_command_grants, [], 'nothing is known to be missing from a file that could not be read');
+    });
+  });
 });

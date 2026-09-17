@@ -172,7 +172,12 @@ already present, and never touches or reorders anything else already there —
 your interactive grants included. Returns the grants it actually added; call
 it again anytime `workerCommands` changes, and a call that finds nothing
 missing is a no-op. `check`'s antigravity `setup` block tells you beforehand
-whether there is anything to add.
+whether there is anything to add. A file that exists but cannot be read as
+JSON — a BOM a Windows editor left, a trailing comma — is reported there as
+`problem` (with `ok: false` and an empty `missing_command_grants`, since nothing
+is known about it), and `grant_antigravity_setup` refuses it and writes
+nothing: an additive merge cannot know what it would be dropping. Fix the file
+by hand first.
 
 Equivalent by hand, if you'd rather see the file yourself first — add one
 `command(...)` rule per `workerCommands` entry, matching the string exactly:
