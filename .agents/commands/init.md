@@ -38,7 +38,12 @@ land only partway:
   isn't available, the server isn't reachable — stop and check:
   - `.mcp.json` exists at the repo root and registers `workflow`.
   - **Claude Code only:** `.claude/settings.json` has both
-    `extraKnownMarketplaces.workflow` and `enabledPlugins["project@workflow"]`.
+    `extraKnownMarketplaces.<name>` and `enabledPlugins["project@<name>"]`,
+    where `<name>` is the `name` in `.claude-plugin/marketplace.json` — per
+    project, `workflow-<dir-name>` as `scripts/adopt.sh` derives it. A fixed
+    `workflow` shared with another project on the machine makes that project
+    serve this one's skills (`docs/wiki/gotchas.md`); if you find one, rename
+    it in both files and restart the session.
     Codex and Antigravity read `.agents/` directly and don't need this — if
     you're conducting on either and this command is running at all, this file
     is a non-issue by construction.

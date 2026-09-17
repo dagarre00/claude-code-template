@@ -7,7 +7,7 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-09-16
+updated: 2026-09-17
 ---
 
 # Gotchas
@@ -74,6 +74,14 @@ updated: 2026-09-16
 **Cause:** `source.path: "."` tells Claude Code to look for `.claude-plugin/marketplace.json` **at the adopting project's root**. Both `scripts/adopt.sh` and `/project:sync-template`'s copy table only ever copy `.agents/.claude-plugin/plugin.json` (the *plugin* manifest, listing skills/commands/roles) — neither copies the root-level *marketplace* manifest that names `project` as a plugin sourced from `./.agents`. Without it the declared marketplace resolves to nothing, so the plugin can never register, no matter how many times the process restarts. First reproduced 2026-09-15 in a consumer project (FreeCAD-MCP) that had synced everything else current.
 **Fix:** Copy `.claude-plugin/marketplace.json` from the template checkout to the adopting project's root (same relative path), then restart the Claude Code session once — *that* restart is what actually picks up the plugin, because the file now exists. `adopt.sh` and `sync-template.md`'s copy table both do this automatically as of the fix landing here; a project that adopted or last synced before that still needs the file copied by hand once.
 **Related:** the mid-session-edit gotcha above looks identical at first glance (both present as "the plugin/MCP tools aren't there") but has a different cause and fix — check which one applies before assuming a restart will help: if `.claude-plugin/marketplace.json` is missing from the project root, no restart fixes it; if it's present and the server process just started before a code change landed, restarting does.
+
+### Two adopted projects on one machine share one plugin marketplace name — and one silently serves the other's skills
+
+**When:** Two or more projects on the same machine adopted the workflow before 2026-09-17, so each declares its marketplace under the fixed name `workflow` — `.claude-plugin/marketplace.json` `name`, `.claude/settings.json` `extraKnownMarketplaces.workflow` and `enabledPlugins["project@workflow"]`. Claude Code conductors only: codex and agy read `.agents/` directly.
+**Symptom:** A skill or command reports a `Base directory:` under the *other* project's checkout. Measured 2026-09-17 while conducting in the template itself: `project:adversarial-review` and `project:finding-disposition` loaded from `…\Personal\tip-forces-calculator\.agents\skills\…`. Nothing errors and `claude plugin list` looks normal; the procedure text is simply the other project's — its customizations, or its staleness.
+**Cause:** Claude Code keeps marketplace registrations once per user, in `~/.claude/plugins/known_marketplaces.json`, and "each user can register only one marketplace per name: when they add a second marketplace with the same name, Claude Code replaces the first" (Claude Code docs, plugin marketplaces). A relative-path plugin from a directory marketplace loads in place, not from a cache, so `project@workflow` resolves to `<whichever project registered last>/.agents` in every project that enables it. Same collision class as the global codex/agy registration at the top of this section, one layer up.
+**Fix:** One marketplace name per project. `scripts/adopt.sh` now derives it from the project directory — `workflow-<dir-name>`, lowercased, runs of non-alphanumerics to `-` — and writes it into both files; the template's own is `workflow-claude-code-template`. An earlier adopter migrates by hand: set `"name"` in `.claude-plugin/marketplace.json`, rename the `extraKnownMarketplaces` key and the `enabledPlugins` key to match, restart the session; `claude plugin list` then shows `project@workflow-<dir-name>`. `/project:sync-template` copies the manifest only when it is absent, so a sync never reverts the name. Residual: two projects with the *same directory name* on one machine still collide — give one of them a different name in both files.
+**Related:** the missing-manifest entry above (same two files, different failure), and `codex mcp add` / `agy mcp add` at the top of this section.
 
 ### `build_worker_prompt`'s returned `command` is a POSIX shell string — running it through WSL on Windows can't find the checkout
 

@@ -1,8 +1,8 @@
 {
   "extraKnownMarketplaces": {
-    "workflow": { "source": { "source": "directory", "path": "." } }
+    "workflow-claude-code-template": { "source": { "source": "directory", "path": "." } }
   },
-  "enabledPlugins": { "project@workflow": true },
+  "enabledPlugins": { "project@workflow-claude-code-template": true },
   "permissions": {
     "allow": ["mcp__workflow"]
   }

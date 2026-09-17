@@ -139,15 +139,45 @@ else
   echo "Step 3: copied .mcp.json (registers the server with --engine claude)"
 fi
 
+# One marketplace per name per machine: Claude Code keeps
+# ~/.claude/plugins/known_marketplaces.json once per user, and a second
+# project registering the same name replaces the first — after which the
+# plugin, which loads in place from the marketplace's directory, serves every
+# skill and command from the *other* checkout (docs/wiki/gotchas.md). So the
+# name is derived from the project directory rather than fixed: the same on
+# every machine that clones this project, since it lives in committed files,
+# and distinct from every other project on this one.
+MARKETPLACE="workflow-$(basename "$TARGET" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//; s/-$//')"
+
 if [[ -e "$TARGET/.claude-plugin/marketplace.json" ]]; then
-  echo "Step 3: '$TARGET/.claude-plugin/marketplace.json' already exists — leaving it untouched." >&2
+  EXISTING_NAME="$(sed -n 's/^[[:space:]]*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$TARGET/.claude-plugin/marketplace.json" | head -n 1)"
+  if [[ "$EXISTING_NAME" == "$MARKETPLACE" ]]; then
+    echo "Step 3: '$TARGET/.claude-plugin/marketplace.json' already exists as marketplace '$MARKETPLACE' — leaving it untouched."
+  else
+    echo "Step 3: '$TARGET/.claude-plugin/marketplace.json' already exists, named '${EXISTING_NAME:-?}' — leaving it untouched." >&2
+    echo "        A name shared with another project on this machine makes Claude Code serve this" >&2
+    echo "        project's skills from that other checkout (docs/wiki/gotchas.md). To move to the" >&2
+    echo "        per-project name, set \"name\": \"$MARKETPLACE\" in that file and use the same name in" >&2
+    echo "        .claude/settings.json: the extraKnownMarketplaces key, and enabledPlugins \"project@$MARKETPLACE\"." >&2
+  fi
 else
   mkdir -p "$TARGET/.claude-plugin"
-  cp "$TEMPLATE_ROOT/.claude-plugin/marketplace.json" "$TARGET/.claude-plugin/marketplace.json"
-  echo "Step 3: copied .claude-plugin/marketplace.json (needed for Claude Code's" \
-       "extraKnownMarketplaces path \".\" in settings.json to resolve project@workflow" \
-       "— without this file the plugin never registers, no matter how many times the" \
-       "session restarts)"
+  cat > "$TARGET/.claude-plugin/marketplace.json" <<EOF
+{
+  "name": "$MARKETPLACE",
+  "owner": { "name": "claude-code-template" },
+  "plugins": [
+    {
+      "name": "project",
+      "source": "./.agents",
+      "description": "Wiki-driven development workflow: spec, TDD, adversarial review, and wiki maintenance."
+    }
+  ]
+}
+EOF
+  echo "Step 3: wrote .claude-plugin/marketplace.json as marketplace '$MARKETPLACE' (Claude Code's"
+  echo "        extraKnownMarketplaces path \".\" in settings.json resolves against it; the name is"
+  echo "        per project because the machine keeps one marketplace per name)"
 fi
 
 if command -v codex >/dev/null 2>&1; then
@@ -214,7 +244,7 @@ fi
 # ---------------------------------------------------------------------------
 # Step 4 — .claude/settings.json: safe to do only when nothing exists yet
 # ---------------------------------------------------------------------------
-SETTINGS_SNIPPET='  "extraKnownMarketplaces": {\n    "workflow": { "source": { "source": "directory", "path": "." } }\n  },\n  "enabledPlugins": { "project@workflow": true }'
+SETTINGS_SNIPPET="  \"extraKnownMarketplaces\": {\n    \"$MARKETPLACE\": { \"source\": { \"source\": \"directory\", \"path\": \".\" } }\n  },\n  \"enabledPlugins\": { \"project@$MARKETPLACE\": true }"
 
 echo
 echo "-------------------------------------------------------------------"

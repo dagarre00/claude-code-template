@@ -72,7 +72,7 @@ _(Empty — run `/project:interview` to populate.)_
 
 ## Next (P1)
 
-- [ ] [infra] Claude Code registers this template's plugin marketplace under the fixed name `workflow` (`.claude/settings.json` → `extraKnownMarketplaces.workflow`, `source.path: "."`), and `~/.claude/plugins/known_marketplaces.json` holds one machine-global entry per name — so two adopting projects on one machine share it, and a skill can load from the *other* project's checkout. Observed 2026-09-17 while conducting here: `project:adversarial-review` and `project:finding-disposition` reported `Base directory: …\Proyectos\Personal\tip-forces-calculator\.agents\skills\…`. Same collision class as the global codex/agy registration (gotchas.md). Verify with a second adopting project, then either derive the marketplace name from the project in `scripts/adopt.sh` (the `project` plugin name — and so the `/project:` prefix — can stay) or record the limit in gotchas.md.
+_(Empty.)_
 
 ## Later (P2)
 

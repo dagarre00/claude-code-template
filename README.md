@@ -56,9 +56,15 @@ rm -rf tools/workflow-mcp/test                            # template-only test s
 # also delete the "scripts" block in tools/workflow-mcp/package.json —
 # its "test" script only made sense for the excluded test/ directory
 cp <template>/.mcp.json .
-# merge into .claude/settings.json — don't overwrite it:
-#   "extraKnownMarketplaces": {"workflow": {"source": {"source": "directory", "path": "."}}}
-#   "enabledPlugins": {"project@workflow": true}
+# the plugin marketplace: copy the manifest, then give it THIS project's name —
+# "workflow-<your-project-dir-name>" (lowercase, runs of non-alphanumerics → "-").
+# Claude Code keeps one marketplace per name per machine, so a shared name makes
+# one project serve another's skills (docs/wiki/gotchas.md):
+mkdir -p .claude-plugin && cp <template>/.claude-plugin/marketplace.json .claude-plugin/
+#   edit .claude-plugin/marketplace.json: "name": "workflow-<your-project-dir-name>"
+# merge into .claude/settings.json — don't overwrite it — with that same name:
+#   "extraKnownMarketplaces": {"workflow-<your-project-dir-name>": {"source": {"source": "directory", "path": "."}}}
+#   "enabledPlugins": {"project@workflow-<your-project-dir-name>": true}
 cd tools/workflow-mcp && npm install && cd ../..
 claude
 ```
