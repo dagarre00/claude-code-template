@@ -177,7 +177,11 @@ JSON — a BOM a Windows editor left, a trailing comma — is reported there as
 `problem` (with `ok: false` and an empty `missing_command_grants`, since nothing
 is known about it), and `grant_antigravity_setup` refuses it and writes
 nothing: an additive merge cannot know what it would be dropping. Fix the file
-by hand first.
+by hand first. The read-modify-write runs under `settings.json.lock` beside the
+file, so two conductors granting at once queue rather than overwrite each
+other; a lock whose holder died is taken over once it is a minute old, and a
+live one is waited for a few seconds and then reported — nothing written — so
+you retry rather than lose a grant.
 
 Equivalent by hand, if you'd rather see the file yourself first — add one
 `command(...)` rule per `workerCommands` entry, matching the string exactly:

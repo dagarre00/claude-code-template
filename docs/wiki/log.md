@@ -344,3 +344,11 @@ updated: 2026-09-16
 - Reviewer: the conductor itself, as in rounds 1 and 2.
 - Confirmed: the `.gitignore` check in `scripts/adopt.sh` now reads `^\.codex/config\.toml[[:space:]]*$`, anchored and dot-escaped, and the four dry-run cases above still hold. Round cap reached; nothing open.
 - Wiki-Update: this log entry.
+
+## [2026-09-17 19:46] chore — workflow-mcp-hardening
+
+- Source: bare human instruction — "fix all other things. we must not leave any open TODO". Closes the P2 `[adversary]` line filed by adversary round 1 (F4 of e530cf4).
+- Change: `grantAntigravitySetup` now runs its read-modify-write under `settings.json.lock` beside the file (exclusive create; a lock older than 60 s is taken over through a rename so only one waiter can break it; a live lock is polled for 5 s, then refused with nothing written). `engine-setup.md` and the tool description say so.
+- Verified: new `test/grant-lock.test.mjs` — three real processes × fifteen grants each, every grant kept and no lock or staging file left; a stale lock taken over; a live lock refused with the file untouched. Written first and seen failing (no lock: the live-lock and stale-lock cases had nothing to wait for, and the concurrent run lost grants), then green; full suite green.
+- Done inline by the conductor, not through a `developer` dispatch: codex is out of quota and the human asked for the fixes directly; Red-first was kept.
+- Wiki-Update: todos.md (line removed), this log entry; tool docs in `tools/workflow-mcp/engine-setup.md`.

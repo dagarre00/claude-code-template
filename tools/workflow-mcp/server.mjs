@@ -138,7 +138,8 @@ export function createServer(root, conductorEngine) {
     + 'is outside the repository, and a conductor\'s own edit tools are commonly denied from touching it, while this '
     + 'server process is not. Returns the grants actually added; call again any time to pick up newly configured '
     + 'workerCommands — a repeat call with nothing missing is a no-op. A settings file that exists but cannot be '
-    + 'parsed is refused and left untouched (check reports it as setup.problem): fix it by hand first.',
+    + 'parsed is refused and left untouched (check reports it as setup.problem): fix it by hand first. Concurrent '
+    + 'conductors queue on a lock file beside the settings; a lock whose holder died is taken over after a minute.',
     {}, () => api.grant_antigravity_setup(), false);
 
   return server;

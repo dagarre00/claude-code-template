@@ -11,7 +11,7 @@
 // "try again at 9:05 PM", so this deliberately does not try — it reports what is
 // installed, the chain reports what to fall back to, and a usage limit stays a
 // failed dispatch the conductor answers with `cli_engine`.
-import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync, writeSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, dirname, isAbsolute, resolve } from 'node:path';
 
@@ -103,6 +103,50 @@ export function engineSetup(config, name) {
   return { settings_file, ok: missing.length === 0, missing_command_grants: missing, problem: null };
 }
 
+const LOCK_TIMEOUT_MS = 5000;
+const LOCK_STALE_MS = 60_000;
+const LOCK_POLL_MS = 25;
+// A synchronous pause. This module is synchronous end to end, and the wait is
+// short and bounded, so blocking the thread is the honest way to wait here.
+const pause = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+// Serialises the read-modify-write in grantAntigravitySetup across processes:
+// the file is user-global and conductors run concurrently, so two of them
+// granting at once could lose one side's additions, and the loser's next
+// worker was then denied silently (adversary round 1 on
+// fix/workflow-mcp-hardening, F4). Exclusive creation is the atomic primitive.
+// A holder that died leaves its lock behind; that is recognised by age and
+// taken over through a rename, so of several waiters only one can ever break
+// it — the others see the rename fail and go back to waiting. A live lock is
+// never deleted: past the timeout the caller is told, and nothing is written.
+function withLock(lock, fn, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    let fd;
+    try { fd = openSync(lock, 'wx'); }
+    catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+      let age;
+      try { age = Date.now() - statSync(lock).mtimeMs; } catch { continue; } // released between the two calls
+      if (age > LOCK_STALE_MS) {
+        const stale = `${lock}.stale-${process.pid}`;
+        try { renameSync(lock, stale); unlinkSync(stale); } catch { /* another waiter took it over */ }
+        continue;
+      }
+      if (Date.now() >= deadline) {
+        throw new Error(`${lock} is held by another process (for ${Math.round(age / 1000)}s), so nothing was written. `
+          + 'Another conductor may be granting right now: retry in a moment. If that process is gone, the lock is '
+          + `taken over on its own once it is ${LOCK_STALE_MS / 1000}s old.`);
+      }
+      pause(LOCK_POLL_MS);
+      continue;
+    }
+    try { writeSync(fd, String(process.pid)); } finally { closeSync(fd); }
+    try { return fn(); }
+    finally { try { unlinkSync(lock); } catch { /* already gone */ } }
+  }
+}
+
 // What engine-setup.md otherwise walks a human through pasting by hand: the
 // classifier that blocks a conductor's own edit tools from touching a file
 // outside the repository (this is user-global, under $HOME, on every OS) does
@@ -112,18 +156,22 @@ export function engineSetup(config, name) {
 // appends the `command(<line>)` rules `engineSetup` reports missing. A file it
 // cannot read is refused outright rather than treated as empty, and the write
 // lands beside the file and is renamed into place, so a crash mid-write cannot
-// leave a truncated file that the next call could only refuse.
-export function grantAntigravitySetup(config) {
+// leave a truncated file that the next call could only refuse. The whole
+// read-modify-write runs under a lock file beside the settings (withLock), so
+// concurrent conductors queue instead of overwriting each other.
+export function grantAntigravitySetup(config, { lockTimeoutMs = LOCK_TIMEOUT_MS } = {}) {
   const settings_file = antigravitySettingsFile();
-  const { parsed, problem } = readAntigravitySettings(settings_file);
-  if (problem) throw new Error(problem);
-  const { allow, missing } = missingAntigravityGrants(config, parsed);
-  if (!missing.length) return { settings_file, added: [], already_granted: true };
-  const added = missing.map(command => `command(${command})`);
-  const next = { ...parsed, permissions: { ...parsed.permissions, allow: [...allow, ...added] } };
   mkdirSync(dirname(settings_file), { recursive: true });
-  const staging = `${settings_file}.tmp-${process.pid}`;
-  writeFileSync(staging, JSON.stringify(next, null, 2) + '\n');
-  renameSync(staging, settings_file);
-  return { settings_file, added, already_granted: false };
+  return withLock(`${settings_file}.lock`, () => {
+    const { parsed, problem } = readAntigravitySettings(settings_file);
+    if (problem) throw new Error(problem);
+    const { allow, missing } = missingAntigravityGrants(config, parsed);
+    if (!missing.length) return { settings_file, added: [], already_granted: true };
+    const added = missing.map(command => `command(${command})`);
+    const next = { ...parsed, permissions: { ...parsed.permissions, allow: [...allow, ...added] } };
+    const staging = `${settings_file}.tmp-${process.pid}`;
+    writeFileSync(staging, JSON.stringify(next, null, 2) + '\n');
+    renameSync(staging, settings_file);
+    return { settings_file, added, already_granted: false };
+  }, lockTimeoutMs);
 }

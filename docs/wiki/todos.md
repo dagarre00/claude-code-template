@@ -76,7 +76,7 @@ _(Empty — run `/project:interview` to populate.)_
 
 ## Later (P2)
 
-- [ ] [adversary] `grantAntigravitySetup` is an unlocked read-modify-write on the shared user-global agy settings file: two conductors on one machine with different `workerCommands` calling it concurrently can lose one side's grants, and the loser's next worker is denied silently — minor/concurrency, F4 of e530cf4, entity none (template tooling: `tools/workflow-mcp/availability.mjs`)
+_(Empty.)_
 
 ## Backlog
 
