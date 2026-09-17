@@ -52,6 +52,23 @@ fi
 
 TARGET="$(cd "$TARGET" && pwd)"
 
+# Only for text we write into a *file's content* (a TOML/JSON value), never for
+# a path handed to a subprocess as an argv (Git Bash's MSYS runtime already
+# rewrites a POSIX-style argument to Windows form for a native, non-MSYS
+# executable like codex.exe or agy.exe — measured: `codex mcp add --root
+# "$TARGET"` with `$TARGET` still POSIX-style produced a correct
+# `C:/Users/...` entry). A path inside a heredoc is plain text the runtime
+# never touches, so `/c/Users/...` would be written verbatim — and Node on
+# Windows resolves a leading `/` against the current drive, not `C:\`, so the
+# server would fail to start with that path silently wrong. `cygpath -m` gives
+# the same drive-letter-plus-forward-slashes form the argv path ends up in, so
+# both are visibly the same path if you print them side by side. Absent
+# outside Git Bash on Windows, where TARGET is already the only form there is.
+TARGET_FOR_FILE_CONTENT="$TARGET"
+if command -v cygpath >/dev/null 2>&1; then
+  TARGET_FOR_FILE_CONTENT="$(cygpath -m "$TARGET")"
+fi
+
 if [[ "$TARGET" == "$TEMPLATE_ROOT" ]]; then
   echo "Error: target is the template checkout itself. Pass the path to the" >&2
   echo "project you're adopting the mechanism into." >&2
@@ -134,10 +151,26 @@ else
 fi
 
 if command -v codex >/dev/null 2>&1; then
-  if codex mcp add workflow -- node "$TARGET/tools/workflow-mcp/server.mjs" --root "$TARGET" --engine codex 2>/dev/null; then
-    echo "Step 3: registered workflow with codex (global config — see note below)"
+  if [[ -e "$TARGET/.codex/config.toml" ]]; then
+    echo "Step 3: '$TARGET/.codex/config.toml' already exists — leaving it untouched." >&2
+    echo "        Merge this table into it by hand if [mcp_servers.workflow] isn't there:" >&2
+    echo "        [mcp_servers.workflow]" >&2
+    echo "        command = \"node\"" >&2
+    echo "        args = [\"$TARGET_FOR_FILE_CONTENT/tools/workflow-mcp/server.mjs\", \"--root\", \"$TARGET_FOR_FILE_CONTENT\", \"--engine\", \"codex\"]" >&2
   else
-    echo "Step 3: 'codex mcp add' failed or was already registered — check manually if you conduct with codex." >&2
+    mkdir -p "$TARGET/.codex"
+    cat > "$TARGET/.codex/config.toml" <<EOF
+[mcp_servers.workflow]
+command = "node"
+args = ["$TARGET_FOR_FILE_CONTENT/tools/workflow-mcp/server.mjs", "--root", "$TARGET_FOR_FILE_CONTENT", "--engine", "codex"]
+EOF
+    echo "Step 3: wrote $TARGET/.codex/config.toml (project-local; wins over any"
+    echo "        machine-global 'workflow' entry for this directory — see"
+    echo "        docs/wiki/gotchas.md § 'codex mcp add / agy mcp add with relative"
+    echo "        paths break at spawn time' for why this beats 'codex mcp add')."
+    echo "        If an earlier global registration exists, it's now redundant here"
+    echo "        but harmless; drop it elsewhere with 'codex mcp remove workflow'"
+    echo "        if you want one canonical entry."
   fi
 fi
 
@@ -149,12 +182,13 @@ if command -v agy >/dev/null 2>&1; then
   fi
 fi
 
-if command -v codex >/dev/null 2>&1 || command -v agy >/dev/null 2>&1; then
-  echo "Step 3: NOTE — codex/agy MCP registration is machine-global, not" >&2
-  echo "        per-project. Adopting into a second project under the same" >&2
-  echo "        name 'workflow' overwrites this one's entry. Re-run this" >&2
-  echo "        script (or 'codex/agy mcp add workflow ...') from inside" >&2
-  echo "        whichever project you're about to conduct in." >&2
+if command -v agy >/dev/null 2>&1; then
+  echo "Step 3: NOTE — agy's MCP registration is machine-global, not" >&2
+  echo "        per-project (its own project-local config is a known upstream" >&2
+  echo "        no-op: google-antigravity/antigravity-cli#60). Adopting into a" >&2
+  echo "        second project under the same name 'workflow' overwrites this" >&2
+  echo "        one's entry. Re-run this script (or 'agy mcp add workflow ...')" >&2
+  echo "        from inside whichever project you're about to conduct in with agy." >&2
 fi
 
 # ---------------------------------------------------------------------------

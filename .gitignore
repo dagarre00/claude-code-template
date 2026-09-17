@@ -2,6 +2,11 @@
 .claude/settings.local.json
 .claude/tmp/
 
+# Codex — project-local MCP registration (tools/workflow-mcp/server.mjs
+# `--root` is an absolute, machine-specific path, same reasoning as
+# .claude/settings.local.json above). scripts/adopt.sh generates this.
+.codex/config.toml
+
 # OS
 .DS_Store
 Thumbs.db

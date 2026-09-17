@@ -80,6 +80,6 @@ _(Empty.)_
 
 ## Backlog
 
-- [ ] [infra] `scripts/adopt.sh` step 3: for codex, stop registering `workflow` globally (`codex mcp add`) and instead write a project-local `<target>/.codex/config.toml` with `[mcp_servers.workflow]` pointing at that project's own `tools/workflow-mcp/server.mjs --root <target>`, plus a `.codex/config.toml` line in `.gitignore` (paths are machine-specific absolute paths, same reasoning as `.claude/settings.local.json`). Verified 2026-09-16 that codex honors project-local config and it wins over the global entry for that cwd — see `docs/wiki/gotchas.md` § "codex mcp add / agy mcp add with relative paths break at spawn time" → "Real fix for codex". Keep the existing global `agy mcp add` path unchanged — agy's own project-local config is a known no-op upstream (google-antigravity/antigravity-cli#60).
+_(Empty.)_
 
 _(Long-tail. Periodically pruned during `/project:review`.)_
