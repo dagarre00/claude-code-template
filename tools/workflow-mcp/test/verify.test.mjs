@@ -60,6 +60,33 @@ test('generated-file drift fails', () => {
   });
 });
 
+// Measured from a Codex conductor's report on Windows: its stdout encoding did
+// not round-trip UTF-8, so every non-ASCII character it wrote came out as a
+// literal `?`, plus a stray BOM at the top of the file — and nothing here
+// caught either, since both are valid text on their own.
+test('a UTF-8 BOM at the top of a wiki page fails', () => {
+  project({ 'docs/wiki/concepts/retry.md': '﻿# Retry\n\nBackoff.\n' }, root => {
+    const check = verify(root).checks.find(entry => entry.id === 'encoding');
+    assert.equal(check.ok, false);
+    assert.match(check.details.join('\n'), /concepts\/retry\.md.*BOM/);
+  });
+});
+
+test('a literal "?" between two digits — a mangled dash, ×, or ° — fails', () => {
+  project({ 'docs/wiki/concepts/retry.md': '# Retry\n\nMeasured 2026-09-10?14, three runs.\n' }, root => {
+    const check = verify(root).checks.find(entry => entry.id === 'encoding');
+    assert.equal(check.ok, false);
+    assert.match(check.details.join('\n'), /concepts\/retry\.md.*between two digits/);
+  });
+});
+
+test('a "?" inside a fenced code block or as a real question mark is left alone', () => {
+  project({ 'docs/wiki/concepts/retry.md':
+    '# Retry\n\nIs 3 retries enough? Maybe.\n\n```\n2026-09-10?14\n```\n' }, root => {
+    assert.equal(verify(root).checks.find(entry => entry.id === 'encoding').ok, true);
+  });
+});
+
 test('log entries must use the closed kind vocabulary and be oldest first', () => {
   project({ 'docs/wiki/log.md': LOG([['2026-09-03 10:00', 'work'], ['2026-09-02 09:00', 'chore'], ['2026-09-04 09:00', 'shipping']]) }, root => {
     const check = verify(root).checks.find(entry => entry.id === 'log');

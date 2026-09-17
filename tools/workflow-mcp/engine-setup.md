@@ -76,6 +76,21 @@ blanket `git config --global --add safe.directory "*"`, which trusts every
 repository on the machine and is a real loosening of the ownership check, not
 just a convenience.
 
+**The conductor itself is exposed too, not only the workers it dispatches.**
+`prepare_worktree` only registers trust for the worktree paths it creates —
+the root checkout is never touched. A conductor whose own shell runs under a
+different account than the checkout owner (conducting from Codex directly is
+the case seen; any other sandboxed shell with a distinct SID would hit the
+same thing) gets `dubious ownership` on its *own* git calls against the root
+checkout, before any worker is involved. `verify.mjs`'s own `git()` helper
+covers itself with a per-invocation `-c safe.directory=*` (scoped to that one
+spawned process, not written to any config file, so it widens nothing beyond
+the command it runs). That does not cover ad hoc git commands the conductor
+runs outside `verify.mjs` — for those, either trust the root checkout path
+the same way as a worktree (`git config --global --add safe.directory
+<absolute path to the repo root>`), or pass `-c safe.directory=*` on that one
+call yourself.
+
 ### Codex — optional context-management overrides
 
 `-o reportFile` (above, in the codex adapter) keeps the *conductor* from
