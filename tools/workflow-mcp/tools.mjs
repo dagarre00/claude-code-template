@@ -108,11 +108,14 @@ export function makeTools(root, conductorEngine) {
         // grants), and that failure is silent enough on two of three engines to
         // look like success (engine-setup.md). `ok` above stays about drift
         // alone — a missing grant is not a broken checkout — so this is the
-        // separate, explicit signal: every role whose *first-choice* engine has
-        // an unmet setup requirement, found before a dispatch is composed rather
-        // than after it comes back empty.
+        // separate, explicit signal: every role whose engine has an unmet setup
+        // requirement, found before a dispatch is composed rather than after it
+        // comes back empty. "Its engine" is the one a dispatch would run on —
+        // the first installed entry in the chain, exactly as prepareDispatch
+        // picks it — never a first choice that is not installed here and so
+        // never runs (adversary round 1 on fix/workflow-mcp-hardening, F3).
         roles_with_unmet_setup: Object.keys(chains)
-          .filter(role => setupByEngine[chains[role][0]]?.ok === false).sort(),
+          .filter(role => setupByEngine[chains[role].find(name => available.has(name)) ?? chains[role][0]]?.ok === false).sort(),
         // A role whose chain reaches an engine that cannot give it what it
         // declares it needs. Only measured gaps are listed.
         capability_gaps: loadCanonical(root).roles.flatMap(role => (chains[role.name] ?? []).map(engine => ({

@@ -165,27 +165,20 @@ test('check names every worker command agy has no exact grant for', () => {
 // (available: true) and still refuse a worker's first command. `ok` stays
 // about drift alone, so this is the separate signal a conductor would
 // otherwise only find by reading each engine's `setup` block by hand.
-test('check names every role whose first-choice engine has an unmet setup requirement', () => {
-  const home = fixture();
-  const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
-  process.env.HOME = home; process.env.USERPROFILE = home;
-  try {
+test('check names every role whose engine has an unmet setup requirement', () => {
+  withHome(() => {
+    // antigravity is installed in this fixture, so developer really would run
+    // on it — and the fixture HOME has no settings file, so its grants are
+    // absent. adversary's claude has nothing to set up at all.
+    const installed = engines(PRESENT, ABSENT);
+    installed.antigravity = { ...installed.antigravity, executable: PRESENT };
     withRepo({
       developer: { engine: ['antigravity', 'claude'] },
       adversary: { engine: 'claude' }
     }, root => {
-      const report = makeTools(root, 'claude').check();
-      // developer's first choice (antigravity) has no grants in the fixture
-      // HOME's (absent) settings file; adversary's first choice (claude) has
-      // nothing to set up at all.
-      assert.deepEqual(report.roles_with_unmet_setup, ['developer']);
-    });
-  } finally {
-    for (const [key, value] of Object.entries(saved)) {
-      if (value === undefined) delete process.env[key]; else process.env[key] = value;
-    }
-    cleanup(home);
-  }
+      assert.deepEqual(makeTools(root, 'claude').check().roles_with_unmet_setup, ['developer']);
+    }, installed);
+  });
 });
 
 test('check reports a missing agy settings file as every grant missing, not as fine', () => {
@@ -342,6 +335,21 @@ test('check reports an unparseable agy settings file as a named problem, not as 
       assert.equal(agy.setup.ok, false);
       assert.match(agy.setup.problem, /parse/i);
       assert.deepEqual(agy.setup.missing_command_grants, [], 'nothing is known to be missing from a file that could not be read');
+    });
+  });
+});
+
+// Adversary round 1, F3: the flag keyed on the chain's first entry whether or
+// not that engine was installed, so a role chained [antigravity, claude] on a
+// machine without agy was flagged — and the dispatch skill turns that into a
+// human-checkpoint — although dispatch falls through to claude and never runs
+// on agy. The engine that matters is the one dispatch would pick.
+test('roles_with_unmet_setup keys on the engine dispatch would pick, not on an uninstalled first choice', () => {
+  withHome(() => {
+    // antigravity is ABSENT in the fixture engines and there is no settings
+    // file, so its setup is unmet — but this chain never runs on it.
+    withRepo({ developer: { engine: ['antigravity', 'claude'] } }, root => {
+      assert.deepEqual(makeTools(root, 'claude').check().roles_with_unmet_setup, []);
     });
   });
 });

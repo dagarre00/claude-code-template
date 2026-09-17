@@ -213,8 +213,9 @@ headless mode cannot prompt for, so it was auto-denied.
 **`check` tells you before a cycle.** Its `antigravity` entry carries a `setup`
 block listing every `workerCommands` entry with no exact grant in that file, so a
 missing grant is found without spending a dispatch on it. `check`'s top-level
-`roles_with_unmet_setup` names every role whose *first-choice* engine has one of
-these unmet, so a role that looks dispatchable in `roles_without_an_available_engine`
+`roles_with_unmet_setup` names every role whose engine — the first installed
+entry in its chain, the one a dispatch would run on, never an uninstalled first
+choice — has one of these unmet, so a role that looks dispatchable in `roles_without_an_available_engine`
 (its CLI is installed) can still be flagged here as one whose first command will
 be silently denied. `grant_antigravity_setup` closes exactly that gap.
 
