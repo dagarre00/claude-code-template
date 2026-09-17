@@ -325,3 +325,13 @@ updated: 2026-09-16
 - Filed: F4 at P2 (`[adversary]`). Out of scope but filed as `[infra]` at P1: the `workflow` plugin marketplace name is machine-global in Claude Code's plugin registry, so adopting projects collide — observed when this session's skills loaded from another project's checkout.
 - Rejected: F5 — `verify.mjs`'s per-invocation `-c safe.directory=*` runs read-only git subcommands against the conductor's own checkout; the trade-off is written in `tools/workflow-mcp/engine-setup.md` (conductor exposure paragraph).
 - Wiki-Update: todos.md (two lines), gotchas.md (in dfd5375), this log entry; the round's dispositions are in the round commit body (`git log --grep="adversary round"`).
+
+## [2026-09-17 19:04] adversary — workflow-mcp-hardening
+
+- Commit reviewed: e530cf4...dfd5375 — the three round-1 fix commits only (f65b4b8, 4be1223, dfd5375), per the re-review rule; no re-scan of the original diff
+- Findings: 1 (0 critical, 0 major, 1 minor), 0 nits
+- Disposition: 0 filed, 1 fixed, 0 rejected
+- Reviewer: the conductor itself, as in round 1 (same human instruction, same independence caveat).
+- Confirmed: F2's refusal path and staged write (f65b4b8); F3's dispatch-engine keying (4be1223); F1's ignore-line append (dfd5375). F5's rejection stands.
+- F6 minor correctness — Fixed in ad1db1c (approval: the human's standing "fix what you found"): dfd5375's exact-line `grep -x` did not match a `.gitignore` with CRLF endings, so a Windows-authored file would have received a duplicate ignore line on every run. The check now tolerates trailing whitespace, CR included, with no pipeline. Dry-run: CRLF with the line present, CRLF absent twice, LF without a trailing newline twice, and no `.gitignore` at all — appended once, then reported as present, in every case.
+- Wiki-Update: this log entry; the disposition is in the round commit body.
