@@ -314,3 +314,14 @@ updated: 2026-09-16
 - Change (log discipline): `.agents/skills/feature-branching/log-and-commit.md` and this file's header now say stamps are UTC, since `verify.mjs`'s `log` check enforces oldest-first across sessions in different zones.
 - Verified before committing: `npm test` in `tools/workflow-mcp` — 242 pass, 0 fail.
 - Wiki-Update: gotchas.md, todos.md, this log entry; code changed under `tools/workflow-mcp/` and `scripts/`.
+
+## [2026-09-17 19:01] adversary — workflow-mcp-hardening
+
+- Commit reviewed: e530cf4 (`develop...HEAD`, the four hardening commits committed earlier this session)
+- Findings: 5 (0 critical, 2 major, 3 minor), 3 nits
+- Disposition: 1 filed, 3 fixed, 1 rejected
+- Reviewer: the conductor itself, on the human's instruction ("run the adversary yourself, codex is out of tokens"), after codex — the adversary's pinned engine — hit its usage limit mid-run and wrote no report (dispatch `adv-hardening-r1`, attempt 1, recorded as rejected). Independence caveat, stated so the record is honest: the reviewer had read this diff once to commit it, but wrote none of it, and the sweep followed `adversarial-review` in full.
+- Human gate: the human's standing instruction "fix what you found" was the approval for the two majors (F1, F2) and for F3; each fix is its own commit naming its finding (f65b4b8, 4be1223, dfd5375), tests first, suite green at 246.
+- Filed: F4 at P2 (`[adversary]`). Out of scope but filed as `[infra]` at P1: the `workflow` plugin marketplace name is machine-global in Claude Code's plugin registry, so adopting projects collide — observed when this session's skills loaded from another project's checkout.
+- Rejected: F5 — `verify.mjs`'s per-invocation `-c safe.directory=*` runs read-only git subcommands against the conductor's own checkout; the trade-off is written in `tools/workflow-mcp/engine-setup.md` (conductor exposure paragraph).
+- Wiki-Update: todos.md (two lines), gotchas.md (in dfd5375), this log entry; the round's dispositions are in the round commit body (`git log --grep="adversary round"`).
