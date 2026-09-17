@@ -174,6 +174,25 @@ EOF
   fi
 fi
 
+# The file above holds this machine's absolute paths, so it must never be
+# committed — and it is the target's .gitignore, not the template's, that
+# decides that (adversary round 1 on fix/workflow-mcp-hardening, F1). Done
+# whether or not codex is on PATH here: a later contributor who has codex
+# writes the same file by hand (docs/wiki/gotchas.md), and the ignore line
+# has to be there before they do. Idempotent — an exact existing line is left
+# alone, and a file with no trailing newline gets one before the append.
+if grep -qxF '.codex/config.toml' "$TARGET/.gitignore" 2>/dev/null; then
+  echo "Step 3: $TARGET/.gitignore already ignores .codex/config.toml"
+else
+  if [[ -s "$TARGET/.gitignore" && -n "$(tail -c1 "$TARGET/.gitignore")" ]]; then
+    echo >> "$TARGET/.gitignore"
+  fi
+  printf '%s\n' \
+    '# Codex project-local MCP registration: machine-specific absolute paths (written by scripts/adopt.sh)' \
+    '.codex/config.toml' >> "$TARGET/.gitignore"
+  echo "Step 3: appended .codex/config.toml to $TARGET/.gitignore (machine-specific paths, never committed)"
+fi
+
 if command -v agy >/dev/null 2>&1; then
   if agy mcp add workflow node "$TARGET/tools/workflow-mcp/server.mjs" --root "$TARGET" --engine antigravity 2>/dev/null; then
     echo "Step 3: registered workflow with agy (global config — see note below)"
