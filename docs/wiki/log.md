@@ -335,3 +335,12 @@ updated: 2026-09-16
 - Confirmed: F2's refusal path and staged write (f65b4b8); F3's dispatch-engine keying (4be1223); F1's ignore-line append (dfd5375). F5's rejection stands.
 - F6 minor correctness — Fixed in ad1db1c (approval: the human's standing "fix what you found"): dfd5375's exact-line `grep -x` did not match a `.gitignore` with CRLF endings, so a Windows-authored file would have received a duplicate ignore line on every run. The check now tolerates trailing whitespace, CR included, with no pipeline. Dry-run: CRLF with the line present, CRLF absent twice, LF without a trailing newline twice, and no `.gitignore` at all — appended once, then reported as present, in every case.
 - Wiki-Update: this log entry; the disposition is in the round commit body.
+
+## [2026-09-17 19:04] adversary — workflow-mcp-hardening
+
+- Commit reviewed: ad1db1c — the round-2 fix commit only
+- Findings: 0, 0 nits
+- Disposition: none
+- Reviewer: the conductor itself, as in rounds 1 and 2.
+- Confirmed: the `.gitignore` check in `scripts/adopt.sh` now reads `^\.codex/config\.toml[[:space:]]*$`, anchored and dot-escaped, and the four dry-run cases above still hold. Round cap reached; nothing open.
+- Wiki-Update: this log entry.
