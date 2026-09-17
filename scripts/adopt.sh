@@ -180,8 +180,9 @@ fi
 # whether or not codex is on PATH here: a later contributor who has codex
 # writes the same file by hand (docs/wiki/gotchas.md), and the ignore line
 # has to be there before they do. Idempotent — an exact existing line is left
-# alone, and a file with no trailing newline gets one before the append.
-if grep -qxF '.codex/config.toml' "$TARGET/.gitignore" 2>/dev/null; then
+# alone (a trailing CR, as in a CRLF .gitignore, counts as the same line),
+# and a file with no trailing newline gets one before the append.
+if grep -qE '^\.codex/config\.toml[[:space:]]*$' "$TARGET/.gitignore" 2>/dev/null; then
   echo "Step 3: $TARGET/.gitignore already ignores .codex/config.toml"
 else
   if [[ -s "$TARGET/.gitignore" && -n "$(tail -c1 "$TARGET/.gitignore")" ]]; then
