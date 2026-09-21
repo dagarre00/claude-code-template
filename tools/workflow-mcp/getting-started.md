@@ -46,6 +46,7 @@ Optional but recommended:
 
 - Replace `LICENSE` if MIT isn't right for you.
 - Open `docs/wiki/` in [Obsidian](https://obsidian.md/) as a vault — that's your read-only-ish view of the agent's memory.
+- See or change which tool and model runs each role — `node tools/workflow-mcp/config-ui.mjs` opens a page over `.agents/config.json` that explains every setting and refuses invalid ones. [`config.md`](config.md) has the full guide.
 
 Then start Claude Code:
 
@@ -362,6 +363,7 @@ Routine git operations — `git tag checkpoint-<stamp>` before a risky change, `
 | `wiki-todos.md` is huge                            | Run `/project:wiki`                                                                                                  |
 | Developer keeps retrying the same failing approach | Two-strike rule should fire — it stops after the second failure and asks you                                              |
 | Plan looks wrong                                   | Tell the conductor the approach to take before it dispatches the developer — it edits `.handoff/<slug>-plan.md`, which is what gets sent — or just tell the developer directly                          |
+| A role runs the wrong model or engine, or you can't tell what `.agents/config.json` does | `node tools/workflow-mcp/config-ui.mjs` — a page that shows what each role will run, with every setting explained; [`config.md`](config.md) is the reference |
 | A role's CLI isn't installed                       | `check` reports which engines are on PATH and which roles that leaves undispatchable; give the role a fallback chain (`"engine": ["codex", "claude"]`) or pass `cli_engine` for one dispatch |
 | Adversary found nothing and said only "looks good" | An unexplained pass is a failed review — it owes you a `**Checked:**` line per category. Re-dispatch demanding it          |
 | Adversary and developer keep going back and forth  | Three rounds is the cap — past it, important findings get filed as todos and it stops; for a disputed critical/major it asks you with both positions stated |

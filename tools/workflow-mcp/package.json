@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Composes worker prompts from the canonical .agents/ source and generates the per-CLI root files.",
   "scripts": {
+    "config": "node config-ui.mjs",
     "test": "node --test \"test/*.test.mjs\"",
     "e2e": "node e2e/run.mjs"
   },

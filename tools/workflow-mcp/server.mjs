@@ -65,7 +65,7 @@ export function createServer(root, conductorEngine) {
       retry_of: z.string().optional().describe('task_id of an attempt in another worktree that this dispatch replaces, so retries are counted per engine and role.'),
       abandon_running: z.boolean().optional().describe('Composing into a task whose attempt started and never finished is refused, because a live process would finish into the new attempt. Pass true only when that process is gone; the attempt is archived as abandoned.'),
       cli_engine: z.enum([...engineNames]).optional(),
-      model_override: z.string().optional(),
+      model_override: z.string().optional().describe('A model for this one dispatch. It must be one the engine this dispatch resolves to runs — if the role\'s chain falls through to another engine the override is refused, so pass cli_engine with it to name the engine it is for.'),
       thinking_budget: z.string().optional()
     },
     input => api.build_worker_prompt(input));

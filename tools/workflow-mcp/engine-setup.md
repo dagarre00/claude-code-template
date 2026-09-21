@@ -34,6 +34,11 @@ and edits with its own file tools, which need no permission; commands are
 only for running the suite and the few read-only git calls the role
 checklists name.
 
+You can edit `workerCommands`, and every other setting in that file, in a local
+page instead of by hand: `node tools/workflow-mcp/config-ui.mjs`. It refuses a
+line the engines could never match and explains each setting; see
+[config.md](config.md).
+
 **The list is also inlined into every worker prompt**, under `## Commands you may
 run`. That is not redundancy: a worker that does not know the list improvises a
 near-miss — `git log -n 3` instead of an allowlisted read — and on agy a single
@@ -459,7 +464,10 @@ amount of checking will predict it. What is left is recovering cheaply:
 
 - **Override one dispatch.** `cli_engine` on `build_worker_prompt` beats the
   chain entirely, which is the right tool for a usage limit: the engine is
-  installed, so the chain has no reason to skip it.
+  installed, so the chain has no reason to skip it. A `model_override` is a
+  model, not an engine, so it goes with `cli_engine`: an override left to the
+  chain would follow it to a fallback engine that cannot run that model, and is
+  refused there (`config.md` § Reference, "a model belongs to its engine").
 
 Worth checking when you pin roles: how many of them land on the same engine. A
 measured session had four of seven on one, so a single usage limit made all four

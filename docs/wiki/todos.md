@@ -9,7 +9,7 @@ sources:
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-09-17
+updated: 2026-09-18
 ---
 
 # Todos
@@ -72,7 +72,7 @@ _(Empty — run `/project:interview` to populate.)_
 
 ## Next (P1)
 
-_(Empty.)_
+- [ ] `withLock` in `tools/workflow-mcp/availability.mjs` throws instead of waiting when another process is mid-unlink of the lock on Windows: `openSync(lock, 'wx')` then fails with `EPERM`, and only `EEXIST` is treated as contention — so `grants from concurrent processes are all kept` (`test/grant-lock.test.mjs`) fails ~1 run in 25 with that file alone, more under load, and two conductors granting at once get a bare `EPERM`. Treat `EPERM`/`EACCES` as contention on win32, bounded by the deadline (the `statSync` failure path `continue`s without checking it, so a real permission error would spin). Test first. — major/correctness, found 2026-09-18, entity `workflow-mcp`
 
 ## Later (P2)
 

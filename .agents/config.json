@@ -1,6 +1,7 @@
 {
+  "$comment": "Not sure what to change here? Run `node tools/workflow-mcp/config-ui.mjs` - a local page that explains every setting and refuses invalid ones.",
   "version": 1,
-  "defaultEngine": "inherit",
+  "defaultEngine": "antigravity",
   "workerTimeoutSeconds": 1800,
   "workerCommands": [
     "npm test",

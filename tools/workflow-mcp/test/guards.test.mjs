@@ -20,7 +20,7 @@ const engines = {
     effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } },
   codex: { executable: 'codex', models: { reasoning: null, balanced: null, fast: null },
     effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } },
-  antigravity: { executable: 'agy', models: { reasoning: 'pro', balanced: 'inherit', fast: 'flash' },
+  antigravity: { executable: 'agy', models: { reasoning: 'gemini-3.8-pro', balanced: 'inherit', fast: 'gemini-3.8-flash' },
     effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } }
 };
 const base = { version: 1, defaultEngine: 'inherit', workerTimeoutSeconds: 1800, workerCommands: ['npm test'], roles: {}, engines };

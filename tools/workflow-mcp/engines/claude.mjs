@@ -14,6 +14,40 @@
 export default {
   name: 'claude',
   efforts: ['low', 'medium', 'high', 'xhigh', 'max'],
+  // The ids the config editor's model dropdown offers when the tool cannot be asked.
+  // A convenience, not a whitelist: the loader accepts any well-formed id, and the
+  // editor has an 'Other' entry for the rest.
+  knownModels: ['claude-opus-5', 'claude-sonnet-5', 'claude-fable-5-1', 'claude-haiku-4-5-20251001'],
+  // Every id this engine can run starts with one of these (model-fit.mjs). Unlike
+  // knownModels this IS a whitelist: a config that pins another engine's model here
+  // is refused at load, in the editor, and again when the command is built. The bare
+  // names are the family aliases `--model` accepts.
+  modelPrefixes: ['claude-', 'opus', 'sonnet', 'haiku', 'fable'],
+  // `claude` has no command that lists its models, but `--model` accepts an alias that
+  // always means the newest model of a family (`claude --help`: 'fable', 'opus' or
+  // 'sonnet'). The way to stay current without editing a name — at the price that the
+  // model behind a role changes on its own when a new one ships.
+  modelAliases: {
+    opus: 'always the newest Opus',
+    sonnet: 'always the newest Sonnet',
+    fable: 'always the newest Fable'
+  },
+  // What each flag buildArgs passes is for, shown read-only in the config editor and
+  // checked against the real argv by test/engine-flags.test.mjs — so a flag added
+  // below without a note here fails the suite. `config` rows show `value` instead of
+  // a real value: it is whatever the project's settings say.
+  flagNotes: {
+    '--print': { kind: 'plumbing', why: 'Runs non-interactively. It prints only the final message, and that message is the worker\'s report.' },
+    '--safe-mode': { kind: 'guarantee', why: 'The context guarantee: the worker sees only the prompt it was composed, not the project\'s own instruction files.' },
+    '--no-session-persistence': { kind: 'hygiene', why: 'Does not save the run as a session that could be resumed.' },
+    '--permission-mode': { kind: 'guarantee', why: 'Read-only roles run in dontAsk mode: with no approval surface, edits are denied while the allowed commands still run. Write roles run in acceptEdits.' },
+    '--permission-prompts': { kind: 'plumbing', why: 'Nobody is at the keyboard, so anything that would ask for permission is denied instead of hanging until the timeout.' },
+    '--disallowedTools': { kind: 'guarantee', why: 'A worker is a leaf: it cannot start another worker.' },
+    '--exclude-dynamic-system-prompt-sections': { kind: 'hygiene', why: 'Keeps the start of the prompt identical between dispatches (each worktree has its own path), so the prompt cache keeps working.' },
+    '--allowedTools': { kind: 'config', value: 'Bash(<command>:*)', why: 'One per line of workerCommands (Safety and advanced → Commands workers may run). Claude Code treats it as permission to run that command with any trailing arguments.' },
+    '--model': { kind: 'config', value: '<model>', why: 'The role\'s own pin, else the engine\'s default for its profile. Left out when blank or inherit, so the tool uses its own default.' },
+    '--effort': { kind: 'config', value: '<effort>', why: 'The role\'s own pin, else the engine\'s default effort for its profile.' }
+  },
   // It would read CLAUDE.md, so we stop it. Recorded as a measured property of
   // the CLI rather than an assumption baked into the argv.
   readsProjectDocs: true,

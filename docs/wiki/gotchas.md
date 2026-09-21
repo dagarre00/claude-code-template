@@ -7,7 +7,7 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-09-17
+updated: 2026-09-21
 ---
 
 # Gotchas
@@ -32,6 +32,20 @@ updated: 2026-09-17
 
 ## Tooling
 *(Build, lint, formatter, IDE, env quirks.)*
+
+### A model id under the wrong engine in `.agents/config.json` used to load cleanly and fail at launch
+
+**When:** Pinning a model for a role (`roles.<role>.models.<engine>`) or a profile default (`engines.<engine>.models.<profile>`) by copying an id from another engine's row — a Codex `gpt-5.6-sol` under `antigravity`, seen in another adopting project where the role's first engine was antigravity and its first model was a GPT one.
+**Symptom:** The config loads and the editor shows the id as that engine's model; nothing complains until a worker is launched with `--model` set to an id its tool does not serve. What each tool does with a foreign model was not measured here. The same hole was open for a `model_override`: found by reading `dispatch.mjs`, not observed — an override given for one engine met a role whose chain fell through to another, and the override followed the chain.
+**Cause:** `checkModel` in `tools/workflow-mcp/config.mjs` checked only that an id was well-formed, and `dispatch.mjs` passed `model_override` to whichever engine resolved. Nothing tied a model to the engine allowed to run it.
+**Fix:** Each adapter declares `modelPrefixes` (and optionally `modelExcludes`); `tools/workflow-mcp/model-fit.mjs` is the one rule the loader, `buildCommand`, the `model_override` check and the config editor share, so a mismatch is refused at load with the setting named and the owning engine ("It belongs to codex"). The prefixes are taken from what `agy models` and `codex debug models` really list — `agy` serves `claude-*` and `gpt-oss-*` beside `gemini-*`, so those are its prefixes too. A tool that starts serving a new family needs it added to the adapter's `modelPrefixes`, or the loader will refuse it: that is the price of the check, and it is deliberate. Guarded by `test/model-fit.test.mjs`, which holds the real tool listings as fixtures.
+
+### `workerTimeoutSeconds` in `.agents/config.json` only bounds Antigravity workers
+
+**When:** Setting `workerTimeoutSeconds` expecting it to cap how long any dispatched worker may run.
+**Symptom:** A claude or codex worker runs past the configured limit and nothing stops it. The key name and its top-level position read as global.
+**Cause:** The only reader is `tools/workflow-mcp/engines/antigravity.mjs`, which passes it to agy as `--print-timeout`. The claude and codex adapters never read it; `dispatch.mjs` does not enforce it either (grep `workerTimeoutSeconds` across `tools/workflow-mcp/`, 2026-09-18).
+**Fix:** None yet — the config editor (`tools/workflow-mcp/config-ui.mjs`) says under the field that only Antigravity workers use it, and the README says so. To bound a claude or codex worker, the conductor must kill the process itself. Enforcing it for every engine, or renaming the key, is a behavior change and not done here.
 
 ### `codex mcp add` / `agy mcp add` with relative paths break at spawn time, not registration time
 

@@ -29,6 +29,45 @@ const WRITE_TOOLS = ['write_to_file', 'replace_file_content', 'multi_replace_fil
 export default {
   name: 'antigravity',
   efforts: ['low', 'medium', 'high'],
+  // The ids the config editor's dropdown offers when the tool cannot be asked — see claude.mjs.
+  knownModels: ['gemini-3.8-flash'],
+  // Every id this engine can run starts with one of these — see claude.mjs. `claude-` and
+  // `gpt-oss-` are here because `agy models` really lists Claude and open-weight GPT-OSS
+  // models next to the Gemini ones (2026-09-21; test/model-fit.test.mjs holds that output).
+  // A model the tool lists that is not covered — another vendor's — is added here,
+  // deliberately, not accepted because it happens to be well-formed.
+  modelPrefixes: ['gemini-', 'claude-', 'gpt-oss-'],
+  // `agy models` prints one `id<TAB>name` line per model, with each model listed once per
+  // effort (`gemini-3.8-flash-high`, `-medium`, `-low`). Effort is its own setting here
+  // and the config names the model without that suffix (`gemini-3.8-flash`, as every
+  // measured dispatch did), so the variants are folded into one entry.
+  listModels: {
+    args: ['models'],
+    parse(stdout) {
+      const models = new Map();
+      for (const line of stdout.split(/\r?\n/)) {
+        const [id, label] = line.split('\t');
+        if (!id || label === undefined || !/^[A-Za-z0-9][A-Za-z0-9._:/-]*$/.test(id)) continue;
+        const base = id.replace(/-(high|medium|low)$/, '');
+        if (!models.has(base)) models.set(base, label.replace(/\s*\((high|medium|low)\)\s*$/i, '').trim() || base);
+      }
+      if (!models.size) throw new Error('agy printed no models');
+      return [...models].map(([id, label]) => ({ id, label }));
+    }
+  },
+  // What each flag buildArgs passes is for — see claude.mjs.
+  flagNotes: {
+    '--add-dir': { kind: 'plumbing', why: 'Gives the worker its worktree as workspace, and separately the folder that holds its agent definition.' },
+    '--agent': { kind: 'guarantee', why: 'Runs the worker as a custom agent whose tool list has no write tools (read-only roles) and no sub-agent tools. That is what enforces both rules on this engine.' },
+    '--mode': { kind: 'guarantee', why: 'plan for read-only roles, accept-edits for write roles. No --sandbox is passed on purpose: with it, a headless worker cannot run any shell command.' },
+    '--print-timeout': { kind: 'config', value: '<seconds>s', why: 'From workerTimeoutSeconds (General → Worker time limit). The only engine that uses it.' },
+    '--disable-slash-commands': { kind: 'hygiene', why: 'The skills are already in the prompt; this stops agy adding its own built-in ones on top.' },
+    '--input-format': { kind: 'plumbing', why: 'The prompt is sent as stream-json.' },
+    '--output-format': { kind: 'plumbing', why: 'The transcript comes back as stream-json, and the report is extracted from it.' },
+    '--model': { kind: 'config', value: '<model>', why: 'The role\'s own pin, else the engine\'s default for its profile. Left out when blank or inherit, so the tool uses its own default.' },
+    '--effort': { kind: 'config', value: '<effort>', why: 'The role\'s own pin, else the engine\'s default effort for its profile.' },
+    '--print': { kind: 'plumbing', value: '(prompt on stdin)', why: 'Non-interactive mode. Always last: the real prompt arrives on stdin, and a flag placed after it would be swallowed as its value.' }
+  },
   readsProjectDocs: false,
   // Earned by the agent's `tools:` list, which leaves out define_subagent,
   // invoke_subagent and every other agent-spawning tool. agy validates that list
