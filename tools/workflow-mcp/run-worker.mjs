@@ -31,7 +31,7 @@ import { closeSync, existsSync, openSync, readFileSync, writeFileSync } from 'no
 import { constants } from 'node:os';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { findExecutable } from './availability.mjs';
+import { locateExecutable, shimProblem } from './availability.mjs';
 import { killTree, runBounded } from './process-tree.mjs';
 import { recordFinish, recordStart } from './record-outcome.mjs';
 
@@ -65,10 +65,11 @@ const note = (path, text) => {
 export async function runWorker(dir) {
   const run = readJson(resolve(dir, 'run.json'));
   recordStart(dir);
-  const executable = findExecutable(run.executable);
+  const { path: executable, shim } = locateExecutable(run.executable);
   if (!executable) {
-    writeFileSync(run.report_file, `The ${run.engine} executable "${run.executable}" was not found on PATH, so no worker `
-      + 'ran. Install it, fix engines.<engine>.executable, or dispatch with another cli_engine.\n');
+    writeFileSync(run.report_file, shim ? `${shimProblem(run.engine, shim)} No worker ran.\n`
+      : `The ${run.engine} executable "${run.executable}" was not found on PATH, so no worker `
+        + 'ran. Install it, fix engines.<engine>.executable, or dispatch with another cli_engine.\n');
     return recordFinish(dir, { processCode: 127 });
   }
 

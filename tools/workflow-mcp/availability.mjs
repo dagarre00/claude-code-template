@@ -11,7 +11,7 @@
 // "try again at 9:05 PM", so this deliberately does not try — it reports what is
 // installed, the chain reports what to fall back to, and a usage limit stays a
 // failed dispatch the conductor answers with `cli_engine`.
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync, writeSync } from 'node:fs';
+import { closeSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync, writeSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { delimiter, dirname, isAbsolute, resolve } from 'node:path';
 
@@ -21,27 +21,46 @@ const isFile = path => { try { return statSync(path).isFile(); } catch { return 
 // other OS), the name is tried as given.
 const extensions = env => (env.PATHEXT ?? '').split(';').map(ext => ext.trim()).filter(Boolean);
 
-export function findExecutable(name, env = process.env) {
-  if (typeof name !== 'string' || !name.trim()) return null;
+// Windows starts only .exe and .com files without a shell, and the runner
+// spawns without one. npm installs a CLI there as three shims — an
+// extensionless sh script, a .cmd and a .ps1 — and spawning any of them fails
+// (measured: ENOENT for the sh script, EINVAL for the .cmd) while the lookup
+// had reported the engine installed (adversary R2-F3 on PR #40). So on Windows
+// a name is found only as a native executable, and a shim found instead is
+// returned as `shim`, so the caller can say what is actually there.
+const NATIVE = /\.(exe|com)$/i;
+
+export function locateExecutable(name, env = process.env, platform = process.platform) {
+  if (typeof name !== 'string' || !name.trim()) return { path: null, shim: null };
   // A path, not a name: nothing to look up, it either exists or it does not.
   if (name.includes('/') || name.includes('\\') || isAbsolute(name)) {
     const path = resolve(name);
-    return isFile(path) ? path : null;
+    return { path: isFile(path) ? path : null, shim: null };
   }
-  const candidates = [name, ...extensions(env).map(ext => name + ext)];
+  const suffixes = extensions(env);
+  const candidates = [name, ...(platform === 'win32' && !suffixes.length ? ['.com', '.exe'] : suffixes).map(ext => name + ext)];
+  let shim = null;
   for (const dir of (env.PATH ?? env.Path ?? '').split(delimiter).filter(Boolean)) {
     for (const candidate of candidates) {
       const path = resolve(dir.replace(/^"|"$/g, ''), candidate);
-      if (existsSync(path) && isFile(path)) return path;
+      if (!isFile(path)) continue;
+      if (platform !== 'win32' || NATIVE.test(candidate)) return { path, shim: null };
+      shim ??= path;
     }
   }
-  return null;
+  return { path: null, shim };
 }
 
-export function engineAvailability(config, name) {
+export const findExecutable = (name, env, platform) => locateExecutable(name, env, platform).path;
+
+export const shimProblem = (engine, shim) => `Only a shell shim was found for ${engine} (${shim}) — npm installs CLIs `
+  + 'this way on Windows — and Windows cannot start one without a shell. Point '
+  + `engines.${engine}.executable at a native executable (.exe) instead.`;
+
+export function engineAvailability(config, name, { env, platform } = {}) {
   const executable = config.engines?.[name]?.executable ?? null;
-  const path = executable ? findExecutable(executable) : null;
-  return { name, executable, available: path !== null, path };
+  const { path, shim } = executable ? locateExecutable(executable, env, platform) : { path: null, shim: null };
+  return { name, executable, available: path !== null, path, ...(shim ? { problem: shimProblem(name, shim) } : {}) };
 }
 
 const antigravitySettingsFile = () => resolve(homedir(), '.gemini', 'antigravity-cli', 'settings.json');
