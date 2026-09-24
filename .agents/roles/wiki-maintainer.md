@@ -37,7 +37,7 @@ You are the **compiler and librarian** of `docs/wiki/`: you compile `docs/raw/` 
    Report every Closed and Re-graded finding individually with a one-line reason — the conductor copies them into the commit body. A tally is not a disposition.
 
 3. **Reconciliation — computable gaps and contradictions**, relative to the link ontology, never intuition:
-   - a `technique` with empty `implements`; an `instance` with empty `specializes`;
+   - a `technique` with empty `implements`; an `instance` with empty `specializes` (`entity` and `summary` pages are exempt — the `wiki-update` link ontology says why);
    - a `depends_on` target with no page, or a term linked from 3+ pages with no page of its own → suggest a `status: stub`;
    - an orphaned **content** page (entity, concept, decision, summary) — ledgers, root spec pages and folder READMEs are navigational and exempt;
    - an asymmetric `contrasts_with` / `alternative_to`;

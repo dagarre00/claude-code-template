@@ -140,7 +140,7 @@ The ledgers (`log.md`, `todos.md`, `wiki-todos.md`, `gotchas.md`, `commands.md`)
 | Relation | Direction | Gap rule |
 |---|---|---|
 | `implements` | technique/pattern → principle | A `technique` implements ≥1 `principle`. |
-| `specializes` | instance/pattern → a more general concept | An `instance` without it is usually misclassified. |
+| `specializes` | instance/pattern → a more general concept | An `instance` without it is usually misclassified — except `type: entity` and `type: summary` pages: an entity specializes its own Behavior spec and a summary its raw source (`sources`), so a forced link would invent a parent concept nobody reads. |
 | `contrasts_with` | ↔ comparable alternatives | Symmetric. |
 | `alternative_to` | ↔ same function, different approach | Symmetric. |
 | `depends_on` | concept → prerequisite | The prerequisite exists as a page (else a `stub`). |
