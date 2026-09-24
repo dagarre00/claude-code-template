@@ -73,7 +73,7 @@ need the same procedure, one role would do.
 | `/project:review` | Periodic whole-repo audit of the code against the wiki by the reviewer, in a fresh context with no developer baggage — critical issues, drift, missing tests, security and performance. Run about every 5 todos, before a release, or on suspected drift; never inside /project:work. | conductor only |
 | `/project:sync-template` | Pull the generic workflow — .agents/ text and tools/workflow-mcp/ — from a template checkout into this adopting project, leaving project-owned files alone. Run in an adopting project, never in the template. Use when the template has fixes this project lacks, or a cycle here rediscovers a bug already fixed upstream. | conductor only |
 | `/project:wiki` | Wiki operations, both run by the wiki-maintainer so the conductor never reads a source or the findings backlog itself. With an argument, ingest one source (a file path, or "search for <topic>" to research first); with none, the periodic health pass — wiki-todos queue, reconciliation, lint, orphans, broken links and the filed-findings backlog. | **wiki-maintainer**: `wiki-update` |
-| `/project:work` | The core development loop — pick the top todo (or a batch sharing context), branch feat/* from develop, plan complex work, put the brief through the plan-adversary, run the developer Red→Green→refactor→wiki one Behavior case at a time, review the diff on complex cycles, and open a PR to develop once the entity is done. | **planner**: `plan-writing`, `spec-writing`<br>**plan-adversary**: `plan-review`<br>**developer**: `tdd-loop`, `clean-architecture`, `wiki-update`, `gotcha-recording`, `decision-recording`<br>**adversary**: `adversarial-review` |
+| `/project:work` | The core development loop — pick the top todo (or a batch sharing context), branch feat/* from develop, plan complex work, put the brief through the plan-adversary, run the developer Red→Green→refactor→wiki one Behavior case at a time, review the diff on complex cycles, and open a PR to develop once the entity is done. | **planner**: `plan-writing`, `spec-writing`<br>**plan-adversary**: `plan-review`<br>**developer**: `tdd-loop`, `clean-architecture`, `gotcha-recording`, `decision-recording`<br>**adversary**: `adversarial-review` |
 
 ## Roles
 
@@ -101,7 +101,8 @@ worker.
 - `docs/wiki/requirements.md` — what the application must do;
   `architecture.md` — stack, layout, layers, testing strategy.
 - `docs/wiki/entities/` — feature specs and their Behavior cases;
-  `concepts/`, `decisions/`, `summaries/` — patterns, ADRs, source digests.
+  `concepts/`, `decisions/`, `summaries/`, `reviews/` — patterns, ADRs,
+  source digests, dated audit reports.
 - `docs/wiki/commands.md` — verified application commands.
 - `docs/wiki/todos.md`, `gotchas.md`, `log.md`, `wiki-todos.md` — work queue,
   traps, history, deferred wiki maintenance.
@@ -114,7 +115,7 @@ Hard constraints from real failures. They override default inclinations.
 
 1. **Wiki-first, code-second.** Never change code behavior without updating the relevant `docs/wiki/entities/<slug>.md`. If the spec is wrong, fix the spec first, then the code — in the same commit.
 
-2. **Tests before implementation.** No production code without a failing test first. A dispatched developer's Red is re-proven mechanically (its tests must fail with every other change reverted), but writing the test first is still on you.
+2. **Tests before implementation.** No production code without a failing test first. A dispatched developer's case is re-proven mechanically (its tests must pass with its changes and fail with every other change reverted), but writing the test first is still on you.
 
 3. **Never modify tests to make them pass.** A test that seems wrong means the Behavior spec changes first, then the test, then the code.
 
@@ -164,10 +165,10 @@ Hard constraints from real failures. They override default inclinations.
     - **Diff findings** (`adversary`) end as **Filed** (a real todo line), **Fixed** (name what changed) or **Rejected** (a one-sentence reason). Silence is not a disposition and "unlikely" is not a reason; rejecting on an unwritten invariant means writing the invariant down.
     - **Filed is the default; fixing needs a human.** Findings become todos at their severity's priority and are never fixed in the cycle that raised them, however small. A `critical`/`major` goes to the human via `human-checkpoint` (fix now or queue); declined or unreachable → filed at P0/P1, said prominently. "Fix all the findings" from the human is the approval, at that scope.
     - **The record is the commit.** Fixes name their finding; each round closes with a `docs(<slug>): adversary round N` commit listing every disposition, so `git log --grep="adversary round"` reads the reasons back.
-    - **Brief findings** (`plan-adversary`, `/project:work` step 4a) invert the default: **Applied** (the brief changes — the default), **Escalated** (the spec is wrong → `human-checkpoint` → `/project:interview`) or **Rejected**. Never Filed: the cycle they are about starts now. No commit exists yet, so their dispositions go in the cycle's `work` log entry.
+    - **Brief findings** (`plan-adversary`, `/project:work` step 4a) invert the default: **Applied** (the brief changes — the default), **Escalated** (the spec is wrong → `human-checkpoint` → `/project:interview`) or **Rejected**. Never Filed: the cycle they are about starts now. No code commit exists yet, so their dispositions go in the cycle's `work` log entry, committed before the first test.
     - Protocol: `finding-disposition` skill.
 
-21. **A dirty tree you did not dirty belongs to someone else.** Agents run concurrently on one checkout, so "clean working tree" means "clean **and mine**". Never `stash`, `reset --hard`, `checkout --` or `clean` over changes you can't account for — stop and ask the human, naming the paths. Before any tree-wide destructive git operation, run `git status --porcelain` and account for every line.
+21. **A dirty tree you did not dirty belongs to someone else.** Agents run concurrently on one checkout, so "clean working tree" means "clean **and mine**". Never `stash`, `reset --hard`, `checkout --` or `clean` over changes you can't account for — stop and ask the human, naming the paths. Before any tree-wide destructive git operation, run `git status --porcelain` and account for every line. Two conductors in one checkout also block each other — every dispatch needs it clean — so a parallel conducting session gets a checkout of its own.
 
 22. **A filed backlog needs a consumer.** Filing is the default, so `minor` findings accumulate by design (`nit`s are tallied, never filed). `FINDINGS_MAX` caps the open `[adversary]` backlog (`docs/wiki/todos.md § Filed-findings backlog`), and every `/project:wiki` health pass re-triages it — re-grading, merging duplicates, closing what later work fixed. A finding that sits unread through five cycles had the wrong severity. <!-- conductor-only -->
 

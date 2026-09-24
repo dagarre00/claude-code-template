@@ -10,8 +10,10 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { computeDiff } from '../diff.mjs';
-import { prepareDispatch } from '../dispatch.mjs';
-import { cleanup, fixture } from './helpers.mjs';
+import { prepareDispatch as preparePrepared } from '../dispatch.mjs';
+import { cleanup, composeIn, fixture } from './helpers.mjs';
+
+const prepareDispatch = composeIn(preparePrepared);
 
 const CONFIG = {
   version: 1, defaultEngine: 'inherit', workerTimeoutSeconds: 1800, workerCommands: ['npm test'],

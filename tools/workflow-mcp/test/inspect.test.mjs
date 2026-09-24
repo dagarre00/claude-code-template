@@ -8,13 +8,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { buildRunnableCommand } from '../dispatch.mjs';
-import { ENGINES } from '../engines/index.mjs';
 import { makeTools } from '../tools.mjs';
-import { cleanup, fixture } from './helpers.mjs';
+import { cleanup, fixture, runAs } from './helpers.mjs';
 
 const CONFIG = {
   version: 1, defaultEngine: 'inherit', workerTimeoutSeconds: 1800, workerCommands: ['npm test'],
@@ -54,12 +52,7 @@ function dispatch(tools, { task_id, role = 'adversary', engine = 'claude', scrip
   const wt = tools.prepare_worktree({ task_id });
   const built = tools.build_worker_prompt({ role, instructions: 'Do the task.', workspace: wt.workspace,
     cli_engine: engine, task_id, ...(role === 'developer' ? { owned_paths: ['src'] } : {}), ...extra });
-  return { wt, built, run: () => {
-    const command = { executable: 'sh', args: ['-c', script] };
-    const wrapped = buildRunnableCommand({ workspace: wt.workspace, command, stdin_file: built.stdin_file,
-      report_file: built.report_file, raw_file: resolve(built.report_file, '..', 'raw.txt'), adapter: ENGINES[engine] });
-    return spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
-  } };
+  return { wt, built, run: () => runAs(built, 'sh', ['-c', script]) };
 }
 
 test('a prepared worktree already has a record, before any prompt is composed', () => {
@@ -115,6 +108,42 @@ test('an empty report is rejected even when the process exited 0', () => {
     const { verdict } = tools.inspect_dispatch({ task_id: 'silent' });
     assert.equal(verdict.mechanical, 'reject');
     assert.match(verdict.reasons.join(' '), /empty/i);
+  });
+});
+
+// claude used to report no tokens at all, so dispatch_stats could not compare
+// its cost with the other engines; and a tool call it denied mid-run (the worker
+// carries on) left no trace for the conductor.
+test('a claude dispatch reports its tokens, and warns about tool calls it denied', () => {
+  repo((root, tools) => {
+    const { built } = dispatch(tools, { task_id: 'counted', script: 'unused' });
+    const result = JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'F1 — minor — x', num_turns: 2,
+      total_cost_usd: 0.02, usage: { input_tokens: 10, cache_creation_input_tokens: 20, cache_read_input_tokens: 30, output_tokens: 40 },
+      permission_denials: [{ tool_name: 'Bash', tool_use_id: 't1', tool_input: { command: 'curl https://example.com' } }] });
+    runAs(built, process.execPath, ['-e', `console.log(${JSON.stringify(result)})`], { engineOutput: true });
+    const inspected = tools.inspect_dispatch({ task_id: 'counted' });
+    assert.equal(inspected.verdict.mechanical, 'pass', inspected.verdict.reasons.join(' '));
+    assert.deepEqual(inspected.usage, { total_tokens: 100, total_cost_usd: 0.02, num_turns: 2 });
+    assert.match(inspected.verdict.warnings.join(' '), /denied 1 tool call.*curl https:\/\/example\.com/);
+    assert.equal(tools.dispatch_stats().by_engine_role.find(row => row.engine === 'claude').total_tokens, 100);
+  });
+});
+
+// Before a decision, a vanished worktree means the scope check had nothing to
+// look at — which used to read as "no violations". After one, cleanup is expected.
+test('a finished dispatch whose worktree is gone is rejected until someone decides on it', () => {
+  repo((root, tools) => {
+    const { wt, run } = dispatch(tools, { task_id: 'vanished', script: 'echo "F1 — minor — correctness — x"' });
+    run();
+    assert.equal(git(root, 'worktree', 'remove', '--force', wt.workspace).status, 0);
+    const { verdict } = tools.inspect_dispatch({ task_id: 'vanished' });
+    assert.equal(verdict.mechanical, 'reject');
+    assert.match(verdict.reasons.join(' '), /worktree is gone/);
+    assert.throws(() => tools.record_decision({ task_id: 'vanished', decision: 'accepted', reason: 'Looks fine.' }),
+      /override_mechanical/);
+    tools.record_decision({ task_id: 'vanished', decision: 'rejected', reason: 'Its scope cannot be checked.' });
+    assert.doesNotMatch(tools.inspect_dispatch({ task_id: 'vanished' }).verdict.reasons.join(' '), /worktree is gone/,
+      'once decided, a removed worktree is ordinary cleanup');
   });
 });
 
@@ -306,9 +335,7 @@ test('re-dispatching into the same worktree keeps the attempt before it, and cou
     const wt = tools.prepare_worktree({ task_id: 'resume' });
     const compose = () => tools.build_worker_prompt({ role: 'adversary', instructions: 'Review.',
       workspace: wt.workspace, cli_engine: 'claude', task_id: 'resume' });
-    const runWith = (built, script) => spawnSync('sh', ['-c', buildRunnableCommand({ workspace: wt.workspace,
-      command: { executable: 'sh', args: ['-c', script] }, stdin_file: built.stdin_file, report_file: built.report_file,
-      raw_file: resolve(built.report_file, '..', 'raw.txt'), adapter: ENGINES.claude })]);
+    const runWith = (built, script) => runAs(built, 'sh', ['-c', script]);
 
     runWith(compose(), 'exit 4');
     compose();                                   // composed again, not yet run
@@ -370,6 +397,31 @@ test('prepare_worktree hands back the configured setup commands for the conducto
   repo((root, tools) => {
     assert.deepEqual(tools.prepare_worktree({ task_id: 'none' }).setup_commands, []);
   });
+});
+
+// Typed raw into the conductor's shell, setup ran with no limit, could outlive a
+// shell tool that gave up on it, and printed a whole install into the conductor's
+// context. The one command prepare_worktree hands back runs every step bounded,
+// in the worktree, stops at the first failure, and prints only a failure's output.
+test('the setup command runs every step in the worktree, bounded, and stops at the first failure', () => {
+  const step = (name, code = 0) => `node -e "require('fs').writeFileSync('${name}', 'x'); console.log('noise '.repeat(500)); process.exitCode = ${code}"`;
+  repo((root, tools) => {
+    const wt = tools.prepare_worktree({ task_id: 'setup-ok' });
+    assert.match(wt.setup_command, /bounded\.mjs --setup /);
+    const run = spawnSync(wt.setup_command, { shell: true, encoding: 'utf8' });
+    assert.equal(run.status, 0, run.stderr);
+    assert.ok(existsSync(resolve(wt.workspace, 'one.txt')) && existsSync(resolve(wt.workspace, 'two.txt')), 'ran in the worktree');
+    assert.doesNotMatch(run.stdout, /noise noise/, 'a successful step prints no output');
+    assert.match(run.stdout, /Setup done: 2 command/);
+  }, { ...CONFIG, worktreeSetup: [step('one.txt'), step('two.txt')] });
+  repo((root, tools) => {
+    const wt = tools.prepare_worktree({ task_id: 'setup-bad' });
+    const run = spawnSync(wt.setup_command, { shell: true, encoding: 'utf8' });
+    assert.equal(run.status, 3);
+    assert.match(run.stdout, /FAIL .*exit 3/);
+    assert.match(run.stdout, /noise noise/, 'the failing step shows its output');
+    assert.equal(existsSync(resolve(wt.workspace, 'two.txt')), false, 'nothing runs after a failure');
+  }, { ...CONFIG, worktreeSetup: [step('one.txt', 3), step('two.txt')] });
 });
 
 test('a malformed worktreeSetup fails at load, not in the middle of a cycle', () => {

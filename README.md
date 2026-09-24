@@ -25,7 +25,7 @@ claude
 bash scripts/adopt.sh /path/to/my-existing-project
 ```
 
-It copies `.agents/` and `tools/workflow-mcp/` (without `node_modules/` or the template-only `test/` suite), installs the server's dependencies, writes `.mcp.json` and a per-project plugin marketplace, registers the server with `codex`/`agy` if installed, and creates `.claude/settings.json` — or, if one exists, prints the two keys to merge by hand. Then start your CLI in the project. By hand, without the script:
+It copies `.agents/` and `tools/workflow-mcp/` (without `node_modules/` or the template-only `test/` suite), installs the server's dependencies, writes `.mcp.json` and a per-project plugin marketplace, registers the server with `codex`/`agy` if installed, and creates `.claude/settings.json` — or, if one exists, prints the three keys to merge by hand. Then start your CLI in the project. By hand, without the script:
 
 ```bash
 cd my-existing-project
@@ -38,7 +38,8 @@ mkdir -p .claude-plugin && cp <template>/.claude-plugin/marketplace.json .claude
 # merge into .claude/settings.json, with the same name:
 #   "extraKnownMarketplaces": {"workflow-<your-dir-name>": {"source": {"source": "directory", "path": "."}}}
 #   "enabledPlugins": {"project@workflow-<your-dir-name>": true}
-cd tools/workflow-mcp && npm install && cd ../..
+#   "claudeMdExcludes": ["**/.worktrees/**/CLAUDE.md", "**/.worktrees/**/AGENTS.md"]   # worker checkouts
+cd tools/workflow-mcp && npm ci && cd ../..
 claude
 ```
 
@@ -66,7 +67,7 @@ It stops and asks before: merging a PR, pushing to `develop` or `main` directly,
 
 | Practice | Mechanism |
 | --- | --- |
-| Tests fail before implementation | Every developer dispatch declares `test_paths`; `red-check.mjs` reverts every other changed file to the base commit and the tests must fail. Until it runs, `inspect_dispatch` is `incomplete`; if they pass, the case is rejected. |
+| Tests fail before implementation, pass after | Every developer dispatch declares `test_paths`; `red-check.mjs` runs the tests with the developer's changes (they must pass), the architecture check, then reverts every other changed file to the base commit (the tests must now fail). Until it runs, `inspect_dispatch` is `incomplete`; if any phase fails, the case is rejected. A time limit stops the whole process tree on every OS. |
 | Workers stay in scope | Worktrees, `owned_paths`, read-only sandboxes, no subagent tools, and a transcript audit on agy and codex. |
 | Clean architecture | `docs/wiki/architecture.md § Layers` declares the dependency rule; `/project:init` installs a stack-specific check (dependency-cruiser, import-linter, ArchUnit, …), proves it fails on a planted violation, grants it to every worker and protects its rule files — no worker can loosen them, and `verify.mjs` fails a branch that changes them without an ADR. |
 | Wiki ships with code, log ships with change | `tools/workflow-mcp/verify.mjs --base <branch>` in CI — plus generated-file drift, wikilinks and log order. |
@@ -88,9 +89,9 @@ dispatch_stats       # per engine and role: acceptance, retries, durations, toke
 list_worktrees / remove_worktree / list_roles / sync / grant_antigravity_setup
 ```
 
-The server never spawns, commits, merges or pushes — the conductor keeps all of that, and a failed worker is debugged by re-running a command line you can read. The full procedure is the `worker-dispatch` skill. Whatever the engine, running the returned command leaves only the worker's final report in `report_file`; the raw codex/agy transcript, which reached 6.9 MB on one real health pass, goes to a separate `raw_file`. `npm --prefix tools/workflow-mcp run e2e -- --engine <antigravity|codex|claude>` runs one small real cycle on an engine — run it after upgrading an engine CLI or before moving a role onto one.
+The server never spawns, commits, merges or pushes — the conductor keeps all of that. The command it hands back is one line, `node tools/workflow-mcp/run-worker.mjs <dispatch dir>`, the same in bash, zsh, PowerShell or cmd on Linux, macOS or Windows: the runner launches the engine from the argv recorded in `run.json` (no shell in between), stops it and everything it started at `workerTimeoutSeconds` — or, through a watchdog, the moment the runner itself is stopped from outside — records the outcome and prints the report. The red check, worktree setup and `bounded.mjs` (for the conductor's own long commands, such as the test suite) run under the same guard, so no workflow command outlives its run. The full procedure is the `worker-dispatch` skill. Whatever the engine, the run leaves only the worker's final report in `report_file`; the raw codex/agy transcript, which reached 6.9 MB on one real health pass, goes to a separate `raw_file`. `npm --prefix tools/workflow-mcp run e2e -- --engine <antigravity|codex|claude>` runs one small real cycle on an engine — run it after upgrading an engine CLI or before moving a role onto one.
 
-**Which model runs which role.** `.agents/config.json` is the only place: a role declares a `profile` (`reasoning` / `balanced` / `fast`), `engines.<engine>.models.<profile>` sets each CLI's default, and `roles.<role>` can pin an engine chain, model and effort. As shipped, four roles have their own engine chain and the rest follow the conducting CLI:
+**Which model runs which role.** `.agents/config.json` is the only place: a role declares a `profile` (`reasoning` / `balanced` / `fast`), `engines.<engine>.models.<profile>` sets each CLI's default, and `roles.<role>` can pin an engine chain, model and effort. As shipped, four roles have their own engine chain and the rest (`researcher`, `reviewer`, `triage`, `wiki-maintainer`) run on `defaultEngine`, which ships as `antigravity` — set it to `inherit` to have them follow the conducting CLI instead:
 
 | Role | Engine chain | Pinned model | Effort |
 | --- | --- | --- | --- |
@@ -115,9 +116,9 @@ Conductor-only rules (branch, commit, push, open a PR) are withheld from workers
 
 | | leaf worker | read-only | running commands | clean report |
 | --- | --- | --- | --- | --- |
-| claude | process (`--disallowedTools Agent,Task`) | process (no approval surface for edits) | allowlisted from `workerCommands` | stdout already is the report |
+| claude | process (`--disallowedTools Agent,Task`) | process (no approval surface for edits) | allowlisted from `workerCommands` | `report_file`, extracted from its JSON result, with tokens, cost and denied tool calls |
 | codex | process (`agents.enabled=false`) | process (OS sandbox) | free inside the sandbox | `report_file`, via `-o` |
-| agy | process (custom agent with no subagent tools) | process (custom agent with no write tools) | allowlisted; needs a one-time user-global grant | `report_file`, via command wrapping, plus an audit of reads outside the workspace |
+| agy | process (custom agent with no subagent tools) | process (custom agent with no write tools) | allowlisted; needs a one-time user-global grant | `report_file`, extracted by the runner, plus an audit of reads outside the workspace |
 
 `build_worker_prompt` warns per dispatch about any box an engine cannot back. A worktree is not a read boundary on agy or codex (measured), which is why `inspect_dispatch` audits their transcripts for outside reads and for skills a worker opened without being sent them. Details: [`tools/workflow-mcp/engine-setup.md`](tools/workflow-mcp/engine-setup.md).
 

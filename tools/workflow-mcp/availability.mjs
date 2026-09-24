@@ -80,10 +80,17 @@ function readAntigravitySettings(path) {
   return { parsed, problem: null };
 }
 
-function missingAntigravityGrants(config, parsed) {
+// The grant a web-capable role's read_url_content needs (engines/antigravity.mjs).
+// A researcher cannot know its domains before it searches, so the grant this
+// server writes is the wildcard; any `read_url(...)` rule a human narrowed it to
+// by hand satisfies the check instead.
+export const URL_GRANT = 'read_url(*)';
+
+function missingAntigravityGrants(config, parsed, { web = false } = {}) {
   const allow = parsed.permissions?.allow ?? [];
   const granted = new Set(allow.filter(rule => typeof rule === 'string'));
-  return { allow, missing: (config.workerCommands ?? []).filter(command => !granted.has(`command(${command})`)) };
+  const urls = web && !allow.some(rule => typeof rule === 'string' && rule.startsWith('read_url(')) ? [URL_GRANT] : [];
+  return { allow, missing: (config.workerCommands ?? []).filter(command => !granted.has(`command(${command})`)), urls };
 }
 
 // The other computable half: an installed engine that will deny its worker's
@@ -94,13 +101,16 @@ function missingAntigravityGrants(config, parsed) {
 // return undefined, so `check` carries no block for them. A settings file that
 // exists but cannot be read is its own problem, named as such and still not ok;
 // `missing_command_grants` is then empty because nothing is known about it.
-export function engineSetup(config, name) {
+// `web` is whether a role that needs the web would run on this engine; only then
+// is a missing `read_url` grant a setup gap (`missing_url_grants`).
+export function engineSetup(config, name, { web = false } = {}) {
   if (name !== 'antigravity') return undefined;
   const settings_file = antigravitySettingsFile();
   const { parsed, problem } = readAntigravitySettings(settings_file);
-  if (problem) return { settings_file, ok: false, missing_command_grants: [], problem };
-  const { missing } = missingAntigravityGrants(config, parsed);
-  return { settings_file, ok: missing.length === 0, missing_command_grants: missing, problem: null };
+  if (problem) return { settings_file, ok: false, missing_command_grants: [], missing_url_grants: [], problem };
+  const { missing, urls } = missingAntigravityGrants(config, parsed, { web });
+  return { settings_file, ok: missing.length === 0 && urls.length === 0, missing_command_grants: missing,
+    missing_url_grants: urls, problem: null };
 }
 
 const LOCK_TIMEOUT_MS = 5000;
@@ -162,21 +172,22 @@ export function withLock(lock, fn, timeoutMs, { fs = LOCK_FS, platform = process
 // not gate this server process, so it can just do it. Strictly additive —
 // existing entries, including whatever interactive grants the file already
 // carries, are read back verbatim and never dropped or reordered; this only
-// appends the `command(<line>)` rules `engineSetup` reports missing. A file it
+// appends the `command(<line>)` rules `engineSetup` reports missing, and
+// `read_url(*)` when a web-capable role runs on agy and no read_url rule exists. A file it
 // cannot read is refused outright rather than treated as empty, and the write
 // lands beside the file and is renamed into place, so a crash mid-write cannot
 // leave a truncated file that the next call could only refuse. The whole
 // read-modify-write runs under a lock file beside the settings (withLock), so
 // concurrent conductors queue instead of overwriting each other.
-export function grantAntigravitySetup(config, { lockTimeoutMs = LOCK_TIMEOUT_MS } = {}) {
+export function grantAntigravitySetup(config, { lockTimeoutMs = LOCK_TIMEOUT_MS, web = false } = {}) {
   const settings_file = antigravitySettingsFile();
   mkdirSync(dirname(settings_file), { recursive: true });
   return withLock(`${settings_file}.lock`, () => {
     const { parsed, problem } = readAntigravitySettings(settings_file);
     if (problem) throw new Error(problem);
-    const { allow, missing } = missingAntigravityGrants(config, parsed);
-    if (!missing.length) return { settings_file, added: [], already_granted: true };
-    const added = missing.map(command => `command(${command})`);
+    const { allow, missing, urls } = missingAntigravityGrants(config, parsed, { web });
+    if (!missing.length && !urls.length) return { settings_file, added: [], already_granted: true };
+    const added = [...missing.map(command => `command(${command})`), ...urls];
     const next = { ...parsed, permissions: { ...parsed.permissions, allow: [...allow, ...added] } };
     const staging = `${settings_file}.tmp-${process.pid}`;
     writeFileSync(staging, JSON.stringify(next, null, 2) + '\n');

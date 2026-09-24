@@ -10,11 +10,9 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { buildRunnableCommand } from '../dispatch.mjs';
-import { ENGINES } from '../engines/index.mjs';
 import { auditCodexTranscript } from '../engines/codex-audit.mjs';
 import { makeTools } from '../tools.mjs';
-import { cleanup, fixture } from './helpers.mjs';
+import { cleanup, fixture, runAs } from './helpers.mjs';
 
 const PWSH = '"C:\\\\Program Files\\\\WindowsApps\\\\Microsoft.PowerShell_7.6.6.0_x64__8wekyb3d8bbwe\\\\pwsh.exe"';
 const WS = 'C:\\Users\\dev\\repo\\.worktrees\\adv';
@@ -74,9 +72,7 @@ test('inspect_dispatch carries the codex audit and warns about reads outside the
     const built = tools.build_worker_prompt({ role: 'adversary', instructions: 'Review.', workspace: wt.workspace, task_id: 'adv', cli_engine: 'codex' });
     const script = resolve(globalDir, 'standin.sh');
     writeFileSync(script, `printf 'exec\\n/bin/sh -lc %s in %s\\n' "'cat ../../.handoff/x-plan.md'" "$(pwd)"\necho 'Nothing above nit. Checked: all.' > '${built.report_file.replaceAll('\\', '/')}'\n`);
-    const wrapped = buildRunnableCommand({ workspace: wt.workspace, command: { executable: 'sh', args: [script.replaceAll('\\', '/')] },
-      stdin_file: built.stdin_file, report_file: built.report_file, raw_file: resolve(built.report_file, '..', 'raw.txt'), adapter: ENGINES.codex });
-    assert.equal(spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' }).status, 0);
+    assert.equal(runAs(built, 'sh', [script.replaceAll('\\', '/')]).status, 0);
     const inspected = tools.inspect_dispatch({ task_id: 'adv' });
     assert.equal(inspected.audit.reads_outside_workspace.length, 1);
     assert.match(inspected.verdict.warnings.join(' '), /read outside its workspace/);

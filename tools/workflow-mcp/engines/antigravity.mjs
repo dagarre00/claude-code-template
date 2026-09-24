@@ -25,6 +25,14 @@
 // canary file). extract-agy-result.mjs audits that on every run instead.
 const READ_TOOLS = ['view_file', 'list_dir', 'grep_search', 'find_by_name', 'run_command'];
 const WRITE_TOOLS = ['write_to_file', 'replace_file_content', 'multi_replace_file_content'];
+// Only for a role that declares `capabilities: [web]`. Measured 2026-09-24 on agy
+// 1.2.9, headless, as a custom agent with exactly these tools: search_web returns
+// a cited summary with no grant (the "no summary returned from GenerateContent"
+// failure measured on 1.2.2 was fixed upstream); read_url_content is denied
+// (`read_url`) unless the user-global settings allow `read_url(<domain>)` or
+// `read_url(*)` — grant_antigravity_setup adds it — and then saves the page under
+// agy's own brain directory, which view_file may read.
+export const WEB_TOOLS = ['search_web', 'read_url_content'];
 
 export default {
   name: 'antigravity',
@@ -60,7 +68,7 @@ export default {
     '--add-dir': { kind: 'plumbing', why: 'Gives the worker its worktree as workspace, and separately the folder that holds its agent definition.' },
     '--agent': { kind: 'guarantee', why: 'Runs the worker as a custom agent whose tool list has no write tools (read-only roles) and no sub-agent tools. That is what enforces both rules on this engine.' },
     '--mode': { kind: 'guarantee', why: 'plan for read-only roles, accept-edits for write roles. No --sandbox is passed on purpose: with it, a headless worker cannot run any shell command.' },
-    '--print-timeout': { kind: 'config', value: '<seconds>s', why: 'From workerTimeoutSeconds (General → Worker time limit). The only engine that uses it.' },
+    '--print-timeout': { kind: 'config', value: '<seconds>s', why: 'From workerTimeoutSeconds (General → Worker time limit). agy stops itself and still reports; the runner stops every engine a minute later regardless.' },
     '--disable-slash-commands': { kind: 'hygiene', why: 'The skills are already in the prompt; this stops agy adding its own built-in ones on top.' },
     '--input-format': { kind: 'plumbing', why: 'The prompt is sent as stream-json.' },
     '--output-format': { kind: 'plumbing', why: 'The transcript comes back as stream-json, and the report is extracted from it.' },
@@ -78,11 +86,10 @@ export default {
   // `--mode plan` is still passed, but it is inert while slash command expansion
   // is disabled ("warning: --mode plan has no effect..."), and nothing relies on it.
   enforcesReadOnly: true,
-  // Measured once, and the agent definition below carries no web tools anyway:
-  // headless agy auto-denies read_url_content unless each URL is pre-granted, and
-  // search_web failed on its own ("no summary returned from GenerateContent"). A
-  // role that declares `capabilities: [web]` is warned off this engine.
-  providesWeb: false,
+  // A role that declares `capabilities: [web]` gets WEB_TOOLS in its agent
+  // definition; reading a URL also needs the `read_url` grant, which `check`
+  // reports as antigravity setup until it exists (availability.mjs).
+  providesWeb: true,
   // stdout is the NDJSON event stream --output-format stream-json requires —
   // --input-format stream-json refuses to pair with any other output format. The
   // terminal {"event":"result"} line carries response, status and denied_actions,
@@ -90,6 +97,8 @@ export default {
   reportIsStdout: false,
   writesReportFile: true,
   extractReportFrom: 'extract-agy-result.mjs',
+  // --print-timeout below; run-worker.mjs's own limit stands a minute behind it.
+  enforcesTimeout: true,
   // --print always requires a value, and in text mode that value IS the prompt —
   // which would put a 35KB worker prompt on the command line, far past the
   // ~32K Windows limit. stream-json takes the prompt from stdin instead, with
@@ -98,12 +107,12 @@ export default {
 
   // The custom agent a worker runs as. `excludeDefaultComponents` drops agy's
   // own prompt sections and built-in tools, `inheritMcp: false` keeps the user's
-  // global MCP servers out of the worker, and `tools:` is the whole toolset. No
-  // web tools: headless agy denies read_url_content unless each URL is granted,
-  // and search_web failed on its own in the one measured researcher run.
-  agentDefinition({ role, access, workspace }) {
+  // global MCP servers out of the worker, and `tools:` is the whole toolset —
+  // web tools only for a role that declares it needs the web.
+  agentDefinition({ role, access, workspace, capabilities = [] }) {
     const name = `workflow-${role}`;
-    const tools = access === 'write' ? [...READ_TOOLS, ...WRITE_TOOLS] : READ_TOOLS;
+    const tools = [...READ_TOOLS, ...(access === 'write' ? WRITE_TOOLS : []),
+      ...(capabilities.includes('web') ? WEB_TOOLS : [])];
     const content = [
       '---',
       `name: ${name}`,

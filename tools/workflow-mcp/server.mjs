@@ -42,11 +42,13 @@ export function createServer(root, conductorEngine) {
     {}, () => api.list_roles());
 
   register('build_worker_prompt',
-    'Compose the complete prompt for one worker from .agents/ and return the exact command to run it. '
-    + 'Writes prompt.txt (readable) and stdin.txt (the bytes to pipe). The worker receives this prompt and '
-    + 'nothing else — every engine is launched with project-file discovery suppressed. Run the returned '
-    + 'command yourself; this server never spawns anything. The command records how the run went; call '
-    + 'inspect_dispatch afterwards rather than judging the exit code and report by hand.',
+    'Compose the complete prompt for one worker from .agents/ and return the one-line command that runs it '
+    + '(node run-worker.mjs <dispatch dir> — any shell, any OS). Writes prompt.txt (readable), stdin.txt and '
+    + 'run.json beside it. The worker receives this prompt and nothing else — every engine is launched with '
+    + 'project-file discovery suppressed. Run the returned command yourself, in the background if your shell '
+    + 'tool has a short limit: it can take up to workerTimeoutSeconds. This server never spawns anything. The '
+    + 'command records how the run went; call inspect_dispatch afterwards rather than judging the exit code and '
+    + 'report by hand.',
     {
       role: z.string().describe('Role name from list_roles.'),
       instructions: z.string().min(1).max(100000).optional().describe('What this worker must do. Use instructions_file instead for anything large.'),
@@ -72,8 +74,14 @@ export function createServer(root, conductorEngine) {
 
   register('prepare_worktree',
     'Create an isolated checkout at committed HEAD on its own worker/<id> branch. Requires a clean checkout. Not a security sandbox — it prevents collisions, not malice. '
-    + 'Returns `setup_commands` from config (e.g. building a per-worktree virtualenv): run each in the workspace before dispatching, and treat a failure as a blocker.',
-    { task_id: z.string().optional() },
+    + 'Pass `reuse: <task id>` to hand a finished task\'s worktree to this one instead — a new branch at HEAD in the same directory, '
+    + 'its installed dependencies intact — for the next case of a cycle. Refused unless that worktree is clean, merged, free of violations '
+    + 'and its dispatch decided. '
+    + 'With worktreeSetup configured (e.g. building a per-worktree virtualenv) it returns `setup_command`: one line that runs every step in the '
+    + 'workspace under workerTimeoutSeconds, stops at the first failure and prints only its output. Run it before dispatching, and treat a '
+    + 'failure as a blocker; never paste `setup_commands` into your shell one by one. On a reused worktree it is quick, and still needed '
+    + 'if the last case changed a dependency.',
+    { task_id: z.string(), reuse: z.string().optional().describe('task_id of a finished task whose worktree this one takes over.') },
     input => api.prepare_worktree(input), false);
 
   register('inspect_dispatch',
@@ -132,7 +140,8 @@ export function createServer(root, conductorEngine) {
     {}, () => api.check());
 
   register('grant_antigravity_setup',
-    'Write the missing `command(<line>)` rules check\'s antigravity `setup` block reports into the user-global '
+    'Write the missing `command(<line>)` rules check\'s antigravity `setup` block reports — and `read_url(*)` when a '
+    + 'role that needs the web runs on antigravity and no read_url rule exists — into the user-global '
     + '~/.gemini/antigravity-cli/settings.json, creating the file if absent. Strictly additive: existing entries '
     + '(including interactive grants) are read back and kept, never removed or reordered. Exists because this file '
     + 'is outside the repository, and a conductor\'s own edit tools are commonly denied from touching it, while this '

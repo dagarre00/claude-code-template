@@ -92,7 +92,11 @@ export function assembleConfig(config, forms, engineNames, { drop = [] } = {}) {
   for (const [name, raw] of Object.entries(config.roles ?? {})) {
     if (drop.includes(name)) continue;
     const form = forms[name];
-    roles[name] = structuredClone(!form || sameRole(form, raw, engineNames) ? raw : formToRole(form, engineNames));
+    // Keys the page does not edit (extraSkills) ride along untouched: rebuilding
+    // a role from its form alone would drop them on every save.
+    const { engine, models, effort, ...unmanaged } = raw ?? {};
+    roles[name] = structuredClone(!form || sameRole(form, raw, engineNames) ? raw
+      : { ...formToRole(form, engineNames), ...unmanaged });
   }
   for (const [name, form] of Object.entries(forms)) {
     if (name in roles || drop.includes(name) || sameRole(form, {}, engineNames)) continue;

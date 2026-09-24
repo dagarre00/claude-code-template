@@ -24,7 +24,7 @@ The conductor never reads the source or the backlog — every read, dedup, write
 
 ## Preconditions
 
-- **Ingest:** a clean tree, except `docs/` and the source being ingested (a file the human just dropped counts). The file readable, or network access for research.
+- **Ingest:** a clean tree, except the source being ingested (a file the human just dropped counts — step 1 commits it). The file readable, or network access for research.
 - **Health pass:** a clean tree — the maintainer writes across `docs/wiki/`, so unrelated dirt there is indistinguishable from its output.
 - `docs/wiki/` exists, with `summaries/` for ingest, and `requirements.md` and `wiki-todos.md` for a pass.
 
@@ -34,11 +34,11 @@ Any other dirt → `human-checkpoint` (rule 21). Then **sync develop** with the 
 
 One source in, one `summaries/` page out, cross-linked. No lint work — that is the health pass.
 
-1. **Get the source onto disk, unread.** A file → nothing to do. Research → dispatch the `researcher` with the query (if `check` lists it under `capability_gaps` for its engine, pass `cli_engine` elsewhere); it writes `docs/raw/research/<slug>.md`. Nothing returned, or every source unreachable → report and stop; never synthesize a summary from nothing.
+1. **Get the source committed under `docs/raw/`, unread.** The maintainer works in a worktree cut from committed HEAD, and `prepare_worktree` refuses a dirty checkout — an uncommitted or out-of-repo source is invisible to it. A file → copy it into `docs/raw/` if it lives elsewhere (keep its name), and commit that path alone, `docs(raw): add <name>` (step 4's log entry covers it). Research → dispatch the `researcher` with the query (if `check` lists it under `capability_gaps` for its engine, pass `cli_engine` elsewhere); it writes `docs/raw/research/<slug>.md`, which integrating its dispatch commits. Nothing returned, or every source unreachable → report and stop; never synthesize a summary from nothing.
 
 2. **Dispatch the `wiki-maintainer`** with the source path and "ingest this source". Its role and the `wiki-update` skill carry the procedure: read it fully, run the placement check, write `summaries/<slug>.md` from the skill's summary template, cross-link, and flag contradictions on both pages.
 
-3. **Review its diff** (`git diff --stat` in its worktree): only `docs/wiki/`, plus `docs/raw/` if a source moved in — no code, no edits to existing raw files.
+3. **Review its diff** (`git diff --stat` in its worktree): only `docs/wiki/` — no code, and nothing under `docs/raw/`.
 
 4. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `wiki-ingest`, fields `Ingested: <path> → [[summaries/<slug>]]` and `Cross-links added: <list>` from the maintainer's report. Stage `docs/wiki/` and `docs/raw/`; subject `docs: ingest <name> → [[summaries/<slug>]]`.
 

@@ -12,7 +12,8 @@ import { PROFILES } from './canonical.mjs';
 import { isSafeRepoPath } from './compose.mjs';
 import { explainMisfit, modelFits } from './model-fit.mjs';
 
-const ROLE_KEYS = ['engine', 'models', 'effort'];
+const ROLE_KEYS = ['engine', 'models', 'effort', 'extraSkills'];
+const SKILL_NAME = /^[a-z0-9][a-z0-9-]{0,63}$/;
 // `$comment` is the one free-text key: JSON has no comments, so it is where a
 // file can point a reader at the editor (`node tools/workflow-mcp/config-ui.mjs`).
 const TOP_KEYS = ['$comment', 'version', 'defaultEngine', 'workerTimeoutSeconds', 'workerCommands',
@@ -211,6 +212,17 @@ export function validateConfig(config) {
       }
     } else if (role.engine != null && !['inherit', ...engineNames].includes(role.engine)) {
       throw new Error(`Invalid engine for role ${name}: ${role.engine}`);
+    }
+    // Project-specific skills this role receives on top of what the commands
+    // declare for it — design-system-check for the developer of a project with a
+    // UI. Kept here, not in the command files, because sync-template never
+    // overwrites config.json and always reports an edited command as customized.
+    // Whether each names a skill a worker may receive is checked at composition,
+    // where the skills are known.
+    if (role.extraSkills != null && (!Array.isArray(role.extraSkills) || role.extraSkills.length > 16
+      || role.extraSkills.some(skill => typeof skill !== 'string' || !SKILL_NAME.test(skill))
+      || new Set(role.extraSkills).size !== role.extraSkills.length)) {
+      throw new Error(`Role ${name}.extraSkills must be a list of distinct skill names (kebab-case, at most 16)`);
     }
     for (const field of ['models', 'effort']) {
       if (role[field] == null) continue;

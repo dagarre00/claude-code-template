@@ -173,7 +173,10 @@ function checkRange(root, base, config) {
 
   const rules = Array.isArray(config.architecture?.rules) ? config.architecture.rules : [];
   const touched = changed.filter(path => under(path, rules));
-  const adr = changed.some(path => path.startsWith(`${WIKI}/decisions/`) && !path.endsWith('README.md'));
+  // A review report is not an ADR, even where an older project saved one under
+  // decisions/ — it must not satisfy the gate for an architecture change.
+  const adr = changed.some(path => path.startsWith(`${WIKI}/decisions/`) && !path.endsWith('README.md')
+    && !basename(path).startsWith('review-'));
   checks.push({ id: 'range.architecture', ok: !touched.length || adr,
     details: touched.length && !adr
       ? [`architecture rules changed (${touched.join(', ')}) with no ADR in ${WIKI}/decisions/ — loosening a layer is a human decision on the record`]

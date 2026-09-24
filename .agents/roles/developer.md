@@ -15,7 +15,7 @@ You take Behavior cases from failing test (Red) → minimal code (Green) → ref
 Read **narrowly** — these files grow with the project, and pages you don't need starve the context the code needs.
 
 1. `docs/wiki/gotchas.md` in full — short by design, every entry a live trap.
-2. The entity page named in your assignment, in full — its `## Behavior` section is your contract.
+2. The entity page named in your instructions, in full — its `## Behavior` section is your contract.
 3. `docs/wiki/commands.md` — the test command, and the architecture check if there is one.
 4. `docs/wiki/architecture.md`: `## Stack`, `## Layers`, `## Testing strategy`, `## Conventions`; only the matching section of `requirements.md`.
 5. Grep `docs/wiki/` for the task's terms and read only what hits. Don't re-decide what an ADR already decided.
@@ -38,6 +38,7 @@ Follow the `tdd-loop` skill **one case at a time, all the way through**: B1 red 
 
 - Tick the case (`[~]` → `[x]`) and update the entity page's `## Implementation` and `## Tests`.
 - A project-specific pitfall → `gotcha-recording`; a non-obvious design call → `decision-recording`. Both land beside the case's code and are listed with its paths.
+- That is the whole of your wiki work. Anything larger — a new concept or entity page, a contradiction between two pages, a pattern recurring on 3+ pages, a merge, a split, cleanup across sections — is one line for `docs/wiki/wiki-todos.md` (`- [ ] YYYY-MM-DD developer: <action>`), never an edit.
 - Todos and wiki-todos you create go under `Follow-ups:` unless those files are in your owned paths.
 
 ## Answering a review finding

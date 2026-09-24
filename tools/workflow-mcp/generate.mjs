@@ -111,7 +111,8 @@ worker.
 - \`docs/wiki/requirements.md\` — what the application must do;
   \`architecture.md\` — stack, layout, layers, testing strategy.
 - \`docs/wiki/entities/\` — feature specs and their Behavior cases;
-  \`concepts/\`, \`decisions/\`, \`summaries/\` — patterns, ADRs, source digests.
+  \`concepts/\`, \`decisions/\`, \`summaries/\`, \`reviews/\` — patterns, ADRs,
+  source digests, dated audit reports.
 - \`docs/wiki/commands.md\` — verified application commands.
 - \`docs/wiki/todos.md\`, \`gotchas.md\`, \`log.md\`, \`wiki-todos.md\` — work queue,
   traps, history, deferred wiki maintenance.

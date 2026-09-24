@@ -1,11 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { spawn, spawnSync } from 'node:child_process';
 import { loadConfig } from '../config.mjs';
-import { prepareDispatch, buildRunnableCommand } from '../dispatch.mjs';
-import { cleanup, fixture } from './helpers.mjs';
+import { prepareDispatch as preparePrepared, shellArg } from '../dispatch.mjs';
+import { RUN_WORKER, cleanup, composeIn, fixture, readRun, runAs, stubWorktree } from './helpers.mjs';
+
+const prepareDispatch = composeIn(preparePrepared);
 
 const CONFIG = {
   version: 1, defaultEngine: 'inherit', workerTimeoutSeconds: 1800, workerCommands: ['npm test'],
@@ -87,34 +89,48 @@ test('a context-management override on a non-codex engine is rejected', () => {
       claude: { ...CONFIG.engines.claude, toolOutputTokenLimit: 2000 } } }) });
 });
 
-test('writes the prompt and the exact stdin bytes, and returns a runnable command', () => {
+test('writes the prompt, the exact stdin bytes and the run record, and returns one short command', () => {
   withRepo(root => {
     const result = prepareDispatch(root, { ...base, command: 'work', conductorEngine: 'claude',
       workspace: resolve(root, '.worktrees/x') });
     assert.equal(result.engine, 'claude');
-    assert.equal(result.executable, 'claude');
+    const run = readRun(result);
+    assert.equal(run.executable, 'claude');
+    assert.ok(Array.isArray(run.args) && run.args.includes('--safe-mode'));
     // The prompt is on disk for a human to read, and the stdin file is what
     // actually gets piped — same bytes here, different for antigravity.
     assert.match(readFileSync(result.prompt_file, 'utf8'), /Implement login\./);
-    assert.equal(readFileSync(result.stdin_file, 'utf8'), readFileSync(result.prompt_file, 'utf8'));
-    assert.ok(result.command.includes('<'), 'command must pipe the stdin file');
-    assert.ok(Array.isArray(result.args));
+    assert.equal(readFileSync(run.stdin_file, 'utf8'), readFileSync(result.prompt_file, 'utf8'));
+    // The argv lives on disk: the response and the command stay small.
+    assert.match(result.command, /^node \S*run-worker\.mjs \S+$/);
+    for (const field of ['executable', 'args', 'cwd', 'stdin_file']) assert.equal(result[field], undefined, field);
+    assert.equal(run.timeout_seconds, 1800, 'workerTimeoutSeconds applies to every engine');
   });
 });
 
 // Claude Code has no --cd flag: it works in the process's working directory. So
-// a command that does not change directory first would run the worker against
-// the conductor's own checkout, which is the one thing the worktree exists to
-// prevent. The returned command must be runnable exactly as given.
-test('the returned command runs in the worktree, not the conductor checkout', () => {
+// a run that did not start in the worktree would run the worker against the
+// conductor's own checkout, which is the one thing the worktree exists to prevent.
+test('every engine runs in the worktree, not the conductor checkout', () => {
   withRepo(root => {
     const workspace = resolve(root, '.worktrees/x');
     for (const cli_engine of ['claude', 'codex', 'antigravity']) {
       const result = prepareDispatch(root, { ...base, cli_engine, conductorEngine: 'claude', workspace });
-      assert.equal(result.cwd, workspace);
-      assert.ok(result.command.includes(workspace) || result.command.includes(workspace.replaceAll('\\', '/')),
-        `${cli_engine} command does not enter the worktree`);
+      assert.equal(readRun(result).cwd, workspace, `${cli_engine} does not start in the worktree`);
     }
+  });
+});
+
+// Pasted into bash, zsh, PowerShell or cmd, the same line must mean the same
+// thing: forward slashes, and quotes only where a path needs them.
+test('the command reads the same in every shell, spaces in the path included', () => {
+  assert.equal(shellArg('/tmp/plain/dir'), '/tmp/plain/dir');
+  assert.equal(shellArg('/home/me/My Projects/x'), '"/home/me/My Projects/x"');
+  assert.equal(shellArg("/odd/$HOME's"), "'/odd/$HOME'\\''s'");
+  withRepo(root => {
+    const workspace = resolve(root, '.worktrees/x');
+    const result = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude', workspace });
+    assert.doesNotMatch(result.command, /\\/, 'no backslash for a POSIX shell to eat');
   });
 });
 
@@ -171,15 +187,17 @@ test('each engine reaches report_file by its own mechanism, and none needs a tra
   withRepo(root => {
     const workspace = resolve(root, '.worktrees/x');
     const codex = prepareDispatch(root, { ...base, cli_engine: 'codex', conductorEngine: 'claude', workspace });
-    assert.ok(codex.args.includes(codex.report_file), 'report_file must be the same path passed to -o');
-    assert.doesNotMatch(codex.command, /extract-agy-result/, 'codex needs no extraction step');
+    assert.ok(readRun(codex).args.includes(codex.report_file), 'report_file must be the same path passed to -o');
+    assert.equal(readRun(codex).extract, null, 'codex needs no extraction step');
+    assert.equal(readRun(codex).stdout, 'raw', 'its transcript stays out of the report');
 
     const claude = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude', workspace });
-    assert.doesNotMatch(claude.command, /extract-agy-result/, 'claude needs no extraction step either');
-    assert.doesNotMatch(claude.command, /2>&1/, 'claude\'s stderr must stay out of its report');
+    assert.equal(readRun(claude).extract, 'extract-claude-result.mjs', 'claude\'s JSON result is extracted');
+    assert.ok(readRun(claude).args.join(' ').includes('--output-format json'));
 
     const agy = prepareDispatch(root, { ...base, cli_engine: 'antigravity', conductorEngine: 'claude', workspace });
-    assert.ok(agy.command.includes('extract-agy-result.mjs'), 'antigravity needs the post-processing step');
+    assert.equal(readRun(agy).extract, 'extract-agy-result.mjs', 'antigravity needs the post-processing step');
+    assert.equal(readRun(agy).timeout_seconds, 1860, 'agy\'s own --print-timeout gets a minute to report first');
 
     for (const result of [codex, agy, claude]) {
       assert.ok(!result.warnings.some(w => /transcript/i.test(w)),
@@ -188,73 +206,57 @@ test('each engine reaches report_file by its own mechanism, and none needs a tra
   });
 });
 
-// The wrapper is a real shell pipeline, not just string content. These build
-// it with a fake "engine" — no real CLI involved, just `cat`/`sh`, so nothing
-// here depends on codex or agy actually being installed — and run it for real.
+// The runner is a real process, not string content. These compose a real
+// dispatch and run it through run-worker.mjs with a stand-in for the engine — no
+// real CLI involved, just `sh`/node, so nothing here depends on codex, claude or
+// agy being installed — and check what the conductor gets back.
 
-const wrapperFixture = root => {
-  const workspace = resolve(root, '.worktrees/x');
-  mkdirSync(workspace, { recursive: true });
-  const dir = resolve(root, '.worktrees/.dispatch/wrapper-test');
-  mkdirSync(dir, { recursive: true });
-  const stdin_file = resolve(dir, 'stdin.txt');
-  writeFileSync(stdin_file, '');
-  return { workspace, dir, stdin_file,
-    report_file: resolve(dir, 'report.txt'), raw_file: resolve(dir, 'raw.txt') };
+const agyDispatch = root => prepareDispatch(root, { role: 'adversary', instructions: 'Review it.', cli_engine: 'antigravity',
+  conductorEngine: 'claude', workspace: resolve(root, '.worktrees/x'), task_id: 'runner' });
+// Pre-written, not piped through a shell one-liner: a JSON string can contain
+// characters (quotes, real newlines) no shell-quoting scheme handles safely,
+// which is exactly why extract-agy-result.mjs is a real file.
+const transcriptFile = (built, name, lines) => {
+  const path = resolve(dirname(built.report_file), name);
+  writeFileSync(path, lines.map(line => JSON.stringify(line)).join('\n') + '\n');
+  return path;
 };
-const adapter = { writesReportFile: true, extractReportFrom: 'extract-agy-result.mjs' };
 
-test('the report-file wrapper extracts the report and hides the raw transcript', () => {
+test('the runner extracts the report and keeps the raw transcript out of it', () => {
   withRepo(root => {
-    const { workspace, dir, stdin_file, report_file, raw_file } = wrapperFixture(root);
-    // Pre-written, not piped through a shell one-liner: a JSON string can
-    // contain characters (quotes, real newlines) no shell-quoting scheme
-    // handles safely, which is exactly why extract-agy-result.mjs is a real
-    // file instead of an inline script — this fixture gets the same courtesy.
-    const transcript = resolve(dir, 'fake-transcript.txt');
-    writeFileSync(transcript, JSON.stringify({ event: 'init' }) + '\n'
-      + JSON.stringify({ event: 'result', result: { status: 'SUCCESS', response: 'hello from the fake worker' } }) + '\n');
-    const command = { executable: 'cat', args: [transcript] };
+    const built = agyDispatch(root);
+    const transcript = transcriptFile(built, 'fake-transcript.txt', [{ event: 'init' },
+      { event: 'result', result: { status: 'SUCCESS', response: 'hello from the fake worker' } }]);
+    const outcome = runAs(built, 'cat', [transcript]);
 
-    const wrapped = buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter });
-    const outcome = spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
-
-    assert.equal(outcome.status, 0);
+    assert.equal(outcome.status, 0, outcome.stderr);
     assert.match(outcome.stdout, /hello from the fake worker/,
-      'the wrapper must print the extracted report, not the raw transcript');
+      'the runner must print the extracted report, not the raw transcript');
     assert.doesNotMatch(outcome.stdout, /"event":"init"/, 'the raw transcript must not reach stdout');
-    assert.match(readFileSync(raw_file, 'utf8'), /"event":"init"/, 'raw_file keeps the full transcript for debugging');
-    assert.equal(readFileSync(report_file, 'utf8').trim(),
-      JSON.stringify({ status: 'SUCCESS', response: 'hello from the fake worker' }, null, 2).trim());
+    assert.match(readFileSync(readRun(built).raw_file, 'utf8'), /"event":"init"/, 'raw_file keeps the full transcript for debugging');
+    assert.match(readFileSync(built.report_file, 'utf8'), /"response": "hello from the fake worker"/);
+    const outcomeRecord = JSON.parse(readFileSync(resolve(dirname(built.report_file), 'outcome.json'), 'utf8'));
+    assert.equal(outcomeRecord.exit_code, 0);
+    assert.ok(outcomeRecord.finished_at, 'the runner records the outcome inspect_dispatch reads');
   });
 });
 
-test('the report-file wrapper preserves the wrapped process\'s real exit code', () => {
+test('the runner exits with the engine\'s own exit code', () => {
   withRepo(root => {
-    const { workspace, stdin_file, report_file, raw_file } = wrapperFixture(root);
-    const command = { executable: 'sh', args: ['-c', 'exit 7'] };
-    const wrapped = buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter });
-    const outcome = spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
-    assert.equal(outcome.status, 7, 'a trailing `cat` must not overwrite the wrapped process\'s own exit code');
+    assert.equal(runAs(agyDispatch(root), 'sh', ['-c', 'exit 7']).status, 7,
+      'the report printed at the end must not overwrite the engine\'s exit code');
   });
 });
 
 // Agy's own exit code is 0 whether or not a tool call was auto-denied — headless
 // mode has no approval surface to fail loudly on. extract-agy-result.mjs is the
-// only place that can see denied_actions, so it must fail the whole wrapped
-// command itself rather than leaving that to whoever reads the report text.
-test('a denied action fails the wrapped command even though the underlying process exits 0', () => {
+// only place that can see denied_actions, so it must fail the whole run itself.
+test('a denied action fails the run even though the engine process exits 0', () => {
   withRepo(root => {
-    const { workspace, dir, stdin_file, report_file, raw_file } = wrapperFixture(root);
-    const transcript = resolve(dir, 'denied-transcript.txt');
-    writeFileSync(transcript, JSON.stringify({ event: 'init' }) + '\n'
-      + JSON.stringify({ event: 'result', result: { status: 'SUCCESS', response: '',
-        denied_actions: [{ action: 'read_file', target: 'vendor/freecad-libs' }] } }) + '\n');
-    const command = { executable: 'cat', args: [transcript] };
-
-    const wrapped = buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter });
-    const outcome = spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
-
+    const built = agyDispatch(root);
+    const transcript = transcriptFile(built, 'denied.txt', [{ event: 'init' }, { event: 'result', result: { status: 'SUCCESS',
+      response: '', denied_actions: [{ action: 'read_file', target: 'vendor/freecad-libs' }] } }]);
+    const outcome = runAs(built, 'cat', [transcript]);
     assert.notEqual(outcome.status, 0, 'a denied action must not report success');
     assert.match(outcome.stdout, /denied_actions/, 'the report must still be printed so the denial is visible');
   });
@@ -262,28 +264,19 @@ test('a denied action fails the wrapped command even though the underlying proce
 
 // `denied_actions` names the action and not the target — measured,
 // `{"action": "read_file", "display_name": "ViewFile"}` — so the grant cannot be
-// fixed from the report and the only remedies are to guess or to re-dispatch on
-// another engine (dispatch-findings 2026-09-10, F-B). The path is in the
-// transcript the extraction already reads; it just was not being carried across.
+// fixed from the report alone (dispatch-findings 2026-09-10, F-B). The path is in
+// the transcript the extraction already reads.
 test('a denied action reports what it was denied on, recovered from the transcript', () => {
   withRepo(root => {
-    const { workspace, dir, stdin_file, report_file, raw_file } = wrapperFixture(root);
-    const transcript = resolve(dir, 'denied-transcript.txt');
+    const built = agyDispatch(root);
     // Two shapes on purpose: the extraction must not depend on one event
     // spelling, because the only source for it is whatever agy emits this week.
-    writeFileSync(transcript, [
-      JSON.stringify({ event: 'step_update', tool_calls: [{ action: 'read_file', args: { path: 'vendor/freecad-libs/Part.pyi' } }] }),
-      JSON.stringify({ event: 'tool_call', tool_name: 'read_file', file_path: 'docs/wiki/gotchas.md' }),
-      JSON.stringify({ event: 'result', result: { status: 'SUCCESS', response: '',
-        denied_actions: [{ action: 'read_file', display_name: 'ViewFile' }] } })
-    ].join('\n') + '\n');
-    const command = { executable: 'cat', args: [transcript] };
-
-    const wrapped = buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter });
-    const outcome = spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
-
-    assert.notEqual(outcome.status, 0);
-    const report = readFileSync(report_file, 'utf8');
+    const transcript = transcriptFile(built, 'denied.txt', [
+      { event: 'step_update', tool_calls: [{ action: 'read_file', args: { path: 'vendor/freecad-libs/Part.pyi' } }] },
+      { event: 'tool_call', tool_name: 'read_file', file_path: 'docs/wiki/gotchas.md' },
+      { event: 'result', result: { status: 'SUCCESS', response: '', denied_actions: [{ action: 'read_file', display_name: 'ViewFile' }] } }]);
+    assert.notEqual(runAs(built, 'cat', [transcript]).status, 0);
+    const report = readFileSync(built.report_file, 'utf8');
     assert.match(report, /vendor\/freecad-libs\/Part\.pyi/, 'the denied path must reach the report');
     assert.match(report, /docs\/wiki\/gotchas\.md/, 'a second event spelling must be picked up too');
     assert.match(report, /denied_actions/, 'the engine\'s own field stays intact');
@@ -293,32 +286,65 @@ test('a denied action reports what it was denied on, recovered from the transcri
 
 test('a denial with nothing recoverable says so instead of looking like it found nothing', () => {
   withRepo(root => {
-    const { workspace, dir, stdin_file, report_file, raw_file } = wrapperFixture(root);
-    const transcript = resolve(dir, 'bare-denial.txt');
-    writeFileSync(transcript, JSON.stringify({ event: 'result', result: { status: 'SUCCESS', response: '',
-      denied_actions: [{ action: 'escalate_admin' }] } }) + '\n');
-    const command = { executable: 'cat', args: [transcript] };
-
-    const wrapped = buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter });
-    spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
-
-    const report = readFileSync(report_file, 'utf8');
+    const built = agyDispatch(root);
+    const transcript = transcriptFile(built, 'bare.txt', [{ event: 'result', result: { status: 'SUCCESS', response: '',
+      denied_actions: [{ action: 'escalate_admin' }] } }]);
+    runAs(built, 'cat', [transcript]);
+    const report = readFileSync(built.report_file, 'utf8');
     // Pointing at the raw file is the difference between "no target" and "we
     // did not look" — the conductor needs to know which it is.
-    assert.match(report, /raw/i);
-    assert.ok(report.includes(raw_file.replaceAll('\\', '\\\\')) || report.includes(raw_file),
+    const raw = readRun(built).raw_file;
+    assert.ok(report.includes(raw.replaceAll('\\', '\\\\')) || report.includes(raw),
       'the report must name the file the conductor should read next');
   });
 });
 
-test('a missing result event fails the wrapped command, not just an already-nonzero process exit', () => {
+test('a missing result event fails the run, not just an already-nonzero process exit', () => {
   withRepo(root => {
-    const { workspace, stdin_file, report_file, raw_file } = wrapperFixture(root);
-    const command = { executable: 'true', args: [] }; // exits 0, but produces no transcript at all
-    const wrapped = buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter });
-    const outcome = spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
+    const outcome = runAs(agyDispatch(root), 'sh', ['-c', 'true']); // exits 0, but produces no transcript at all
     assert.notEqual(outcome.status, 0, 'no result event must not report success');
     assert.match(outcome.stdout, /No "result" event found/);
+  });
+});
+
+// Only agy used to have a time limit: a claude or codex worker ran for as long
+// as it liked. The runner holds workerTimeoutSeconds for every engine and stops
+// the whole process tree, on every OS (process-tree.mjs).
+test('a worker past its time limit is stopped, exits 124, and says so', () => {
+  withRepo(root => {
+    const built = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude',
+      workspace: resolve(root, '.worktrees/x') });
+    const started = Date.now();
+    const outcome = runAs(built, process.execPath, ['-e', 'setTimeout(() => {}, 60000)'], { run: { timeout_seconds: 1 } });
+    assert.equal(outcome.status, 124);
+    assert.ok(Date.now() - started < 30_000, 'the runner did not wait for the worker');
+    assert.match(outcome.stdout, /ran past its 1s limit/);
+    const record = JSON.parse(readFileSync(resolve(dirname(built.report_file), 'outcome.json'), 'utf8'));
+    assert.equal(record.timed_out, true);
+    assert.equal(record.exit_code, 124);
+  });
+});
+
+test('an engine that is not installed is reported as such, exit 127, with nothing run', () => {
+  withRepo(root => {
+    const built = prepareDispatch(root, { ...base, cli_engine: 'codex', conductorEngine: 'claude',
+      workspace: resolve(root, '.worktrees/x') });
+    const outcome = runAs(built, 'definitely-not-an-installed-engine');
+    assert.equal(outcome.status, 127);
+    assert.match(outcome.stdout, /was not found on PATH/);
+  });
+});
+
+// The command is handed to whatever shell the conductor has. It must run as
+// given — through a real shell, not reconstructed from its parts.
+test('the returned command runs verbatim through a shell', () => {
+  withRepo(root => {
+    const built = agyDispatch(root);
+    const transcript = transcriptFile(built, 't.txt', [{ event: 'result', result: { status: 'SUCCESS', response: 'via the shell' } }]);
+    runAs(built, 'cat', [transcript]);                     // points run.json at the stand-in
+    const outcome = spawnSync(built.command, { shell: true, encoding: 'utf8' });
+    assert.equal(outcome.status, 0, outcome.stderr);
+    assert.match(outcome.stdout, /via the shell/);
   });
 });
 
@@ -334,8 +360,9 @@ test('an antigravity dispatch writes its agent definition beside the prompt, nev
     const definition = readFileSync(resolve(agentDir, '.agents/agents/workflow-adversary.md'), 'utf8');
     assert.match(definition, /^excludeDefaultComponents: true$/m);
     assert.doesNotMatch(definition, /write_to_file/, 'a read-only role gets no write tool');
-    assert.equal(result.args[result.args.indexOf('--agent') + 1], 'workflow-adversary');
-    assert.ok(result.args.includes(agentDir));
+    const { args } = readRun(result);
+    assert.equal(args[args.indexOf('--agent') + 1], 'workflow-adversary');
+    assert.ok(args.includes(agentDir));
   });
 });
 
@@ -355,7 +382,7 @@ test('antigravity gets NDJSON on stdin while the readable prompt stays plain', (
     const result = prepareDispatch(root, { ...base, conductorEngine: 'claude', cli_engine: 'antigravity',
       workspace: resolve(root, '.worktrees/x') });
     const prompt = readFileSync(result.prompt_file, 'utf8');
-    const stdin = readFileSync(result.stdin_file, 'utf8');
+    const stdin = readFileSync(readRun(result).stdin_file, 'utf8');
     assert.doesNotMatch(prompt, /^\{"event"/);
     assert.equal(JSON.parse(stdin.trim()).message.content[0].text, prompt);
   });
@@ -413,6 +440,29 @@ test('a dispatch with no workspace names the missing parameter, not the adapter'
       assert.throws(() => prepareDispatch(root, { ...base, cli_engine, conductorEngine: 'claude' }),
         /workspace/i, `${cli_engine} failed with something other than the real reason`);
     }
+  });
+});
+
+// Every scope check downstream keys on the task's own worktree. A dispatch into
+// another directory — measured: the conductor's own checkout, under a task id
+// that was never prepared — composed cleanly and later passed inspection with
+// nothing checked, because no worktree listing existed to check it against.
+test('a dispatch runs only in the worktree prepared for its task', () => {
+  withRepo(root => {
+    const input = { ...base, cli_engine: 'claude', conductorEngine: 'claude' };
+    assert.throws(() => preparePrepared(root, { ...input, workspace: root }), /task_id is required/);
+    assert.throws(() => preparePrepared(root, { ...input, workspace: root, task_id: 'never' }),
+      /No worktree was prepared for task "never"/);
+    const { workspace } = stubWorktree(root, 'mine');
+    stubWorktree(root, 'theirs');
+    assert.throws(() => preparePrepared(root, { ...input, workspace: root, task_id: 'mine' }),
+      /is not the worktree prepared for task "mine"/, 'the conductor\'s own checkout is refused');
+    assert.throws(() => preparePrepared(root, { ...input, workspace: resolve(root, '.worktrees/theirs'), task_id: 'mine' }),
+      /is not the worktree prepared for task "mine"/, 'a sibling task\'s worktree is refused');
+    assert.equal(preparePrepared(root, { ...input, workspace: `${workspace}/`, task_id: 'mine' }).task_id, 'mine',
+      'a trailing separator is the same directory');
+    rmSync(workspace, { recursive: true, force: true });
+    assert.throws(() => preparePrepared(root, { ...input, workspace, task_id: 'mine' }), /is gone/);
   });
 });
 
@@ -490,36 +540,53 @@ test('every engine reports through report_file, so the conductor has one retriev
       const result = prepareDispatch(root, { ...base, cli_engine, conductorEngine: 'claude', workspace });
       assert.equal(typeof result.report_file, 'string', `${cli_engine} must name a report file`);
       assert.ok(result.report_file.endsWith('report.txt'));
-      assert.ok(result.command.includes(result.report_file),
-        `${cli_engine}'s command must actually write or print that file`);
+      assert.equal(readRun(result).report_file, result.report_file,
+        `${cli_engine}'s run must write or print that file`);
     }
   });
 });
 
-test('claude\'s report file holds the report, and its stderr still reaches the conductor', () => {
-  withRepo(root => {
-    const { workspace, stdin_file, report_file, raw_file } = wrapperFixture(root);
-    const command = { executable: 'sh', args: ['-c', 'echo the report; echo a warning >&2'] };
-    const wrapped = buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file,
-      adapter: { writesReportFile: false, reportIsStdout: true } });
-    const outcome = spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
+// The shape measured 2026-09-24 from `claude -p --output-format json`, trimmed to
+// the fields the extraction reads.
+const claudeResult = fields => JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'the report',
+  num_turns: 3, total_cost_usd: 0.0123, permission_denials: [],
+  usage: { input_tokens: 9, cache_creation_input_tokens: 4213, cache_read_input_tokens: 16130, output_tokens: 37 }, ...fields });
+const printing = (stdout, stderr = '') =>
+  ['-e', `process.stdout.write(${JSON.stringify(stdout + '\n')}); process.stderr.write(${JSON.stringify(stderr)});`];
 
-    assert.equal(outcome.status, 0);
-    assert.match(readFileSync(report_file, 'utf8'), /the report/);
-    assert.doesNotMatch(readFileSync(report_file, 'utf8'), /a warning/,
-      'stderr must not be folded into the report the conductor reads as the worker\'s answer');
-    assert.match(outcome.stderr, /a warning/, 'stderr still belongs to the conductor');
+test('claude\'s report is the result text of its JSON output, with its usage recorded beside it', () => {
+  withRepo(root => {
+    const built = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude',
+      workspace: resolve(root, '.worktrees/x') });
+    const outcome = runAs(built, process.execPath, printing(claudeResult({}), 'a warning\n'), { engineOutput: true });
+
+    assert.equal(outcome.status, 0, outcome.stderr);
+    assert.equal(readFileSync(built.report_file, 'utf8'), 'the report\n');
     assert.match(outcome.stdout, /the report/, 'a foreground run still prints the report');
+    const usage = JSON.parse(readFileSync(resolve(dirname(built.report_file), 'usage.json'), 'utf8'));
+    assert.equal(usage.total_tokens, 9 + 4213 + 16130 + 37);
+    assert.equal(usage.total_cost_usd, 0.0123);
   });
 });
 
-test('a stdout-report engine still returns its own exit code through the wrapper', () => {
+test('a claude error result, or none at all, fails the run', () => {
   withRepo(root => {
-    const { workspace, stdin_file, report_file, raw_file } = wrapperFixture(root);
-    const command = { executable: 'sh', args: ['-c', 'echo partial; exit 9'] };
-    const wrapped = buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file,
-      adapter: { writesReportFile: false, reportIsStdout: true } });
-    assert.equal(spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' }).status, 9);
+    const workspace = resolve(root, '.worktrees/x');
+    const errored = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude', workspace, task_id: 'err' });
+    assert.notEqual(runAs(errored, process.execPath, printing(claudeResult({ is_error: true, subtype: 'error_max_turns' })),
+      { engineOutput: true }).status, 0);
+    const silent = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude', workspace, task_id: 'none' });
+    const outcome = runAs(silent, process.execPath, printing('not json at all'), { engineOutput: true });
+    assert.notEqual(outcome.status, 0);
+    assert.match(outcome.stdout, /No result object found/);
+  });
+});
+
+test('a stdout-report engine still returns its own exit code through the runner', () => {
+  withRepo(root => {
+    const built = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude',
+      workspace: resolve(root, '.worktrees/x') });
+    assert.equal(runAs(built, 'sh', ['-c', 'echo partial; exit 9']).status, 9);
   });
 });
 
@@ -534,15 +601,18 @@ test('a role with no config entry still dispatches on the inherited engine', () 
   });
 });
 
-test('a role that needs the web is warned off an engine whose workers have none', () => {
+test('a web role on agy gets the web tools, and is told where fetched pages land', () => {
   withRepo(root => {
     const workspace = resolve(root, '.worktrees/x');
     const agy = prepareDispatch(root, { role: 'researcher', instructions: 'Research slugs.', owned_paths: ['docs/raw'],
-      cli_engine: 'antigravity', conductorEngine: 'claude', workspace });
-    assert.ok(agy.warnings.some(w => /web/i.test(w) && /antigravity/.test(w)), agy.warnings.join(' | '));
-    const codex = prepareDispatch(root, { role: 'researcher', instructions: 'Research slugs.', owned_paths: ['docs/raw'],
-      cli_engine: 'codex', conductorEngine: 'claude', workspace });
-    assert.ok(!codex.warnings.some(w => /web tools/i.test(w)));
+      cli_engine: 'antigravity', conductorEngine: 'claude', workspace, task_id: 'web' });
+    assert.ok(!agy.warnings.some(w => /web/i.test(w)), agy.warnings.join(' | '));
+    const definition = readFileSync(resolve(root, '.worktrees/.dispatch/web/agent/.agents/agents/workflow-researcher.md'), 'utf8');
+    assert.match(definition, /^ {2}- search_web$/m);
+    assert.match(definition, /^ {2}- read_url_content$/m);
+    assert.match(readFileSync(agy.prompt_file, 'utf8'), /read_url_content saves the page/);
+    const developer = prepareDispatch(root, { ...base, cli_engine: 'antigravity', conductorEngine: 'claude', workspace, task_id: 'dev' });
+    assert.doesNotMatch(readFileSync(developer.prompt_file, 'utf8'), /read_url_content/, 'no web note for a role without web');
   }, { '.agents/roles/researcher.md':
     '---\nname: researcher\ndescription: Web research.\nprofile: fast\naccess: write\ncapabilities: [web]\n---\n\nResearch.\n' });
 });
@@ -574,4 +644,29 @@ test('a worker whose engine reads files through the shell is told reading is not
     assert.match(codex, /never .*(write|move|delete)/i);
     for (const engine of ['claude', 'antigravity']) assert.doesNotMatch(prompt(engine), /no separate file tools/i);
   });
+});
+
+// A runner stopped from outside — a shell tool giving up on it, a task stop —
+// cannot record how its run ended, and used to leave the dispatch `running` for
+// good, with its worker still going on POSIX. Its watchdog stops the worker and
+// records the run as stopped from outside.
+test('a runner killed outright leaves no worker behind and no dispatch stuck running', async () => {
+  const root = fixture({ '.agents/config.json': JSON.stringify(CONFIG) });
+  try {
+    const built = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude',
+      workspace: resolve(root, '.worktrees/x'), task_id: 'killed' });
+    const dir = dirname(built.report_file);
+    const marker = resolve(root, 'worker-survived.txt');
+    writeFileSync(resolve(dir, 'run.json'), JSON.stringify({ ...readRun(built), stdout: 'report', stderr: 'inherit', extract: null,
+      executable: process.execPath, args: ['-e', `setTimeout(() => require('fs').writeFileSync(${JSON.stringify(marker)}, 'x'), 7000)`] }));
+    const runner = spawn(process.execPath, [RUN_WORKER, dir], { stdio: 'ignore' });
+    await new Promise(done => setTimeout(done, 2500));
+    runner.kill('SIGKILL');
+    await new Promise(done => setTimeout(done, 7500));
+    assert.equal(existsSync(marker), false, 'the worker outlived its killed runner');
+    const outcome = JSON.parse(readFileSync(resolve(dir, 'outcome.json'), 'utf8'));
+    assert.ok(outcome.finished_at, 'the run is recorded as ended, not left running');
+    assert.equal(outcome.runner_stopped, true);
+    assert.equal(outcome.exit_code, 137);
+  } finally { cleanup(root); }
 });

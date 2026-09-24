@@ -120,9 +120,68 @@ function exclude(root) {
   writeFileSync(path, current + (current && !current.endsWith('\n') ? '\n' : '') + entry + '\n');
 }
 
-export function prepareWorktree(root, { task_id } = {}) {
-  const workspace = taskDir(root, task_id);
-  if (realpathSync(git(root, ['rev-parse', '--show-toplevel'])) !== realpathSync(root)) {
+// Whether two paths name the same directory. realpathSync.native, not the JS
+// realpath: measured on GitHub's Windows runner, the temp directory is an 8.3
+// short name (RUNNER~1) that only the native call expands, while git reports the
+// long one; and on macOS /var is a symlink to /private/var, which git resolves
+// and resolve() does not. Case never matters on Windows.
+export function sameLocation(a, b) {
+  const real = path => { try { return realpathSync.native(path); } catch { return resolve(path); } };
+  const norm = path => real(path).replaceAll('\\', '/').replace(/\/+$/, '');
+  return process.platform === 'win32' ? norm(a).toLowerCase() === norm(b).toLowerCase() : norm(a) === norm(b);
+}
+
+const readRecord = (root, task_id, name) => {
+  const path = resolve(root, WORKSPACES, '.dispatch', task_id, name);
+  if (!existsSync(path)) return null;
+  try { return JSON.parse(readFileSync(path, 'utf8')); } catch { return null; }
+};
+
+// Where a task's checkout is. Usually .worktrees/<task_id>; a reused one keeps
+// the directory of the task it was first prepared for, and its record says so.
+export const workspaceOf = (root, task_id) => readRecord(root, task_id, 'worktree.json')?.workspace ?? taskDir(root, task_id);
+
+// A cycle dispatches one developer per Behavior case, and a fresh worktree per
+// case meant a fresh dependency install per case — node_modules, a virtualenv —
+// and its output in the conductor's context. A worktree that is provably holding
+// nothing (clean, every commit merged, no violations, its dispatch decided) can
+// be handed to the next task instead: a new worker/<task> branch at the current
+// HEAD, in the same directory, with its ignored environment intact.
+function reuseWorktree(root, task_id, reuse) {
+  taskDir(root, reuse);
+  if (readRecord(root, task_id, 'worktree.json')) throw new Error(`Task "${task_id}" is already prepared`);
+  const previous = listWorktrees(root).find(entry => entry.task_id === reuse);
+  if (!previous) throw new Error(`No worktree for task "${reuse}" to reuse`);
+  if (!previous.clean) {
+    throw new Error(`Worktree "${reuse}" has uncommitted changes (${previous.changed_paths.join(', ')}); it is not reusable`);
+  }
+  if (previous.violations?.length) throw new Error(`Worktree "${reuse}" has scope violations; it is not reusable`);
+  if (previous.merged !== true) {
+    throw new Error(`Worker branch ${previous.branch} holds commits not merged into the current branch; merge them first`);
+  }
+  if (readRecord(root, reuse, 'dispatch.json') && !readRecord(root, reuse, 'decision.json')) {
+    throw new Error(`Task "${reuse}" has a dispatch with no recorded decision; decide on it before reusing its worktree`);
+  }
+  const branch = `worker/${task_id}`;
+  const base_sha = git(root, ['rev-parse', 'HEAD']);
+  git(root, ['branch', branch, base_sha]);
+  git(previous.workspace, ['checkout', '-q', branch]);
+  // -d, never -D: merged was checked above, and a refusal here still loses nothing.
+  git(root, ['branch', '-d', previous.branch], { allowFailure: true });
+  const previousRecord = readRecord(root, reuse, 'worktree.json');
+  if (previousRecord) {
+    writeFileSync(resolve(root, WORKSPACES, '.dispatch', reuse, 'worktree.json'),
+      JSON.stringify({ ...previousRecord, reused_by: task_id }, null, 2) + '\n');
+  }
+  // The path as the earlier task recorded it, not as git lists it: git gives the
+  // real path (/private/var on macOS, forward slashes on Windows), while every
+  // record, trust entry and command was written with the prepared form.
+  return { workspace: previousRecord?.workspace ?? resolve(previous.workspace), branch, base_sha, reused_from: reuse };
+}
+
+export function prepareWorktree(root, { task_id, reuse } = {}) {
+  taskDir(root, task_id);
+  if (!sameLocation(git(root, ['rev-parse', '--show-toplevel']), root)) {
     throw new Error('Root must be the top level of a Git worktree');
   }
   exclude(root);
@@ -131,12 +190,18 @@ export function prepareWorktree(root, { task_id } = {}) {
   if (!isClean(root)) {
     throw new Error('Checkout is dirty; commit or set aside your changes before dispatching a worker');
   }
-  if (existsSync(workspace)) throw new Error(`Workspace already exists: ${workspace}`);
-  const branch = `worker/${task_id}`;
-  const base_sha = git(root, ['rev-parse', 'HEAD']);
-  git(root, [...LONG_PATHS, 'worktree', 'add', '-b', branch, workspace, base_sha]);
+  let prepared;
+  if (reuse != null) prepared = reuseWorktree(root, task_id, reuse);
+  else {
+    const workspace = taskDir(root, task_id);
+    if (existsSync(workspace)) throw new Error(`Workspace already exists: ${workspace}`);
+    const branch = `worker/${task_id}`;
+    const base_sha = git(root, ['rev-parse', 'HEAD']);
+    git(root, [...LONG_PATHS, 'worktree', 'add', '-b', branch, workspace, base_sha]);
+    prepared = { workspace, branch, base_sha };
+  }
   pruneStaleTrust(root);
-  const record = { task_id, workspace, branch, base_sha,
+  const record = { task_id, ...prepared,
     integration_branch: git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], { allowFailure: true }) };
   // Written now, so a worktree that is prepared and then abandoned — an
   // interrupted session — still says what it was branched from and for.
@@ -150,11 +215,7 @@ export function prepareWorktree(root, { task_id } = {}) {
 // What a dispatch left beside its prompt. Absent for a worktree prepared but
 // never dispatched into, or one from before this file existed — in which case
 // the listing reports what it can see and declines to guess the rest.
-function dispatchRecord(root, task_id) {
-  const path = resolve(root, WORKSPACES, '.dispatch', task_id, 'dispatch.json');
-  if (!existsSync(path)) return null;
-  try { return JSON.parse(readFileSync(path, 'utf8')); } catch { return null; }
-}
+const dispatchRecord = (root, task_id) => readRecord(root, task_id, 'dispatch.json');
 
 // `git status --porcelain=v1` pads a two-column status before the path, and a
 // rename carries `old -> new`. The destination is the path that exists now,
@@ -216,9 +277,21 @@ export function listWorktrees(root) {
 }
 
 export function removeWorktree(root, task_id) {
-  const workspace = taskDir(root, task_id);
+  // The live listing, not the record: a reused worktree's directory is named for
+  // an earlier task whose record still points at it, and removing by that record
+  // would delete the checkout the later task is using.
+  const entry = listWorktrees(root).find(candidate => candidate.task_id === task_id);
   const branch = `worker/${task_id}`;
-  if (!existsSync(workspace)) throw new Error(`No such workspace: ${workspace}`);
+  if (!entry || !existsSync(entry.workspace)) {
+    const reusedBy = readRecord(root, task_id, 'worktree.json')?.reused_by;
+    throw new Error(reusedBy
+      ? `Task "${task_id}" has no worktree of its own any more: task "${reusedBy}" reused it`
+      : `No such workspace: ${workspaceOf(root, task_id)}`);
+  }
+  // Removed by the path the task recorded, which is the form its trust entry was
+  // written in; the listing only proves this task's branch is what is there.
+  const recorded = readRecord(root, task_id, 'worktree.json')?.workspace;
+  const workspace = recorded && sameLocation(recorded, entry.workspace) ? recorded : resolve(entry.workspace);
   // Uncommitted work in a worktree is the worker's output. Removing it because
   // a cleanup step was called is exactly the kind of silent data loss the
   // behavioral rules exist to prevent.

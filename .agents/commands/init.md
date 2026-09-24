@@ -40,7 +40,7 @@ Report it in one line ("workflow-mcp reachable, wiring intact"). A failure here 
 `.agents/config.json` ships with the template maintainer's working defaults, not a recommendation for this project, and model ids churn. **Skip this step on a re-run** once `roles`/`engines` no longer match a fresh template — the human already chose.
 
 1. **Detect installed engines** — `claude`, `codex`, `agy` on PATH. A role can only be pinned to an installed engine.
-2. **Ask, per role** in `config.json`: which engine runs it, and which tier (`reasoning`, `balanced`, `fast`) or named model. Offer the shipped value as the recommended default, so the human can accept all of them in one answer. `researcher`, `reviewer`, `triage` and `wiki-maintainer` default to `"engine": null` (follow the conductor) — pin them only if asked.
+2. **Ask, per role** in `config.json`: which engine runs it, and which tier (`reasoning`, `balanced`, `fast`) or named model. Offer the shipped value as the recommended default, so the human can accept all of them in one answer. `researcher`, `reviewer`, `triage` and `wiki-maintainer` ship with `"engine": null`, which means `defaultEngine` — `antigravity` as shipped, with no fallback. If that engine is not installed, recommend `"defaultEngine": "inherit"` (the conducting CLI) or another installed engine; pin those roles individually only if asked.
 3. **Verify every model id before writing it, defaults included.** Never trust an id from memory — yours or the shipped file's. Search the vendor's current model list and confirm the exact slug; one you cannot confirm is reported to the human, not written.
 4. **Write the confirmed `engine`/`models`/`effort`** into `config.json` in its existing shape. A model sits only under the engine that runs it — `gpt-*` under `codex`, `claude-*` under `claude`, `gemini-*` (also `claude-*`, `gpt-oss-*`) under `antigravity`; the loader refuses anything else.
 
@@ -87,7 +87,7 @@ The transcript is `docs/raw/interviews/YYYY-MM-DD-init.md`, opened before the fi
 
 ### 5. Scaffold the wiki
 
-Create any missing directory: `docs/raw/interviews/`, `docs/wiki/entities/`, `concepts/`, `decisions/`, `summaries/`. Fill these with **real answers** — `<TBD>` only for a topic genuinely not discussed:
+Create any missing directory: `docs/raw/interviews/`, `docs/wiki/entities/`, `concepts/`, `decisions/`, `summaries/`, `reviews/`. Fill these with **real answers** — `<TBD>` only for a topic genuinely not discussed:
 
 - `requirements.md` — `## Vision`, `## Users`, `## User stories` (`- As a <user type>, I want <capability>, so that <benefit>.` with Acceptance and `Maps to:`), `## Functional requirements`, `## Non-functional requirements`, `## Out of scope`, `## Open questions`.
 - `architecture.md` — `## Stack`, `## Layout`, `## Layers` (topic 12; or step 5b), `## Data`, `## External services`, `## Testing strategy`, `## Conventions`, `## Deployment`.
@@ -96,7 +96,7 @@ Create any missing directory: `docs/raw/interviews/`, `docs/wiki/entities/`, `co
 - `todos.md` — seeded with the first work items.
 - `gotchas.md` and `wiki-todos.md` — create empty **only if missing**; never clear existing entries on a re-run.
 - `log.md` — the init entry (step 7).
-- `design-system.md` — **only with a UI surface**, from the design-system template beside the `wiki-update` skill, filled with the topic-11 answers; token sections stay `<TBD>` with a todo to run `/project:interview the design system`. Never created "for later". Then add `design-system-check` to the `developer` list in `.agents/commands/work.md`'s `skills:` — the developer is the one writing UI code, and it only receives declared skills.
+- `design-system.md` — **only with a UI surface**, from the design-system template beside the `wiki-update` skill, filled with the topic-11 answers; token sections stay `<TBD>` with a todo to run `/project:interview the design system`. Never created "for later". Then set `"extraSkills": ["design-system-check"]` on `roles.developer` in `.agents/config.json` — the developer is the one writing UI code, and it only receives declared skills. Never edit `work.md`'s `skills:` for this: it is generic text `/project:sync-template` would then report as customized on every run.
 
 Add an entity page per feature or module (`spec-writing` skill) and an ADR per non-trivial choice (`decision-recording` skill). Every page gets standard frontmatter (`wiki-update` skill).
 
@@ -104,7 +104,7 @@ Add an entity page per feature or module (`spec-writing` skill) and an ADR per n
 
 `/project:work` cannot start Red until the test command executes; on a greenfield repo it doesn't yet.
 
-1. **Run it.** A clean zero-test result ("no tests collected", "0 passing") means it is runnable — skip to step 6.
+1. **Run it**, bounded — `node tools/workflow-mcp/bounded.mjs -- "<test command>"`, as for the install below: a hung command then stops, with everything it started, instead of outliving the session. A clean zero-test result ("no tests collected", "0 passing") means it is runnable — skip to step 6.
 2. **Otherwise propose the minimum skeleton** via `human-checkpoint` before creating anything: the dependency manifest declaring the chosen test framework, the framework's empty test directory, and the empty source directory from `architecture.md § Layout`. No application code, no example module, no placeholder test.
 3. **Install, then run the test command** and confirm it exits cleanly on an empty suite. An install failure (no network, missing toolchain) → `human-checkpoint`; never paper over it with a fake command.
 4. **Record only commands you have run** in `docs/wiki/commands.md` (`## Install`, `## Test`, …).
@@ -176,8 +176,7 @@ Append to `docs/wiki/log.md` (stamp from `date -u +'%Y-%m-%d %H:%M'`):
 ### 8. Commit
 
 ```bash
-# plus any step 5a skeleton (manifest, lockfile), the architecture rule files, the CI workflow,
-# and .agents/commands/work.md if step 5 declared design-system-check
+# plus any step 5a skeleton (manifest, lockfile), the architecture rule files and the CI workflow
 git add docs/ CLAUDE.md AGENTS.md .agents/project.md .agents/config.json .gitattributes <skeleton-paths> <architecture-rule-files> <ci-workflow>
 git commit -m "chore(init): scaffold wiki, regenerate AGENTS.md/CLAUDE.md, and a runnable test command"
 git push -u origin main   # no remote → skip and say so

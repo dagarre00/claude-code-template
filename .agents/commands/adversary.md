@@ -24,14 +24,14 @@ You run one adversarial review: the adversary raises findings and never edits; y
 
 ## Preconditions
 
-- A diff exists: a dirty tree, unreviewed commits on this branch, or a base ref. None of the three → say there is nothing to review and stop.
+- A diff exists: a dirty tree (committed before review — step 1), unreviewed commits on this branch, or a base ref. None of the three → say there is nothing to review and stop.
 - On a `feat`/`fix`/`chore` branch — an approved fix has to land somewhere, and never on `main`. **`develop` only for the release review** (`against main`), which is read-only by construction: an approved `critical`/`major` from it gets a `fix/*` branch, while the round's todo and log lines may land on `develop` directly (rule 19).
 
 ## Steps
 
 1. **Scope it small.** In order:
    - **A base ref** → `<ref>...HEAD`.
-   - **A dirty tree** → there is no range for uncommitted work: pass `git diff HEAD` as `context`, naming untracked files. If it builds on unpushed commits of the same task, commit it or widen to `<sha-before-them>...HEAD`.
+   - **A dirty tree** → it has to be committed first: `prepare_worktree` refuses a dirty checkout, and a worker's worktree holds only committed files, so uncommitted work is invisible to the adversary. Account for every path (rule 21) — changes you did not make are the human's call, via `human-checkpoint` — then commit them on this branch (`wip: <what> — for adversary review` when they are not a finished case) and review `<sha-before-them>...HEAD`.
    - **A clean tree with unreviewed commits** → the commits of one Behavior case, or a few closely related: `<sha-before-them>...HEAD`.
 
    Note the entity slug(s). A whole-branch range is the usual reason a review runs past three rounds; several small reviews beat one large one — review per entity, one dispatch each.

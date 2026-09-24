@@ -139,9 +139,14 @@ test('against a base: an architecture rule changed without an ADR fails', () => 
     assert.equal(check.ok, false);
     assert.match(check.details.join('\n'), /arch\.rules/);
 
+    // A review report is not an ADR, even saved where older projects kept them.
+    put(root, 'docs/wiki/decisions/review-2026-09-03.md', '# Review\n\nSee [[auth]].\n');
+    git(root, 'add', '-A'); git(root, 'commit', '-qm', 'docs(review): audit');
+    assert.equal(verify(root, { base: 'HEAD~2' }).checks.find(entry => entry.id === 'range.architecture').ok, false);
+
     put(root, 'docs/wiki/decisions/2026-09-03-loosen-layers.md', '# Loosen\n\nSee [[auth]].\n');
     git(root, 'add', '-A'); git(root, 'commit', '-qm', 'docs: ADR');
-    assert.equal(verify(root, { base: 'HEAD~2' }).checks.find(entry => entry.id === 'range.architecture').ok, true);
+    assert.equal(verify(root, { base: 'HEAD~3' }).checks.find(entry => entry.id === 'range.architecture').ok, true);
   });
 });
 

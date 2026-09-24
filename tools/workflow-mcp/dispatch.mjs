@@ -1,14 +1,14 @@
 // Ties the pieces together into one dispatch: compose the prompt, resolve the
-// engine, write the two files, and hand back a command the conductor can run.
+// engine, write the files a run needs, and hand back a command the conductor
+// can run.
 //
 // This tool does not spawn anything. That is the whole scope decision: the MCP
 // is a prompt factory, and the conductor — which already has a shell — runs the
-// process itself. It keeps the control plane small enough to reason about, and
-// means a failed worker is debugged by re-running a command line a human can
-// read, not by reading a supervisor's logs.
+// process itself, through run-worker.mjs. It keeps the control plane small
+// enough to reason about, and means a failed worker is debugged by re-running
+// one command line a human can read, not by reading a supervisor's logs.
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
-import { isAbsolute, resolve, dirname } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadCanonical } from './canonical.mjs';
 import { engineAvailability } from './availability.mjs';
@@ -20,18 +20,41 @@ import { explainMisfit, modelFits } from './model-fit.mjs';
 import { dispatchDir, trustWorktree } from './worktree.mjs';
 import { currentVerdict } from './inspect.mjs';
 
-// Quote one argument for the shell the conductor will paste this into. Only ever
-// used to build the human-readable/runnable `command` string; the `args` array
-// is the authoritative form and never passes through a shell.
-const quote = value => /^[A-Za-z0-9_@%+=:,./-]+$/.test(value) ? value : `'${value.replaceAll("'", `'\\''`)}'`;
+// One argument of a command the conductor pastes into whatever shell it has —
+// bash, zsh, PowerShell or cmd. Forward slashes, which node accepts on Windows
+// too, and double quotes only when a path needs them: both read the same in all
+// four. A value double quotes cannot carry safely falls back to POSIX quoting.
+export const shellArg = value => {
+  const path = process.platform === 'win32' ? value.replaceAll('\\', '/') : value;
+  if (/^[A-Za-z0-9_@%+=:,./-]+$/.test(path)) return path;
+  if (!/["$`\\!%]/.test(path)) return `"${path}"`;
+  return `'${path.replaceAll("'", `'\\''`)}'`;
+};
 
-// Resolved against this file's own location, not `root`: an extraction script
-// is part of the workflow-mcp tool, always a sibling of dispatch.mjs, whether
-// this is the template checkout or a project that adopted a copy of it — never
-// something looked up inside the target project's own tree.
-const ENGINES_DIR = fileURLToPath(new URL('./engines', import.meta.url));
-const RECORD_OUTCOME = fileURLToPath(new URL('./record-outcome.mjs', import.meta.url));
+// Resolved against this file's own location, not `root`: the runner and the
+// checks are part of the workflow-mcp tool, always siblings of dispatch.mjs,
+// whether this is the template checkout or a project that adopted a copy of it.
+const RUN_WORKER = fileURLToPath(new URL('./run-worker.mjs', import.meta.url));
 const RED_CHECK = fileURLToPath(new URL('./red-check.mjs', import.meta.url));
+const BOUNDED = fileURLToPath(new URL('./bounded.mjs', import.meta.url));
+
+// Where each stream goes, per engine. Three ways to one destination —
+// report_file — so the conductor reads one file whatever the engine:
+//   - reportIsStdout (an engine whose stdout IS the report): captured straight
+//     into report_file, stderr left with the conductor — a crash trace folded
+//     into the report reads as a strange answer.
+//   - writesReportFile (codex): the engine writes report_file itself (-o), and
+//     its transcript goes to raw_file.
+//   - extractReportFrom (claude's JSON result, antigravity's transcript): the
+//     output goes to raw_file and the runner extracts report_file from it.
+function streamsFor(adapter) {
+  if (adapter.reportIsStdout) return { stdout: 'report', stderr: 'inherit', extract: null };
+  return { stdout: 'raw', stderr: 'raw', extract: adapter.extractReportFrom ?? null };
+}
+
+// An engine with a time limit of its own reports its own timeout; the runner's
+// limit stands a minute behind it so that report still gets written.
+const OWN_TIMEOUT_GRACE_SECONDS = 60;
 
 // Generous for a plan, bounded enough that a mistyped path cannot turn a binary
 // into a prompt. The inline parameters cap at 100k characters; a file is allowed
@@ -76,7 +99,7 @@ const readJson = path => {
 // Everything one attempt leaves in its dispatch directory. `worktree.json`
 // belongs to the worktree, not the attempt, and `attempts/` is the archive itself.
 const ATTEMPT_FILES = ['dispatch.json', 'prompt.txt', 'stdin.txt', 'report.txt', 'raw.txt',
-  'outcome.json', 'decision.json', 'agent', 'red.json', 'red'];
+  'outcome.json', 'decision.json', 'agent', 'red.json', 'red', 'run.json', 'usage.json'];
 
 const archivedNumbers = dir => existsSync(resolve(dir, 'attempts'))
   ? readdirSync(resolve(dir, 'attempts')).filter(name => /^\d+$/.test(name)).map(Number)
@@ -142,8 +165,41 @@ function archiveAttempt(root, dir, task_id, { number, abandoned }) {
   }
 }
 
+// Path equality the way the filesystem sees it: separators and a trailing slash
+// never matter, and case does not on Windows.
+const samePath = (a, b) => {
+  const norm = path => resolve(path).replaceAll('\\', '/').replace(/\/+$/, '');
+  return process.platform === 'win32' ? norm(a).toLowerCase() === norm(b).toLowerCase() : norm(a) === norm(b);
+};
+
+// The worktree prepare_worktree made for this task, or a refusal. Every scope
+// check downstream — violations, commits, the Red check's base — is keyed on the
+// task's own worktree, so a dispatch into any other directory (the conductor's
+// own checkout, a sibling task's worktree) used to compose cleanly and then pass
+// inspection with nothing checked, because there was no worktree listing to
+// check it against.
+function preparedWorktree(root, task_id, workspace) {
+  if (typeof task_id !== 'string' || !task_id.trim()) {
+    throw new Error('task_id is required — pass the id prepare_worktree was given. The dispatch record, the '
+      + 'scope check and the Red check all key on it.');
+  }
+  const record = readJson(resolve(dispatchDir(root, task_id), 'worktree.json'));
+  if (!record?.workspace) {
+    throw new Error(`No worktree was prepared for task "${task_id}". Call prepare_worktree with this task_id first: `
+      + 'a worker runs only in its own task\'s worktree.');
+  }
+  if (!samePath(workspace, record.workspace)) {
+    throw new Error(`workspace ${workspace} is not the worktree prepared for task "${task_id}" (${record.workspace}). `
+      + 'A worker runs only in its own task\'s worktree; anywhere else, nothing checks what it changed.');
+  }
+  if (!existsSync(record.workspace)) {
+    throw new Error(`The worktree for task "${task_id}" is gone (${record.workspace}). Prepare a new task.`);
+  }
+  return record;
+}
+
 export function prepareDispatch(root, input = {}) {
-  const { conductorEngine, cli_engine, workspace, task_id = randomUUID() } = input;
+  const { conductorEngine, cli_engine, workspace, task_id } = input;
   // Every engine's command begins by entering the worktree — claude has no --cd
   // flag and works in the process's working directory — so a dispatch without
   // one produces `cd undefined`. Caught here because the alternative is what it
@@ -153,6 +209,7 @@ export function prepareDispatch(root, input = {}) {
     throw new Error('workspace is required — pass the path from prepare_worktree. A worker runs in its '
       + 'own checkout, and the command that starts it has to enter one.');
   }
+  const worktreeRecord = preparedWorktree(root, task_id, workspace);
   const canonical = loadCanonical(root);
   const config = loadConfig(root);
 
@@ -181,6 +238,16 @@ export function prepareDispatch(root, input = {}) {
       + `${respelled.map(command => `\`${spell(command, platform)}\``).join(', ')} instead. It is the same command; `
       + 'the plain spelling is refused by this shell before it starts.']
     : [];
+  const capabilities = canonical.roles.find(entry => entry.name === input.role)?.capabilities ?? [];
+  // Measured on agy 1.2.9: read_url_content does not return the page; it saves it
+  // under agy's own brain directory and names the file. That read is the tool's
+  // output, not a read outside the task, and the audit exempts it — but a worker
+  // told never to read outside its workspace would stop at it.
+  if (engine === 'antigravity' && capabilities.includes('web')) {
+    commandNotes.push('Web tools: search_web returns a cited summary. read_url_content saves the page to a file under '
+      + 'your engine\'s own brain directory and gives you its path; reading that exact file with view_file is allowed — '
+      + 'it is the tool\'s output, the one exception to reading outside your workspace.');
+  }
   if (ENGINES[engine]?.filesThroughShell) {
     commandNotes.push('On this engine you have no separate file tools: reading, listing and searching files happen '
       + 'through your shell. Read-only shell commands that only read inside your workspace — printing a file, listing a '
@@ -191,17 +258,17 @@ export function prepareDispatch(root, input = {}) {
 
   const composed = composePrompt(canonical, {
     ...input, instructions, context: context ?? '', diff,
-    task_id, workspace, workerCommands, commandNotes, protectedPaths: config.protectedPaths });
+    task_id, workspace, workerCommands, commandNotes, protectedPaths: config.protectedPaths,
+    extraSkills: config.roles?.[input.role]?.extraSkills ?? [] });
 
-  // All four files live beside each other so a human can read exactly what was
-  // sent and re-run it byte for byte. The prompt is the readable form; the stdin
-  // file is the wire form, which differs only for antigravity's NDJSON envelope.
-  // report_file ends up holding just the worker's final message for any engine
-  // that solves the "report vs. transcript" problem (codex natively via -o;
-  // antigravity via the command wrapping below, since it has no such flag);
-  // raw_file is where that engine's full stdout+stderr goes when wrapped, kept
-  // for the rare case of debugging a failed run. Computed before buildCommand
-  // so codex's adapter can wire report_file into its own argv.
+  // Every file lives beside the others so a human can read exactly what was sent
+  // and re-run it byte for byte. The prompt is the readable form; the stdin file
+  // is the wire form, which differs only for antigravity's NDJSON envelope.
+  // run.json is how run-worker.mjs launches it. report_file ends up holding just
+  // the worker's final message on every engine (streamsFor); raw_file keeps a
+  // transcript engine's full stdout+stderr, for the rare case of debugging a
+  // failed run. Computed before buildCommand so codex's adapter can wire
+  // report_file into its own argv.
   const dir = dispatchDir(root, task_id);
   const plan = planAttempt(root, dir, task_id, input);
   const { attempt, retry_of } = plan;
@@ -215,7 +282,7 @@ export function prepareDispatch(root, input = {}) {
   // the dispatch's files. Outside the worktree on purpose: inside, it would be an
   // untracked file the worker appears to have written.
   const adapter = ENGINES[engine];
-  const definition = adapter.agentDefinition?.({ role: composed.role, access: composed.access, workspace }) ?? null;
+  const definition = adapter.agentDefinition?.({ role: composed.role, access: composed.access, workspace, capabilities }) ?? null;
   const agent = definition ? { name: definition.name, dir: resolve(dir, 'agent') } : undefined;
 
   const roleConfig = config.roles?.[composed.role] ?? {};
@@ -251,6 +318,13 @@ export function prepareDispatch(root, input = {}) {
     mkdirSync(resolve(agent.dir, '.agents', 'agents'), { recursive: true });
     writeFileSync(resolve(agent.dir, '.agents', 'agents', `${definition.name}.md`), definition.content);
   }
+  // Everything run-worker.mjs needs, so the command the conductor runs stays one
+  // short line, and the argv is on disk rather than re-typed through a shell.
+  writeFileSync(resolve(dir, 'run.json'), JSON.stringify({
+    engine, executable: command.executable, args: command.args, cwd: workspace,
+    stdin_file, report_file, raw_file, ...streamsFor(adapter),
+    timeout_seconds: config.workerTimeoutSeconds + (adapter.enforcesTimeout ? OWN_TIMEOUT_GRACE_SECONDS : 0)
+  }, null, 2) + '\n');
 
   // What this dispatch was allowed to do and what it ran on, written where
   // list_worktrees and inspect_dispatch read it back. Without it a worktree is
@@ -259,12 +333,15 @@ export function prepareDispatch(root, input = {}) {
   // which attempt" are all computable afterwards (dispatch-findings F-F,
   // resume-report §5). worker_commands is what extract-agy-result.mjs audits
   // run_command calls against; it reads this file from beside the transcript.
-  const worktreeRecord = readJson(resolve(dir, 'worktree.json'));
   writeFileSync(resolve(dir, 'dispatch.json'), JSON.stringify({
     task_id, role: composed.role, access: composed.access, profile: composed.profile,
     owned_paths: composed.owned_paths, protected_paths: config.protectedPaths,
     test_paths: composed.test_paths, test_command: composed.test_command,
     red_check_command: composed.test_paths ? redCheckCommand(dir) : null,
+    // Run by the red check's architecture phase, with the worker's files in place.
+    architecture_command: composed.test_paths ? config.architecture.command : null,
+    // The limit on each red check phase, as on the worker itself.
+    timeout_seconds: config.workerTimeoutSeconds,
     engine, model: command.model, effort: command.effort,
     // What the worker was given. Every worktree holds every committed skill, so
     // this is what inspect_dispatch reads a skill the worker opened against.
@@ -294,9 +371,8 @@ export function prepareDispatch(root, input = {}) {
       + 'worktree\'s `violations` against the access level recorded for this dispatch, so the check is '
       + 'computed rather than remembered. Anything it touched voids the round (behavioral rule 12).');
   }
-  // Only worth a warning where nothing already solves it: claude's stdout is
-  // already just the final message (reportIsStdout), and codex gets a separate
-  // report_file below (writesReportFile). Antigravity has neither.
+  // Only worth a warning where nothing already solves it: every current engine
+  // either writes report_file or has it extracted (writesReportFile).
   if (!adapter.writesReportFile && !adapter.reportIsStdout) {
     warnings.push(`${engine} has no way to separate the worker's report from its full tool-call `
       + 'transcript — everything lands in stdout together, and on a large task that can reach '
@@ -333,10 +409,9 @@ export function prepareDispatch(root, input = {}) {
   }
   // A role that needs the web, on an engine whose workers were measured to have
   // none, would spend its whole dispatch discovering that.
-  const roleDefinition = canonical.roles.find(entry => entry.name === composed.role);
-  if (roleDefinition?.capabilities?.includes('web') && adapter.providesWeb === false) {
-    warnings.push(`The ${composed.role} role needs web access, and ${engine} workers have no web tools — `
-      + 'measured: search failed and every URL fetch was denied headless. Dispatch it elsewhere with cli_engine.');
+  if (capabilities.includes('web') && adapter.providesWeb === false) {
+    warnings.push(`The ${composed.role} role needs web access, and ${engine} workers were measured to have no working `
+      + 'web tools. Dispatch it elsewhere with cli_engine.');
   }
   // An empty diff almost always means the range was wrong, and finding that out
   // from a reviewer's report costs the whole dispatch.
@@ -367,91 +442,31 @@ export function prepareDispatch(root, input = {}) {
     // trying is worth it.
     engine_chain: chain,
     engine_available: chosen.available,
-    executable: command.executable,
-    args: command.args,
     model: command.model,
     effort: command.effort,
     workspace,
-    // Run the process here. Claude Code has no --cd flag and works in the
-    // process's working directory, so a command that did not enter the worktree
-    // would run the worker against the conductor's own checkout — exactly what
-    // the worktree exists to prevent. Codex (--cd) and agy (--add-dir) are told
-    // as well, but the working directory is what makes all three agree.
-    cwd: workspace,
+    // The readable prompt, for a human to check what was sent. The argv, working
+    // directory and stdin are in run.json beside it, not in this response: the
+    // conductor runs `command` and never needs them.
     prompt_file,
-    stdin_file,
     // Echoed back when the text came from disk, so the audit trail names the
     // file the prompt was actually built from.
     ...(input.instructions_file ? { instructions_file: resolve(root, input.instructions_file) } : {}),
     ...(input.context_file ? { context_file: resolve(root, input.context_file) } : {}),
     ...(diff ? { diff_range: diff.range, diff_bytes: diff.bytes,
       diff_truncated: diff.truncated, diff_empty: diff.empty } : {}),
-    // Always a path, on every engine. It used to be null for claude — whose
-    // stdout is already just the report — which left the conductor maintaining
-    // two retrieval paths in the one place the workflow otherwise abstracts
-    // engines away (dispatch-findings 2026-09-10, F-E). How the file gets
-    // written still differs per engine; that the conductor reads one file does
-    // not. raw_file keeps the full transcript for the engines that produce one.
+    // Always a path, on every engine: one retrieval path wherever the workflow
+    // otherwise abstracts engines away (dispatch-findings 2026-09-10, F-E).
     report_file,
-    command: buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter }),
+    // One line on every engine and OS; run-worker.mjs does the rest and prints
+    // the report at the end.
+    command: runWorkerCommand(dir),
     // Run after the worker finishes and before accepting it: inspect_dispatch
-    // stays `incomplete` until Red is proven for a dispatch that declared tests.
+    // stays `incomplete` until the case is proven for a dispatch that declared tests.
     ...(composed.test_paths ? { red_check_command: redCheckCommand(dir) } : {})
   };
 }
 
-// The base invocation is always `cd <workspace> && <executable> <args> < <stdin>`.
-// Every engine is then wrapped so that report_file exists afterwards, because a
-// conductor that reads one file for claude and another for codex is a conductor
-// keeping engine-specific state in the one place the workflow abstracts engines
-// away (dispatch-findings 2026-09-10, F-E). Three mechanisms, one destination:
-//
-//   - reportIsStdout (claude): stdout IS the report, so it is captured straight
-//     into report_file. stderr is deliberately NOT redirected — it belongs to
-//     the conductor, and folding a crash trace into the file it reads as "the
-//     worker's answer" is how a failed run reads as a strange report.
-//   - writesReportFile without extraction (codex): it wrote report_file itself
-//     via -o; stdout+stderr go to raw_file so the transcript stays out of the way.
-//   - writesReportFile with extraction (antigravity): same capture, then
-//     extractReportFrom turns raw_file into report_file.
-//
-// The wrapper prints report_file either way, so a foreground run's tool-call
-// result is the small clean report rather than a multi-megabyte transcript.
-// The subshell preserves the underlying process's real exit code as the whole
-// command's exit code by default; without that, the trailing `cat` would win.
-//
-// For an engine with extractReportFrom (antigravity), the extraction step is
-// also the only place a denied action or a missing result can be detected —
-// the underlying process itself exits 0 either way (see extract-agy-result.mjs)
-// — so its own exit code is folded in too: a real process failure (`ec`) still
-// wins over it, but a clean process paired with a denied-action report now
-// fails the whole command instead of silently returning 0.
-//
-// Every variant also records its outcome — start time before the process,
-// finish time and exit codes after it — through record-outcome.mjs into the
-// dispatch directory, which is what inspect_dispatch reads back. A process
-// launched from the structured executable/args fields bypasses that, and
-// inspect_dispatch says so rather than guessing.
-export const redCheckCommand = dir => `node ${quote(RED_CHECK)} ${quote(dir)}`;
-
-export function buildRunnableCommand({ workspace, command, stdin_file, report_file, raw_file, adapter }) {
-  const base = `cd ${quote(workspace)} && ${quote(command.executable)} `
-    + `${command.args.map(quote).join(' ')} < ${quote(stdin_file)}`;
-  const record = `node ${quote(RECORD_OUTCOME)}`;
-  const dir = quote(dirname(report_file));
-  const start = `${record} start ${dir}`;
-  const finish = codes => `${record} finish ${dir} ${codes}`;
-  if (!adapter.writesReportFile) {
-    if (!adapter.reportIsStdout) return `( ${start}; ${base}; ec=$?; ${finish('$ec')}; exit $ec )`;
-    return `( ${start}; ${base} > ${quote(report_file)}; ec=$?; ${finish('$ec')}; cat ${quote(report_file)}; exit $ec )`;
-  }
-
-  if (!adapter.extractReportFrom) {
-    // codex already wrote report_file itself, via -o in args — nothing to extract or validate.
-    return `( ${start}; ${base} > ${quote(raw_file)} 2>&1; ec=$?; ${finish('$ec')}; cat ${quote(report_file)}; exit $ec )`;
-  }
-  const extractCmd = `node ${quote(resolve(ENGINES_DIR, adapter.extractReportFrom))} `
-    + `${quote(raw_file)} ${quote(report_file)}`;
-  return `( ${start}; ${base} > ${quote(raw_file)} 2>&1; ec=$?; ${extractCmd}; xc=$?; ${finish('$ec $xc')}; `
-    + `cat ${quote(report_file)}; exit $([ "$ec" -ne 0 ] && echo "$ec" || echo "$xc") )`;
-}
+export const runWorkerCommand = dir => `node ${shellArg(RUN_WORKER)} ${shellArg(dir)}`;
+export const redCheckCommand = dir => `node ${shellArg(RED_CHECK)} ${shellArg(dir)}`;
+export const setupCommand = dir => `node ${shellArg(BOUNDED)} --setup ${shellArg(dir)}`;

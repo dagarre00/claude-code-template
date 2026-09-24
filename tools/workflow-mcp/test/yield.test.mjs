@@ -10,10 +10,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { buildRunnableCommand } from '../dispatch.mjs';
-import { ENGINES } from '../engines/index.mjs';
 import { makeTools } from '../tools.mjs';
-import { cleanup, fixture } from './helpers.mjs';
+import { cleanup, fixture, runAs } from './helpers.mjs';
 
 const CONFIG = {
   version: 1, defaultEngine: 'inherit', workerTimeoutSeconds: 1800, workerCommands: ['npm test'], roles: {},
@@ -49,10 +47,7 @@ function finished(tools, task_id, role, engine) {
   const wt = tools.prepare_worktree({ task_id });
   const built = tools.build_worker_prompt({ role, instructions: 'x', workspace: wt.workspace, task_id, cli_engine: engine,
     ...(role === 'developer' ? { owned_paths: ['src'] } : {}) });
-  const wrapped = buildRunnableCommand({ workspace: wt.workspace, command: { executable: 'sh', args: ['-c', 'echo report'] },
-    stdin_file: built.stdin_file, report_file: built.report_file, raw_file: resolve(built.report_file, '..', 'raw.txt'),
-    adapter: ENGINES[engine] });
-  spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
+  runAs(built, 'sh', ['-c', 'echo report']);
 }
 
 test('a review decision carries its finding counts, and stats report yield and findings against the author', () => {

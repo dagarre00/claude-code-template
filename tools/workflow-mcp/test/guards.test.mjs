@@ -10,10 +10,8 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { loadConfig } from '../config.mjs';
-import { buildRunnableCommand } from '../dispatch.mjs';
-import { ENGINES } from '../engines/index.mjs';
 import { makeTools } from '../tools.mjs';
-import { cleanup, fixture } from './helpers.mjs';
+import { cleanup, fixture, runAs } from './helpers.mjs';
 
 const engines = {
   claude: { executable: 'claude', models: { reasoning: 'opus', balanced: 'sonnet', fast: 'haiku' },
@@ -94,10 +92,7 @@ test('a change to a protected file inside owned paths is a violation, and the pr
     const put = (path, body) => { mkdirSync(dirname(resolve(wt.workspace, path)), { recursive: true }); writeFileSync(resolve(wt.workspace, path), body); };
     put('src/domain/order.mjs', 'export const total = 1;\n');
     put('src/architecture.rules', 'allow everything\n');
-    const wrapped = buildRunnableCommand({ workspace: wt.workspace, command: { executable: 'sh', args: ['-c', 'echo done'] },
-      stdin_file: built.stdin_file, report_file: built.report_file, raw_file: resolve(built.report_file, '..', 'raw.txt'),
-      adapter: ENGINES.claude });
-    spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
+    runAs(built, 'sh', ['-c', 'echo done']);
     const inspected = tools.inspect_dispatch({ task_id: 'sneak' });
     assert.deepEqual(inspected.worktree.violations, ['src/architecture.rules']);
     assert.equal(inspected.verdict.mechanical, 'reject');

@@ -23,7 +23,7 @@ Work them in order. 1–3 are where re-work comes from; 4–6 are where the surp
 
 Two mechanical checks inside the sweep:
 
-- **Case coverage.** List the case IDs your assignment names and map each to its step(s). A case with no step is a `blocker`, every time.
+- **Case coverage.** List the case IDs your instructions names and map each to its step(s). A case with no step is a `blocker`, every time.
 - **Red-first viability.** For each step, state the assertion that would fail before it is implemented. If you cannot, the step is not testable as written — a `risk` at minimum.
 
 Verify before asserting: grep for a helper the plan assumes exists; state both readings of an ambiguous line and what each would produce. An unchecked finding is `confidence: low` or dropped.

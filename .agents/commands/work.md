@@ -6,7 +6,7 @@ type: command
 skills:
   planner: [plan-writing, spec-writing]
   plan-adversary: [plan-review]
-  developer: [tdd-loop, clean-architecture, wiki-update, gotcha-recording, decision-recording]
+  developer: [tdd-loop, clean-architecture, gotcha-recording, decision-recording]
   adversary: [adversarial-review]
 ---
 
@@ -30,7 +30,7 @@ Every dispatch follows the `worker-dispatch` skill — read it before the cycle'
 
 - **Each role already receives only its own skills.** Narrow `skills` only when a worker clearly needs less.
 - **Inputs outside the worktree** (a baseline, a large fixture) are inlined in `instructions`, or covered by the engine's read grant before dispatch. A denied read ends the run.
-- **A developer case is accepted only after its Red is proven.** Pass `test_paths` and `test_command` on every developer dispatch; `inspect_dispatch` stays `incomplete` until you run the returned `red_check_command` (step 6).
+- **A developer case is accepted only after Green, architecture and Red are proven.** Pass `test_paths` and `test_command` on every developer dispatch; `inspect_dispatch` stays `incomplete` until you run the returned `red_check_command` (step 6). Prefer the case's test directory to a single file for `test_paths`: a fixture or helper the developer adds beside the test is then kept, not reverted with the implementation.
 - **Removals.** Workers cannot delete files. A moved file splits: the worker writes the new path and reports the old one as superseded, and you `git rm` it in the same commit, so git records a rename.
 
 ## Preconditions
@@ -39,18 +39,18 @@ Every dispatch follows the `worker-dispatch` skill — read it before the cycle'
 
 - **Clean working tree — clean *and yours*.** Run `git status --porcelain` and account for every line. Changes you did not make are another session's live work: never stash, reset or check out over them (rule 21) — `human-checkpoint`, naming the paths.
 - `docs/wiki/todos.md` has at least one item.
-- `docs/wiki/commands.md § Test` is not `<TBD>` **and actually runs** — execute it once before dispatching anything. A command that errors (framework missing, no manifest, no test directory) makes every Red fail for the wrong reason. The fix is `/project:init` step 5a, never a skeleton improvised mid-cycle.
+- `docs/wiki/commands.md § Test` is not `<TBD>` **and actually runs** — execute it once before dispatching anything, bounded: `node tools/workflow-mcp/bounded.mjs -- "<test command>"`. A command that errors (framework missing, no manifest, no test directory) makes every Red fail for the wrong reason. The fix is `/project:init` step 5a, never a skeleton improvised mid-cycle.
 
 Any failure → stop and `human-checkpoint`.
 
 **On a `feat/*` branch:**
 
-- Uncommitted changes, unpushed commits, or entity cases still `[ ]`/`[~]` → stay and continue the feature (step 5).
+- Uncommitted changes, unpushed commits, or entity cases still `[ ]`/`[~]` → stay and continue the feature (step 5). Uncommitted changes first: every dispatch needs a clean checkout. Account for every path (rule 21) — a case you integrated but had not committed is yours to commit, anything else is a `human-checkpoint` — then push what is unpushed.
 - Every case `[x]` and pushed → first confirm the PR actually merged (`gh pr view <branch> --json state`, or the merge commit on `develop`) — `[x]`-and-pushed is also true of an open PR. Then `git checkout develop`, `git fetch origin develop && git merge --ff-only origin/develop`, and `git branch -d <branch>` (lowercase `-d` refuses an unmerged branch — a second check).
 
 ## Resuming an interrupted cycle
 
-You commit and push after each green case, so a recycled container loses at most the case in flight. Re-run `/project:work`: `git fetch origin feat/<slug>` recovers what was pushed, and the cases still `[ ]`/`[~]` on the entity page are the resume point. A dispatch interrupted with its worktree intact (a rate-limit pause) resumes from its recorded state — `worker-dispatch` § Resuming an interrupted dispatch.
+You commit and push after each green case, and the plan review's record before the first one (step 4a), so a recycled container loses at most the case in flight. Re-run `/project:work`: `git fetch origin feat/<slug>` recovers what was pushed, and the cases still `[ ]`/`[~]` on the entity page are the resume point. The plan itself is scratch: if `.handoff/<slug>-plan.md` is gone on a `[complex]` cycle, re-dispatch the `planner` for the remaining cases and re-apply the dispositions the log entry records rather than re-reviewing from scratch. A dispatch interrupted with its worktree intact (a rate-limit pause) resumes from its recorded state — `worker-dispatch` § Resuming an interrupted dispatch.
 
 ## Steps
 
@@ -66,12 +66,13 @@ You commit and push after each green case, so a recycled container loses at most
 
 3. **Verify the Behavior cases.** Read `## Behavior` on the entity page (or the `[infra]` concept page). Its unimplemented `[ ]` cases are the test target. Empty or vague → stop: `/project:interview` or the `spec-writing` skill defines them first. **Config and deploy changes are behavior** — middleware, an auth header, a CORS rule each takes a failing test first like any other case.
 
-4. **Plan, if complex or batched.** A `[complex]` todo or a batch of 2+ → dispatch the `planner` with the entity slug(s), the batch contents, this cycle's case IDs and the test command from `docs/wiki/commands.md`. It is read-only and returns the plan in its report: **save it to `.handoff/<slug>-plan.md`** (gitignored scratch) and pass that path as `instructions_file` in steps 4a and 5 — the MCP inlines the file's text, so the plan never passes through a tool call twice and no worker is handed a path. Sanity-check it: the steps cover the listed cases and the scope has not drifted. Wrong → send it back once; a second failure means re-spec via `/project:interview`. A single simple todo skips this step.
+4. **Plan, if complex or batched.** A `[complex]` todo or a batch of 2+ → dispatch the `planner` with the entity slug(s), the batch contents, this cycle's case IDs and the test command from `docs/wiki/commands.md`. It is read-only and returns the plan in its report: **copy its `report_file` to `.handoff/<slug>-plan.md`** with `cp` (gitignored scratch) — never re-type it, which costs the plan's length again in output — and pass that path as `instructions_file` in steps 4a and 5. The MCP inlines the file's text, so the plan never passes through a tool call and no worker is handed a path. Sanity-check it: the steps cover the listed cases and the scope has not drifted. Wrong → send it back once; a second failure means re-spec via `/project:interview`. A single simple todo skips this step.
 
 4a. **Review the brief — every cycle, before any test.** Dispatch the `plan-adversary` and run the brief round of the `finding-disposition` skill.
    - The subject is exactly one of: the step 4 plan (`instructions_file: .handoff/<slug>-plan.md`), or on a simple cycle the todo line plus the `$ARGUMENTS` instruction verbatim. Add the entity slug(s), case IDs, test command and branch name — **nothing else**. Your own reading of the plan is the framing that turns a review into agreement.
    - Dispose of every finding before the developer runs. **Applied** (the default) edits the plan file step 5 sends, or the todo line. **Escalated** — the spec is what is wrong — is a `human-checkpoint` recommending `/project:interview`, and the cycle stops. **Rejected** takes one sentence. A `blocker` you disagree with is a checkpoint, never a rejection.
    - Re-dispatch the `planner` only for a structural blocker (wrong decomposition, impossible order), once. Apply everything smaller yourself.
+   - **Commit the record before any test.** Open this cycle's `work` entry in `docs/wiki/log.md` now (`log-and-commit.md`), with `TODO(s)`, `Branch` and the `Plan review` block (step 8's format), and commit it alone on the branch — `docs(<slug>): plan review` — and push. The plan is gitignored scratch and the dispositions exist nowhere else, so a recycled container would otherwise lose them (rule 20). Step 8 completes the same entry.
    - Unlike step 7a this is not gated on `[complex]`: a one-line todo is where an unstated assumption travels furthest. `skip the pre-flight` turns it off; say so in the report.
 
 5. **Dispatch the `developer`, one Behavior case per dispatch,** with:
@@ -81,11 +82,9 @@ You commit and push after each green case, so a recycled container loses at most
    - `test_paths` (inside `owned_paths`) and `test_command` (verbatim from `commands.md`) — what step 6 re-runs;
    - a `commit_message` for the case.
 
-   The developer runs Red → Green → refactor → tick, leaves the result as files and runs no git. **You commit once per case** (`docs/wiki/git-conventions.md` § Cadence), before dispatching the next — that keeps the history per case. Anything changed outside `owned_paths` is a defect: read it before deciding, and never widen ownership after the fact.
+   The developer runs Red → Green → refactor → tick, leaves the result as files and runs no git. **You commit once per case** (`docs/wiki/git-conventions.md` § Cadence), before dispatching the next — that keeps the history per case. Each next case reuses the previous case's worktree (`prepare_worktree` with `reuse`), so the project's dependencies are installed once per cycle, not once per case. Anything changed outside `owned_paths` is a defect: read it before deciding, and never widen ownership after the fact.
 
-6. **Verify Red, Green and architecture before accepting the case.**
-   - **Red, mechanically:** run the `red_check_command` (also in `inspect_dispatch` → `red.command`). It reverts every non-test file the developer changed, runs the tests, and restores the files byte for byte. Exit 0 = Red proven; exit 1 = **refuted** — the tests pass without the implementation, and the case is rejected whatever the report says. The output tail must show the missing behavior (an assertion, or the not-yet-written symbol), not a broken fixture. Interrupted → re-run it with `--restore` first.
-   - **Green and architecture:** in the worktree, the full test command and `docs/wiki/commands.md § Architecture` both pass, with no regression.
+6. **Verify Green, architecture and Red before accepting the case** — one command, the `red_check_command` (also in `inspect_dispatch` → `red.command`). It runs the test command with the developer's files in place (**Green**, the full suite, no regression), then the architecture check if `config.json` has one, then reverts every non-test file the developer changed and runs the tests again (**Red**: they must now fail), restoring the files byte for byte. It prints a verdict line per phase and only the output tail of the run that decided. Exit 0 = proven; exit 1 = not green, architecture failing, **refuted** (the tests pass without the implementation) or timed out — `inspect_dispatch` rejects the first three whatever the report says; 2 = a phase could not run. On a proven case, read the red tail: it must show the missing behavior (an assertion, or the not-yet-written symbol), not a broken fixture. Interrupted → re-run it with `--restore` first. Don't re-run the suite by hand to confirm what it recorded.
    - **Follow-ups** the developer handed back for `todos.md`/`wiki-todos.md` are yours to append in the case commit.
    - **A case the worker could not verify** — its check needs a command outside the allowlist (a GUI application, a machine-specific runner, a service without credentials) — is yours to run before the commit claims it done. The developer names such a case in its first report on it. A substitute harness can fail *as a pass* (a script it never executes exits 0), so run the real thing and read its output. If you cannot run it either, the case stays `[~]` and the report says so.
 
@@ -100,9 +99,9 @@ You commit and push after each green case, so a recycled container loses at most
 
    A simple single todo skips this step; the human can run `/project:adversary`.
 
-8. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `work`, fields `TODO(s)`, `Cases: B1, B2`, `Branch: feat/<slug>`, `Plan review: <N> findings — <A> applied, <E> escalated, <R> rejected` followed by one line per finding (the log is that review's only committed record), and `Adversary: <N> findings — <Fi> filed, <Fx> fixed, <R> rejected` (omit it if step 7a did not run; omit the plan review only if the argument skipped step 4a). Stage `docs/wiki/log.md` alone; subject `docs(<slug>): log cycle`. This is the one commit `/project:work` makes on its own account — the cases and review records are already committed.
+8. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — complete the `work` entry step 4a opened (open it now if the argument skipped step 4a): kind `work`, fields `TODO(s)`, `Cases: B1, B2`, `Branch: feat/<slug>`, `Plan review: <N> findings — <A> applied, <E> escalated, <R> rejected` followed by one line per finding (the log is that review's only committed record), and `Adversary: <N> findings — <Fi> filed, <Fx> fixed, <R> rejected` (omit it if step 7a did not run). Stage `docs/wiki/log.md` alone; subject `docs(<slug>): log cycle`. With step 4a's, these are the commits `/project:work` makes on its own account — the cases and review records are already committed.
 
-   Delete `.handoff/<slug>-plan.md`. Confirm `git status --porcelain` is empty and `git log --oneline develop..HEAD` reads as one commit per case.
+   Delete `.handoff/<slug>-plan.md`. Confirm `git status --porcelain` is empty and `git log --oneline develop..HEAD` reads as one commit per case, plus the review and log records.
 
 9. **Feature complete?** Re-read the entity's `## Behavior`. All `[x]` → step 10. Otherwise → step 11, no PR yet.
 
@@ -124,7 +123,7 @@ You commit and push after each green case, so a recycled container loses at most
     - `/project:wiki` — 10+ open `wiki-todos.md` entries, 5+ `work` entries since the last `wiki-maintenance`, or the `[adversary]` count at `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`).
     - A missing skill — a multi-step procedure you hand-rolled this cycle, or a new service in the stack → the `update-toolkit` skill (rule 17).
     - A risky next change → `git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)` first.
-    - Every 10th `work` entry: `dispatch_stats`, reduced to one line per review role (findings raised vs. acted on) and per developer engine (`red_refuted`, `findings_against`) — the evidence for keeping the plan-adversary on simple todos, or moving a role to another engine.
+    - Every 10th `work` entry: `dispatch_stats`, reduced to one line per review role (findings raised vs. acted on) and per developer engine (`red_refuted`, `green_failed`, `findings_against`) — the evidence for keeping the plan-adversary on simple todos, or moving a role to another engine.
     - `check` reports `architecture.enforced: false` while `architecture.md § Layers` is filled → `/project:init` step 5b.
 
 ## Failure modes
@@ -138,7 +137,7 @@ You commit and push after each green case, so a recycled container loses at most
 - **A read-only reviewer changes anything** (plan-adversary or adversary) → the round is void: report it, restore the tree, re-dispatch.
 - **Adversary findings survive three rounds** → no fourth: file the `critical`/`major` ones (the human gate still applies), list the `minor`/`nit` ones unfiled in the round commit, and `human-checkpoint` any `critical`/`major` you think is wrong, with both positions.
 - **The developer cannot confirm Red** → the cases or the test environment are wrong: `human-checkpoint`.
-- **The red check refutes Red** → reject (`record_decision`) and re-dispatch with the output tail in the brief. The one exception is tests that live inside the source file (Rust `#[cfg(test)]`), where reverting the code reverts the test: brief the test into `tests/`, or accept with `override_mechanical` and a reason naming that layout.
+- **The red check is not green, fails the architecture check, or refutes Red** → reject (`record_decision`) and re-dispatch with the deciding output tail in the brief. The one exception is tests that live inside the source file (Rust `#[cfg(test)]`), where reverting the code reverts the test: brief the test into `tests/`, or accept with `override_mechanical` and a reason naming that layout.
 - **The architecture check fails** → send it back with the check's output: move the code or add a port. A request to loosen a rule is a `human-checkpoint` and, if approved, an ADR in the same commit as the rule change.
 - **Two failures on one mechanism** → rule 5: tag `checkpoint-<stamp>` and `human-checkpoint` with both attempts; the `git reset --hard` is the human's call, after `git status --porcelain` accounts for every line. On an approved reset, re-spec via `/project:interview`; for complex work, re-dispatch the `planner` for a fundamentally different approach first.
 - **Pre-existing test failures on `develop`** → stop; `human-checkpoint`. Never build on a broken base.

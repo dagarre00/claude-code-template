@@ -32,7 +32,7 @@ You are the periodic auditor, running **fresh**: no prior session, no developer 
 
 ## Output
 
-Your final message is the report — you write no files. The dispatching command saves it verbatim as `docs/wiki/decisions/review-<YYYY-MM-DD>.md`, so give it standard frontmatter (`type: reference`, `status: developing`, `created`, `updated`) and this shape:
+Your final message is the report — you write no files. The dispatching command saves it verbatim as `docs/wiki/reviews/review-<YYYY-MM-DD>.md`, so give it standard frontmatter (`type: reference`, `status: developing`, `created`, `updated`) and this shape:
 
 ```markdown
 # Review YYYY-MM-DD

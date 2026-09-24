@@ -82,7 +82,11 @@ for (const engine of registered) {
     || (engine.spellCommand !== undefined && typeof engine.spellCommand !== 'function')
     // Optional: true where the engine's only way to read or search a file is its
     // shell, so the prompt must not read as forbidding that.
-    || (engine.filesThroughShell !== undefined && typeof engine.filesThroughShell !== 'boolean')) {
+    || (engine.filesThroughShell !== undefined && typeof engine.filesThroughShell !== 'boolean')
+    // Optional: true where buildArgs passes the engine a time limit of its own
+    // (antigravity's --print-timeout), so run-worker.mjs stands a grace period
+    // behind it and the engine's own timeout report still gets written.
+    || (engine.enforcesTimeout !== undefined && typeof engine.enforcesTimeout !== 'boolean')) {
     throw new Error(`Malformed engine adapter: ${engine?.name ?? 'unnamed'}`);
   }
 }
@@ -117,7 +121,7 @@ export function buildCommand(settings, task) {
 
   // Passed to every adapter; only codex's buildArgs does anything with it
   // (wires it in as -o). Antigravity gets its report_file a different way —
-  // dispatch.mjs wraps its command and runs extractReportFrom afterward,
+  // run-worker.mjs runs extractReportFrom over its transcript afterward,
   // because there is no argv flag agy accepts for this. Harmless for claude
   // to receive and ignore.
   const args = engine.buildArgs({ settings, config, profile, access, workspace, model, effort,

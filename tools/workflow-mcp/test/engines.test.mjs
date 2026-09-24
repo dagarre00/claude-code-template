@@ -148,8 +148,9 @@ test('codex omits both context-management overrides when not configured', () => 
 // runs extractReportFrom over the captured transcript instead — writesReportFile
 // is true either way, because from the conductor's side the outcome is the same.
 test('each engine declares honestly whether the conductor can read its report cleanly', () => {
-  assert.equal(ENGINES.claude.reportIsStdout, true);
-  assert.equal(ENGINES.claude.writesReportFile, false);
+  assert.equal(ENGINES.claude.reportIsStdout, false);
+  assert.equal(ENGINES.claude.writesReportFile, true);
+  assert.equal(ENGINES.claude.extractReportFrom, 'extract-claude-result.mjs', 'claude\'s JSON result carries its usage');
   assert.equal(ENGINES.codex.reportIsStdout, false);
   assert.equal(ENGINES.codex.writesReportFile, true);
   assert.equal(ENGINES.codex.extractReportFrom, undefined, 'codex writes report_file itself, via -o');
@@ -251,13 +252,19 @@ test('claude and codex argv actually carry the flag that earns the claim', () =>
   assert.ok(build('codex').args.includes('agents.enabled=false'));
 });
 
-// Only a measured "no" is declared. agy's agent definition carries no web tools,
-// and headless agy denied read_url_content and failed search_web anyway; claude
-// and codex workers were never measured for web access, so they declare nothing.
-test('antigravity declares that its workers have no web tools', () => {
-  assert.equal(ENGINES.antigravity.providesWeb, false);
+// Only a measured answer is declared. agy's was "no" on 1.2.2 (search_web failed,
+// read_url_content was denied) and "yes" on 1.2.9 (2026-09-24: search_web works,
+// read_url_content works once `read_url` is granted). claude and codex workers
+// were never measured for web access, so they declare nothing.
+test('antigravity declares web access, and gives web tools only to a role that needs them', () => {
+  assert.equal(ENGINES.antigravity.providesWeb, true);
   assert.equal(ENGINES.claude.providesWeb, undefined);
   assert.equal(ENGINES.codex.providesWeb, undefined);
+  const tools = capabilities => ENGINES.antigravity.agentDefinition({ role: 'r', access: 'read-only', workspace: '/w', capabilities })
+    .content.split('\n').filter(line => line.startsWith('  - ')).map(line => line.slice(4));
+  assert.ok(tools(['web']).includes('search_web') && tools(['web']).includes('read_url_content'));
+  assert.ok(!tools([]).some(tool => /search_web|read_url/.test(tool)), 'no web for a role that does not declare it');
+  assert.ok(!tools(['web']).includes('write_to_file'), 'web is not write access');
 });
 
 // Measured 2026-09-14 inside codex's Windows sandbox: `npm test` exits 1 with

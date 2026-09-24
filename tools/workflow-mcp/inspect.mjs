@@ -47,6 +47,18 @@ function readReport(record, dir) {
       summary.empty = true;
     }
   }
+  // extract-claude-result.mjs writes these beside the transcript. A denial does
+  // not end a claude run — the model is told and carries on — so it is a warning
+  // for the conductor to weigh, not a rejection.
+  if (record?.engine === 'claude') {
+    const recorded = readJson(resolve(dir, 'usage.json'));
+    if (recorded) {
+      summary.usage = { total_tokens: recorded.total_tokens, total_cost_usd: recorded.total_cost_usd,
+        num_turns: recorded.num_turns };
+      summary.permission_denials = (recorded.permission_denials ?? []).map(denial =>
+        `${denial?.tool_name ?? 'tool'} ${JSON.stringify(denial?.tool_input ?? {}).slice(0, 160)}`);
+    }
+  }
   if (record?.engine === 'codex') {
     summary.usage = codexUsage(resolve(dir, 'raw.txt'));
     // Codex's sandbox does not bound reads (measured), so its transcript is
@@ -69,8 +81,10 @@ function codexUsage(rawFile) {
   return Number.isFinite(total) ? { total_tokens: total } : null;
 }
 
-// Where Red stands for a dispatch that declared test paths (red-check.mjs).
-// null for every other dispatch: nothing is claimed about Red there.
+// Where the case check stands for a dispatch that declared test paths
+// (red-check.mjs: green, architecture, red). null for every other dispatch:
+// nothing is claimed about Red there. The output tails stay in red.json — the
+// check already printed the one that decided — so this stays a bounded record.
 function readRed(record, dir) {
   if (!record?.test_paths?.length) return null;
   const command = record.red_check_command ?? null;
@@ -79,9 +93,12 @@ function readRed(record, dir) {
   }
   const result = readJson(resolve(dir, 'red.json'));
   if (!result) return { state: 'not_run', command };
-  return { state: result.timed_out ? 'timed_out' : result.proven ? 'proven' : 'refuted', command,
-    exit_code: result.exit_code, checked_at: result.checked_at, reverted_paths: result.reverted_paths,
-    output_tail: result.output_tail };
+  // A red.json from before the green phase existed carries no state.
+  const state = result.state ?? (result.timed_out ? 'timed_out' : result.proven ? 'proven' : 'refuted');
+  const exits = Object.fromEntries(Object.entries(result.phases ?? {})
+    .map(([name, phase]) => [name, phase?.timed_out ? 'timed out' : phase?.exit_code ?? null]));
+  return { state, command, checked_at: result.checked_at, exit_codes: exits,
+    reverted_paths: result.reverted_paths, result_file: resolve(dir, 'red.json') };
 }
 
 function verdictFor({ record, outcome, report, worktree, decision, red }) {
@@ -90,14 +107,20 @@ function verdictFor({ record, outcome, report, worktree, decision, red }) {
   if (!record) return { mechanical: 'incomplete', reasons: ['No prompt has been composed for this task yet.'], warnings };
   if (!outcome) {
     return { mechanical: 'incomplete', warnings, reasons: ['This dispatch has not been run through its returned command — '
-      + 'no outcome is recorded. A process launched from the structured executable/args fields bypasses the '
-      + 'recording: judge its report by hand, or re-run the command string.'] };
+      + 'no outcome is recorded. Run the command build_worker_prompt returned.'] };
   }
   if (!outcome.finished_at) {
     return { mechanical: 'incomplete', warnings,
       reasons: [`Started at ${outcome.started_at} and has not finished (or was killed before it could record an exit).`] };
   }
-  if (outcome.exit_code !== 0) {
+  if (outcome.runner_stopped) {
+    reasons.push('The runner was stopped from outside before the worker finished — a shell tool gave up on the command, or '
+      + 'it was killed — and its watchdog stopped the worker with everything it started. The work is unfinished: '
+      + 're-dispatch, running the command in the background and waiting for it.');
+  } else if (outcome.timed_out) {
+    reasons.push('The worker ran past its time limit (workerTimeoutSeconds) and was stopped with every process it '
+      + 'started; its work is unfinished. Narrow the brief, or raise the limit if the task genuinely needs longer.');
+  } else if (outcome.exit_code !== 0) {
     reasons.push(`The command exited ${outcome.exit_code} (process ${outcome.process_exit_code}`
       + `${outcome.extraction_exit_code == null ? '' : `, report extraction ${outcome.extraction_exit_code}`}).`);
   }
@@ -112,6 +135,13 @@ function verdictFor({ record, outcome, report, worktree, decision, red }) {
   }
   if (worktree.exists && worktree.violations?.length) {
     reasons.push(`A ${record.access} worker changed paths outside its scope: ${worktree.violations.join(', ')}.`);
+  }
+  // A decided attempt's worktree is expected to be gone — cleanup follows the
+  // decision. Before one, a missing worktree means nothing above could look at
+  // what the worker changed, which is not the same as it having changed nothing.
+  if (!worktree.exists && !worktree.archived && !decision) {
+    reasons.push('This task\'s worktree is gone, so what the worker changed cannot be checked against its scope. '
+      + 'Accepting it needs override_mechanical and a reason that accounts for that.');
   }
   // Only an acceptance accounts for commits: the conductor commits after
   // accepting. A rejection leaves them exactly as unexplained as before
@@ -136,12 +166,24 @@ function verdictFor({ record, outcome, report, worktree, decision, red }) {
     warnings.push(`The worker read skills it was not sent: ${unsent.join(', ')}. Every worktree holds every `
       + 'committed skill; for a reviewer, reading another role\'s procedures can void its independence.');
   }
+  if (report.permission_denials?.length) {
+    warnings.push(`claude denied ${report.permission_denials.length} tool call(s) and the worker carried on: `
+      + `${report.permission_denials.slice(0, 5).join('; ')}. Check the report does not rest on what it could not do.`);
+  }
   if (audit?.commands_not_allowlisted?.length) {
     warnings.push(`Commands not on the allowlist verbatim: ${audit.commands_not_allowlisted.join('; ')}.`);
   }
   if (red?.state === 'refuted') {
     reasons.push(`The declared tests pass with the implementation reverted to ${record.base_sha} (\`${record.test_command}\` `
       + `exited 0) — they do not test the change, whatever the report says about Red.`);
+  }
+  if (red?.state === 'green_failed') {
+    reasons.push(`The declared tests fail with the worker's implementation in place (\`${record.test_command}\` exited `
+      + `${red.exit_codes?.green}) — the case is not Green, whatever the report says. The output is in ${red.result_file}.`);
+  }
+  if (red?.state === 'architecture_failed') {
+    reasons.push(`The architecture check fails with the worker's implementation in place (\`${record.architecture_command}\` `
+      + `exited ${red.exit_codes?.architecture}). The output is in ${red.result_file}.`);
   }
   if (red?.state === 'interrupted') {
     reasons.push(`A red check was interrupted with the implementation still reverted. Put the worker's files back first: ${red.restore_command}`);
@@ -156,7 +198,10 @@ function verdictFor({ record, outcome, report, worktree, decision, red }) {
     return { mechanical: 'incomplete', warnings, transient: false,
       reasons: [red.state === 'timed_out'
         ? `The red check timed out, so Red is not proven. Investigate, then re-run: ${red.command}`
-        : `Red has not been proven. Run the red check before accepting: ${red.command}`] };
+        : red.state === 'error'
+          ? `The red check could not run a phase (a command that failed to start or was killed), so nothing is `
+            + `proven. The output is in ${red.result_file}; fix the cause and re-run: ${red.command}`
+          : `Red has not been proven. Run the red check before accepting: ${red.command}`] };
   }
   return { mechanical: reasons.length ? 'reject' : 'pass', reasons, warnings,
     transient: !!report.transient && reasons.length <= sameFault
@@ -181,7 +226,7 @@ function summarise(root, task_id, dir, listing, { archived = false } = {}) {
   const decision = readJson(resolve(dir, 'decision.json'));
   const state = !record ? 'prepared' : !outcome ? 'composed' : !outcome.finished_at ? 'running' : 'finished';
   const report = record ? readReport(record, dir) : { path: resolve(dir, 'report.txt'), exists: false, bytes: 0, empty: true };
-  const worktree = archived ? { exists: false } : worktreeState(root, record ?? worktreeRecord, listing);
+  const worktree = archived ? { exists: false, archived: true } : worktreeState(root, record ?? worktreeRecord, listing);
   const red = readRed(record, dir);
   // An archived attempt keeps the verdict it had when it was archived: its
   // worktree has moved on, so recomputing would forget any change outside scope
@@ -204,8 +249,8 @@ function summarise(root, task_id, dir, listing, { archived = false } = {}) {
       duration_ms: outcome.duration_ms ?? null, exit_code: outcome.exit_code ?? null,
       process_exit_code: outcome.process_exit_code ?? null, extraction_exit_code: outcome.extraction_exit_code ?? null } : null,
     report: reportSummary,
-    // agy reports usage in its result event and codex in its transcript; claude's
-    // report is the final message alone, so it has none.
+    // agy reports usage in its result event, codex in its transcript, claude in
+    // its JSON result (usage.json).
     usage: usage ?? null,
     audit: audit ?? null,
     worktree,
@@ -335,7 +380,7 @@ export function dispatchStats(root) {
     if (!rows.has(key)) {
       rows.set(key, { engine: attempt.engine, role: attempt.role, dispatches: 0, finished: 0, exit_nonzero: 0,
         mechanical_pass: 0, mechanical_reject: 0, accepted: 0, rejected: 0, undecided: 0, retries: 0,
-        red_proven: 0, red_refuted: 0, reviews_with_findings_recorded: 0, findings_raised: 0, findings_acted_on: 0,
+        red_proven: 0, red_refuted: 0, green_failed: 0, reviews_with_findings_recorded: 0, findings_raised: 0, findings_acted_on: 0,
         findings_against: {}, durations: [], tokens: [] });
     }
     const row = rows.get(key);
@@ -343,6 +388,7 @@ export function dispatchStats(root) {
     if (attempt.attempt > 1) row.retries += 1;
     if (attempt.red?.state === 'proven') row.red_proven += 1;
     if (attempt.red?.state === 'refuted') row.red_refuted += 1;
+    if (attempt.red?.state === 'green_failed') row.green_failed += 1;
     if (attempt.state === 'finished') {
       row.finished += 1;
       if (attempt.run.exit_code !== 0) row.exit_nonzero += 1;
@@ -389,7 +435,7 @@ export function dispatchStats(root) {
     attempts: attempts.length,
     by_engine_role,
     note: 'Counts cover every attempt composed in this checkout, archived retries included. accepted/rejected are the '
-      + 'conductor\'s recorded decisions; mechanical_* are computed. total_tokens is null where the engine reports no '
-      + 'usage counters (claude, whose report is its final message alone).'
+      + 'conductor\'s recorded decisions; mechanical_* are computed. total_tokens is null where no attempt reported '
+      + 'usage counters (an engine that reports none, or runs from before claude workers reported theirs).'
   };
 }

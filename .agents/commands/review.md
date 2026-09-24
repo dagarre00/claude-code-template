@@ -26,11 +26,11 @@ Any failure → `human-checkpoint`.
 
 2. **Dispatch the `reviewer`** per `worker-dispatch`, with the scope, the current `docs/wiki/wiki-todos.md` as input, and the instruction to verify every claim independently.
 
-3. **Save its report** verbatim to `docs/wiki/decisions/review-YYYY-MM-DD.md`. The reviewer is read-only and returns the report already shaped for that file; a review file appearing in its worktree is a read-only violation, not a delivery. If the report's audit shows reads outside its workspace (another worker's report, the dispatch files), it lost the fresh context this command exists for — say so in the log entry.
+3. **Save its report** verbatim to `docs/wiki/reviews/review-YYYY-MM-DD.md`. The reviewer is read-only and returns the report already shaped for that file; a review file appearing in its worktree is a read-only violation, not a delivery. If the report's audit shows reads outside its workspace (another worker's report, the dispatch files), it lost the fresh context this command exists for — say so in the log entry.
 
 4. **Distribute the findings:** each Critical, Warning and recommended todo → a line in `docs/wiki/todos.md` at its priority; each Drift item → `docs/wiki/wiki-todos.md`; each missing ADR → a todo for the next `/project:work` cycle.
 
-5. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `review`, fields `Report: [[decisions/review-YYYY-MM-DD]]`, `Critical: <N>, Warnings: <M>, Drift: <K>`, `New todos: <list>`. Stage `docs/wiki/`; subject `docs(review): audit YYYY-MM-DD — <N critical, M warnings, K drift>`. Read `git status --porcelain` first: the reviewer ran in its own worktree, so anything here you did not write is another session's work — `human-checkpoint`, naming the paths (rule 21).
+5. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `review`, fields `Report: [[reviews/review-YYYY-MM-DD]]`, `Critical: <N>, Warnings: <M>, Drift: <K>`, `New todos: <list>`. Stage `docs/wiki/`; subject `docs(review): audit YYYY-MM-DD — <N critical, M warnings, K drift>`. Read `git status --porcelain` first: the reviewer ran in its own worktree, so anything here you did not write is another session's work — `human-checkpoint`, naming the paths (rule 21).
 
 6. **Report** critical items only, and recommend the next step: `/project:work` (fix a critical), `/project:interview` (a spec gap) or `/project:wiki` (heavy drift).
 

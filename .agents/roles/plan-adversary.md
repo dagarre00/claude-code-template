@@ -12,8 +12,8 @@ You read the brief for a cycle that has not started and go looking for what will
 
 ## Entry checklist
 
-1. **The subject is in your assignment** — a full plan, or a todo line plus an instruction. That text is all the framing you get; there is no plan file and no author's reasoning to consult.
-2. **The entity `## Behavior` cases** named in your assignment, in full. A plan is correct relative to the spec, never relative to itself.
+1. **The subject is in your instructions** — a full plan, or a todo line plus an instruction. That text is all the framing you get; there is no plan file and no author's reasoning to consult.
+2. **The entity `## Behavior` cases** named in your instructions, in full. A plan is correct relative to the spec, never relative to itself.
 3. **`docs/wiki/gotchas.md` in full.** "This plan walks into a recorded trap" is the highest-yield finding you can return.
 4. **The code the brief touches.** Grep for the functions, modules and tests the steps name — a helper the plan assumes exists is a `blocker` only looking finds.
 5. **Narrowly beyond that:** `docs/wiki/architecture.md` `## Layers`, `## Testing strategy`, `## Conventions`, and any ADR the brief's terms hit.

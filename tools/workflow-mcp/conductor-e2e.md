@@ -35,7 +35,7 @@ You are running a conformance test of this repository's agent workflow, acting a
 - No commits, pushes or pull requests against the real project. Work only in the scratch fixture from step 2, and delete nothing outside it.
 - Report exact errors verbatim. A failed check is a useful result; a skipped check reported as passing is not.
 
-**1 — Reach the server.** Call `list_roles` and `check`. Record each role's resolved `engine` and confirm the list matches `.agents/roles/`. `check` must report the generated files in sync (record any drift and continue), and every engine's `setup.ok` must be true — record `missing_command_grants` verbatim; on agy each is a worker that dies on its first command.
+**1 — Reach the server.** Call `list_roles` and `check`. Record each role's resolved `engine` and confirm the list matches `.agents/roles/`. `check` must report the generated files in sync (record any drift and continue), and every engine's `setup.ok` must be true — record `missing_command_grants` and `missing_url_grants` verbatim; on agy each is a worker that dies on its first denied command or URL.
 
 **2 — Build a fixture.** The template's wiki is empty, so build a throwaway project outside the repository:
 
@@ -52,7 +52,7 @@ From here every MCP call uses the fixture as its root. If your server is pinned 
 
 **4 — Compose a prompt.** `build_worker_prompt` for the `planner`, with the entity slug, both case IDs and the test command as `instructions`. Before running anything, check the response against `.agents/config.json`: `engine`, `model` and `effort` match the role's config (`engine_chain` shows its order, `engine_available` whether the CLI is installed, and a fallback announces itself in `warnings`); `access` is `read-only` with empty `owned_paths`; `prompt_bytes` is non-zero; the skills are exactly those `work.md` declares for the planner. Record any `warnings` verbatim.
 
-**5 — Dispatch for real.** Run the returned `command` verbatim in a POSIX shell sharing this checkout's filesystem (Git Bash on Windows, never WSL), or launch from the structured `executable`/`args`/`cwd`/`stdin_file` fields. Capture stdout, stderr and the exit code. On every engine the command leaves the worker's report in `report_file` (the full codex/agy transcript goes to `raw_file`, for debugging only) — read `report_file` the same way whatever the engine. Call `inspect_dispatch` and record its `verdict` and reasons verbatim before reading the report yourself, then `record_decision`. Answer, with evidence:
+**5 — Dispatch for real.** Run the returned `command` verbatim, in whatever shell you have on the machine that holds this checkout, in the background if your shell tool has a short limit. Capture stdout, stderr and the exit code. On every engine the command leaves the worker's report in `report_file` (the full codex/agy transcript goes to `raw_file`, for debugging only) — read `report_file` the same way whatever the engine. Call `inspect_dispatch` and record its `verdict` and reasons verbatim before reading the report yourself, then `record_decision`. Answer, with evidence:
 
 - **Did it produce output?** Exit 0 with an empty response is a failure. Did `inspect_dispatch` agree? A mechanical verdict that contradicts what you read is an MCP defect.
 - **Could it run commands?** Quote any denied-permission message — a worker that can't run the test command can't do TDD, and this is the check most likely to fail.
@@ -62,7 +62,7 @@ From here every MCP call uses the fixture as its root. If your server is pinned 
 
 **6 — Repeat for each role you can reach.** Save the plan to a file; dispatch `plan-adversary` with `instructions_file` pointing at it; then `developer` for `B1` only (same file, plus `owned_paths`, `test_paths`, `test_command` and a `commit_message`); then `adversary` over the resulting commit range with `diff_range`. Answer step 5's questions for each, plus:
 
-- **`developer`:** a failing test *before* the implementation — run its `red_check_command` — and every change inside `owned_paths`. Run the suite yourself; never trust the report's claim.
+- **`developer`:** a failing test *before* the implementation and a passing suite after it — run its `red_check_command`, which proves both — and every change inside `owned_paths`. Never trust the report's claim.
 - **`adversary`:** findings in its report, numbered and graded, with a `Checked:` line, citing lines actually in the range (confirm `## Diff under review` was in its prompt). It wrote no files: `violations` empty.
 - **`plan-adversary`:** findings graded `blocker`/`risk`/`note`, with a `Checked:` line. An unexplained pass is a failed review.
 

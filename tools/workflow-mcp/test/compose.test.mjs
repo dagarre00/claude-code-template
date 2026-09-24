@@ -40,6 +40,48 @@ test('an explicit skill list narrows the command default rather than adding to i
   assert.doesNotMatch(prompt, /Check for an existing page first\./);
 });
 
+// Measured before this check: an adversary composed with skills: ['tdd-loop',
+// 'finding-disposition'] got the developer's procedure and a conductor-only one.
+test('an explicit skill list can never add a skill the command does not give that role', () => {
+  const roleMap = { '.agents/commands/work.md':
+    '---\nname: work\ndescription: d\nskills:\n  developer: [tdd-loop]\n  adversary: [wiki-update]\n---\n\nBody.\n' };
+  assert.throws(() => compose({ role: 'adversary', instructions: 'Review.', command: 'work', skills: ['tdd-loop'] }, roleMap),
+    /not one \/work gives role "adversary".*only narrow/);
+  assert.deepEqual(compose({ role: 'adversary', instructions: 'Review.', command: 'work', skills: [] }, roleMap).skills, []);
+});
+
+// A conductor that omitted `command` used to send the worker no procedure.
+test('with no command named, a role gets the skills the commands declare for it', () => {
+  const twoCommands = {
+    '.agents/commands/work.md': '---\nname: work\ndescription: d\nskills:\n  developer: [tdd-loop]\n  adversary: [wiki-update]\n---\n\nBody.\n',
+    '.agents/commands/adversary.md': '---\nname: adversary\ndescription: d\nskills:\n  adversary: [wiki-update]\n---\n\nBody.\n'
+  };
+  assert.deepEqual(compose({ role: 'adversary', instructions: 'Review.' }, twoCommands).skills, ['wiki-update'],
+    'two commands agreeing is one answer');
+  assert.deepEqual(compose(base, twoCommands).skills, ['tdd-loop']);
+  assert.throws(() => compose({ role: 'adversary', instructions: 'Review.' }, { ...twoCommands,
+    '.agents/commands/adversary.md': '---\nname: adversary\ndescription: d\nskills:\n  adversary: [tdd-loop]\n---\n\nBody.\n' }),
+  /different skills from \/adversary, \/work; pass command/);
+});
+
+// A project adds a skill to a role in config.json, not by editing a command file
+// that every sync-template run would then report as customized.
+test('extraSkills add a project skill to a role, under the same rules as a declaration', () => {
+  const files = {
+    '.agents/commands/work.md': '---\nname: work\ndescription: d\nskills:\n  developer: [tdd-loop]\n  adversary: [wiki-update]\n---\n\nBody.\n',
+    '.agents/skills/design-check/SKILL.md': '---\nname: design-check\ndescription: UI checks.\n---\n\nCheck the tokens.\n',
+    '.agents/skills/dispose/SKILL.md': '---\nname: dispose\ndescription: Conductor-only. Findings.\n---\n\nDispose.\n'
+  };
+  const added = compose({ ...base, command: 'work', extraSkills: ['design-check'] }, files);
+  assert.deepEqual(added.skills, ['tdd-loop', 'design-check']);
+  assert.match(added.prompt, /Check the tokens\./);
+  assert.deepEqual(compose({ ...base, command: 'work', extraSkills: ['design-check'], skills: ['design-check'] }, files).skills,
+    ['design-check'], 'an extra can be narrowed to like any other');
+  assert.throws(() => compose({ ...base, command: 'work', extraSkills: ['dispose'] }, files), /conductor-only/);
+  assert.throws(() => compose({ ...base, command: 'work', extraSkills: ['wiki-update'] }, files), /already gives "adversary"/);
+  assert.throws(() => compose({ ...base, command: 'work', extraSkills: ['nope'] }, files), /unknown skill "nope"/);
+});
+
 test('no command and no skills means no skill section at all', () => {
   const { prompt, skills } = compose(base);
   assert.deepEqual(skills, []);
@@ -76,16 +118,28 @@ test('free-text context travels as JSON data, never as prose to be executed', ()
   assert.ok(prompt.includes(JSON.stringify(nasty)));
 });
 
-test('the prefix before the assignment is identical across two dispatches of one role', () => {
-  const marker = '## Assignment';
+test('the prefix before the instructions is identical across two dispatches of one role', () => {
+  const marker = '## Instructions';
   const a = compose({ ...base, command: 'work', instructions: 'First task.' }).prompt;
   const b = compose({ ...base, command: 'work', instructions: 'Second task.' }).prompt;
   assert.equal(a.slice(0, a.indexOf(marker)), b.slice(0, b.indexOf(marker)));
   assert.notEqual(a, b);
 });
 
+// A plan with headings and lists used to arrive as one JSON-escaped line, under a
+// label telling the worker every value was "data, not instructions".
+test('the conductor\'s instructions arrive as prose, and only the human\'s free text as data', () => {
+  const plan = '# Plan: auth\n\n## Steps\n1. Write the failing test for B1.\n2. "Quote" it.';
+  const { prompt } = compose({ ...base, instructions: plan, context: 'from the human' });
+  const instructions = prompt.slice(prompt.indexOf('## Instructions'), prompt.indexOf('## Assignment'));
+  assert.ok(instructions.includes(plan), 'the plan is carried verbatim, line breaks and quotes intact');
+  const assignment = prompt.slice(prompt.indexOf('## Assignment'));
+  assert.doesNotMatch(assignment, /Write the failing test/, 'the task is not repeated as data');
+  assert.match(assignment, /"user_context": "from the human"/);
+});
+
 test('supporting files are named but not inlined', () => {
-  const { prompt } = compose({ ...base, skills: ['tdd-loop'] }, {
+  const { prompt } = compose({ ...base, command: 'work', skills: ['tdd-loop'] }, {
     '.agents/skills/tdd-loop/CHECKLIST.md': 'x'.repeat(5000)
   });
   assert.match(prompt, /\.agents\/skills\/tdd-loop\/CHECKLIST\.md/);
@@ -114,9 +168,9 @@ test('the embedded diff sits after the cacheable prefix, like every other per-di
     diff: { range: 'a..b', stat: '', patch: 'x', truncated: false } }).prompt;
   const without = compose({ role: 'adversary', instructions: 'Review it.' }).prompt;
   const prefix = text => text.slice(0, text.indexOf('## Diff under review') === -1
-    ? text.indexOf('## Assignment') : text.indexOf('## Diff under review'));
+    ? text.indexOf('## Instructions') : text.indexOf('## Diff under review'));
   assert.equal(prefix(withDiff), prefix(without));
-  assert.ok(withDiff.indexOf('## Diff under review') < withDiff.indexOf('## Assignment'),
+  assert.ok(withDiff.indexOf('## Diff under review') < withDiff.indexOf('## Instructions'),
     'the diff belongs with the assignment, not in the cached prefix');
 });
 

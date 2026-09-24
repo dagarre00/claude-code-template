@@ -1,25 +1,40 @@
 #!/usr/bin/env node
-// Proves Red after the fact, for a developer dispatch that declared its test
-// paths. Every non-test file the worker changed is put back to the base commit
-// (a file the worker created is set aside), the dispatch's test command runs,
-// and everything is restored byte for byte. Tests that still pass never tested
-// the change — rule "tests must fail for the right reason", computed instead of
-// reported.
+// Proves a developer case after the fact, for a dispatch that declared its test
+// paths, in three runs:
 //
-// Run by the conductor, like record-outcome.mjs — the MCP server itself never
-// runs a process. It runs in the worker's own worktree because that is where the
+//   green         the dispatch's test command, with the worker's files in place,
+//                 must pass;
+//   architecture  the project's architecture check, if one is configured, must
+//                 pass with them in place;
+//   red           every non-test file the worker changed is put back to the base
+//                 commit (a file the worker created is set aside), the test
+//                 command must now FAIL, and everything is restored byte for byte.
+//
+// Red alone used to be the whole check, and "the command exited non-zero" is not
+// Red: a test runner that does not exist, a command the shell cannot parse, or a
+// test that fails whatever the code does all exit non-zero too — measured, a
+// missing runner was reported "Red proven" and the dispatch passed inspection.
+// Requiring the same command to pass first, with the implementation, makes the
+// failure attributable to the reverted change. It also takes Green and the
+// architecture check out of the conductor's unbounded shell and into one record
+// with bounded output.
+//
+// Run by the conductor — the MCP server itself never runs a process. It runs in the worker's own worktree because that is where the
 // environment (dependencies, a virtualenv) was already built.
 //
 // Usage: node red-check.mjs <dispatchDir>            run the check
 //        node red-check.mjs <dispatchDir> --restore  put files back after an interrupted run
 //
-// Exit: 0 Red proven (tests failed), 1 refuted (tests passed), 2 the check itself failed.
+// Exit: 0 proven, 1 not proven (a phase failed or timed out), 2 the check itself failed.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { runBounded } from './process-tree.mjs';
 
-const OUTPUT_TAIL_BYTES = 4096;
+// Per phase. What the conductor must read is the tail of the run that decided
+// the verdict — an assertion, or the not-yet-written symbol — never a whole suite.
+export const OUTPUT_TAIL_BYTES = 2500;
 
 const readJson = path => JSON.parse(readFileSync(path, 'utf8'));
 const hash = buffer => createHash('sha256').update(buffer).digest('hex');
@@ -113,34 +128,112 @@ export function restoreRedCheck(dir) {
   return { restored: entries.length };
 }
 
-export function runRedCheck(dir, { timeoutSeconds = 1800 } = {}) {
-  const { record, entries } = revertForRedCheck(dir);
-  let run;
+const tailOf = text => {
+  const buffer = Buffer.from(text, 'utf8');
+  return buffer.length > OUTPUT_TAIL_BYTES ? buffer.subarray(buffer.length - OUTPUT_TAIL_BYTES).toString('utf8') : text;
+};
+
+// The shell a command line runs under, recorded because a line that works in the
+// conductor's bash can fail in cmd.exe — which the green phase now catches.
+export const SHELL = process.platform === 'win32' ? (process.env.ComSpec ?? 'cmd.exe') : '/bin/sh';
+
+// One run of a project command in the worktree. `passed` and `failed` are both
+// false when the command could not be judged: a timeout, a spawn error, or a
+// death by signal — none of which says anything about the code. A timeout stops
+// the whole process tree (process-tree.mjs), so no test run outlives the check.
+async function runPhase(command, cwd, timeoutSeconds) {
   // NODE_TEST_CONTEXT is set when the caller itself runs under `node --test`, and
   // it makes a child `node --test` stream results to that parent instead of
   // printing them — the output tail would then hold no assertion to read.
   const { NODE_TEST_CONTEXT, ...env } = process.env;
-  try {
-    run = spawnSync(record.test_command, { cwd: record.workspace, shell: true, encoding: 'utf8', env,
-      windowsHide: true, timeout: timeoutSeconds * 1000, maxBuffer: 64 * 1024 * 1024 });
-  } finally {
-    restoreRedCheck(dir);
+  const started = Date.now();
+  const run = await runBounded({ command, cwd, env, timeoutMs: timeoutSeconds * 1000, tailBytes: OUTPUT_TAIL_BYTES * 2,
+    guard: true });
+  const judged = !run.error && !run.timed_out && run.status !== null;
+  return {
+    command,
+    exit_code: run.status,
+    signal: run.signal,
+    timed_out: run.timed_out,
+    error: run.error,
+    passed: judged && run.status === 0,
+    failed: judged && run.status !== 0,
+    duration_ms: Date.now() - started,
+    output_tail: tailOf(run.output)
+  };
+}
+
+// Which phase decided the verdict, and what it decided.
+function stateOf({ green, architecture, red }) {
+  const unjudged = phase => phase && !phase.passed && !phase.failed;
+  for (const phase of [green, architecture, red]) {
+    if (unjudged(phase)) return phase.timed_out ? 'timed_out' : 'error';
   }
-  const output = `${run.stdout ?? ''}${run.stderr ?? ''}`;
-  const tail = Buffer.from(output, 'utf8');
+  if (green.failed) return 'green_failed';
+  if (architecture?.failed) return 'architecture_failed';
+  return red.failed ? 'proven' : 'refuted';
+}
+
+export async function runRedCheck(dir, { timeoutSeconds } = {}) {
+  const record = dispatchFor(dir);
+  // Per phase: the project's workerTimeoutSeconds, as recorded when the dispatch
+  // was composed — the same limit its worker had.
+  timeoutSeconds ??= record.timeout_seconds ?? 1800;
+  if (existsSync(paths(dir).manifest)) {
+    throw new Error(`A previous red check did not finish. Run: node red-check.mjs ${dir} --restore`);
+  }
+  rmSync(paths(dir).result, { force: true });
+  const phases = { green: await runPhase(record.test_command, record.workspace, timeoutSeconds) };
+  if (phases.green.passed && record.architecture_command) {
+    phases.architecture = await runPhase(record.architecture_command, record.workspace, timeoutSeconds);
+  }
+  let reverted = [];
+  // Red is only worth running once the implementation has been shown to pass:
+  // otherwise its failure says nothing about the change.
+  if (phases.green.passed && (!phases.architecture || phases.architecture.passed)) {
+    const { entries } = revertForRedCheck(dir);
+    reverted = entries.map(entry => entry.path);
+    try { phases.red = await runPhase(record.test_command, record.workspace, timeoutSeconds); }
+    finally { restoreRedCheck(dir); }
+  }
+  const state = stateOf(phases);
   const result = {
     checked_at: new Date().toISOString(),
+    state,
+    proven: state === 'proven',
     test_command: record.test_command,
+    architecture_command: record.architecture_command ?? null,
     test_paths: record.test_paths,
-    reverted_paths: entries.map(entry => entry.path),
-    exit_code: run.status,
-    timed_out: run.error?.code === 'ETIMEDOUT',
-    proven: run.status !== 0 && run.error?.code !== 'ETIMEDOUT',
-    output_tail: tail.length > OUTPUT_TAIL_BYTES ? tail.subarray(tail.length - OUTPUT_TAIL_BYTES).toString('utf8') : output
+    reverted_paths: reverted,
+    shell: SHELL,
+    phases
   };
   writeFileSync(paths(dir).result, JSON.stringify(result, null, 2) + '\n');
   return result;
 }
+
+// The phase whose output the conductor has to read: the one that failed, or —
+// once everything passed — the red run, whose failure must be the missing
+// behavior and not a broken setup.
+export const decidingPhase = result => {
+  const { green, architecture, red } = result.phases ?? {};
+  if (!green?.passed) return ['green', green];
+  if (architecture && !architecture.passed) return ['architecture', architecture];
+  return ['red', red];
+};
+
+const describe = (name, phase) => !phase ? `${name}: not run`
+  : `${name}: \`${phase.command}\` ${phase.timed_out ? 'timed out' : phase.error ? `could not run (${phase.error})`
+    : phase.exit_code === null ? `was killed (${phase.signal})` : `exited ${phase.exit_code}`}`;
+
+const HEADLINE = {
+  proven: 'PROVEN — the tests pass with the implementation and fail without it.',
+  refuted: 'REFUTED — the tests pass with the implementation reverted: they do not test the change.',
+  green_failed: 'NOT GREEN — the tests fail with the implementation in place.',
+  architecture_failed: 'ARCHITECTURE — the architecture check fails with the implementation in place.',
+  timed_out: 'TIMED OUT — a phase ran past the limit, so nothing is proven.',
+  error: 'COULD NOT RUN — a phase failed to start or was killed, so nothing is proven.'
+};
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.dirname, 'red-check.mjs')) {
   const [, , dir, flag] = process.argv;
@@ -149,15 +242,20 @@ if (process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.dirname,
     if (flag === '--restore') {
       console.log(`Restored ${restoreRedCheck(resolve(dir)).restored} file(s).`);
     } else {
-      const result = runRedCheck(resolve(dir));
-      console.log(result.proven
-        ? `Red proven: with ${result.reverted_paths.length} implementation file(s) reverted, \`${result.test_command}\` exited ${result.exit_code}.`
-        : result.timed_out
-          ? 'Red not proven: the test command timed out with the implementation reverted.'
-          : `Red REFUTED: \`${result.test_command}\` passed with the implementation reverted — these tests do not test the change.`);
-      console.log('Read the output tail and confirm the failure is the missing behavior, not a broken setup:');
-      console.log(result.output_tail.trimEnd());
-      process.exitCode = result.proven ? 0 : 1;
+      const result = await runRedCheck(resolve(dir));
+      console.log(`Case check: ${HEADLINE[result.state]}`);
+      console.log(`- ${describe('green', result.phases.green)}`);
+      if (result.architecture_command) console.log(`- ${describe('architecture', result.phases.architecture)}`);
+      console.log(`- ${describe('red', result.phases.red)}${result.phases.red
+        ? ` with ${result.reverted_paths.length} implementation file(s) reverted` : ''}`);
+      const [name, phase] = decidingPhase(result);
+      if (phase?.output_tail?.trim()) {
+        console.log(result.state === 'proven'
+          ? `Confirm the ${name} output shows the missing behavior (an assertion, or the not-yet-written symbol), not a broken setup:`
+          : `Output of the ${name} run:`);
+        console.log(phase.output_tail.trimEnd());
+      }
+      process.exitCode = result.proven ? 0 : result.state === 'error' ? 2 : 1;
     }
   } catch (error) {
     console.error(error.message);

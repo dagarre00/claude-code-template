@@ -82,7 +82,7 @@ headless mode cannot prompt for, so it was auto-denied.
 
 **`check` finds this before a cycle:** its `antigravity.setup` block lists every entry with no grant, and `roles_with_unmet_setup` names each role whose engine — the first *installed* one in its chain — has one missing.
 
-**The wrapped command turns silent agy failures into real ones.** `extract-agy-result.mjs` exits non-zero on a denied action (naming the refused target from the transcript), a missing `result` event, an empty response with no denial, a write outside the workspace, or a subagent call; the whole command's exit code carries it unless the process itself already failed. Twice in about thirty runs agy rejected the model's own malformed tool call (`invalid arguments: missing property …`) and the run simply ended: that is marked `transient`, `inspect_dispatch` reports `verdict.transient: true`, and the `worker-dispatch` skill allows one unchanged retry.
+**The runner turns silent agy failures into real ones.** `run-worker.mjs` runs `extract-agy-result.mjs` over the transcript, which exits non-zero on a denied action (naming the refused target from the transcript), a missing `result` event, an empty response with no denial, a write outside the workspace, or a subagent call; the whole command's exit code carries it unless the process itself already failed. Twice in about thirty runs agy rejected the model's own malformed tool call (`invalid arguments: missing property …`) and the run simply ended: that is marked `transient`, `inspect_dispatch` reports `verdict.transient: true`, and the `worker-dispatch` skill allows one unchanged retry.
 
 ### Read grants for files outside the worktree
 
@@ -108,13 +108,18 @@ Under `--sandbox` every shell call needs `escalate_admin` instead of `command`, 
 
 - `excludeDefaultComponents: true` drops agy's own prompt sections — two measured failures lived there: the artifacts section, which made the model attach an `ArtifactMetadata` argument agy then refused ("not a valid artifact path"), and the file-link section, which filled reports with `file:///` links.
 - `inheritMcp: false` keeps your global MCP servers away from workers.
-- `tools:` is the whole toolset: read, search and `run_command`, plus the write tools for write roles — no subagents, browser or web.
+- `tools:` is the whole toolset: read, search and `run_command`, plus the write tools for write roles, plus `search_web` and `read_url_content` for a role that declares `capabilities: [web]` — no subagents or browser, ever.
 
-Measured 2026-09-13: told to create a file and define a subagent, a read-only worker did both when launched plainly, and answered NO SUCH TOOL to both as its agent; across 9 real agy dispatches of five roles, none lost a capability it needed. The agent must be passed **by name** (`--agent C:/…/x.md` is silently ignored), and an unknown tool name fails the run (`tool "<name>" not found in registry`), so a typo cannot widen the set. It does not confine reads — see above.
+Measured 2026-09-13: told to create a file and define a subagent, a read-only worker did both when launched plainly, and answered NO SUCH TOOL to both as its agent; across 9 real agy dispatches of five roles, none lost a capability it needed. Re-measured 2026-09-24 on agy 1.2.9: still NO SUCH TOOL for both, nothing written (the stream's `init` event lists agy's whole tool registry, not the agent's tools — ignore it). The agent must be passed **by name** (`--agent C:/…/x.md` is silently ignored), and an unknown tool name fails the run (`tool "<name>" not found in registry`), so a typo cannot widen the set. It does not confine reads — see above.
 
-### The researcher cannot run on agy headless
+### Web access for the researcher
 
-`search_web` failed inside agy, and `read_url_content` needs each URL granted in advance. The `researcher` declares `capabilities: [web]` and the agy adapter `providesWeb: false`, so `check` lists the pair under `capability_gaps` and `build_worker_prompt` warns — dispatch it elsewhere with `cli_engine`. Only this measured "no" is declared.
+Measured 2026-09-24 on agy 1.2.9, headless, as a custom agent with the web tools:
+
+- `search_web` works with no grant and returns a summary with cited sources. (On 1.2.2 it failed with `no summary returned from GenerateContent`; the agy changelog records the fix.)
+- `read_url_content` is denied (`denied_actions: [{action: "read_url"}]`, the run ends) unless `permissions.allow` holds `read_url(<domain>)` or `read_url(*)`. With it, the page is saved under `~/.gemini/antigravity-cli/brain/<conversation>/.system_generated/steps/<n>/content.md` and the tool returns that path; `view_file` on it is allowed. The audit lists those reads under `tool_output_reads`, not as reads outside the workspace, and the prompt tells the worker the read is permitted.
+
+A researcher cannot know its domains before it searches, so when a role with `capabilities: [web]` would run on agy, `check` reports `read_url(*)` under `setup.missing_url_grants` and `grant_antigravity_setup` adds it. It is user-global, so every agy session on the machine — interactive ones included — may then fetch any URL without asking. To narrow it, replace it by hand with `read_url(<domain>)` rules: any `read_url(...)` rule satisfies `check`, and a fetch outside them is denied and ends that run.
 
 ## Projects with a Python virtualenv
 
