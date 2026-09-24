@@ -1,6 +1,6 @@
 ---
 name: adversarial-review
-description: How a read-only adversary reviews a diff — the category sweep (including architecture), the severity vocabulary and reporting floor, and the report format. Worker-side procedure; how the conductor dispatches the adversary and disposes of its findings is the finding-disposition skill. Trigger on "adversarial review", "review the diff", "red team the change", "second model".
+description: Worker-side. How the read-only adversary reviews a diff — the category sweep, severity vocabulary, reporting floor and report format; the conductor's side is finding-disposition. Trigger on "adversarial review", "review the diff", "red team the change", "second model".
 type: skill
 ---
 

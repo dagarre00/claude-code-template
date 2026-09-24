@@ -16,185 +16,163 @@ agent workflow, read directly by every CLI that can read repository files.
 
 # How this repository works
 
-`.agents/` is the single canonical source for the agent workflow. Every CLI
-reads it directly:
+`.agents/` is the single canonical source for the agent workflow, read in
+place by every CLI and never copied:
 
-- **Claude Code** loads `.agents/` as a plugin named `project` — skills,
-  commands and agent definitions — configured in `.claude/settings.json`.
+- **Claude Code** loads it as a plugin named `project` (skills and commands),
+  configured in `.claude/settings.json`.
 - **Codex** reads `.agents/skills/` natively, plus this file.
-- **Antigravity** reads no repository files in print mode; its workers receive
-  everything in the prompt composed by the workflow MCP.
+- **Antigravity** reads no repository files in print mode; its workers get
+  everything from the prompt the workflow MCP composes.
 
-Nothing under `.agents/` is ever copied. Only this file and `CLAUDE.md` are
-generated, because those two filenames are hardcoded by the CLIs that read them.
+Only this file and `CLAUDE.md` are generated, because the CLIs hardcode those
+names. To change the workflow, edit `.agents/` and regenerate (`sync`) — never
+edit `AGENTS.md` or `CLAUDE.md` by hand.
 
-Top-level commands have no MCP surface — they are a conductor concern, and a
-conductor that can read `.agents/commands/` never needs a tool call to reach
-one. Claude Code is the only conductor with a native command surface today
-(the plugin above); when another CLI conducts, point it at
-`.agents/commands/<name>.md` directly and it reads that like any other
-project file.
+Commands have no MCP surface. Claude Code runs them as `/project:<name>`; any
+other conductor reads `.agents/commands/<name>.md` when a human names one.
 
 ## Working here
 
-1. Read the behavioral rules below — they override default inclinations.
+1. The behavioral rules below override default inclinations.
 2. Before implementation, read `docs/wiki/gotchas.md`, `docs/wiki/todos.md`,
    the matching entity Behavior cases, and the relevant requirements and
-   architecture.
-3. Search `docs/wiki/` for related concepts and decisions before changing
-   behavior.
-4. Load only the skills the task needs. If a CLI exposes no skill loader, read
+   architecture. Search `docs/wiki/` for related concepts and decisions before
+   changing behavior.
+3. Load only the skills the task needs. A CLI with no skill loader reads
    `.agents/skills/<name>/SKILL.md` directly.
-
-To change the workflow itself, edit `.agents/` and regenerate — never edit
-`AGENTS.md` or `CLAUDE.md` by hand.
 
 ## Delegating work
 
-Workers are dispatched through the workflow MCP server
-(`tools/workflow-mcp`), which composes a prompt from `.agents/` and hands
-back a command to run. A worker receives that prompt and nothing else: every
-engine is launched with its project-file discovery suppressed, so the prompt is
-the complete statement of how it must work. The conductor owns branches,
-commits, pushes and pull requests; workers deliver files.
+Workers are dispatched only through the workflow MCP (`tools/workflow-mcp`;
+procedure: the `worker-dispatch` skill). It composes a prompt from `.agents/`
+and returns a command to run, and every engine is launched with project-file
+discovery suppressed, so that prompt is all a worker knows. The conductor owns
+branches, commits, pushes and pull requests; workers deliver files.
 
-**MCP is the only dispatch path.** Never delegate a role to a host CLI's own
-subagent mechanism, and never recreate `.agents/agents/` — roles deliberately
-live in `.agents/roles/`, which no plugin loader scans, so they cannot be
-published as native subagent types. A natively dispatched role would inherit the
-conductor's whole context and run in the conductor's checkout with no worktree,
-no owned paths and no suppression: every guarantee above, lost silently. This
-holds even when a role's configured engine is identical to the conductor's own
-— Claude Code conducting and also running `developer` on Sonnet still
-dispatches through `prepare_worktree`/`build_worker_prompt`, never through
-its own native Task/Agent tool. Same engine is not the same process.
+**Never dispatch a role through a host CLI's own subagent tool** (Task/Agent) —
+not even when the role's engine is the conductor's own: Claude Code running
+`developer` on Sonnet still goes through `prepare_worktree`/`build_worker_prompt`.
+A native subagent inherits the conductor's context and checkout: no worktree,
+no owned paths, no suppression. That is also why roles live in `.agents/roles/`,
+which no plugin loader scans — never recreate `.agents/agents/`.
 
-Only a dispatched worker is a leaf. The conductor may dispatch as many workers
-as a cycle needs — `/project:work` runs a planner, a developer and an
-adversary — and it is not itself a worker.
+A dispatched worker is a leaf; the conductor may dispatch as many as a cycle needs.
 
 ## Commands
 
-Reachable today as native Claude Code slash commands (`/project:<name>`);
-another CLI's conductor reads the file in `.agents/commands/` directly when a
-human names one. `skills` names what each **dispatched role** receives
-inlined in its composed prompt — not what the conductor uses, which it loads
-itself from `.agents/skills/`. Two roles dispatched by one command may never
-share a skill: if both need the same procedure, one role would have done the
-work of both.
+The last column is what each dispatched role receives inlined in its prompt, not
+what the conductor loads. Two roles of one command never share a skill — if both
+need the same procedure, one role would do.
 
 | Command | Purpose | Skills per dispatched role |
 | --- | --- | --- |
-| `/project:adversary` | Point a read-only second model at the current change. Dispatches the adversary agent (fresh context, on its own pinned engine) over the diff, collects numbered findings from its report, triages each one, and re-reviews once. Diff-scoped and per-change — unlike /project:review, which is periodic and whole-repo. | **adversary**: `adversarial-review` |
-| `/project:init` | Detect project state, interview for requirements, scaffold docs/wiki, fill in .agents/project.md and regenerate AGENTS.md/CLAUDE.md. Run once at project start, or to recover from a broken wiki layout. | conductor only |
-| `/project:interview` | Grill-me-relentlessly Q&A to define a plan, a feature, or fill requirements. Walks down each branch of the decision tree, resolving dependencies one at a time. Always provides a recommended answer. Streams a transcript to docs/raw/interviews/ Q-by-Q and A-by-A (never batched at the end), then updates affected wiki pages. | conductor only |
-| `/project:review` | Thorough review of the codebase against the wiki. Runs the reviewer agent in a fresh session context with no developer baggage. Flags critical issues, warnings, drift, missing tests, security/perf concerns. Use periodically (~every 5 todos), never inside /project:work. | conductor only |
-| `/project:sync-template` | Pull the generic agent workflow — .agents/ text and tools/workflow-mcp/ — from a template checkout into this adopting project, leaving project-owned files alone. Run in the adopting project, never in the template. Use when the template has fixes this project has not received, or when a cycle here rediscovers a bug that was already fixed upstream. | conductor only |
-| `/project:wiki` | Wiki operations — ingest and health, both dispatched to the wiki-maintainer so the conductor never reads a source or a findings backlog itself. With an argument, ingests one source into the wiki (a file path, or "search for <topic>" to research first). With no argument, runs a periodic health pass — the wiki-todos queue, the reconciliation pass, lint invariants, orphans, broken links, and the filed-findings backlog. Ingest is per-source and on demand; the health pass is periodic. | **wiki-maintainer**: `wiki-update` |
-| `/project:work` | Pick the top todo (or batch consecutive todos sharing context), open a feat/* branch from develop, dispatch the planner for complex/batched work, put the brief through the plan-adversary, then the developer through red→green→refactor→wiki-update, then commit, push, and (if the entity is fully done) open a PR to develop and return to develop. The core development loop. | **planner**: `plan-writing`, `spec-writing`<br>**plan-adversary**: `plan-review`<br>**developer**: `tdd-loop`, `clean-architecture`, `wiki-update`, `gotcha-recording`, `decision-recording`<br>**adversary**: `adversarial-review` |
+| `/project:adversary` | Point a read-only second model at the current change — dispatch the adversary over the diff with none of the author's context, dispose of every numbered finding in writing, and re-review only what was fixed. Per-change; /project:review is the periodic whole-repo audit. | **adversary**: `adversarial-review` |
+| `/project:init` | Run once at project start, or to repair a broken wiki layout — verify the workflow wiring, configure per-role engines and models, interview for requirements, scaffold docs/wiki with real answers, bootstrap a runnable test command, enforce the architecture, set up CI, and regenerate AGENTS.md/CLAUDE.md. | conductor only |
+| `/project:interview` | Grill-me Q&A that defines a feature, a plan or the requirements — one question at a time, each with a recommended answer, resolving dependencies first; streams the transcript to docs/raw/interviews/ question by question and answer by answer, then updates the affected wiki pages. | conductor only |
+| `/project:review` | Periodic whole-repo audit of the code against the wiki by the reviewer, in a fresh context with no developer baggage — critical issues, drift, missing tests, security and performance. Run about every 5 todos, before a release, or on suspected drift; never inside /project:work. | conductor only |
+| `/project:sync-template` | Pull the generic workflow — .agents/ text and tools/workflow-mcp/ — from a template checkout into this adopting project, leaving project-owned files alone. Run in an adopting project, never in the template. Use when the template has fixes this project lacks, or a cycle here rediscovers a bug already fixed upstream. | conductor only |
+| `/project:wiki` | Wiki operations, both run by the wiki-maintainer so the conductor never reads a source or the findings backlog itself. With an argument, ingest one source (a file path, or "search for <topic>" to research first); with none, the periodic health pass — wiki-todos queue, reconciliation, lint, orphans, broken links and the filed-findings backlog. | **wiki-maintainer**: `wiki-update` |
+| `/project:work` | The core development loop — pick the top todo (or a batch sharing context), branch feat/* from develop, plan complex work, put the brief through the plan-adversary, run the developer Red→Green→refactor→wiki one Behavior case at a time, review the diff on complex cycles, and open a PR to develop once the entity is done. | **planner**: `plan-writing`, `spec-writing`<br>**plan-adversary**: `plan-review`<br>**developer**: `tdd-loop`, `clean-architecture`, `wiki-update`, `gotcha-recording`, `decision-recording`<br>**adversary**: `adversarial-review` |
 
 ## Roles
 
 | Role | Profile | Access | Purpose |
 | --- | --- | --- | --- |
-| `adversary` | reasoning | read-only | Read-only diff hunter. Reviews the current change against the wiki with zero developer context and returns numbered findings in its report — never edits, commits, or pushes. Dispatched by /project:work for [complex] or batched cycles, and by /project:adversary on demand. Distinct from the periodic whole-repo reviewer. |
-| `developer` | balanced | write | TDD cycle in one agent — writes failing tests, makes them pass with minimal code, refactors, and updates the wiki. Follows a planner's plan for complex/batched work. Loads task-specific skills on demand. Triggered by /project:work. |
-| `plan-adversary` | balanced | read-only | Read-only pre-implementation hunter. Attacks the brief before any test exists — the planner's plan on [complex] or batched cycles, the todo line and the human's instruction on simple ones — and returns numbered findings in its report. Never writes a plan, a test, or code. Dispatched by /project:work step 4a on every cycle. Distinct from the diff adversary, which reads code that already landed. |
-| `planner` | reasoning | read-only | Decomposes complex or batched todos into a stepwise implementation plan for the developer. Dispatched by /project:work when a todo is flagged [complex] or 2+ todos are batched. Reads entity Behavior cases, surveys the codebase, returns the plan in its report. Runs on the reasoning profile. |
-| `researcher` | fast | write | Web research agent. Searches the web, fetches pages, synthesizes findings, and writes a structured raw research document to docs/raw/research/. Dispatched by /project:wiki or directly by the human for research-heavy tasks. Never writes to docs/wiki/ directly — that's the ingest command's job. |
-| `reviewer` | balanced | read-only | Periodic thorough review. Runs in a fresh session context with no developer baggage. Audits code vs wiki, flags critical issues, warnings, drift, missing tests, security/perf concerns. Triggered by /project:review. |
-| `triage` | balanced | read-only | Read-only, judgement-only second opinion on findings a reviewer already raised — an adversary's findings on a diff, or a plan-adversary's findings on a brief. Reads the code the findings are about and recommends a disposition per finding with a reason, contests any severity it disagrees with, and says what a fix would touch. Dispatched by the conductor while disposing of a review round, in place of re-dispatching the developer. Never fixes, never raises new findings, never decides. |
-| `wiki-maintainer` | balanced | write | Periodic wiki health — reconciliation pass (computable gaps/contradictions), lint invariants, filed-findings re-triage, cross-linking, legacy-page migration, ADR filing — plus per-source ingest (one named source, or a straggler sweep of docs/raw/). MANUAL ONLY — never auto-invoked by another agent. Dispatched exclusively by /project:wiki, in either of its two modes. |
+| `adversary` | reasoning | read-only | Read-only diff hunter. Reviews a change against the wiki with none of the author's context and returns numbered findings; never edits. Dispatched by /project:work on [complex] or batched cycles, and by /project:adversary. |
+| `developer` | balanced | write | Runs the whole TDD cycle, one Behavior case at a time — failing test, minimal code, refactor, wiki update — following the planner's plan when there is one. Dispatched by /project:work. |
+| `plan-adversary` | balanced | read-only | Read-only pre-implementation hunter. Attacks the brief — the plan, or the todo line on a simple cycle — before any test exists and returns numbered findings; never writes a plan, a test or code. Dispatched by /project:work step 4a on every cycle. |
+| `planner` | reasoning | read-only | Read-only. Decomposes a [complex] or batched todo into a stepwise implementation plan, returned in its report, for the developer to follow. Dispatched by /project:work. |
+| `researcher` | fast | write | Searches and fetches the web and writes a cited raw research document to docs/raw/research/; never writes the wiki. Dispatched by /project:wiki for research ingest, or directly for research-heavy tasks. |
+| `reviewer` | balanced | read-only | Read-only periodic auditor. Reviews the whole repository against the wiki in a fresh context — critical issues, drift, missing tests, security and performance. Dispatched by /project:review. |
+| `triage` | balanced | read-only | Read-only second opinion on findings a reviewer already raised — an adversary's on a diff or a plan-adversary's on a brief — saying whether each holds, the disposition it recommends, and what a fix would touch. Dispatched by the conductor while disposing of a round. Never fixes, raises new findings or decides. |
+| `wiki-maintainer` | balanced | write | Ingests sources into the wiki and runs its periodic health pass — wiki-todos queue, reconciliation, lint invariants, filed-findings re-triage, cross-linking, legacy migration. Manual only; dispatched exclusively by /project:wiki, in either mode. |
 
 ## Skills
 
-Each skill is `.agents/skills/<name>/SKILL.md`, with its trigger in the
-`description` frontmatter. Claude Code (as `project:<name>`) and Codex list
-them natively; a conductor on a CLI that does not should list that directory.
-Skills marked conductor-only in their description are never sent to a worker.
+Each skill is `.agents/skills/<name>/SKILL.md`, triggered by its `description`
+frontmatter. Claude Code (as `project:<name>`) and Codex list them natively;
+elsewhere, list that directory. Skills marked conductor-only are never sent to a
+worker.
 
 ## Wiki map
 
-- `docs/raw/`: immutable input; append new sources, never edit old ones.
-- `docs/wiki/requirements.md`: what the application must do.
-- `docs/wiki/architecture.md`: stack, layout, patterns, testing strategy.
-- `docs/wiki/entities/`: feature/module specs and Behavior cases.
-- `docs/wiki/concepts/`, `decisions/`, `summaries/`: patterns, ADRs, sources.
-- `docs/wiki/commands.md`: verified application commands.
-- `docs/wiki/todos.md`, `gotchas.md`, `log.md`, `wiki-todos.md`: work,
+- `docs/raw/` — immutable sources; add new ones, never edit old ones.
+- `docs/wiki/requirements.md` — what the application must do;
+  `architecture.md` — stack, layout, layers, testing strategy.
+- `docs/wiki/entities/` — feature specs and their Behavior cases;
+  `concepts/`, `decisions/`, `summaries/` — patterns, ADRs, source digests.
+- `docs/wiki/commands.md` — verified application commands.
+- `docs/wiki/todos.md`, `gotchas.md`, `log.md`, `wiki-todos.md` — work queue,
   traps, history, deferred wiki maintenance.
-
----
-name: behavioral-rules
-description: Hard behavioral constraints for all agents. Loaded at session start.
-type: rule
----
 
 # Behavioral Rules
 
-Hard constraints from real failures. These override default agent inclinations.
+Hard constraints from real failures. They override default inclinations.
 
-**Numbering here is positional, not a stable id.** Some rules below are conductor-only and are stripped before a worker ever sees this list, and the rest are renumbered contiguously around the gaps (deliberately — a visible gap reads as "a rule was withheld from you" and invites a worker to speculate about it). So a worker's "rule 6" is not necessarily this file's canonical rule 6. If you are writing role or skill text that may be inlined into a worker's prompt, never cite a rule by bare number ("behavioral rule 12") — name what it says instead, so the reference still means something regardless of which copy of this file the reader has. <!-- conductor-only -->
+**Numbers are positions, not ids.** Workers receive these rules with the conductor-only ones removed and the rest renumbered, so text a worker may receive cites a rule by what it says, never by number. <!-- conductor-only -->
 
-1. **Wiki-first, code-second.** Never change code behavior without also updating the relevant `docs/wiki/entities/<slug>.md`. If the spec is wrong, fix the spec first, then the code — in the same commit.
+1. **Wiki-first, code-second.** Never change code behavior without updating the relevant `docs/wiki/entities/<slug>.md`. If the spec is wrong, fix the spec first, then the code — in the same commit.
 
-2. **Tests before implementation.** Never write production code without a failing test first. The Red phase is mandatory. A dispatched developer's Red is re-proven mechanically — its declared tests must fail with every other change reverted — but writing the test first is still on you.
+2. **Tests before implementation.** No production code without a failing test first. A dispatched developer's Red is re-proven mechanically (its tests must fail with every other change reverted), but writing the test first is still on you.
 
-3. **Never modify tests to make them pass.** If a test seems wrong, update the entity Behavior spec → regenerate the test → implement. Changing a test to match broken code is not TDD.
+3. **Never modify tests to make them pass.** A test that seems wrong means the Behavior spec changes first, then the test, then the code.
 
-4. **Tests must fail for the right reason.** A passing test before implementation tests existing behavior, not the new feature. Confirm RED is real (missing feature, not a typo or import error).
+4. **Tests must fail for the right reason.** Red is the missing behavior — not a typo, a fixture error or a broken import. A test that passes before implementation tests existing behavior.
 
-5. **Two-strike pivot.** Two failures on the same mechanism → tag the state (`git tag checkpoint-<stamp>`), stop, and put the reset to the human via `human-checkpoint`, presenting both failed attempts. Only on their say-so do you `git reset --hard` and re-spec via `/project:interview`. The reset is gated because it is the most destructive step in this workflow: the tag protects committed history, but nothing protects uncommitted work — before it runs, `git status --porcelain` and account for every line (rule 21). <!-- conductor-only -->
+5. **Two-strike pivot.** Two failures on the same mechanism → `git tag checkpoint-<stamp>`, stop, and put the reset to the human via `human-checkpoint` with both attempts. Only on their say-so, `git reset --hard` and re-spec via `/project:interview`. Nothing protects uncommitted work, so first run `git status --porcelain` and account for every line (rule 21). <!-- conductor-only -->
 
-6. **Verify before asserting.** Run it, don't assume. Never tell the human a feature works unless tests pass and you read the output yourself.
+6. **Verify before asserting.** Never say something works unless you ran it and read the output.
 
 7. **Never present uncertain information as fact.** If you're not sure, say so.
 
-8. **Human in the loop.** When you need a decision the wiki doesn't answer, stop and ask — with the question, the options you see, and your recommendation. A dispatched worker asks through its report; the conductor puts it to the human. Do not silently improvise.
+8. **Human in the loop.** When you need a decision the wiki doesn't answer, stop and ask — the question, the options you see, your recommendation. A worker asks through its report; the conductor asks the human. Never silently improvise.
 
-9. **No silent failures.** If a command fails, report the exact error.
+9. **No silent failures.** A failed command is reported with its exact error.
 
-10. **Scoped context for sub-agents.** Give sub-agents only the task, prior outputs, and relevant constraints. Never dump full memory. <!-- conductor-only -->
+10. **Scoped context for sub-agents.** Give a worker only its task, prior outputs and relevant constraints — never your whole context. <!-- conductor-only -->
 
-11. **Raw sources are immutable.** Never edit files under `docs/raw/`. Only append new ones.
+11. **Raw sources are immutable.** Never edit files under `docs/raw/`; only add new ones.
 
-12. **Three review roles — never merged, all read-only.** The `plan-adversary` is pre-implementation and intent-scoped: `/project:work` step 4a puts the plan — or, on a simple cycle, the todo itself — through it before any test is written. The `adversary` is diff-scoped and per-change, dispatched by `/project:work` step 7a (`[complex]`/batched) or `/project:adversary`. The `reviewer` is periodic and whole-repo, in a fresh session context via `/project:review`, never inside the work loop. All three read without the author's context and raise **findings only** — no edits, commits, pushes, or resets. A developer never audits its own work, a planner never reviews its own plan, and a reviewer of any kind never fixes what it finds. <!-- conductor-only -->
+12. **Three read-only review roles, never merged.** The `plan-adversary` attacks the brief before any test (`/project:work` step 4a, every cycle). The `adversary` attacks the diff after cases land (`/project:work` step 7a on `[complex]`/batched cycles, or `/project:adversary`). The `reviewer` audits the whole repo periodically in a fresh context (`/project:review`, never inside `/project:work`). All three raise findings only — no edits, commits, pushes or resets. No author reviews its own work, and no reviewer fixes what it finds. <!-- conductor-only -->
 
-13. **Progressive disclosure.** Don't preload domain knowledge. Skills load when their `description` matches the task. If a needed procedure has no skill, say so — a worker in its report, the conductor by adding the skill — rather than stuffing it into an agent prompt.
+13. **Progressive disclosure.** Don't preload domain knowledge; skills load when their `description` matches the task. A needed procedure with no skill is a gap to name — a worker in its report, the conductor by adding the skill — never text stuffed into an agent prompt.
 
-14. **Skills are how-to, not what-is.** When writing or editing a skill, the body must be a procedure: read these wiki pages, follow these steps, update these pages. Never explain a concept the LLM already knows.
+14. **Skills are how-to, not what-is.** A skill body is a procedure: read these pages, do these steps, update these pages. Never explain what the model already knows.
 
-15. **One agent owns the TDD loop.** The `developer` writes the failing test, confirms Red itself (rule 4 — don't trust a prior step), then implements. No tester/implementer split, no handoff JSON. The only upstream split is the `planner`, which is read-only and writes nothing: for `[complex]`/batched work it returns a plan in its report, and the conductor puts that text into the developer's prompt — markdown scratch the developer follows, never a contract to validate. **A worker is never handed a path to read the plan from**: worktrees share no scratch, so a path is a file the developer cannot open. Save the plan to a file and pass `instructions_file` (the MCP reads it in *your* checkout at composition time and inlines the content — the worker still receives text) or paste the text into `instructions` directly. Both compose the same prompt; the file keeps a large plan out of the conversation.
+15. **One agent owns the TDD loop.** The `developer` writes the failing test, confirms Red itself and implements — no tester/implementer split. The only upstream split is the read-only `planner`, whose plan reaches the developer as text in its instructions, never as a path: worktrees share no scratch. (Conductor: pass the saved plan as `instructions_file`, which is read in your checkout and inlined, or paste it into `instructions`.)
 
-16. **Append, don't bury.** When you discover something the maintainer should clean up later (orphan page, missing ADR, repeated concept), record a one-line entry for `docs/wiki/wiki-todos.md`. Don't wait for the periodic wiki health pass. If that file is not one you may edit, put the line under `Follow-ups:` in your report and the conductor appends it.
+16. **Append, don't bury.** Something the maintainer should clean up later (orphan page, missing ADR, repeated concept) becomes a one-line entry in `docs/wiki/wiki-todos.md` now, not at the next health pass. If that file isn't yours to edit, put the line under `Follow-ups:` in your report.
 
-17. **Use the existing workflow before improvising.** Commands and skills exist for a reason. If the workflow seems missing, name the gap — never work around it silently.
+17. **Use the existing workflow before improvising.** If a command or skill seems missing, name the gap — never work around it silently.
 
-18. **Obsidian LLM-wiki standard — hard rules.** Violating these breaks rendering, the graph, or dedup. The invariants, inside `docs/wiki/`:
-    - **Wikilink syntax.** Internal links are `[[wiki-style]]` (`[[entities/auth]]`, `[[gotchas#login-flow]]`, `[[concepts/retry-pattern|alias]]`), tags `#tag`, embeds `![[summaries/x]]`. External URLs and non-wiki files keep standard markdown links. A broken wikilink is a bug.
-    - **Identity = filename.** No `id`/`name` field; alternative names go in `aliases`. Filenames never contain `* " \ / < > : | ? # ^ [ ]`.
-    - **One page = one concept.** Before creating a page, check existing filenames and `aliases`; if the concept exists → update, don't duplicate.
-    - **Flat frontmatter, quoted-solitary wikilinks.** No nested objects; plural special keys (`tags`, `aliases`, `cssclasses`); one `"[[page]]"` per list element.
-    - **Closed vocabularies** for `type`/`abstraction`/`status`; properties lowercase `snake_case`.
-    - **Provenance, never invent.** Every non-trivial claim traces to a `docs/raw/` file; an unfillable gap is an `open_questions` entry or a question to the human, never invented prose.
+18. **Obsidian LLM-wiki standard — hard rules**, inside `docs/wiki/`:
+    - **Wikilinks.** Internal links are `[[entities/auth]]`, `[[gotchas#login-flow]]`, `[[concepts/retry-pattern|alias]]`; embeds `![[summaries/x]]`; tags `#tag`. External URLs and non-wiki files use markdown links. A broken wikilink is a bug.
+    - **Identity = filename.** No `id`/`name` field; other names go in `aliases`. Filenames never contain `* " \ / < > : | ? # ^ [ ]`.
+    - **One page = one concept.** Check filenames and `aliases` before creating; update rather than duplicate.
+    - **Flat frontmatter.** No nested objects; plural keys (`tags`, `aliases`, `cssclasses`); one quoted `"[[page]]"` per list element.
+    - **Closed vocabularies** for `type`/`abstraction`/`status`; properties are lowercase `snake_case`.
+    - **Provenance, never invent.** Every non-trivial claim traces to a `docs/raw/` file; an unfillable gap is an `open_questions` entry or a question to the human.
 
-19. **Branch for code changes; living wiki commits directly on develop (or current branch).** <!-- conductor-only -->
-    - **Code (`feat/*`, `fix/*`, `refactor/*`, `perf/*`)** is built on a dedicated branch cut from `develop` and merged via PR. The `developer` commits and pushes each Behavior case as it lands; `/project:work` adds the log entry and opens the PR.
-    - **Living documentation & operations (`docs/wiki/`, `docs/raw/`, `.agents/` config)** from maintenance commands commit and push directly to `develop` — or stay on the active `feat/*`/`fix/*`/`chore/*` branch when mid-cycle. Strict PR gating for code, no PR fatigue for knowledge.
-    - **Always push after committing.** Execution containers recycle between sessions; an unpushed commit is lost work. On network failure, retry with backoff. No remote → skip the push and note it in the report.
-    - **The log entry belongs to the mutation, not to the command.** Whatever changed tracked files — a command, a bare chat instruction, a one-off fix — appends a `## [YYYY-MM-DD HH:MM] <kind>` entry to `docs/wiki/log.md` in the same commit (`chore` when no kind fits). A timeline with holes is worse than none, because the wiki cites it as evidence.
+19. **Branch for code; living documentation commits directly.** <!-- conductor-only -->
+    - **Code** (`feat/*`, `fix/*`, `refactor/*`, `perf/*`) is built on a branch cut from `develop` and merged by PR. The conductor commits each Behavior case as it lands; `/project:work` adds the log entry and opens the PR.
+    - **Living documentation and operations** (`docs/wiki/`, `docs/raw/`, `.agents/` config) commit directly to `develop` — or ride the active `feat/*`/`fix/*`/`chore/*` branch mid-cycle.
+    - **Always push after committing** — an unpushed commit is lost when the container recycles. Retry network failures with backoff. No remote → skip the push and say so.
+    - **The log entry belongs to the mutation, not the command.** Anything that changes tracked files — a command, a chat instruction, a one-off fix — appends a `## [YYYY-MM-DD HH:MM] <kind>` entry to `docs/wiki/log.md` in the same commit (`chore` when no kind fits). The wiki cites the log as evidence, so it may not have holes.
 
-20. **Every finding gets a written disposition, and the record is committed.** Each numbered finding from a diff review ends as **Filed** (a real todo line), **Fixed** (name what changed), or **Rejected** (one-sentence reason). Silence is not a disposition and "unlikely" is not a reason. Rejecting by citing an unwritten invariant → write the invariant down as part of the rejection. <!-- conductor-only -->
-    - **Filed is the default; fixing needs a human.** Findings become todos at the priority their severity maps to — not fixed in the cycle that surfaced them, not even two-line ones. Exception: a `critical`/`major` goes to the human via `human-checkpoint` (fix-now or queue); it is filed at P0/P1 only if they decline or are unreachable, and that is said prominently. A human instruction like "fix all the findings" is itself the approval, at that scope.
-    - **The record is the commit.** The adversary's findings arrive in its report and live nowhere durable until you write them down, so write each disposition into the commit that answers it: fixes name their finding; each round closes with a `docs(<slug>): adversary round N` commit whose body lists every finding's disposition. `git log --grep="adversary round"` must read the reasons back a cycle later — a disposition that exists only in deleted scratch satisfies nothing. Protocol: `finding-disposition` skill.
-    - **Pre-implementation findings invert the default and land in the log.** A `plan-adversary` finding (`/project:work` step 4a) ends as **Applied** (the brief changed — the default), **Escalated** (the spec is what is wrong, so `human-checkpoint` → `/project:interview`), or **Rejected**. Never Filed: the cycle the finding is about is the one starting now. No commit exists yet to answer it, so the reasons go in the cycle's `work` entry in `docs/wiki/log.md`, which is committed like any other record. Protocol: `finding-disposition` skill.
+20. **Every finding gets a written, committed disposition.** <!-- conductor-only -->
+    - **Diff findings** (`adversary`) end as **Filed** (a real todo line), **Fixed** (name what changed) or **Rejected** (a one-sentence reason). Silence is not a disposition and "unlikely" is not a reason; rejecting on an unwritten invariant means writing the invariant down.
+    - **Filed is the default; fixing needs a human.** Findings become todos at their severity's priority and are never fixed in the cycle that raised them, however small. A `critical`/`major` goes to the human via `human-checkpoint` (fix now or queue); declined or unreachable → filed at P0/P1, said prominently. "Fix all the findings" from the human is the approval, at that scope.
+    - **The record is the commit.** Fixes name their finding; each round closes with a `docs(<slug>): adversary round N` commit listing every disposition, so `git log --grep="adversary round"` reads the reasons back.
+    - **Brief findings** (`plan-adversary`, `/project:work` step 4a) invert the default: **Applied** (the brief changes — the default), **Escalated** (the spec is wrong → `human-checkpoint` → `/project:interview`) or **Rejected**. Never Filed: the cycle they are about starts now. No commit exists yet, so their dispositions go in the cycle's `work` log entry.
+    - Protocol: `finding-disposition` skill.
 
-21. **A dirty tree you did not dirty belongs to someone else.** Agents run concurrently on one checkout, so "clean working tree" preconditions read "clean **and mine**". Never `stash`, `reset --hard`, `checkout --`, or `clean` over changes whose author you cannot account for — stop and ask the human, naming the paths. Before any tree-wide destructive git operation, `git status --porcelain` and account for every line: a path you didn't touch this session is evidence, not dirt.
+21. **A dirty tree you did not dirty belongs to someone else.** Agents run concurrently on one checkout, so "clean working tree" means "clean **and mine**". Never `stash`, `reset --hard`, `checkout --` or `clean` over changes you can't account for — stop and ask the human, naming the paths. Before any tree-wide destructive git operation, run `git status --porcelain` and account for every line.
 
-22. **A filed backlog needs a consumer, or filing is just deletion with extra steps.** Rule 20 makes filing the default, so `minor` findings accumulate by design (`nit` findings are never filed — the adversary tallies them and they end there). Two computable guards: `FINDINGS_MAX` caps the open `[adversary]` backlog (`docs/wiki/todos.md § Filed-findings backlog`), and `/project:wiki` re-triages it every pass — re-grading, merging duplicates, closing what later work fixed. A finding that sat unread through five cycles had the wrong severity, not too short a queue. <!-- conductor-only -->
+22. **A filed backlog needs a consumer.** Filing is the default, so `minor` findings accumulate by design (`nit`s are tallied, never filed). `FINDINGS_MAX` caps the open `[adversary]` backlog (`docs/wiki/todos.md § Filed-findings backlog`), and every `/project:wiki` health pass re-triages it — re-grading, merging duplicates, closing what later work fixed. A finding that sits unread through five cycles had the wrong severity. <!-- conductor-only -->
 
-23. **Dependencies point inward.** Every source file belongs to the layer `docs/wiki/architecture.md § Layers` assigns it, and an inner layer never imports an outer one — reach the outside through a port the inner layer owns. The architecture check is part of green. Changing a layer, an allowed dependency, or the check's rules is a human decision recorded as an ADR, never a side effect of making a test pass.
+23. **Dependencies point inward.** Every source file belongs to the layer `docs/wiki/architecture.md § Layers` assigns it, and an inner layer never imports an outer one — it reaches the outside through a port it owns. The architecture check is part of green. Changing a layer, an allowed dependency or the check's rules is a human decision recorded as an ADR, never a side effect of making a test pass.
 
 ## Adding rules
 
-When a new failure pattern emerges that's broader than a project-specific quirk (i.e. it's a discipline issue, not a domain detail), append it here as a numbered rule. Project-specific failures go in `docs/wiki/gotchas.md`.
+A new failure pattern that is a discipline issue rather than a domain detail is appended here as the next number — never renumber, other files cite these numbers. Project-specific failures go in `docs/wiki/gotchas.md`.

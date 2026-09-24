@@ -1,36 +1,24 @@
 #!/usr/bin/env bash
-# Adopt the workflow-mcp mechanism into an existing project.
-#
-# Point it at the target project explicitly:
+# Adopt the workflow into an existing project:
 #
 #   bash scripts/adopt.sh /path/to/existing-project
 #
-# ...or, with no argument, run it from inside the project you're adopting
-# into (the target defaults to the current directory; the template's own
-# files are still found relative to this script's own path, not your cwd):
+# or, from inside that project (template files are still found relative to
+# this script):
 #
-#   cd /path/to/existing-project
 #   bash /path/to/claude-code-template/scripts/adopt.sh
 #
-# What this script does (steps 1-3 of README.md § Quick start → Existing project):
-#   1. Copy .agents/ into the target.
-#   2. Copy tools/workflow-mcp/ (minus node_modules and its own test/ suite,
-#      and with the template-only "test" script stripped from package.json)
-#      and `npm install` it.
-#   3. Copy .mcp.json, and register the MCP server for codex/agy if installed.
+# Steps (README.md § Quick start):
+#   1. Copy .agents/.
+#   2. Copy tools/workflow-mcp/ without node_modules/ or its template-only test/
+#      suite (dropping the "test" script from package.json), then npm install.
+#   3. Copy .mcp.json, write the per-project plugin marketplace, and register
+#      the server for codex/agy if they are installed.
+#   4. Create .claude/settings.json if absent — an existing one is never merged
+#      blindly; the keys to add are printed instead.
 #
-# What it does NOT do (step 4, yours to finish):
-#   - Wire .claude/settings.json if the target already has one with other
-#     content — merging an unknown JSON file blindly is exactly the kind of
-#     "measure twice" case this template's own rules warn against. If the
-#     target has no settings.json yet, this script creates one; otherwise it
-#     prints the block for you to merge by hand.
-#   - Run /project:init. That needs an interactive agent session, so this
-#     script's last act is telling you to start one.
-#
-# Everything past that — stack detection, wiki scaffolding, a runnable test
-# command, the first commit — is /project:init's job, not this script's. See
-# .agents/commands/init.md.
+# Everything after that — stack detection, the wiki, a runnable test command,
+# the first commit — is /project:init's job (.agents/commands/init.md).
 
 set -euo pipefail
 
@@ -52,18 +40,11 @@ fi
 
 TARGET="$(cd "$TARGET" && pwd)"
 
-# Only for text we write into a *file's content* (a TOML/JSON value), never for
-# a path handed to a subprocess as an argv (Git Bash's MSYS runtime already
-# rewrites a POSIX-style argument to Windows form for a native, non-MSYS
-# executable like codex.exe or agy.exe — measured: `codex mcp add --root
-# "$TARGET"` with `$TARGET` still POSIX-style produced a correct
-# `C:/Users/...` entry). A path inside a heredoc is plain text the runtime
-# never touches, so `/c/Users/...` would be written verbatim — and Node on
-# Windows resolves a leading `/` against the current drive, not `C:\`, so the
-# server would fail to start with that path silently wrong. `cygpath -m` gives
-# the same drive-letter-plus-forward-slashes form the argv path ends up in, so
-# both are visibly the same path if you print them side by side. Absent
-# outside Git Bash on Windows, where TARGET is already the only form there is.
+# For paths written into a file's *content* (TOML/JSON). Git Bash rewrites a
+# POSIX path argument for a native executable, but not text in a heredoc, and
+# Node on Windows resolves a leading `/c/...` against the current drive. So
+# file content gets the drive-letter form (`C:/...`); outside Git Bash on
+# Windows there is only one form.
 TARGET_FOR_FILE_CONTENT="$TARGET"
 if command -v cygpath >/dev/null 2>&1; then
   TARGET_FOR_FILE_CONTENT="$(cygpath -m "$TARGET")"
@@ -71,7 +52,7 @@ fi
 
 if [[ "$TARGET" == "$TEMPLATE_ROOT" ]]; then
   echo "Error: target is the template checkout itself. Pass the path to the" >&2
-  echo "project you're adopting the mechanism into." >&2
+  echo "project you're adopting the workflow into." >&2
   exit 1
 fi
 
@@ -91,10 +72,8 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Step 2 — tools/workflow-mcp/ (skip node_modules and the template's own
-# test/ suite — a consuming project should never see, let alone run, tests
-# that only verify the template repo's own workflow-mcp source), then
-# npm install
+# Step 2 — tools/workflow-mcp/. Its test/ suite verifies only the template's
+# own source, so an adopting project never receives or runs it.
 # ---------------------------------------------------------------------------
 mkdir -p "$TARGET/tools"
 if [[ -e "$TARGET/tools/workflow-mcp" ]]; then
@@ -108,14 +87,18 @@ else
   echo "Step 2: copied tools/workflow-mcp/ (node_modules and test/ excluded)"
 
   if command -v node >/dev/null 2>&1; then
+    # Only "test" goes: "config" and "e2e" are documented for adopters too.
     WORKFLOW_MCP_PKG="$TARGET/tools/workflow-mcp/package.json" node -e '
       const fs = require("fs");
       const p = process.env.WORKFLOW_MCP_PKG;
       const pkg = JSON.parse(fs.readFileSync(p, "utf8"));
-      delete pkg.scripts;
+      if (pkg.scripts) {
+        delete pkg.scripts.test;
+        if (!Object.keys(pkg.scripts).length) delete pkg.scripts;
+      }
       fs.writeFileSync(p, JSON.stringify(pkg, null, 2) + "\n");
     '
-    echo "Step 2: stripped the template-only \"test\" script from package.json"
+    echo "Step 2: removed the template-only \"test\" script from package.json"
   fi
 fi
 
@@ -128,7 +111,7 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# Step 3 — .mcp.json, plus best-effort conductor registration
+# Step 3 — .mcp.json, the plugin marketplace, and codex/agy registration
 # ---------------------------------------------------------------------------
 if [[ -e "$TARGET/.mcp.json" ]]; then
   echo "Step 3: '$TARGET/.mcp.json' already exists — leaving it untouched." >&2
@@ -139,14 +122,10 @@ else
   echo "Step 3: copied .mcp.json (registers the server with --engine claude)"
 fi
 
-# One marketplace per name per machine: Claude Code keeps
-# ~/.claude/plugins/known_marketplaces.json once per user, and a second
-# project registering the same name replaces the first — after which the
-# plugin, which loads in place from the marketplace's directory, serves every
-# skill and command from the *other* checkout (docs/wiki/gotchas.md). So the
-# name is derived from the project directory rather than fixed: the same on
-# every machine that clones this project, since it lives in committed files,
-# and distinct from every other project on this one.
+# Claude Code keeps one marketplace per name per machine, and the plugin loads
+# in place from the marketplace's directory — so a name shared with another
+# project serves that project's skills here. The name is derived from the
+# project directory: stable across clones, distinct on this machine.
 MARKETPLACE="workflow-$(basename "$TARGET" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//; s/-$//')"
 
 if [[ -e "$TARGET/.claude-plugin/marketplace.json" ]]; then
@@ -156,9 +135,9 @@ if [[ -e "$TARGET/.claude-plugin/marketplace.json" ]]; then
   else
     echo "Step 3: '$TARGET/.claude-plugin/marketplace.json' already exists, named '${EXISTING_NAME:-?}' — leaving it untouched." >&2
     echo "        A name shared with another project on this machine makes Claude Code serve this" >&2
-    echo "        project's skills from that other checkout (docs/wiki/gotchas.md). To move to the" >&2
-    echo "        per-project name, set \"name\": \"$MARKETPLACE\" in that file and use the same name in" >&2
-    echo "        .claude/settings.json: the extraKnownMarketplaces key, and enabledPlugins \"project@$MARKETPLACE\"." >&2
+    echo "        project's skills from that other checkout. To use the per-project name, set" >&2
+    echo "        \"name\": \"$MARKETPLACE\" in that file and use the same name in .claude/settings.json:" >&2
+    echo "        the extraKnownMarketplaces key, and enabledPlugins \"project@$MARKETPLACE\"." >&2
   fi
 else
   mkdir -p "$TARGET/.claude-plugin"
@@ -175,11 +154,13 @@ else
   ]
 }
 EOF
-  echo "Step 3: wrote .claude-plugin/marketplace.json as marketplace '$MARKETPLACE' (Claude Code's"
-  echo "        extraKnownMarketplaces path \".\" in settings.json resolves against it; the name is"
-  echo "        per project because the machine keeps one marketplace per name)"
+  echo "Step 3: wrote .claude-plugin/marketplace.json as marketplace '$MARKETPLACE'"
+  echo "        (per project, because the machine keeps one marketplace per name)"
 fi
 
+# Codex reads a project-local .codex/config.toml, which wins over any global
+# 'workflow' entry for this directory — so no machine-global collision.
+# Absolute paths, because codex spawns the server from another directory.
 if command -v codex >/dev/null 2>&1; then
   if [[ -e "$TARGET/.codex/config.toml" ]]; then
     echo "Step 3: '$TARGET/.codex/config.toml' already exists — leaving it untouched." >&2
@@ -194,24 +175,15 @@ if command -v codex >/dev/null 2>&1; then
 command = "node"
 args = ["$TARGET_FOR_FILE_CONTENT/tools/workflow-mcp/server.mjs", "--root", "$TARGET_FOR_FILE_CONTENT", "--engine", "codex"]
 EOF
-    echo "Step 3: wrote $TARGET/.codex/config.toml (project-local; wins over any"
-    echo "        machine-global 'workflow' entry for this directory — see"
-    echo "        docs/wiki/gotchas.md § 'codex mcp add / agy mcp add with relative"
-    echo "        paths break at spawn time' for why this beats 'codex mcp add')."
-    echo "        If an earlier global registration exists, it's now redundant here"
-    echo "        but harmless; drop it elsewhere with 'codex mcp remove workflow'"
-    echo "        if you want one canonical entry."
+    echo "Step 3: wrote $TARGET/.codex/config.toml (project-local; wins over a global"
+    echo "        'workflow' entry here — drop an old one with 'codex mcp remove workflow')"
   fi
 fi
 
-# The file above holds this machine's absolute paths, so it must never be
-# committed — and it is the target's .gitignore, not the template's, that
-# decides that (adversary round 1 on fix/workflow-mcp-hardening, F1). Done
-# whether or not codex is on PATH here: a later contributor who has codex
-# writes the same file by hand (docs/wiki/gotchas.md), and the ignore line
-# has to be there before they do. Idempotent — an exact existing line is left
-# alone (a trailing CR, as in a CRLF .gitignore, counts as the same line),
-# and a file with no trailing newline gets one before the append.
+# That file holds this machine's absolute paths, so the target must ignore it —
+# even without codex here, since a later contributor may write it by hand.
+# Idempotent: an existing line (CRLF included) is kept, and a file missing its
+# final newline gets one before the append.
 if grep -qE '^\.codex/config\.toml[[:space:]]*$' "$TARGET/.gitignore" 2>/dev/null; then
   echo "Step 3: $TARGET/.gitignore already ignores .codex/config.toml"
 else
@@ -224,25 +196,24 @@ else
   echo "Step 3: appended .codex/config.toml to $TARGET/.gitignore (machine-specific paths, never committed)"
 fi
 
+# agy's registration is machine-global (its project-local config is a known
+# upstream no-op: google-antigravity/antigravity-cli#60), so this overwrites
+# any other project's 'workflow' entry — including when testing this script
+# against a scratch directory.
 if command -v agy >/dev/null 2>&1; then
   if agy mcp add workflow node "$TARGET/tools/workflow-mcp/server.mjs" --root "$TARGET" --engine antigravity 2>/dev/null; then
     echo "Step 3: registered workflow with agy (global config — see note below)"
   else
     echo "Step 3: 'agy mcp add' failed or was already registered — check manually if you conduct with agy." >&2
   fi
-fi
-
-if command -v agy >/dev/null 2>&1; then
-  echo "Step 3: NOTE — agy's MCP registration is machine-global, not" >&2
-  echo "        per-project (its own project-local config is a known upstream" >&2
-  echo "        no-op: google-antigravity/antigravity-cli#60). Adopting into a" >&2
-  echo "        second project under the same name 'workflow' overwrites this" >&2
-  echo "        one's entry. Re-run this script (or 'agy mcp add workflow ...')" >&2
-  echo "        from inside whichever project you're about to conduct in with agy." >&2
+  echo "Step 3: NOTE — agy's MCP registration is machine-global, not per project." >&2
+  echo "        Registering another project under 'workflow' overwrites this one. Re-run" >&2
+  echo "        this script (or 'agy mcp add workflow ...') in whichever project you are" >&2
+  echo "        about to conduct in with agy." >&2
 fi
 
 # ---------------------------------------------------------------------------
-# Step 4 — .claude/settings.json: safe to do only when nothing exists yet
+# Step 4 — .claude/settings.json: written only when none exists
 # ---------------------------------------------------------------------------
 SETTINGS_SNIPPET="  \"extraKnownMarketplaces\": {\n    \"$MARKETPLACE\": { \"source\": { \"source\": \"directory\", \"path\": \".\" } }\n  },\n  \"enabledPlugins\": { \"project@$MARKETPLACE\": true }"
 
@@ -264,19 +235,15 @@ fi
 echo "-------------------------------------------------------------------"
 echo
 echo "Mechanics done. Next: start your CLI in '$TARGET' and run /project:init"
-echo "(Claude Code: type /project:init. Codex/agy: paste .agents/commands/init.md)."
-echo "It verifies this wiring, detects your existing stack, scaffolds docs/wiki"
-echo "around it, and sets a real test command — everything past step 4 is its job."
+echo "(Claude Code: /project:init. Codex/agy: paste .agents/commands/init.md)."
+echo "It verifies this wiring, detects your stack, scaffolds docs/wiki and sets"
+echo "a real test command."
 echo
-echo "Optional but recommended first: tools/workflow-mcp/conductor-e2e.md came"
-echo "along with the copy in step 2. Paste it into your conducting CLI to confirm"
-echo "a worker can actually dispatch and write files on this machine before you"
-echo "trust it — see tools/workflow-mcp/conductor-e2e.md for how to run it."
-echo "It's meant to be re-run whenever you change .agents/config.json, not just"
-echo "once, so keep it rather than deleting it after the first pass."
+echo "Recommended first: tools/workflow-mcp/conductor-e2e.md confirms a worker can"
+echo "actually dispatch and write files on this machine. Re-run it whenever you"
+echo "change .agents/config.json."
 echo
-echo "To see or change which tool and model runs each role, run:"
+echo "To see or change which tool and model runs each role:"
 echo "    node tools/workflow-mcp/config-ui.mjs"
-echo "It opens a page over .agents/config.json that explains every setting and"
-echo "refuses invalid ones; tools/workflow-mcp/config.md is the guide. /project:init"
-echo "also asks you about these, so you can leave it until then."
+echo "(guide: tools/workflow-mcp/config.md) — /project:init also asks about it."
+echo "If something doesn't connect: tools/workflow-mcp/getting-started.md § Troubleshooting."

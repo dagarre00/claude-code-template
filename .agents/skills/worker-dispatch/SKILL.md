@@ -1,12 +1,12 @@
 ---
 name: worker-dispatch
-description: How the conductor runs one worker through the workflow MCP and decides whether to accept its result — check the setup, prepare the worktree and run its setup commands, compose, run the returned command, inspect the dispatch, record the decision, integrate, clean up, and resume an interrupted dispatch. Use for every dispatch any command makes. Trigger on "dispatch", "prepare_worktree", "build_worker_prompt", "inspect_dispatch", "record_decision", "dispatch_stats", "run the worker", "retry the worker", "resume a dispatch", "worker failed", "accept the report", "change a role's engine".
+description: Conductor-only. How to run one worker through the workflow MCP and decide whether to accept its result — check, prepare the worktree, compose, run, inspect, record the decision, integrate, clean up, resume. Use for every dispatch any command makes. Trigger on "dispatch", "prepare_worktree", "build_worker_prompt", "inspect_dispatch", "record_decision", "dispatch_stats", "run the worker", "retry the worker", "resume a dispatch", "worker failed", "accept the report", "change a role's engine".
 type: skill
 ---
 
 # Worker Dispatch
 
-One procedure for every dispatch — `/project:work`, `/project:adversary`, `/project:review`, `/project:wiki`. A command decides *which* role gets *what* brief; this decides how the worker runs and whether its result is accepted. It is conductor-side only: no worker ever receives it.
+One procedure for every dispatch any command makes. The command decides *which* role gets *what* brief; this decides how the worker runs and whether its result is accepted.
 
 ## Read first
 
@@ -15,7 +15,7 @@ One procedure for every dispatch — `/project:work`, `/project:adversary`, `/pr
 ## Once per cycle, before the first dispatch
 
 1. **Call `check`** and act on every field before composing anything:
-   - `ok: false` → regenerate with `sync`. If the MCP server predates an edit to `tools/workflow-mcp/`, run `generate.mjs` directly instead (gotcha: the server caches its own source).
+   - `ok: false` → regenerate with `sync` — or, if `tools/workflow-mcp/` changed since the server started, run `generate.mjs` directly: the server caches its own source (`tools/workflow-mcp/getting-started.md` § Troubleshooting).
    - A role you are about to dispatch appears in `roles_without_an_available_engine` → `human-checkpoint`.
    - An engine that role resolves to has `setup.ok: false` → `human-checkpoint` naming its `missing_command_grants` — or its `problem`, a settings file that exists but could not be read, which `grant_antigravity_setup` refuses to touch. A worker on it dies on its first command.
    - The role appears in `capability_gaps` for its first engine → dispatch it with `cli_engine` set to an engine not listed there.
@@ -47,4 +47,4 @@ Call `dispatch_stats` first and compare, for that role, accepted over finished, 
 - **Accepting on the exit code, or on the report's own claim of success.** Measured: `exit 0` + `SUCCESS` + a denied read, and a Red "confirmed" by a green suite that never reached the code.
 - **Dispatching into a worktree whose setup failed.** Every result from it measures the environment, not the change.
 - **Leaving attempts undecided.**
-- **Running a role through your own native subagent tool.** It inherits your context and your checkout — `AGENTS.md § Delegating work`.
+- **Running a role through your own native subagent tool.** It inherits your context and your checkout (`AGENTS.md`, Delegating work).

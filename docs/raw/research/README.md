@@ -1,17 +1,5 @@
 # Research
 
-Raw research documents produced by the `researcher` agent during `/project:wiki` research mode. Append-only.
+Raw research documents from the `researcher`, named `<slug>.md` after the topic — structured findings, sources and notes. `/project:wiki search for <topic>` produces one and digests it into `docs/wiki/summaries/<slug>.md`, from where findings reach entities, decisions and concepts.
 
-## Naming
-
-`<slug>.md` in kebab-case — the slug matches the research topic.
-
-## What's in here vs in the wiki
-
-- This folder: the **raw research** — structured findings, sources, and notes as produced by the `researcher` agent. Immutable.
-- `docs/wiki/summaries/<slug>.md`: the **digested summary**, produced during `/project:wiki`.
-- `docs/wiki/entities/`, `docs/wiki/decisions/`, `docs/wiki/concepts/`: the **structured outputs** where research findings land.
-
-## Rule
-
-**Never edit a raw research file after it's written.** If the research is stale, run `/project:wiki search for <topic>` again and write a new file. The wiki-maintainer reconciles versions during `/project:wiki`.
+**Never edit one after it is written.** Stale research is replaced by a new run; `/project:wiki` reconciles the versions.

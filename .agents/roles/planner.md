@@ -1,6 +1,6 @@
 ---
 name: planner
-description: Decomposes complex or batched todos into a stepwise implementation plan for the developer. Dispatched by /project:work when a todo is flagged [complex] or 2+ todos are batched. Reads entity Behavior cases, surveys the codebase, returns the plan in its report. Runs on the reasoning profile.
+description: Read-only. Decomposes a [complex] or batched todo into a stepwise implementation plan, returned in its report, for the developer to follow. Dispatched by /project:work.
 type: agent
 profile: reasoning
 access: read-only

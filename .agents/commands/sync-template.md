@@ -1,6 +1,6 @@
 ---
 name: sync-template
-description: Pull the generic agent workflow — .agents/ text and tools/workflow-mcp/ — from a template checkout into this adopting project, leaving project-owned files alone. Run in the adopting project, never in the template. Use when the template has fixes this project has not received, or when a cycle here rediscovers a bug that was already fixed upstream.
+description: Pull the generic workflow — .agents/ text and tools/workflow-mcp/ — from a template checkout into this adopting project, leaving project-owned files alone. Run in an adopting project, never in the template. Use when the template has fixes this project lacks, or a cycle here rediscovers a bug already fixed upstream.
 argument-hint: [template source — e.g. "../claude-code-template" | "tools only" | empty to reuse the last one from the log]
 type: command
 ---
@@ -9,77 +9,60 @@ type: command
 
 **Argument:** `$ARGUMENTS`
 
-The argument names **where the template is and how much to take**. A path (`../claude-code-template`, an absolute path) sets the source for this run. A scope word narrows step 5: `tools only` copies `tools/workflow-mcp/` and nothing else — the safe subset, because that tree is never customized per project. Both can appear together. Empty means: recover the source from the last `sync-template` entry in `docs/wiki/log.md` and take everything generic; if no entry exists, ask via `human-checkpoint` rather than guessing a path. The argument can never bypass the overwrite checkpoint in step 4 or the validation in step 7.
+The argument names **where the template is and how much to take**. A path sets the source for this run. `tools only` narrows step 5 to `tools/workflow-mcp/`, the safe subset — that tree is never customized per project. Both may appear together. Empty → the source from the last `sync-template` entry in `docs/wiki/log.md`, taking everything generic; with no such entry, ask via `human-checkpoint` rather than guess a path. Nothing bypasses the overwrite checkpoint (step 4) or the validation (step 7).
 
-You copy generic files from a template checkout into this project and regenerate what is derived. This is a one-directional pull: nothing here is ever written back to the template.
-
-## When to use
-
-- The template has landed fixes this project has not received.
-- A cycle here filed a finding that turns out to be already fixed upstream — the lag is the finding.
-- Before starting a large piece of work, so the cycle runs on current tooling.
+A one-directional pull: generic files are copied from the template, derived files regenerated, and nothing is ever written back. Use it when the template has fixes this project lacks, when a finding here turns out to be fixed upstream, or before a large piece of work.
 
 ## Preconditions
 
-- **This is not the template.** If `.agents/project.md` still carries the unfilled template placeholders, or this checkout is the template itself, stop — syncing a template into itself corrupts both sides of the comparison.
-- On `develop`, or your active branch if running mid-cycle (behavioral rule 19 — `.agents/` and tooling are living operations, not a feature).
-- Working tree clean, **and clean because you left it that way**: run `git status --porcelain` and account for every line. A path you did not touch is another session's work, not dirt (rule 21).
-- The template source resolves to a real checkout with `.agents/` and `tools/workflow-mcp/` in it.
+- **This is not the template:** `.agents/project.md` has been filled in, and the source is not this checkout. Syncing a template into itself corrupts both sides of the comparison.
+- On `develop`, or the active branch mid-cycle (rule 19 — tooling is living operations).
+- A clean tree, **and clean because you left it so**: `git status --porcelain`, every line accounted for (rule 21).
+- The source is a real checkout containing `.agents/` and `tools/workflow-mcp/`.
 
-If any fails: run `human-checkpoint`.
+Any failure → `human-checkpoint`.
 
 ## What is generic and what is yours
 
-This table is the whole decision. Getting it wrong either drops the project's own configuration or leaves the lag in place.
+This table is the whole decision; getting it wrong either drops the project's configuration or leaves the lag in place.
 
 | Path | Action | Why |
 | --- | --- | --- |
-| `tools/workflow-mcp/**` | **Copy** (skip `node_modules/`, `package-lock.json`) | Pure tooling. Never customized per project — if it is, that is a bug to report upstream, not a local edit to protect. |
-| `.agents/skills/`, `.agents/roles/`, `.agents/commands/` | **Copy**, subject to step 4 | The workflow itself. Usually identical; occasionally a project has deliberately diverged. |
-| `.agents/rules.md`, `.agents/worker-contract.md` | **Copy**, subject to step 4 | Behavioral rules are shared discipline. |
+| `tools/workflow-mcp/**` | **Copy** — skip `node_modules/`, `package-lock.json` and the template-only `test/`, and drop the `test` script from the copied `package.json` | Pure tooling. A local customization is a bug to report upstream, not an edit to protect. |
+| `.agents/skills/`, `.agents/roles/`, `.agents/commands/` | **Copy**, subject to step 4 | The workflow itself — usually identical, occasionally diverged on purpose. |
+| `.agents/rules.md`, `.agents/worker-contract.md` | **Copy**, subject to step 4 | Shared discipline. |
 | `.agents/.claude-plugin/plugin.json` | **Copy** | Plugin wiring, not project content. |
-| `.claude-plugin/marketplace.json` | **Copy only if absent** | Marketplace manifest that `.claude/settings.json`'s `extraKnownMarketplaces.<name>` (`source.path: "."`) resolves against at the project root. Its `name` is this project's own (`workflow-<dir-name>`, as `scripts/adopt.sh` derives it), because Claude Code keeps one marketplace per name per machine and a shared name serves another project's skills here — so the template's manifest is never copied over an existing one. Absent entirely → copy it, set `name` to this project's, and match it in `.claude/settings.json`; without the file `project@<name>` never registers in `claude plugin list`, and no session restart fixes that. |
-| `.agents/config.json` | **Never** | Engine pins, `workerCommands`, model choices — all project facts. |
+| `.claude-plugin/marketplace.json` | **Copy only if absent**, then set `name` to this project's `workflow-<dir-name>` and match it in `.claude/settings.json` | Its name is per project — a name shared with another project on the machine serves that project's skills here — so an existing manifest is never overwritten. Without the file, `project@<name>` never registers and no restart fixes it. |
+| `.agents/config.json` | **Never** | Engine pins, `workerCommands`, model choices — project facts. |
 | `.agents/project.md` | **Never** | This project's identity. |
-| `AGENTS.md`, `CLAUDE.md` | **Never copy — regenerate** (step 6) | Derived from `.agents/`. Copying them installs the template's project facts into this repo. |
-| `docs/**`, source, tests | **Never** | Yours entirely. |
-| Anything under `.agents/` that exists here and not upstream | **Leave, and report** | A project may add its own. Never delete to make the trees match — see step 8. |
+| `AGENTS.md`, `CLAUDE.md` | **Never copy — regenerate** (step 6) | Derived; copying installs the template's project facts here. |
+| `docs/**`, source, tests | **Never** | Yours. |
+| Files under `.agents/` that exist only here | **Leave, and report** (step 8) | A project may add its own; never delete to make the trees match. |
 
 ## Steps
 
-1. **Resolve the source and pin it.** Take the path from `$ARGUMENTS`, or the last `sync-template` log entry. Record the template's current SHA (`git -C <source> rev-parse --short HEAD`) and its branch — that SHA goes in the log entry and is what makes the next run able to say how far behind this project was.
-
-2. **Refuse to sync a template into itself.** Compare the resolved source against this checkout's root. Same path → stop and report; there is nothing to pull.
-
-3. **Classify, before copying anything.** Diff the two trees over the **Copy** rows of the table above. Produce three lists: files that differ (will change), files only upstream (will be added), files only here (will be left alone). Report the counts.
-
-4. **Human checkpoint on customization — the one that matters.** For each `.agents/` text file in the "will change" list, decide whether this project's version looks *customized* or merely *stale*: stale is behind on upstream edits, customized carries content the template never had. Any file you cannot confidently call stale goes to the human via `human-checkpoint` with the diff, before it is overwritten. `tools/workflow-mcp/**` skips this check by table rule. An empty argument does not mean consent — it means take everything generic, and this step still runs.
-
-5. **Copy, never delete.** Write the files from the classification. Deleting a file that exists only here is out of scope for this command, always: an adopting project's extra skill is not drift. Honour a `tools only` argument here by copying that row alone.
-
-6. **Regenerate the derived files.** Do **not** call the workflow MCP's `sync` — the server caches its own source for the life of the session, so a just-copied `generate.mjs` will not be the one that runs (`gotchas.md`). Invoke it directly instead, from `tools/workflow-mcp/`, with a forward-slash root path:
+1. **Resolve and pin the source.** Record its SHA and branch (`git -C <source> rev-parse --short HEAD`) — the SHA goes in the log entry and is what lets the next run say how far behind this project was. Say so if the source is behind its own remote: a stale checkout syncs old code that looks new.
+2. **Refuse to sync into itself.** Same path as this checkout → stop.
+3. **Classify before copying.** Diff the trees over the **Copy** rows: files that differ, files only upstream, files only here. Report the counts.
+4. **Checkpoint customization.** For each `.agents/` text file that differs, decide *stale* (behind upstream edits) or *customized* (carries content the template never had). Anything you cannot confidently call stale goes to the human via `human-checkpoint`, with its diff, before it is overwritten. `tools/workflow-mcp/**` skips this check. An empty argument is not consent — this step still runs.
+5. **Copy, never delete.** Write the classified files (`tools only` → that row alone). A file only here is never deleted.
+6. **Regenerate** — directly, not through the MCP's `sync`: the running server holds its own old source in memory, so a freshly copied `generate.mjs` would not run (`tools/workflow-mcp/getting-started.md` § Troubleshooting). From `tools/workflow-mcp/`, with a forward-slash root:
    ```
    node -e "import('./generate.mjs').then(m => m.generate('<repo-root>'))"
    ```
-
-7. **Validate before committing, because a stricter template can reject this project's config.** The config loader gets stricter over time, and `.agents/config.json` is deliberately not synced — so the newly copied validator may refuse a file that loaded fine an hour ago. Check three things and read the output: `loadConfig` succeeds; every role in `list_roles` resolves to an engine chain; `checkGenerated` reports no drift. A config that no longer loads is a **blocking** failure — report exactly which rule rejected it and stop, rather than committing a project that cannot dispatch. Do not run the MCP's own test suite here; it is the template's suite and belongs in the template.
-
-8. **Report what was left behind.** Name the files that exist only in this project, and any generic file the human chose to keep customized in step 4. These are the reasons the next sync will show drift again, and an unexplained recurring diff is how a project stops trusting this command.
-
-   Then name the **project-side setup the new version expects but this project lacks** — project-owned files are never synced, so nothing else will tell the human: `check` reporting `architecture.enforced: false`, a `docs/wiki/architecture.md` with no `## Layers` section, no `.gitattributes` union line for `docs/wiki/log.md`, or no CI step running `tools/workflow-mcp/verify.mjs`. Each maps to `/project:init` step 5b or 5c; recommend it, don't do it here.
-
-9. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `chore`, subject `chore(workflow): sync <scope> from the template`, fields `Source: <path> @ <sha>`, `Changed: <N> files`, `Kept local: <list or none>`, `Config: loads | REJECTED — <rule>`. The SHA is the load-bearing field: it is what the next run compares against, and without it "are we current?" costs a full tree diff.
+   Confirm the new content landed with a targeted grep.
+7. **Validate before committing.** The loader gets stricter over time and `config.json` is never synced, so the new validator may refuse a config that loaded an hour ago. Check that `loadConfig` succeeds, every role in `list_roles` resolves an engine chain, and `checkGenerated` reports no drift. A config that no longer loads is **blocking**: report the rule that rejected it and stop. The human can repair it in the editor (`node tools/workflow-mcp/config-ui.mjs`, [`config.md`](../../tools/workflow-mcp/config.md)), which opens on a rejected file and offers to remove an unknown key; you fix it here only if asked. Typical causes: a `workerCommands` line with shell composition (`&`, `|`, `;`), an unknown key the loader used to ignore, an `effort` or model the engine does not accept. Never patch the copied validator to accept it, and never run the MCP's own test suite here — it belongs to the template.
+8. **Report what was left behind:** files only here, and generic files kept customized in step 4 — the reasons the next sync will show drift again. Then name the **project-side setup the new version expects but this project lacks**, since project files are never synced: `check` reporting `architecture.enforced: false`, no `## Layers` in `docs/wiki/architecture.md`, no `.gitattributes` union line for `docs/wiki/log.md`, no CI step running `tools/workflow-mcp/verify.mjs`. Each maps to `/project:init` step 5b or 5c — recommend it, don't do it here. Restart the session's MCP server so it runs the new code.
+9. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `chore`, subject `chore(workflow): sync <scope> from the template`, fields `Source: <path> @ <sha>`, `Changed: <N> files`, `Kept local: <list or none>`, `Config: loads | REJECTED — <rule>`.
 
 ## Failure modes
 
-- **The template source is stale too.** A path pointing at a checkout that has not itself been pulled syncs old code that looks new. Report the source's SHA and branch in step 1 so this is visible, and say so if the source is behind its own remote.
-- **Config rejected by the new validator** (step 7). Blocking. The human can repair it in the config editor (`node tools/workflow-mcp/config-ui.mjs`, [`config.md`](../../tools/workflow-mcp/config.md)), which opens on a file that parses but is rejected and offers to remove an unknown key; you fix it here only if they ask. Common shape: an entry that a newly added rule forbids — a `workerCommands` line carrying shell composition (`&`, `|`, `;`), an unknown key (top level, role, `architecture` or an `engines.<name>` block — a typo the loader used to ignore), or an `effort`/`models` value the engine does not accept. Fix `.agents/config.json` here, then re-run step 7. Never patch the freshly copied validator to accept it; that reintroduces the drift this command exists to remove.
-- **A customized file silently overwritten.** The expensive one, because it surfaces later as "the workflow stopped doing the thing we set it up to do". Step 4 is the guard; if you skipped it, `git diff HEAD~1` on this commit is the recovery.
-- **Regenerating with a cached MCP** (step 6). `check` passes because it compares stale output against itself. Verify the new content landed with a targeted grep before trusting it.
+- **A customized file silently overwritten** — the expensive one; it surfaces later as "the workflow stopped doing what we set it up to do". Step 4 is the guard; `git diff HEAD~1` on this commit is the recovery.
+- **`check` passes against a cached MCP** — it compares stale output against itself. The grep in step 6 is the real confirmation.
 
 ## What you do NOT do
 
-- **No writes to the template.** One direction only. A fix this project needs in the template is a change made *there*, with its own tests.
-- **No `.agents/config.json`, no `.agents/project.md`.** Not even "just the parts that look generic". If a role pin here is wrong, that is a decision for this project.
-- **No deletions to make the trees match.** Report the extras; let the human decide.
-- **No wiki work.** Drift between this project's `docs/wiki/` and its code is `/project:review` and `/project:wiki`, not this.
+- **No writes to the template.** A fix it needs is made there, with its own tests.
+- **No `.agents/config.json` or `.agents/project.md`** — not even the parts that look generic.
+- **No deletions to make the trees match.** Report the extras; the human decides.
+- **No wiki work** — drift between this project's wiki and code is `/project:review` and `/project:wiki`.

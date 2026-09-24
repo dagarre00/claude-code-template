@@ -1,6 +1,6 @@
 ---
 name: plan-review
-description: How a read-only plan-adversary attacks a brief before any test exists — the plan on complex/batched cycles, the todo line on simple ones — with the six-category sweep, the blocker/risk/note vocabulary, and the report format. Worker-side procedure; how the conductor dispatches it and disposes of what it raises is the finding-disposition skill. Trigger on "review the plan", "pre-implementation review", "plan review", "premortem", "poke holes in the plan", "is this well specified".
+description: Worker-side. How the read-only plan-adversary attacks a brief before any test exists — the six-category sweep, the blocker/risk/note vocabulary and the report format; the conductor's side is finding-disposition. Trigger on "review the plan", "pre-implementation review", "plan review", "premortem", "poke holes in the plan", "is this well specified".
 type: skill
 ---
 

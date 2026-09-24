@@ -1,6 +1,6 @@
 ---
 name: clean-architecture
-description: How to place and wire code under this project's clean-architecture layers — which layer a new file belongs to, how an inner layer reaches the outside through a port, where concrete adapters are wired, how each layer is tested, and what to do when the architecture check fails. Use for any change that adds a file, an import between modules, or a dependency on a framework, database or external service. Trigger on "layers", "clean architecture", "hexagonal", "ports and adapters", "dependency rule", "use case", "repository", "architecture check failed", "where does this go".
+description: How to place and wire code under this project's clean-architecture layers — which layer a file belongs to, reaching the outside through a port, wiring adapters, and what to do when the architecture check fails. Use for any change that adds a file, an import between modules, or a dependency on a framework, database or external service. Trigger on "layers", "clean architecture", "hexagonal", "ports and adapters", "dependency rule", "use case", "repository", "architecture check failed", "where does this go".
 type: skill
 ---
 

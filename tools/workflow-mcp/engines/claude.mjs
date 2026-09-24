@@ -106,7 +106,7 @@ export default {
       // A custom `--settings` hard_deny rule and a blanket `--disallowedTools
       // Bash` were both tried against this and neither restored the literal
       // allowlist without also breaking the commands it's meant to grant. See
-      // gotchas.md § Tooling.
+      // engine-setup.md, "Claude Code — nothing to do".
       '--permission-mode', readOnly ? 'dontAsk' : this.writeMode,
       // Nobody is at the keyboard, so anything that would prompt must be denied
       // rather than hang until the conductor's timeout.

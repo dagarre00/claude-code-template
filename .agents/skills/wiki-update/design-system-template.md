@@ -1,8 +1,8 @@
 # Design-system page template (`docs/wiki/design-system.md`)
 
-**Only for projects with a UI surface.** The project-init command creates this page when it detects one (web, mobile, desktop, TUI); a library, CLI, or service project never gets it. Do not create it speculatively — an empty design system on a backend project is the noise progressive disclosure exists to prevent.
+**Only for projects with a UI surface** (web, mobile, desktop, TUI) — project init creates it; a library, CLI or service never gets one.
 
-**The page asserts; the code holds the values.** Literal hex/px/ms live in the project's token file — this page owns the *role names*, the *step counts*, and the *checkable constraints* every UI commit must satisfy. That split is deliberate: token tables hand-maintained in markdown rot within weeks, but "`text` on `bg` is ≥ 7:1" and "there are exactly seven type steps" are assertions a test can verify against the code. Write constraints, not copies.
+**The page asserts; the code holds the values.** Literal hex/px/ms live in the token file. This page owns the *role names*, *step counts* and *checkable constraints* ("`text` on `bg` is ≥ 7:1", "exactly seven type steps") — assertions a test can check, where a hand-copied token table rots within weeks. Write constraints, not copies.
 
 ```markdown
 ---
@@ -161,4 +161,4 @@ at the UI level.)_
 - Token / choice ← `docs/raw/...` or [[decisions/<slug>]].
 ```
 
-Like `requirements.md` and `architecture.md`, this page keeps its own body format — the Essence → Model → Detail → Boundaries spine does not apply, but the frontmatter hard rules do. Route the neighbouring frontend material to its existing home rather than restating it here: stack and styling approach → `architecture.md § Stack` and `architecture.md § Conventions`; a11y level, browser matrix, and perf budgets → `requirements.md § Non-functional requirements`; per-component specs → `entities/`; an interaction pattern recurring 3+ times → `concepts/`; "why this palette / framework" → `decisions/`.
+Like `requirements.md`, this page keeps its own body format; the frontmatter rules still apply. Neighbouring material lives elsewhere: stack and styling approach → `architecture.md § Stack` and `architecture.md § Conventions`; accessibility level, browser matrix, performance budgets → `requirements.md § Non-functional requirements`; component specs → `entities/`; an interaction pattern recurring 3+ times → `concepts/`; "why this palette or framework" → `decisions/`.

@@ -1,88 +1,58 @@
 ---
 name: update-toolkit
-description: How to add, modify, or retire an agent, a skill, or a slash command in this project — the meta skill that evolves the agent's own toolkit. Use when the workflow needs a new specialist role, a new how-to procedure, or a new repeatable entry point; when an existing one drifts; or when one is unused. Trigger on "new agent", "add agent", "modify agent", "agent role", "new skill", "add skill", "modify skill", "skill drift", "missing how-to", "new command", "add command", "slash command", "modify command".
+description: Conductor-only meta skill. How to add, modify or retire a role, a skill or a slash command as the project grows. Use when the workflow needs a new procedure, entry point or specialist role, when one drifts, or when one goes unused. Trigger on "new agent", "add agent", "modify agent", "agent role", "new skill", "add skill", "modify skill", "skill drift", "missing how-to", "new command", "add command", "slash command", "modify command".
 type: skill
 ---
 
-# Updating the Toolkit — Agents, Skills, Commands
+# Updating the Toolkit
 
-This project's agents, skills, and commands are not fixed — the agent evolves them as the project grows. This skill is the procedure for all three. **First decide which artifact you actually need**, then follow the matching section.
+## Decide which artifact first
 
-## Decide first: which artifact?
+- **Skill** — a procedure, loaded by task content: "when X, do these steps". Almost always the answer for new domain knowledge ("the developer needs to know databases" is a skill).
+- **Command** — a named entry point the human types, orchestrating branches, dispatches and wiki updates. Thin: heavy lifting lives in roles and skills.
+- **Role** — a distinct context scope (fresh-context audit vs in-loop implementation) or invariants that conflict with an existing role ("never write code" vs "always write code"). **Default to no.** No domain roles ("backend agent").
+- **Wiki page**, not this skill — facts about the system (`docs/wiki/concepts/`).
 
-- **Skill** = a procedure the agent runs, auto-loaded by task content. "Always do these steps when…". Lives in `.agents/skills/<name>/SKILL.md`. This is almost always the right answer for new domain knowledge (progressive disclosure — domain knowledge belongs in skills the developer loads, not in new agents).
-- **Command** = a human-invoked, named entry point that orchestrates work (branch, dispatch agents, touch the wiki). "The human types `/foo`". Lives in `.agents/commands/<name>.md`. Commands stay thin — heavy lifting lives in agents and skills.
-- **Agent** = a distinct role with its own context scope or conflicting invariants. **Default to no.** Only create one when the task needs a genuinely different scope of context (e.g. fresh-context audit vs in-loop implementation) or strict invariants that conflict with an existing agent ("never write code" + "always write code"). "The developer needs to know more about databases" is a **skill**, not an agent.
-- **Wiki page** (not this skill) = knowledge the agent reads, not a procedure it runs. "Facts about the system" → a `docs/wiki/concepts/` page.
-
-Read 2–3 existing files of the target kind before writing, to mirror tone, length, and structure.
-
----
+Read 2–3 existing files of the kind first and match their tone, length and structure. Every paragraph is paid for on every load — a role on every dispatch, a command on every run — so keep bodies short, and lift any procedure a command *teaches* into a skill.
 
 ## Skills
 
-### Add a skill
+**Add:**
+1. `.agents/skills/<name>/SKILL.md` — a directory per skill. A flat `.agents/skills/<name>.md` or a grouping subfolder is **silently ignored**. Supporting files (templates) sit beside `SKILL.md`; workers see them listed, never inlined.
+2. Frontmatter `name` (kebab-case), `type: skill`, and a precise `description` — it is the loading trigger. Bad: "skill for backend". Good: "Use when adding an HTTP endpoint. Trigger on 'add endpoint', 'new route', 'API handler'." Could a real task contain those words? If not, rewrite it.
+3. Body = procedure (rule 14): a line on when it fires → **Read first** → numbered **Steps** → the wiki pages to update → this project's **Anti-patterns**. If a paragraph could appear in a textbook, delete it. Rationale ("measured on…", "this exists because…") goes in the log entry or an ADR, not the body.
+4. **Who reads it?** A skill a command declares for a role is inlined into that worker's prompt, so it must be obeyable there: no skill the role isn't sent, no repo-changing git command, no path outside its worktree (`.handoff/`), no writes to the conductor's queues (`todos.md`, `wiki-todos.md`, `log.md` → `Follow-ups:`). `tools/workflow-mcp/test/canonical.test.mjs` catches the first three. A procedure with a worker half and a conductor half is two skills (`adversarial-review` / `finding-disposition`). Mark a conductor-only skill so in its `description`.
+5. A wiki page it cites that doesn't exist → a `wiki-todos.md` line. Commit `feat: add <name> skill — <reason>`.
 
-1. **Frontmatter.** `name` (kebab-case), `type: skill`, and a precise `description` — this is everything, because Claude Code uses it to auto-load. Bad: "skill for backend". Good: "Use when adding an HTTP endpoint. Trigger on 'add endpoint', 'new route', 'API handler'."
-2. **Body = procedure, not explanation.** Structure: 1–2 sentence opening (when it fires, what it produces) → **Read first** (wiki pages/files to load) → **Steps** (numbered, executable) → **Wiki update** (pages to touch when done) → **Anti-patterns** (this project's footguns).
-3. **Placement.** Every skill is a directory with a `SKILL.md` entrypoint: `.agents/skills/<name>/SKILL.md`. A flat `.agents/skills/<name>.md` or a grouping subfolder (`.agents/skills/meta/<name>/SKILL.md`) is **silently ignored** — the skill never loads and nothing tells you why. Supporting files (templates, scripts) live next to `SKILL.md`.
-4. **Test the trigger.** Could a real session task contain the `description`'s words? If not, rewrite.
-5. **Cross-link.** If the skill points at a wiki page that doesn't exist yet, file a `docs/wiki/wiki-todos.md` line.
-6. **Decide who reads it — a worker, or only the conductor.** A skill a command declares for a role is inlined into that worker's prompt, so its text must be something that worker can obey: no named skill the role is not sent, no git command that changes the repository, no path outside its worktree (`.handoff/`), no writes to the conductor's queues (`todos.md`, `wiki-todos.md`, `log.md` — those go under `Follow-ups:`). `tools/workflow-mcp/test/canonical.test.mjs` fails on the first three. If one procedure has a worker half and a conductor half, it is two skills: the reviewer's sweep (`adversarial-review`) and the conductor's disposition protocol (`finding-disposition`) are the pattern. A conductor-only skill says so in its `description`.
-7. **Keep rationale out of the body.** "Measured on …" and "this exists because …" belong in the log entry or an ADR; every worker that receives the skill pays for each sentence on every dispatch.
-8. **Commit** `feat: add <name> skill — <one-line reason>`.
-
-### The "how-to not what-is" rule
-
-If a paragraph could appear in a textbook chapter on the topic, **delete it**. Assume the LLM knows the topic; tell it how *this project* handles it. Bad: "TDD means writing a test first, seeing it fail…". Good: "Write one failing test per Behavior case, run `<test-command>`, confirm it fails for the right reason, then write the smallest code to pass."
-
-### Modify / retire a skill
-
-- **Modify:** read the whole skill first; if the trigger changes, update `description` first; verify referenced wiki pages still exist. Commit `refactor: <name> skill — <reason>`.
-- **Retire:** grep `.agents/` and `docs/wiki/` for references, delete the `.agents/skills/<name>/` directory, append to `docs/wiki/log.md`, commit `chore: retire <name> skill`.
-
----
+**Modify:** read it whole; change `description` first if the trigger changes; confirm the pages it cites exist. `refactor: <name> skill — <reason>`.
+**Retire:** grep `.agents/` and `docs/wiki/` for references, delete the directory, log it, `chore: retire <name> skill`.
 
 ## Commands
 
-### Add a command
+**Add:**
+1. `.agents/commands/<name>.md`, flat. The `project` plugin (`.agents/.claude-plugin/plugin.json`) makes it `/project:<name>`; commands have no MCP surface — don't add one.
+2. Frontmatter `name`, `type: command`, a one-line `description`, an `argument-hint` (`[scope — e.g. "the auth module" | "security only"]`), and — if it dispatches workers — `skills:`, either a list or a per-role map (`developer: [tdd-loop]`). Two roles of one command never share a skill.
+3. **Every command takes an argument.** Under the H1 write `**Argument:** \`$ARGUMENTS\``, then what it does: the step it overrides, its two or three shapes, what empty means, what it can never bypass (preconditions, Red, human checkpoints). Wire it into the step it changes — an echo nothing consumes silently drops the human's instruction. A dispatched role gets it verbatim.
+4. Body: **Preconditions** → numbered **Steps** (one action each) → **Failure modes** → wiki updates → where it pauses for the human.
+5. Run `sync` (the `AGENTS.md` catalog is generated; `check` fails if you forget), update `docs/wiki/commands.md` if the human can run shell pieces of it, and commit `feat: add /<name> command — <reason>`.
 
-1. **Frontmatter.** `name` (kebab-case), `type: command`, one-line `description` (shown in listings), and `argument-hint` — a bracketed sketch of the free-text context the command accepts (`[scope — e.g. "the auth module" | "security only"]`). **Every command takes an argument.** A command that ignores what the human typed after its name silently drops their instruction.
-2. **Bind the argument in the body.** Directly under the H1, write `**Argument:** \`$ARGUMENTS\`` followed by a short block saying what the argument does to this command: which step it overrides, the two or three shapes it can take (scope / fact / constraint), what happens when it's empty, and what it can never bypass (preconditions, Red phase, human checkpoints). Then wire it into the step it actually changes — a `$ARGUMENTS` echo with no step consuming it is decoration. Commands that dispatch an agent pass the argument through verbatim, so the sub-agent inherits the same scope.
-3. **Body = the procedure the orchestrator follows:** **Preconditions** (check first) → **Steps** (numbered; one action each — pick todo, branch, dispatch agent) → **Failure modes** → **Wiki updates** → **Human checkpoints** (where it pauses).
-4. **Placement.** `.agents/commands/<name>.md`, flat — no subfolders. Claude Code's `project` plugin (named in `.agents/.claude-plugin/plugin.json`) turns that into the native slash command `/project:<name>`; there is no per-command namespace to choose. Commands have no MCP surface — don't add one. A conductor that isn't Claude Code reads the file directly when a human names the command.
-5. **Regenerate the root files** — run the workflow MCP's `sync`. The command table in `AGENTS.md` is generated from `.agents/`, so never hand-edit it; `check` fails if you forget.
-6. **Update `docs/wiki/commands.md`** if the human can run shell pieces of it.
-7. **Commit** `feat: add /<name> command — <reason>`.
+**Modify:** re-read it; if its contract changes, update `description` and `sync`. A changed argument meaning updates `argument-hint`, the `**Argument:**` block and the consuming step together. `refactor: /<name> — <reason>`.
+**Retire:** grep `.agents/` for references, delete the file, `sync`, log it, `chore: retire /<name>`.
 
-### Modify / retire a command
+## Roles
 
-- **Modify:** re-read the file; if preconditions/output contract change, update `description` and the CLAUDE.md row. If the argument's meaning changes, update `argument-hint`, the `**Argument:**` block, and the step that consumes it together — a hint that no longer matches the behaviour is worse than none. Commit `refactor: /<name> — <reason>`.
-- **Retire:** grep `.agents/` for references, delete the file, run `sync`, append to `docs/wiki/log.md`, commit `chore: retire /<name>`.
+**Add:**
+1. `.agents/roles/<name>.md` — never `.agents/agents/`, which the plugin loader would publish as a native subagent that bypasses the MCP.
+2. Frontmatter `name`, `type: agent`, `profile` (`reasoning`/`balanced`/`fast`), `access` (`read-only`/`write`), optional `capabilities: [web]`, and a `description` precise enough to route on. Model, effort and tools are **not** frontmatter and are refused there: the profile picks the model and effort from `.agents/config.json`, and each engine adapter turns `access` into its sandbox.
+3. Body: role statement (1–2 sentences) → **Entry checklist** (files to read first, including the wiki pages) → procedure → the wiki updates it makes → **What you do NOT do** (name conflicts with other roles).
+4. Add it to `roles` in `.agents/config.json` (pin `engine`/`models`/`effort` if it should not follow the conductor), run `sync`, and re-read every role's `description` — two that could match one task get tightened.
+5. Commit `feat: add <name> agent`, citing the requirement that justified it.
 
----
+**Modify:** read it end to end; change `description` first if the role changes; update "What you do NOT do" when invariants shift. `refactor: <name> agent — <reason>`.
+**Retire:** confirm no command references it, delete the file, drop its `config.json` entry, `sync`, log it, `chore: retire <name> agent`.
 
-## Agents
+## Anti-patterns
 
-### Add an agent
-
-1. **Frontmatter.** `name`, `type: agent`, `profile` (`reasoning` / `balanced` / `fast`), `access` (`read-only` or `write`), and a precise `description` matched against task content. Model, effort and tool access are **not** frontmatter and are rejected there: the profile picks a model and effort from `.agents/config.json` (`engines.<engine>.models.<profile>`, or `roles.<role>.engine` + `roles.<role>.models.<engine>` to pin one role to one CLI and model), and `access` is what each engine adapter turns into its sandbox or permission mode. Bad: "helps with code". Good: "Fresh-context auditor: reviews code against the wiki in a fresh session context, flags drift and missing tests."
-2. **Body in order:** role statement (1–2 sentences) → **Entry checklist** (files to read first, always including relevant wiki pages) → Procedure → wiki updates the agent must make → **What you do NOT do** (invariants; make conflicts with other agents explicit).
-3. **Register and regenerate.** Add the role to `roles` in `.agents/config.json` (pin `engine`/`models`/`effort` if it should not follow the conductor), then run `sync` — the role table in `AGENTS.md` is generated.
-4. **Verify routing.** Re-read every agent's `description`; if two could match the same task, tighten them.
-5. **Commit** `feat: add <name> agent` referencing the requirement that justified it.
-
-### Modify / retire an agent
-
-- **Modify:** read the file end-to-end; if the role changes, update `description` (the routing key) first; update "What you do NOT do" if invariants shift. Commit `refactor: <name> agent — <reason>`.
-- **Retire:** confirm no command references it (`grep -r "<agent-name>" .agents/commands/`), delete the file, drop its `roles` entry from `.agents/config.json`, run `sync`, append to `docs/wiki/log.md`, commit `chore: retire <name> agent`.
-
----
-
-## Anti-patterns (all three)
-
-- **Domain agents.** No "backend agent", no "frontend agent" — that's what skills are for.
-- **What-is content.** Never explain what testing/refactoring/migrations *are*. Tell the agent the procedure for this project.
-- **Long bodies.** Agents are read every dispatch, commands on every invocation — every paragraph costs context. Commands orchestrate; if a command body *teaches a procedure* (how to write tests, how to structure a page), lift that into a skill. The shipped core commands run long because they orchestrate multi-agent cycles; a new command approaching their size deserves the same scrutiny.
-- **Generic descriptions.** "Helps with code" loads/routes on everything — useless. Be specific about the trigger.
-- **Duplicate procedures / invariants.** Two skills with the same steps → merge. A new agent that also writes tests or production code splits a cycle meant to live in the `developer` — reconsider whether it should be a skill.
+- **What-is content** — explaining testing or migrations instead of this project's procedure.
+- **Generic descriptions** — "helps with code" routes on everything.
+- **Duplicate procedures** — two skills with the same steps get merged; a new role that also writes tests or production code splits the `developer`'s cycle.

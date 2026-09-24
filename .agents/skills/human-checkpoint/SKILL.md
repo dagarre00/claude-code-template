@@ -1,80 +1,56 @@
 ---
 name: human-checkpoint
-description: When and how to pause for the human — present a clear ask, options, and recommendation. Use whenever you need a decision the wiki doesn't answer, hit a two-strike pivot, or face risky/irreversible state. Trigger on "ask the human", "stop and ask", "human checkpoint", "need decision", "risky operation".
+description: Conductor-only. When and how to pause for the human — a clear ask, the options, and a recommendation. Use for a decision the wiki doesn't answer, a two-strike pivot, or risky or irreversible state. Trigger on "ask the human", "stop and ask", "human checkpoint", "need decision", "risky operation".
 type: skill
 ---
 
 # Human Checkpoint
 
-Stop and ask when the wiki doesn't have an answer. Don't guess. Don't silently improvise.
+Stop and ask when the wiki doesn't answer — never guess, never silently improvise. Stop **before** acting: "I did X — is that OK?" is not a checkpoint.
 
-## When to stop
+## Always stop
 
-| Situation                                                         | Action                                                                                              |
-| ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Two failed attempts on the same mechanism                         | Stop. Tag the state (`git tag checkpoint-<stamp>`). Present the two attempts and ask for direction. |
-| Test seems to encode wrong behavior                               | Stop. Spec change must come from human; don't change the test.                                      |
-| Design fork the wiki doesn't pre-decide                           | Stop. Present both options with tradeoffs and recommendation.                                       |
-| Uncommitted changes from a prior session                          | Stop. Ask whether to commit, stash, or discard.                                                     |
-| Branch state unclear (off develop, prior PR merged?)              | Stop. Run `git status` and `git log --oneline -10` and show output.                                 |
-| About to delete files, force-push, drop tables, hit a third party | Stop. Confirm scope and authorization.                                                              |
-| A skill or wiki page you need doesn't exist                       | Stop. Ask before improvising; offer to create it via `update-toolkit`.                              |
-| Test command runs but produces ambiguous output                   | Stop. Show the output, ask what to interpret it as.                                                 |
+| Situation | Action |
+| --- | --- |
+| Two failed attempts on the same mechanism | Tag `checkpoint-<stamp>`; present both attempts; ask for direction. |
+| A test seems to encode the wrong behavior | The spec change is the human's; never change the test. |
+| A design fork the wiki doesn't pre-decide | Both options, their tradeoffs, your recommendation. |
+| Uncommitted changes from another session | Ask whether to commit, stash or discard — name the paths. |
+| Unclear branch state (off `develop`, prior PR merged?) | Show `git status` and `git log --oneline -10`. |
+| About to delete files, force-push, drop tables or call a third party | Confirm scope and authorization. |
+| A skill or wiki page you need doesn't exist | Ask before improvising; offer to create it via `update-toolkit`. |
+| Ambiguous test output | Show it; ask how to read it. |
+| A `critical`/`major` adversary finding (rule 20) | Fix now or queue — deliberately an interruption. |
 
-## When NOT to stop
+## Don't stop for a foregone conclusion
 
-Measured across three projects on this template: **72–100% of checkpoints were answered by taking the agent's own `(Recommended)` option, unchanged** — 81 of 112 in one, 12 of 12 in another. A checkpoint the human always answers the same way is a notification wearing a question's clothes, and it costs the same attention as a real one. Two tests before you ask:
+On projects using this template, 72–100% of checkpoints were answered with the agent's own recommended option, unchanged. A checkpoint the human always answers the same way costs the attention of a real one and decides nothing. Before asking:
 
-- **Is there a genuine fork?** If you have a recommendation and the alternative is one you would argue against, that is not a decision — state what you are doing and why, in one line, and do it. Reversibility is what makes this safe: a branch, a commit, and a tick in an entity page are all cheap to undo, so proceed and let the human redirect.
-- **Does the schema already answer it?** Asking "should this go through the spec-first workflow?" or "should I write the test first?" is asking permission to skip rules 1 and 2. The answer is in `behavioral.md`; read it instead of asking.
+- **Is there a genuine fork?** If you would argue against every option but your recommendation, say in one line what you are doing and why, and do it. A branch, a commit or a tick is cheap to undo; the human can redirect.
+- **Do the rules already answer it?** "Should I write the test first?" asks permission to skip a rule — the answer is in `.agents/rules.md`.
 
-The rows in the table above stay checkpoints regardless — they are the irreversible and genuinely-forked cases, and rule 20's `critical`/`major` gate is deliberately an interruption. What this section removes is the third kind: the confirmation you already know the answer to.
+The table above stays a checkpoint regardless: those are the irreversible or genuinely forked cases.
 
 ## How to ask
-
-Use this structure — clear, structured, no padding:
 
 ```
 **Why I'm stopping:** <one line>
 
 **Context:**
-- <fact 1>
-- <fact 2>
+- <fact — cite the entity, todo or requirement behind the ask>
+- <fact>
 
 **Options:**
 1. <Option A> — <one-line tradeoff>
 2. <Option B> — <one-line tradeoff>
 
-**My recommendation:** <which option and one-line why>
+**My recommendation:** <which, and why in one line>
 
-**What I need from you:** <pick one of the options OR give a different direction>
+**What I need from you:** <pick an option, or give another direction>
 ```
 
-Use the `AskUserQuestion` tool when:
+Three bullets of context, then the question — never a wall of text, never "what should I do?" without options. Use `AskUserQuestion` for 2–4 options that each fit in a line or two; otherwise post it as text. Then wait: no background edits, no "trying something in the meantime", no burying the ask under more analysis.
 
-- The choice has 2–4 discrete options.
-- Each option can be summarized in 1–2 lines.
+## After the answer
 
-Otherwise, post the structured ask in chat text and wait.
-
-## What you do NOT do while waiting
-
-- Don't keep editing files in the background.
-- Don't proceed with a "I'll just try this in the meantime" branch.
-- Don't bury the ask under further analysis. State it cleanly and stop.
-
-## After the human answers
-
-- Echo back the chosen path in one line so the human can confirm you understood.
-- If the decision implies a new rule, file it: add to `.agents/rules.md` (discipline issue) or `docs/wiki/gotchas.md` (project-specific failure).
-- If the decision implies a new pattern, queue it: append to `docs/wiki/wiki-todos.md` (e.g. `Document <pattern> as a concept`).
-- Then resume work.
-
-## Anti-patterns
-
-- **Asking after acting.** "I did X — is that OK?" is not a checkpoint. Stop before acting.
-- **Asking what the rules already answer.** A checkpoint is for what the wiki and `behavioral.md` don't decide. Requesting permission to skip a rule is not a checkpoint; it is the rule failing.
-- **Checkpointing a foregone conclusion.** If you would argue against every option but your recommendation, say what you're doing and proceed (see *When NOT to stop*).
-- **Open-ended questions.** "What should I do?" wastes the human's time. Present options and a recommendation.
-- **Wall-of-text context dumps.** Three bullets, then the question.
-- **Asking without the wiki-anchor.** Cite the entity / todo / requirement that prompted the ask, so the human can correct the spec if needed.
+Echo the chosen path in one line. If it implies a new rule, add it to `.agents/rules.md` (a discipline issue) or `docs/wiki/gotchas.md` (a project trap); if it implies a new pattern, queue it in `docs/wiki/wiki-todos.md`. Then resume.

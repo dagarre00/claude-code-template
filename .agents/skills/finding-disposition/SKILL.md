@@ -1,6 +1,6 @@
 ---
 name: finding-disposition
-description: Conductor-only procedure for running a review round and disposing of every finding — what to send the plan-adversary and the adversary (and what never to send), Applied/Escalated/Rejected for brief findings, Filed/Fixed/Rejected for diff findings, the critical/major human gate, the round commit and log record, P0 saturation, re-review, stop conditions, and recording finding counts for dispatch_stats. Never sent to a worker. Trigger on "triage findings", "dispose of findings", "adversary round", "plan review round", "file the findings", "round commit".
+description: Conductor-only. How to run a review round and dispose of every finding — what to send the plan-adversary and adversary (and never send), Applied/Escalated/Rejected for brief findings, Filed/Fixed/Rejected for diff findings, the critical/major human gate, the round commit, P0 saturation, re-review, the round cap, and recording counts for dispatch_stats. Trigger on "triage findings", "dispose of findings", "adversary round", "plan review round", "file the findings", "round commit".
 type: skill
 ---
 
@@ -65,7 +65,7 @@ The reviewers' own procedures are `plan-review` and `adversarial-review`; they r
 
    `--allow-empty` when every finding was rejected. `git log --grep="adversary round"` is the audit.
 8. **P0 saturation.** After staging todo lines, count open P0 items (`docs/wiki/todos.md § P0 saturation threshold`). At or above `P0_MAX` → `human-checkpoint` with the count, the `[adversary]` share, the three oldest entries, and a recommendation (drain P0, re-grade, or pause adversarial review).
-9. **Re-review only if something was fixed**, with `diff_range` over the fix commits only. **Three rounds, then stop.** Findings still open when the cap is hit: file the `critical`/`major` ones as todos per step 5 (the human gate in step 6 still applies) and let `minor`/`nit` ones go unfiled rather than opening a fourth round. A unit still generating findings at round three was too big — split it before the *next* review.
+9. **Re-review only if something was fixed**, with `diff_range` over the fix commits only. **Three rounds, then stop.** Findings still open at the cap: file the `critical`/`major` ones per step 5 (the human gate in step 6 still applies) and list the `minor`/`nit` ones in the round commit as unfiled, reason "round cap" — never open a fourth round. A unit still generating findings at round three was too big; split it before the *next* review.
 
 ## Record the yield — every round
 
@@ -86,5 +86,5 @@ Use `critical/major/minor/nit` and `filed/fixed/rejected` for a diff round. `rev
 - **Fixing a `critical` without asking**, or quietly filing one.
 - **Filing as disposal.** Filed findings are consumed by the `/project:wiki` re-triage; when the open `[adversary]` count reaches `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`), say so in the cycle report.
 - **Filing brief findings for later.** You are about to implement their subject.
-- **Re-reviewing the whole diff**, or opening round three.
+- **Re-reviewing the whole diff**, or opening a fourth round.
 - **Letting the record evaporate** — counts in the log are an index, not dispositions.

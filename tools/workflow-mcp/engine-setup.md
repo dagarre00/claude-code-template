@@ -1,20 +1,10 @@
 # Engine setup — what each CLI needs before it can run a worker
 
-A worker is launched non-interactively, so **nothing can prompt**. Every
-permission a worker needs must already be granted before it starts, or the tool
-call is auto-denied. On two of the three engines that denial is silent enough to
-look like success, so read this before pinning a role to an engine.
+A worker runs non-interactively, so **nothing can prompt**: every permission it needs must be granted before it starts, or the call is auto-denied — on two of the three engines silently enough to look like success. Read this before pinning a role to an engine.
 
-The allowlist itself lives in one place: `workerCommands` in
-`.agents/config.json`. It is a list of **exact command lines**, not patterns.
-The engines differ in how (and whether) they actually gate on it — agy's
-`command(<line>)` rules are true exact-match with no argument wildcarding at
-all; Claude Code's `Bash(<line>:*)` permits the command with any trailing
-arguments; Codex doesn't consult this list at all; its OS-level sandbox gates
-writes regardless of it (see below) — but on every engine, `npm test` is what
-the prompt tells a worker it may run, and `cd x && npm test` is not something
-any worker should be composing regardless of what a particular engine happens
-to let through.
+## The command allowlist
+
+`workerCommands` in `.agents/config.json` lists the **exact command lines** a worker may run — not patterns:
 
 ```json
 "workerCommands": [
@@ -27,169 +17,46 @@ to let through.
 ]
 ```
 
-Set the test command to your project's real one when you adopt the template
-(`/project:init` step 5a does this, in `.agents/config.json` as well as
-`docs/wiki/commands.md`), and keep the list short. A worker reads, searches
-and edits with its own file tools, which need no permission; commands are
-only for running the suite and the few read-only git calls the role
-checklists name.
+`/project:init` step 5a replaces `npm test` with the project's real test command. Keep the list short: workers read, search and edit with their own file tools, which need no permission, so commands are only for the suite and the few read-only git calls the role checklists name. The editor (`node tools/workflow-mcp/config-ui.mjs`, [config.md](config.md)) edits the list and refuses a line no engine could match.
 
-You can edit `workerCommands`, and every other setting in that file, in a local
-page instead of by hand: `node tools/workflow-mcp/config-ui.mjs`. It refuses a
-line the engines could never match and explains each setting; see
-[config.md](config.md).
-
-**The list is also inlined into every worker prompt**, under `## Commands you may
-run`. That is not redundancy: a worker that does not know the list improvises a
-near-miss — `git log -n 3` instead of an allowlisted read — and on agy a single
-denied command ends the run and discards the report along with any work already
-done. Measured: a developer that had already written its failing test returned an
-empty response after one denied `git log`. Adding a command means adding it here,
-in the agy settings below, and nowhere else.
+The engines gate it differently — agy's `command(<line>)` rules are true exact match; Claude Code's `Bash(<line>:*)` allows trailing arguments; Codex ignores the list and relies on its OS sandbox — but the list is also **inlined into every worker prompt** under `Commands you may run`. A worker that doesn't know it improvises a near-miss (`git log -n 3`), and on agy one denied command ends the run and discards the report: measured, a developer that had already written its failing test returned nothing after one denied `git log`. Adding a command means adding it here and to the agy grants below, nowhere else.
 
 ## Codex — nothing to do
 
-`--sandbox` plus `approval_policy="never"` is an OS-level sandbox with no
-approval surface to begin with, so commands run and writes are refused by the
-kernel rather than by a prompt. `workerCommands` does not apply.
+`--sandbox` with `approval_policy="never"` is an OS-level sandbox with no approval surface: commands run, and disallowed writes are refused by the kernel. `workerCommands` does not apply. Codex has no file-reading tool apart from its shell, so its prompt tells it that read-only shell commands inside the workspace are its file tools.
 
 ### Codex on Windows
 
-Codex runs a worker under a different Windows SID than the repo owner, so
-every git call in the worktree fails `fatal: detected dubious ownership`
-unless that exact path is trusted first — measured: owner SID `…-1001`,
-worker SID `…-1005`. Left unfixed, this silently disables the `adversary` and
-the `reviewer` on Windows: their first git call errors, and nothing else in
-the dispatch surfaces that as anything other than an empty or confused
-report.
-
-`prepare_worktree` handles this itself — every worktree it creates is
-registered with `git config --global --add safe.directory <path>`
-immediately after creation, so a Codex worker dispatched into it never hits
-the ownership check. Nothing to configure.
-
-If you ever hit `dubious ownership` from a worker anyway (a worktree created
-some other way, or a global config that got reset), trust it manually:
-
-```
-git config --global --add safe.directory <absolute path to the worktree>
-```
-
-**The trailing-`/*` wildcard some git versions document does not suppress
-this on Windows** (measured) — it takes a literal path per worktree, or the
-blanket `git config --global --add safe.directory "*"`, which trusts every
-repository on the machine and is a real loosening of the ownership check, not
-just a convenience.
-
-**The conductor itself is exposed too, not only the workers it dispatches.**
-`prepare_worktree` only registers trust for the worktree paths it creates —
-the root checkout is never touched. A conductor whose own shell runs under a
-different account than the checkout owner (conducting from Codex directly is
-the case seen; any other sandboxed shell with a distinct SID would hit the
-same thing) gets `dubious ownership` on its *own* git calls against the root
-checkout, before any worker is involved. `verify.mjs`'s own `git()` helper
-covers itself with a per-invocation `-c safe.directory=*` (scoped to that one
-spawned process, not written to any config file, so it widens nothing beyond
-the command it runs). That does not cover ad hoc git commands the conductor
-runs outside `verify.mjs` — for those, either trust the root checkout path
-the same way as a worktree (`git config --global --add safe.directory
-<absolute path to the repo root>`), or pass `-c safe.directory=*` on that one
-call yourself.
+- **Separate sandbox account.** Codex runs workers under a different Windows SID from the repo owner (measured: `…-1001` vs `…-1005`), so git in the worktree fails `detected dubious ownership` unless that path is trusted — silently disabling the `adversary` and `reviewer`, whose first git call errors. `prepare_worktree` registers every worktree it creates with `git config --global --add safe.directory <path>`, so there is nothing to configure. A worktree made some other way needs the same line by hand; the trailing-`/*` wildcard does **not** work on Windows (measured), and `safe.directory "*"` trusts every repository on the machine.
+- **The conductor too.** Only worktrees are registered. A conductor whose own shell runs under another account (conducting from Codex) hits `dubious ownership` on the root checkout. `verify.mjs` passes `-c safe.directory=*` for its own git calls, scoped to that process; for your other git calls, trust the root path the same way or pass that flag per call.
+- **`npm`/`npx` need the `.cmd` spelling** in the sandbox account, where PowerShell refuses `npm.ps1` (measured: `npm test` → `PSSecurityException`, `npm.cmd test` → exit 0). Dispatch respells them in a codex worker's prompt automatically. `worktreeSetup` is run by *your* shell, not the worker's, and is never respelled — if your own PowerShell blocks scripts, write `npm.cmd` there yourself.
 
 ### Codex — optional context-management overrides
 
-`-o reportFile` (above, in the codex adapter) keeps the *conductor* from
-paying for a bloated transcript, but says nothing about the *worker's own*
-context during a long task: a wiki-maintainer health pass or an adversary
-sweep that reads many large files can still burn through its history and
-force an early, lossy auto-compaction mid-task.
-
-Codex's own config.toml exposes two knobs for this — unrelated to this
-repo's report/raw split, and not measured against a real dispatch here the
-way the transcript sizes above are, so no default is set for you. Opt in per
-project in `.agents/config.json`'s `engines.codex` block:
+The report file keeps the *conductor* from paying for a long transcript, but not the *worker's* own context: a health pass or an adversary sweep reading many large files can still force an early, lossy auto-compaction. Two Codex settings bound it, opt-in per project under `engines.codex` (no default is set — they were not measured here):
 
 ```json
-"engines": {
-  "codex": {
-    "executable": "codex",
-    "toolOutputTokenLimit": 2000,
-    "modelAutoCompactTokenLimit": 50000,
-    ...
-  }
-}
+"engines": { "codex": { "executable": "codex", "toolOutputTokenLimit": 2000, "modelAutoCompactTokenLimit": 50000, ... } }
 ```
 
-- `toolOutputTokenLimit` caps how many tokens of a single tool output (a large
-  file read, a verbose command) Codex keeps in its own history before
-  truncating — lower keeps a session lean but risks the worker missing
-  something in the truncated tail.
-- `modelAutoCompactTokenLimit` is the history size that triggers Codex's own
-  auto-summarization pass. Lower triggers it earlier (more headroom, less
-  early-session detail retained); unset, Codex picks a default based on the
-  model's context window.
+- `toolOutputTokenLimit` — how much of one tool output (a large file read, a verbose command) the worker keeps; lower is leaner but may truncate what it needed.
+- `modelAutoCompactTokenLimit` — the history size that triggers auto-summarization; unset, Codex picks one from the model's context window.
 
-Both must be positive integers, and both are Codex-only — `loadConfig` refuses
-either field on `engines.claude` or `engines.antigravity`, since neither
-adapter has an argv slot that reads them and the value would otherwise be
-silently inert.
+Both are positive integers and Codex-only: the loader refuses them on the other engines, where they would be silently inert.
 
 ## Claude Code — nothing to do
 
-The adapter turns each `workerCommands` entry into `--allowedTools
-"Bash(<cmd>:*)"`. Read-only roles run in `--permission-mode dontAsk` rather than
-`plan`: plan mode refuses every Bash call, which would stop an adversary from
-verifying its own findings, while `dontAsk` plus `--permission-prompts none`
-denies edits (no approval surface) and still allows the allowlisted commands.
+Each `workerCommands` entry becomes `--allowedTools "Bash(<cmd>:*)"`. Read-only roles run `--permission-mode dontAsk`, not `plan` (which refuses every Bash call, so an adversary couldn't verify a finding): with `--permission-prompts none`, edits have no approval surface and are denied, while allowlisted commands run.
 
-Known gap, measured on 2.1.267: this does not make the allowlist a hard gate on
-Bash. A command outside `--allowedTools` can still execute if Claude Code's own
-auto-mode classifier (`claude auto-mode defaults`) judges it benign — proven
-with `sha256sum` against a file whose hash could not otherwise be known. A
-fuller sweep bounds the actual exposure, though: writes, deletes, network
-calls, and reads outside the worktree were all denied in every mode tried.
-Only local, in-scope, non-mutating reads slip through, and Read/Grep/Glob
-already grant every role that same access unconditionally — so this costs
-nothing beyond what a worker's own file tools already allow. "Workers may only
-run these exact commands" is not literally true for this engine; "workers
-cannot mutate, exfiltrate, or read outside their worktree" still is. A custom
-`--settings` hard_deny rule and a blanket `--disallowedTools Bash` were both
-tried as a fix and neither restored the literal allowlist without also
-breaking the commands it's meant to grant — see `docs/wiki/gotchas.md`.
+**Known gap** (measured on 2.1.267): the allowlist is not a hard gate. A command outside it can still run if Claude Code's auto-mode classifier judges it benign — `sha256sum` of a file returned the correct, unguessable hash. But writes, deletes, network calls and reads outside the worktree were denied in every mode tried; only local, non-mutating reads slip through, which Read/Grep/Glob already allow. So "workers run only these exact commands" is not literally true here, while "workers cannot mutate, exfiltrate or read outside their worktree" still is. A `--settings` hard-deny rule and a blanket `--disallowedTools Bash` were both tried: neither restored a literal allowlist without also blocking the allowed commands. Where a mechanical command gate matters, put that role on codex, whose sandbox is enforced by the OS.
 
 ## Antigravity (agy) — one step, per machine
 
-**agy reads no project-local configuration in print mode.** A `.gemini/settings.json`
-in the repository is ignored — measured: identical run, identical denial. The
-only file it reads is user-global:
+agy reads **no project configuration** in print mode (a repository `.gemini/settings.json` is ignored — measured), only the user-global `~/.gemini/antigravity-cli/settings.json`.
 
-```
-~/.gemini/antigravity-cli/settings.json
-```
+**Call `grant_antigravity_setup`.** It adds one `command(<line>)` rule per `workerCommands` entry that has no exact match, creating the file and its directories if needed, and never touches or reorders anything else — your interactive grants included. It exists because a conductor's own edit tools are commonly denied from writing under `$HOME`, while the server process is not. Call it again whenever `workerCommands` changes; with nothing missing it is a no-op. A settings file that exists but isn't valid JSON (a BOM, a trailing comma) is reported by `check` as `setup.problem` and refused — fix it by hand first. The write holds `settings.json.lock`, so concurrent conductors queue instead of overwriting each other; a lock whose holder died is taken over after a minute.
 
-**Call `grant_antigravity_setup`.** It performs exactly the additive merge
-below directly — no `--allowedTools`/`Edit`-style permission surface applies to
-this server process, so it can write a file outside the repository (this one,
-under `$HOME`) that a conductor's own edit tools are commonly denied from
-touching. It creates the file and any missing parent directories if absent,
-adds one `command(<line>)` rule per `workerCommands` entry with no exact match
-already present, and never touches or reorders anything else already there —
-your interactive grants included. Returns the grants it actually added; call
-it again anytime `workerCommands` changes, and a call that finds nothing
-missing is a no-op. `check`'s antigravity `setup` block tells you beforehand
-whether there is anything to add. A file that exists but cannot be read as
-JSON — a BOM a Windows editor left, a trailing comma — is reported there as
-`problem` (with `ok: false` and an empty `missing_command_grants`, since nothing
-is known about it), and `grant_antigravity_setup` refuses it and writes
-nothing: an additive merge cannot know what it would be dropping. Fix the file
-by hand first. The read-modify-write runs under `settings.json.lock` beside the
-file, so two conductors granting at once queue rather than overwrite each
-other; a lock whose holder died is taken over once it is a minute old, and a
-live one is waited for a few seconds and then reported — nothing written — so
-you retry rather than lose a grant.
-
-Equivalent by hand, if you'd rather see the file yourself first — add one
-`command(...)` rule per `workerCommands` entry, matching the string exactly:
+By hand, merge into `permissions.allow` — matching is exact, so `command(git status)` does not grant `git status --porcelain`, and `command(npm test)` does not grant `npm test -- --watch`:
 
 ```json
 {
@@ -206,201 +73,64 @@ Equivalent by hand, if you'd rather see the file yourself first — add one
 }
 ```
 
-Merge these into the existing `permissions.allow` rather than replacing it — the
-file also holds your interactive grants. Matching is **exact**: `command(npm test)`
-does not grant `npm test -- --watch`, and `command(git status)` does not grant
-`git status --porcelain`. That is why both spellings are listed above.
-
-Without it, an agy worker **exits 0, reports `SUCCESS`, and returns an empty
-response**, with the reason only in stderr and in `denied_actions`:
+Without it, an agy worker **exits 0, reports `SUCCESS` and returns an empty response**, the reason only in stderr and `denied_actions`:
 
 ```
 jetski: no output produced — a tool required the "command" permission that
 headless mode cannot prompt for, so it was auto-denied.
 ```
 
-**`check` tells you before a cycle.** Its `antigravity` entry carries a `setup`
-block listing every `workerCommands` entry with no exact grant in that file, so a
-missing grant is found without spending a dispatch on it. `check`'s top-level
-`roles_with_unmet_setup` names every role whose engine — the first installed
-entry in its chain, the one a dispatch would run on, never an uninstalled first
-choice — has one of these unmet, so a role that looks dispatchable in `roles_without_an_available_engine`
-(its CLI is installed) can still be flagged here as one whose first command will
-be silently denied. `grant_antigravity_setup` closes exactly that gap.
+**`check` finds this before a cycle:** its `antigravity.setup` block lists every entry with no grant, and `roles_with_unmet_setup` names each role whose engine — the first *installed* one in its chain — has one missing.
 
-**The wrapped command turns every silent agy failure into a real one.**
-`extract-agy-result.mjs` exits non-zero when `denied_actions` is non-empty (and
-names the refused target, recovered from the transcript), when no `result` event
-was found, when the response is empty with no denial at all (measured: a tool
-call rejected as malformed, after which the run simply ended `SUCCESS`), and when
-the worker wrote outside its workspace or called a subagent tool. `dispatch.mjs`
-folds that into the exit code of the whole runnable command, unless the
-underlying process itself already failed (that `ec` still wins). A nonzero exit
-is the signal to reject the report; the report is where you find why.
-
-One of those failures is not about the brief at all. Twice in about thirty agy
-runs — with and without the custom agent — the last tool call came back
-`invalid arguments: missing property …`, agy rejecting the model's own malformed
-call, and the run ended there with nothing. The extraction marks that
-`transient`, `inspect_dispatch` carries `verdict.transient: true`, and the
-`worker-dispatch` skill allows exactly one unchanged retry for it. The e2e run
-does the same.
+**The wrapped command turns silent agy failures into real ones.** `extract-agy-result.mjs` exits non-zero on a denied action (naming the refused target from the transcript), a missing `result` event, an empty response with no denial, a write outside the workspace, or a subagent call; the whole command's exit code carries it unless the process itself already failed. Twice in about thirty runs agy rejected the model's own malformed tool call (`invalid arguments: missing property …`) and the run simply ended: that is marked `transient`, `inspect_dispatch` reports `verdict.transient: true`, and the `worker-dispatch` skill allows one unchanged retry.
 
 ### Read grants for files outside the worktree
 
-Each worker's workspace is its isolated worktree (from `prepare_worktree`).
-A read outside that tree — a shared virtualenv, a `vendor/` directory, a
-monorepo dependency the worktree doesn't include — **may** be denied, and when
-it is, it fails exactly like a denied command (the run ends, the report is
-discarded, the wrapped command exits non-zero and names the target). Allowing
-`pytest` does not grant reading the interpreter's own packages.
+A worker's workspace is its worktree. A read outside it — a shared virtualenv, `vendor/`, a monorepo dependency — **may** be denied, and then fails exactly like a denied command. Allowing `pytest` does not grant reading the interpreter's own packages.
 
-Which reads are denied is not fully established. Measured on agy 1.2.2: reads
-into an adopting project's own `.venv` and `vendor/` were denied, and so was a
-read into another registered agy workspace; reads into a scratch directory agy
-had no record of were allowed — including the conductor's own dispatch files —
-and `allowNonWorkspaceAccess: false` changed nothing. So a worktree is not a read
-boundary on agy. `extract-agy-result.mjs` lists every read outside the workspace
-under `workflow_mcp_audit.reads_outside_workspace` in the report, on every run;
-read it, especially for a reviewer whose value is not having seen the author's
-material.
+Which reads are denied is not fully established. Measured on agy 1.2.2: reads into a project's own `.venv` and `vendor/` were denied, and so was a read into another registered agy workspace; reads into an unregistered scratch directory — including the conductor's dispatch files — were allowed, and `allowNonWorkspaceAccess: false` changed nothing. **A worktree is not a read boundary on agy, nor on codex**, whose read-only sandbox bounds writes, not reads (measured 2026-09-14: a read-only worker read a file in the parent checkout and one outside the repository). Both are audited instead: `inspect_dispatch` reports `audit.reads_outside_workspace` and `audit.skill_reads` with warnings — from the agy transcript, and for codex from the command text (so a path assembled at run time can escape it). Check it before trusting a reviewer: one that read the author's material is no longer independent.
 
-Codex is no different for reads. Measured 2026-09-14 (codex 0.154.0, Windows): a
-`--sandbox read-only` worker read a file in the parent checkout and a file
-outside the repository and reported both. `engines/codex-audit.mjs` recovers
-every command from codex's transcript (`exec` + `<shell> … in <cwd>`) and
-`inspect_dispatch` returns the same `audit.reads_outside_workspace` and
-`audit.skill_reads`, with the same warnings. It reads command text, so a path
-assembled at run time can escape it.
-
-Grant it as `read_file(<absolute path>)` in the same
-`~/.gemini/antigravity-cli/settings.json` `permissions.allow` list as the
-`command(...)` entries — a directory grant covers its descendants, so one
-entry per shared root is enough:
+Grant needed paths as `read_file(<absolute path>)` in the same `permissions.allow` list; a directory covers its descendants:
 
 ```json
-{
-  "permissions": {
-    "allow": [
-      "command(npm test)",
-      "read_file(C:/path/to/shared/.venv)",
-      "read_file(C:/path/to/shared/vendor)"
-    ]
-  }
-}
+"allow": ["command(npm test)", "read_file(C:/path/to/shared/.venv)", "read_file(C:/path/to/shared/vendor)"]
 ```
 
-**Enumerate every shared path a role's task will touch in one pass before
-dispatching, not one at a time.** Discovering these iteratively — dispatch,
-read the denial, add one grant, redispatch, hit the next missing directory —
-costs a full worker round trip per path. Read the task's instructions and the
-skills it will receive first, list every directory outside the worktree they
-imply, and grant all of them up front. Also check that nothing in `deny` or
-`ask` shadows the path you just added — agy's own precedence puts `deny` and
-`ask` ahead of `allow`, so a broader deny rule elsewhere silently wins.
-
-Prefer this over setting `allowNonWorkspaceAccess: true`: a handful of
-`read_file(...)` entries name only the paths this project actually needs.
+List every outside path a task implies **before** dispatching — finding them one denial at a time costs a full worker run each — and check that no broader `deny` or `ask` rule shadows them (agy puts those ahead of `allow`). Prefer this to `allowNonWorkspaceAccess: true`.
 
 ### Why agy workers run without `--sandbox`
 
-With `--sandbox`, every shell call needs the `escalate_admin` permission instead
-of `command`, and headless mode cannot prompt for that either — the worker
-returns nothing. `escalate_admin` also cannot be scoped to a command line (its
-target is the tool), so keeping the sandbox would mean granting Bash escalation
-wholesale: strictly broader than the exact-match rules above.
+Under `--sandbox` every shell call needs `escalate_admin` instead of `command`, which headless mode cannot prompt for and which cannot be scoped to a command line — keeping it would mean granting shell escalation wholesale.
 
 ### Why every agy worker runs as a custom agent
 
-`--mode plan` does not make a worker read-only — agy prints `warning: --mode plan
-has no effect while slash command expansion is disabled` and means it — and a
-plain agy worker is handed `define_subagent`/`invoke_subagent`, browser tools and
-your user-global MCP servers. What does remove them is a custom agent, which agy
-loads by name from `.agents/agents/` in any of its workspace folders, even in
-print mode. So `build_worker_prompt` writes one per dispatch to
-`.worktrees/.dispatch/<task_id>/agent/.agents/agents/workflow-<role>.md` and the
-command passes `--agent workflow-<role> --add-dir <that agent dir>`:
+`--mode plan` does not make a worker read-only (agy warns it has no effect with slash-command expansion disabled), and a plain worker gets `define_subagent`/`invoke_subagent`, browser tools and your global MCP servers. So `build_worker_prompt` writes a per-dispatch agent to `.worktrees/.dispatch/<task_id>/agent/.agents/agents/workflow-<role>.md` and passes `--agent workflow-<role> --add-dir <that dir>`:
 
-- `excludeDefaultComponents: true` drops agy's own prompt sections and tools. Two
-  measured failures lived there: the artifacts section, which invites an
-  `ArtifactMetadata` argument on an ordinary write that agy then refuses as "not a
-  valid artifact path", and the file-link section, which filled reports with
-  absolute `file:///` links into the worker's own worktree.
-- `inheritMcp: false` keeps the user's global MCP servers away from workers.
-- `tools:` is the whole toolset: read, search and `run_command` for every role,
-  plus `write_to_file`/`replace_file_content`/`multi_replace_file_content` for
-  write roles. No subagent tools, no browser, no web.
+- `excludeDefaultComponents: true` drops agy's own prompt sections — two measured failures lived there: the artifacts section, which made the model attach an `ArtifactMetadata` argument agy then refused ("not a valid artifact path"), and the file-link section, which filled reports with `file:///` links.
+- `inheritMcp: false` keeps your global MCP servers away from workers.
+- `tools:` is the whole toolset: read, search and `run_command`, plus the write tools for write roles — no subagents, browser or web.
 
-Measured 2026-09-13: told to create a file and define a subagent, a read-only
-worker did both when launched plainly and answered NO SUCH TOOL to both, creating
-nothing, when launched as its agent. Across 9 real-task agy dispatches run this
-way (plan-adversary, developer, adversary, reviewer, wiki-maintainer), none lost
-a capability it needed. Two limits:
+Measured 2026-09-13: told to create a file and define a subagent, a read-only worker did both when launched plainly, and answered NO SUCH TOOL to both as its agent; across 9 real agy dispatches of five roles, none lost a capability it needed. The agent must be passed **by name** (`--agent C:/…/x.md` is silently ignored), and an unknown tool name fails the run (`tool "<name>" not found in registry`), so a typo cannot widen the set. It does not confine reads — see above.
 
-- **The agent must be named, not given as a path.** `--agent C:/…/x.md` is
-  accepted and silently ignored — the worker ran with every default tool.
-- **agy validates `tools:` strictly.** An unknown tool name fails the run with
-  `tool "<name>" not found in registry`, so a typo cannot quietly widen the set.
+### The researcher cannot run on agy headless
 
-It does not confine reads — see [Read grants](#read-grants-for-files-outside-the-worktree).
-
-### The researcher role cannot run on agy headless
-
-Measured once: `search_web` failed inside agy (`no summary returned from
-GenerateContent`), and `read_url_content` is auto-denied in headless mode unless
-each URL is granted in advance, which a research task cannot know. The agent
-definition carries no web tools for that reason. Keep `researcher` off agy.
-
-That is computed rather than remembered: the `researcher` role declares
-`capabilities: [web]`, the agy adapter declares `providesWeb: false`, so `check`
-lists the pair under `capability_gaps` and `build_worker_prompt` warns on any
-such dispatch. Only a measured "no" is declared — claude and codex workers were
-never measured for web access, so they declare nothing either way.
+`search_web` failed inside agy, and `read_url_content` needs each URL granted in advance. The `researcher` declares `capabilities: [web]` and the agy adapter `providesWeb: false`, so `check` lists the pair under `capability_gaps` and `build_worker_prompt` warns — dispatch it elsewhere with `cli_engine`. Only this measured "no" is declared.
 
 ## Projects with a Python virtualenv
 
-A worktree is a fresh checkout, so it has no `.venv` — it is gitignored. The
-worker still has to run the suite from its own worktree, and there are two
-layouts that work and one that looks like it works. Measured 2026-09-13 on a
-src-layout package with an editable install, agy workers, Windows:
+A worktree is a fresh checkout with no `.venv`. Measured 2026-09-13 (src-layout package, editable install, agy, Windows):
 
-| Layout | Worker command | What the tests import | Outcome |
+| Layout | Worker command | Tests import | Outcome |
 | --- | --- | --- | --- |
-| Borrow the root `.venv`, nothing else | `../../.venv/Scripts/python.exe -m pytest` | **the main checkout's `src/`** | the new test stayed Red after a correct implementation; the worker patched `sys.path` inside the test file to get Green, and Python wrote `__pycache__` into the main checkout |
+| Borrow the root `.venv`, nothing else | `../../.venv/Scripts/python.exe -m pytest` | **the main checkout's `src/`** | a correct implementation stayed Red; the worker patched `sys.path` to get Green, and wrote `__pycache__` into the main checkout |
 | Borrow the root `.venv` + `pythonpath = ["src"]` | `../../.venv/Scripts/python.exe -m pytest` | the worktree's `src/` | clean Red → Green |
 | A `.venv` per worktree | `.venv/Scripts/python.exe -m pytest` | the worktree's `src/` | clean Red → Green |
 
-**Never the first layout.** An editable install writes an absolute path to the
-root checkout's `src/` into the venv, and it wins over the worktree. The failure
-runs both ways: a correct change stays Red, and a Red can pass on code the worker
-never touched.
+**Never the first:** an editable install points the venv at the root checkout's `src/`, so a correct change stays Red and a Red can pass on code the worker never touched.
 
-**Borrowing the root venv** needs one line in `pyproject.toml`, which puts the
-rootdir's `src` ahead of the editable install whenever pytest runs:
+**Borrowing the root venv** needs `pythonpath = ["src"]` under `[tool.pytest.ini_options]` in `pyproject.toml` (or a root `conftest.py` that prepends `src`). The command is relative to `.worktrees/<id>/`, so it is its own `workerCommands` entry and agy grant. A new dependency can't be tested in the worktree until it is installed at the root, and codex's sandbox can't resolve a venv whose interpreter lives outside the worktree — prefer a per-worktree venv for codex roles.
 
-```toml
-[tool.pytest.ini_options]
-pythonpath = ["src"]
-```
-
-(A root `conftest.py` that prepends `src` to `sys.path` does the same.) The
-command is relative to `.worktrees/<id>/`, so it is a different string from the
-one you run at the root, and both need their own `workerCommands` entry and agy
-grant. The venv is shared, so a cycle that adds a dependency cannot test it in
-its worktree until someone installs it at the root. On codex, the sandbox cannot
-resolve a venv whose base interpreter lives outside the worktree (measured in an
-adopting project) — prefer a per-worktree venv for roles pinned there.
-
-**A venv per worktree** is self-contained: the worker command is the same string
-as at the root, dependency changes are testable inside the cycle, and nothing
-reads outside the worktree. With `uv` and a warm cache it took under 3 seconds:
-
-```bash
-uv venv --python 3.11 .venv
-uv pip install --python .venv/Scripts/python.exe -e . pytest    # or: uv sync, with a uv.lock
-```
-
-Put those lines in `.agents/config.json` as `worktreeSetup`:
+**A venv per worktree** is self-contained: the command matches the root's, dependency changes are testable in the cycle, nothing is read outside. With `uv` and a warm cache it takes under 3 seconds. Put the setup in `worktreeSetup`:
 
 ```json
 "worktreeSetup": [
@@ -409,74 +139,17 @@ Put those lines in `.agents/config.json` as `worktreeSetup`:
 ]
 ```
 
-`prepare_worktree` hands them back as `setup_commands`, and the conductor runs
-each in the worktree before dispatch — the MCP itself still runs nothing. A
-failing setup command is a blocker (`worker-dispatch` skill); the `.venv` is
-ignored, so the worktree still reads as clean. A
-virtualenv is also deep enough to pass Windows' 260-character path limit, which
-used to make `remove_worktree` fail half-way and leave the directory and branch
-behind; worktrees are now created and removed with `core.longpaths=true`.
-
-Either way, `check`'s `setup` block lists the command if agy has no exact grant
-for it.
-
-**`worktreeSetup` runs in the conductor's own shell, not any engine's — a
-different Windows quirk from the one above.** The codex `npm`/`npx` respelling
-earlier in this doc is about a *worker's* command, spelled for the sandboxed
-account codex launches it under, and does not touch `worktreeSetup` at all:
-`prepareWorktree` returns these commands verbatim and neither runs nor spells
-them. If a conductor's own shell for running them is Windows PowerShell with
-an execution policy that blocks local scripts, `npm`/`npx` resolve to their
-`.ps1` shim there and fail the same underlying way codex's sandboxed account
-does — `npm.cmd`/`npx.cmd` sidestep it, being plain batch files with no
-PowerShell execution policy to trip. Not measured against a real dispatch the
-way the codex case is (this machine's own PowerShell already runs with an
-unrestricted process-scoped policy, so it doesn't reproduce here) — if you hit
-it, write the `.cmd` spelling directly in the `worktreeSetup` entry; unlike
-`workerCommands`, these are free-form command lines the conductor's shell runs
-as given, not matched against any engine's allowlist, so there is nothing else
-to keep in sync.
+`prepare_worktree` returns these as `setup_commands` for you to run in the worktree before dispatch — the server runs nothing, and a failure is a blocker. The `.venv` is gitignored, so the worktree still reads as clean. Worktrees are created and removed with `core.longpaths=true`, so a deep venv no longer breaks `remove_worktree` on Windows. `check`'s `setup` block lists any such command agy has no grant for.
 
 ## When an engine is unavailable
 
-Two different problems wear the same face, and only one of them is computable.
+- **Not installed** — computable: `check` reports per engine whether its `executable` is on PATH, which roles use it, and `roles_without_an_available_engine`.
+- **Installed but refusing** (a usage limit, an expired login) — not computable before running it. Recover cheaply:
+  - **A fallback chain:** `roles.<name>.engine` takes an ordered list, e.g. `"planner": { "engine": ["codex", "claude"], "models": { "codex": "gpt-6-astra" } }`. The first installed entry runs, and `warnings` says when it fell through. `inherit` may appear in a chain; repeats collapse.
+  - **One dispatch elsewhere:** `cli_engine` on `build_worker_prompt` overrides the chain — right for a usage limit, since the engine is still installed. A `model_override` needs `cli_engine` with it; left to the chain it could reach an engine that can't run that model, and is refused.
 
-**The CLI is not installed.** `check` reports, per engine, whether its
-`executable` resolves on PATH, which roles resolve to it, and — the actionable
-part — `roles_without_an_available_engine`. Run it before a cycle rather than
-finding out from a composed prompt that could never have run.
-
-**The engine is installed but refuses to work** — a usage limit, an expired
-login. Nothing short of running the CLI reveals `try again at 9:05 PM`, so no
-amount of checking will predict it. What is left is recovering cheaply:
-
-- **Give a concentrated role a fallback chain.** `roles.<name>.engine` takes an
-  ordered list as well as a single name:
-
-  ```json
-  "planner": { "engine": ["codex", "claude"], "models": { "codex": "gpt-6-astra" } }
-  ```
-
-  Dispatch takes the first entry that is installed, and says so in `warnings`
-  when it falls through — a worker running on a model the role was not tuned on
-  is a result you have to be able to weigh. `inherit` is allowed inside a chain
-  and means the conducting CLI; a repeat is collapsed.
-
-- **Override one dispatch.** `cli_engine` on `build_worker_prompt` beats the
-  chain entirely, which is the right tool for a usage limit: the engine is
-  installed, so the chain has no reason to skip it. A `model_override` is a
-  model, not an engine, so it goes with `cli_engine`: an override left to the
-  chain would follow it to a fallback engine that cannot run that model, and is
-  refused there (`config.md` § Reference, "a model belongs to its engine").
-
-Worth checking when you pin roles: how many of them land on the same engine. A
-measured session had four of seven on one, so a single usage limit made all four
-undispatchable at once — including the `wiki-maintainer` that the findings
-backlog was waiting on. `check`'s per-engine `roles` list shows that
-concentration at a glance.
+Watch how many roles share one engine: one measured session had four of seven on the same one, and a single usage limit stopped all four. `check`'s per-engine `roles` shows the concentration.
 
 ## Checking your setup
 
-[`conductor-e2e.md`](conductor-e2e.md) runs a worker on each engine and reports
-which of these guarantees actually held on your machine. Run it after changing
-any of the above.
+[`conductor-e2e.md`](conductor-e2e.md) runs workers on each engine and reports which of these guarantees held on your machine. Re-run it after changing any of the above.
