@@ -188,6 +188,14 @@ function preparedWorktree(root, task_id, workspace) {
     throw new Error(`No worktree was prepared for task "${task_id}". Call prepare_worktree with this task_id first: `
       + 'a worker runs only in its own task\'s worktree.');
   }
+  // A reused worktree keeps its directory, and the earlier task's record still
+  // names it. Composing into that task again — the ordinary retry — would run
+  // its worker in the later task's checkout, with no branch of its own left for
+  // inspection to measure it against.
+  if (record.reused_by) {
+    throw new Error(`Task "${task_id}" has no worktree of its own any more: task "${record.reused_by}" reused it. `
+      + `To retry it, prepare a new task and pass retry_of: "${task_id}".`);
+  }
   if (!samePath(workspace, record.workspace)) {
     throw new Error(`workspace ${workspace} is not the worktree prepared for task "${task_id}" (${record.workspace}). `
       + 'A worker runs only in its own task\'s worktree; anywhere else, nothing checks what it changed.');

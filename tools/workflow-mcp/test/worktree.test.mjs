@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, mkdtempSync, writeFileSync, readFileSync } from 
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { listWorktrees, prepareWorktree, removeWorktree, trustWorktree } from '../worktree.mjs';
+import { prepareDispatch } from '../dispatch.mjs';
 import { cleanup, fixture } from './helpers.mjs';
 
 const git = (root, ...args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
@@ -291,6 +292,21 @@ test('a task id that is not a plain slug is refused before touching git', () => 
   });
 });
 
+// Enough engine config for a dispatch to compose, so a refusal is the only thing
+// that can stop one.
+const DISPATCH_CONFIG = {
+  version: 1, defaultEngine: 'inherit', workerTimeoutSeconds: 1800, workerCommands: ['npm test'],
+  roles: { developer: {} },
+  engines: {
+    claude: { executable: 'claude', models: { reasoning: 'opus', balanced: 'sonnet', fast: 'haiku' },
+      effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } },
+    codex: { executable: 'codex', models: { reasoning: null, balanced: null, fast: null },
+      effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } },
+    antigravity: { executable: 'agy', models: { reasoning: 'gemini-3.8-pro', balanced: 'inherit', fast: 'gemini-3.8-flash' },
+      effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } }
+  }
+};
+
 // A fresh worktree per Behavior case meant a fresh dependency install per case.
 // A finished task's worktree is handed to the next one only when it provably
 // holds nothing: clean, merged, no violations, its dispatch decided.
@@ -304,7 +320,8 @@ const integrate = (root, wt, file) => {
 test('a finished worktree is reused for the next task: new branch at HEAD, same directory, environment intact', () => {
   repo(root => {
     writeFileSync(resolve(root, '.gitignore'), 'node_modules/\n');
-    git(root, 'add', '.gitignore'); git(root, 'commit', '-qm', 'ignore deps');
+    writeFileSync(resolve(root, '.agents/config.json'), JSON.stringify(DISPATCH_CONFIG));
+    git(root, 'add', '.gitignore', '.agents/config.json'); git(root, 'commit', '-qm', 'ignore deps');
     const first = prepareWorktree(root, { task_id: 'case-b1' });
     mkdirSync(resolve(first.workspace, 'node_modules'));
     writeFileSync(resolve(first.workspace, 'node_modules/installed.txt'), 'deps\n');
@@ -321,6 +338,12 @@ test('a finished worktree is reused for the next task: new branch at HEAD, same 
     assert.equal(git(root, 'rev-parse', '--verify', '--quiet', 'worker/case-b1').status, 1, 'the merged branch is gone');
 
     assert.throws(() => removeWorktree(root, 'case-b1'), /reused it/, 'removing the old task never touches the new checkout');
+    // Retrying the old task by composing into it again would run its worker in
+    // the new task's checkout, with no branch of its own left to inspect it
+    // against (adversary R4-F1 on PR #40).
+    assert.throws(() => prepareDispatch(root, { role: 'developer', instructions: 'Retry.', owned_paths: ['src'],
+      task_id: 'case-b1', workspace: first.workspace, conductorEngine: 'claude' }),
+    /task "case-b2" reused it/, 'composing into the old task never lands in the new checkout');
     assert.ok(existsSync(second.workspace));
     removeWorktree(root, 'case-b2');
     assert.equal(existsSync(second.workspace), false);
