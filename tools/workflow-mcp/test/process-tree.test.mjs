@@ -32,7 +32,9 @@ test('a timeout stops the process and everything it started', async () => {
 });
 
 test('a command line runs through the shell, and only a bounded tail of its output is kept', async () => {
-  const run = await runBounded({ command: `"${process.execPath}" -e "process.stdout.write('a'.repeat(100000) + 'END'); process.exit(3)"`,
+  // exitCode, not exit(): on macOS a pipe write is asynchronous, and exit()
+  // right after it drops what is still buffered.
+  const run = await runBounded({ command: `"${process.execPath}" -e "process.stdout.write('a'.repeat(100000) + 'END'); process.exitCode = 3"`,
     tailBytes: 1000 });
   assert.equal(run.status, 3);
   assert.equal(run.timed_out, false);

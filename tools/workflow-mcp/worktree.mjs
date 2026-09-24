@@ -120,6 +120,17 @@ function exclude(root) {
   writeFileSync(path, current + (current && !current.endsWith('\n') ? '\n' : '') + entry + '\n');
 }
 
+// Whether two paths name the same directory. realpathSync.native, not the JS
+// realpath: measured on GitHub's Windows runner, the temp directory is an 8.3
+// short name (RUNNER~1) that only the native call expands, while git reports the
+// long one; and on macOS /var is a symlink to /private/var, which git resolves
+// and resolve() does not. Case never matters on Windows.
+export function sameLocation(a, b) {
+  const real = path => { try { return realpathSync.native(path); } catch { return resolve(path); } };
+  const norm = path => real(path).replaceAll('\\', '/').replace(/\/+$/, '');
+  return process.platform === 'win32' ? norm(a).toLowerCase() === norm(b).toLowerCase() : norm(a) === norm(b);
+}
+
 const readRecord = (root, task_id, name) => {
   const path = resolve(root, WORKSPACES, '.dispatch', task_id, name);
   if (!existsSync(path)) return null;
@@ -162,14 +173,15 @@ function reuseWorktree(root, task_id, reuse) {
     writeFileSync(resolve(root, WORKSPACES, '.dispatch', reuse, 'worktree.json'),
       JSON.stringify({ ...previousRecord, reused_by: task_id }, null, 2) + '\n');
   }
-  // resolve(): git lists worktree paths with forward slashes on Windows, and
-  // every other record holds the platform's own form.
-  return { workspace: resolve(previous.workspace), branch, base_sha, reused_from: reuse };
+  // The path as the earlier task recorded it, not as git lists it: git gives the
+  // real path (/private/var on macOS, forward slashes on Windows), while every
+  // record, trust entry and command was written with the prepared form.
+  return { workspace: previousRecord?.workspace ?? resolve(previous.workspace), branch, base_sha, reused_from: reuse };
 }
 
 export function prepareWorktree(root, { task_id, reuse } = {}) {
   taskDir(root, task_id);
-  if (realpathSync(git(root, ['rev-parse', '--show-toplevel'])) !== realpathSync(root)) {
+  if (!sameLocation(git(root, ['rev-parse', '--show-toplevel']), root)) {
     throw new Error('Root must be the top level of a Git worktree');
   }
   exclude(root);
@@ -276,7 +288,10 @@ export function removeWorktree(root, task_id) {
       ? `Task "${task_id}" has no worktree of its own any more: task "${reusedBy}" reused it`
       : `No such workspace: ${workspaceOf(root, task_id)}`);
   }
-  const workspace = entry.workspace;
+  // Removed by the path the task recorded, which is the form its trust entry was
+  // written in; the listing only proves this task's branch is what is there.
+  const recorded = readRecord(root, task_id, 'worktree.json')?.workspace;
+  const workspace = recorded && sameLocation(recorded, entry.workspace) ? recorded : resolve(entry.workspace);
   // Uncommitted work in a worktree is the worker's output. Removing it because
   // a cleanup step was called is exactly the kind of silent data loss the
   // behavioral rules exist to prevent.
