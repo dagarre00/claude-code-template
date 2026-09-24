@@ -7,37 +7,19 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-05-11
-updated: 2026-08-30
+updated: 2026-09-23
 ---
 
 # Git Conventions
 
 > [!abstract] Essence
-> Branching and commit conventions for this project. Mirrors the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md) — updated when the team adopts a new flow; mirror changes into the skill.
+> The naming and format vocabulary this project commits by. *When* to branch, and which command branches, is procedure: the [feature-branching skill](../../.agents/skills/feature-branching/SKILL.md).
 
-## Integration and branching model
-
-`develop` is the primary integration branch; `main` is the release branch.
-- **Code modifications (`feat/*`, `fix/*`, `refactor/*`, `perf/*`)** must always be built on a dedicated branch cut from `develop` and merged via PR. No direct code commits on `develop`.
-- **Living documentation & operations (`docs/wiki/`, `docs/raw/`, `.claude/` config)**: maintenance commands (`/project:wiki-lint`, `/project:review`, `/project:wiki-ingest`, `/project:interview`, `/project:agent-scout`, `/project:handoff`, `/project:adversary`) commit and push directly to `develop` when standing on `develop` (or stay on the active `feat/*`/`fix/*`/`chore/*` branch if mid-feature). This keeps the living knowledge base fast and responsive without PR fatigue for documentation.
-
-The branching rules and command tables are defined in the [feature-branching skill](../../.claude/skills/feature-branching/SKILL.md).
+`develop` is the integration branch and `main` the release branch. Code branches from `develop` and merges by PR; living documentation commits directly (`.agents/rules.md` #19).
 
 ## Branch naming
 
-`<type>/<short-slug>`, where `<type>` ∈:
-
-- `feat` — new capability
-- `fix` — bug fix
-- `chore` — tooling, deps, CI, non-functional housekeeping
-- `docs` — documentation only
-- `refactor` — code restructuring with no behavior change
-- `test` — test-only additions
-- `perf` — performance work
-
-Slug: kebab-case, ≤ 4 words, matches the entity slug when applicable.
-
-Examples: `feat/auth-login`, `fix/race-on-double-submit`, `chore/upgrade-pytest`.
+`<type>/<short-slug>`, `<type>` ∈ `feat` (new capability), `fix`, `chore` (tooling, deps, CI), `docs`, `refactor` (no behavior change), `test`, `perf`. The slug is kebab-case, at most four words, and equals the entity slug when there is one: `feat/auth-login`, `fix/race-on-double-submit`, `chore/upgrade-pytest`.
 
 ## Commit format
 
@@ -48,57 +30,31 @@ Conventional commits, present tense:
 
 <optional body — what and why, not how>
 
-<optional footer — refs to wiki pages, breaking changes>
+<optional footer — wiki refs, breaking changes, a Wiki-Update: none (<reason>) waiver>
 ```
 
-- `type` matches the branch type vocabulary.
-- `scope` is the entity slug or affected area.
-- Subject ≤ 72 characters, no trailing period.
-- Body wraps at 72.
+`type` from the branch vocabulary; `scope` the entity slug or area; subject ≤ 72 characters with no trailing period; body wrapped at 72.
 
 ## Cadence
 
-- **One commit per Behavior case** — its test, its minimal implementation, and its entity-page tick, committed and pushed before the next case starts. The `developer` owns this; `/project:work` does not bundle a cycle's cases into one commit, and a commit spanning several cases is a defect (it breaks `git bisect`, makes a single case unrevertable, and inflates the adversarial-review diff past the point where it converges).
-- Refactor commits are separate from feat commits.
-- Adversary findings: filed by default; approved fixes are their own `fix(<slug>): … — adversary F<N>` commits, and each round closes with a `docs(<slug>): adversary round N` commit whose body lists every disposition — the record rule 20 requires, read back with `git log --grep="adversary round"`. Full protocol: `adversarial-review` skill.
-- Don't commit half-green code.
-- **Always push after committing** (`git push -u origin <branch>`). An unpushed commit is lost when the execution container recycles — see `.claude/rules/behavioral.md` #19. Read-only commands (those that don't mutate tracked files) are the only exception.
-- **No remote yet?** `git remote get-url origin` failing means every push step is skipped and noted in the report — this is the one no-remote rule; commands reference it instead of restating it.
+- **One commit per Behavior case** — its test, minimal implementation and entity-page tick, committed and pushed before the next case starts. The developer runs no git; the **conductor** commits each case. A commit spanning several cases is a defect: it breaks `git bisect`, makes a case unrevertable, and bloats the review diff past converging.
+- Refactor commits are separate from feature commits. No half-green commits.
+- Adversary findings are filed by default; an approved fix is its own `fix(<slug>): … — adversary F<N>` commit, and each round closes with `docs(<slug>): adversary round N` listing every disposition (`git log --grep="adversary round"`; protocol: the `finding-disposition` skill).
+- **Push after every commit** (`git push -u origin <branch>`) — an unpushed commit is lost when the container recycles. No remote (`git remote get-url origin` fails) → every push is skipped and noted in the report.
 
 ## PRs
 
-- Open from `<type>/<slug>` to `develop`.
-- Opened automatically by `/project:work` (via the `pr-create` skill) once all Behavior cases for the cycle are `[x]`.
-- Title mirrors the lead commit.
-- Description references the entity page and the Behavior cases covered.
-- **Merge commit on merge** (`gh pr merge --merge --delete-branch`), not squash. The Red→Green→Refactor commit sequence is the evidence that the loop was actually run — squashing erases it, and this schema already forbids squashing locally for the same reason ([feature-branching](../../.claude/skills/feature-branching/SKILL.md), Anti-patterns). Squash only a branch with no TDD trace to preserve: a typo fix, a revert, a branch whose history is all `wip:` noise.
-- Delete the branch on merge, local and remote.
-- Merging is always the human's call.
+- From `<type>/<slug>` to `develop`, opened by `/project:work` (`pr-create` skill) once every Behavior case is `[x]`. Title mirrors the lead commit; the body cites the entity page and its cases.
+- **Merge commit, not squash** (`gh pr merge --merge --delete-branch`): the Red → Green → Refactor sequence is the evidence the loop ran. Squash only a branch with no TDD trace — a typo fix, a revert, all-`wip:` history.
+- Delete the branch on merge, locally and remotely. Merging is always the human's call.
 
 ## Force-push policy
 
-- Routine branch sync is **merge-based** (`git merge origin/develop`) — never a rebase of pushed history, because sessions run concurrently on shared branches.
-- `--force-with-lease` is the only acceptable force-push, and only after explicit human approval via `human-checkpoint`. Bare `--force` is never used.
-- Never force-push `develop` or `main`.
-
-## Merge conflicts
-
-Follow the [git-recovery skill](../../.claude/skills/git-recovery/SKILL.md) (Resolve merge / rebase / cherry-pick conflicts) when `git merge` or `git rebase` produces `CONFLICT (content)` markers. Key steps: resolve markers, grep for leftovers, run full tests, then `git add + git commit` (merge) or `git add + git rebase --continue` (rebase).
-
-## Branch cleanup (after merge)
-
-```bash
-git checkout develop
-git fetch origin develop && git merge --ff-only origin/develop
-git branch -d feat/<slug>              # -d is safe: errors if unmerged
-git push origin --delete feat/<slug>
-```
-
-## Advanced git operations
-
-Stash, cherry-pick, bisect, blame, reflog recovery, and other edge-case operations are covered by the [git-recovery skill](../../.claude/skills/git-recovery/SKILL.md).
+Routine sync is `git merge origin/develop`, never a rebase of pushed history — sessions share branches. `--force-with-lease` only with explicit human approval; bare `--force` never; `develop` and `main` never.
 
 ## Tags
 
-- `checkpoint-<UTC-timestamp>` — tag HEAD with plain git (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`) before risky operations, so you can `git reset --hard` back if needed.
-- Other tags reserved for releases (format defined later).
+- `checkpoint-<UTC-timestamp>` — `git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)` before a risky operation, so `git reset --hard` can return to it.
+- Release tags: format to be defined.
+
+Conflicts, stash, cherry-pick, bisect and recovery: the [git-recovery skill](../../.agents/skills/git-recovery/SKILL.md).

@@ -1,0 +1,16 @@
+{
+  "name": "workflow-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Composes worker prompts from the canonical .agents/ source and generates the per-CLI root files.",
+  "scripts": {
+    "config": "node config-ui.mjs",
+    "test": "node --test \"test/*.test.mjs\"",
+    "e2e": "node e2e/run.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "zod": "^3.25.76"
+  }
+}

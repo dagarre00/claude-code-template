@@ -1,0 +1,130 @@
+// grantAntigravitySetup edits one user-global file that every conductor on the
+// machine shares, and the workflow runs conductors concurrently. Adversary
+// round 1 on fix/workflow-mcp-hardening, F4: an unlocked read-modify-write let
+// two of them lose each other's additions, and the loser's next worker was
+// then denied silently. The property under test is the one that matters — no
+// grant is ever lost — measured across real processes, plus the two edges a
+// lock file brings with it: a holder that died, and a holder that is alive.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { existsSync, mkdirSync, readdirSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { grantAntigravitySetup, withLock } from '../availability.mjs';
+import { cleanup, fixture } from './helpers.mjs';
+
+const MODULE = pathToFileURL(resolve(import.meta.dirname, '../availability.mjs')).href;
+const settingsFile = home => resolve(home, '.gemini', 'antigravity-cli', 'settings.json');
+
+// Isolates $HOME/$USERPROFILE for the duration of `fn`, so a real machine's
+// own antigravity-cli settings are never read, let alone written, here.
+const withHome = fn => {
+  const home = fixture();
+  const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+  process.env.HOME = home; process.env.USERPROFILE = home;
+  try { return fn(home); } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+    cleanup(home);
+  }
+};
+
+test('grants from concurrent processes are all kept — none is lost to another writer', async () => {
+  const home = fixture();
+  const env = { ...process.env, HOME: home, USERPROFILE: home };
+  const PROCESSES = 3;
+  const GRANTS_EACH = 15;
+  try {
+    await Promise.all(Array.from({ length: PROCESSES }, (_, i) => new Promise((done, fail) => {
+      const script = `import { grantAntigravitySetup } from ${JSON.stringify(MODULE)};\n`
+        + `for (let k = 0; k < ${GRANTS_EACH}; k++) grantAntigravitySetup({ workerCommands: ['cmd-${i}-' + k] });\n`;
+      const child = spawn(process.execPath, ['--input-type=module', '-e', script],
+        { env, windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
+      let stderr = '';
+      child.stderr.on('data', chunk => { stderr += chunk; });
+      child.on('error', fail);
+      child.on('exit', code => code === 0 ? done() : fail(new Error(`process ${i} exited ${code}: ${stderr}`)));
+    })));
+    const allow = JSON.parse(readFileSync(settingsFile(home), 'utf8')).permissions.allow;
+    const expected = Array.from({ length: PROCESSES }, (_, i) =>
+      Array.from({ length: GRANTS_EACH }, (_, k) => `command(cmd-${i}-${k})`)).flat();
+    assert.deepEqual([...allow].sort(), expected.sort(), 'every process\'s grants survived every other process\'s writes');
+    assert.deepEqual(readdirSync(dirname(settingsFile(home))), ['settings.json'], 'no lock or staging file left behind');
+  } finally { cleanup(home); }
+});
+
+test('a lock left behind by a dead process is taken over once it is stale', () => {
+  withHome(home => {
+    const file = settingsFile(home);
+    mkdirSync(dirname(file), { recursive: true });
+    const lock = `${file}.lock`;
+    writeFileSync(lock, '99999');
+    const fiveMinutesAgo = (Date.now() - 5 * 60_000) / 1000;
+    utimesSync(lock, fiveMinutesAgo, fiveMinutesAgo);
+    const result = grantAntigravitySetup({ workerCommands: ['npm test'] });
+    assert.deepEqual(result.added, ['command(npm test)']);
+    assert.equal(existsSync(lock), false, 'the stale lock is gone afterwards');
+    assert.deepEqual(readdirSync(dirname(file)), ['settings.json']);
+  });
+});
+
+test('a live lock is waited for, then refused with the file untouched and the lock left alone', () => {
+  withHome(home => {
+    const file = settingsFile(home);
+    mkdirSync(dirname(file), { recursive: true });
+    const original = JSON.stringify({ permissions: { allow: ['command(git status)'] } });
+    writeFileSync(file, original);
+    const lock = `${file}.lock`;
+    writeFileSync(lock, String(process.pid));
+    const started = Date.now();
+    assert.throws(() => grantAntigravitySetup({ workerCommands: ['npm test'] }, { lockTimeoutMs: 150 }),
+      /held by another process/);
+    assert.ok(Date.now() - started >= 100, 'it waited for the holder before giving up');
+    assert.equal(readFileSync(file, 'utf8'), original, 'nothing was written');
+    assert.equal(existsSync(lock), true, 'a live lock is never deleted out from under its holder');
+  });
+});
+
+// Measured on Windows: creating a lock that another process is still deleting
+// fails with EPERM, not EEXIST — about once in 25 runs of the concurrent test
+// above, which then failed with a bare EPERM. That is contention, not failure.
+// A scripted filesystem reproduces the race every time.
+const failure = code => Object.assign(new Error(code), { code });
+const scriptedFs = ({ open, stat }) => {
+  const calls = { open: 0 };
+  return { calls, fs: {
+    openSync: () => { calls.open += 1; return open(calls.open); },
+    statSync: () => stat(),
+    renameSync: () => {}, unlinkSync: () => {}, writeSync: () => {}, closeSync: () => {}
+  } };
+};
+
+test('on Windows, a lock still being deleted (EPERM on create) is waited out, not reported as a failure', () => {
+  const { calls, fs } = scriptedFs({
+    open: attempt => { if (attempt <= 2) throw failure('EPERM'); return 7; },
+    stat: () => { throw failure('ENOENT'); }
+  });
+  assert.equal(withLock('settings.json.lock', () => 'granted', 1000, { fs, platform: 'win32' }), 'granted');
+  assert.equal(calls.open, 3, 'it retried until the release finished');
+});
+
+test('on Windows, an EPERM that never clears is reported as itself once the wait runs out', () => {
+  const { fs } = scriptedFs({ open: () => { throw failure('EPERM'); }, stat: () => { throw failure('ENOENT'); } });
+  const started = Date.now();
+  assert.throws(() => withLock('settings.json.lock', () => 'granted', 100, { fs, platform: 'win32' }), { code: 'EPERM' });
+  assert.ok(Date.now() - started >= 90, 'it waited for the deadline before calling it a real permission error');
+});
+
+test('elsewhere, EPERM on create is a real permission error and is thrown at once', () => {
+  const { calls, fs } = scriptedFs({ open: () => { throw failure('EPERM'); }, stat: () => { throw failure('ENOENT'); } });
+  assert.throws(() => withLock('settings.json.lock', () => 'granted', 1000, { fs, platform: 'linux' }), { code: 'EPERM' });
+  assert.equal(calls.open, 1);
+});
+
+// Last on purpose: before the fix this loop never ends, so the file hangs here.
+test('a held lock that cannot be inspected gives up at the deadline instead of spinning', () => {
+  const { fs } = scriptedFs({ open: () => { throw failure('EEXIST'); }, stat: () => { throw failure('EACCES'); } });
+  assert.throws(() => withLock('settings.json.lock', () => 'granted', 100, { fs, platform: 'win32' }), /held by another process/);
+});

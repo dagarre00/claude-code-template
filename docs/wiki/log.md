@@ -7,11 +7,9 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-08-31
+updated: 2026-09-23
 ---
 
 # Log
 
-> Append-only chronological record. Each entry begins with `## [YYYY-MM-DD HH:MM] <kind>` so the file can be grep'd — `init`, `interview`, `work`, `pr`, `adversary`, `review`, `wiki-ingest`, `wiki-maintenance`, `agent-scout`, `handoff`, or `chore` when nothing else fits (behavioral rule 19).
-> Entries are written by the command that did the work, in the same commit as the work. `/project:wiki-lint` archives this file once it passes ~100 entries.
-
+> Append-only, oldest first. Every change to tracked files adds an entry in the same commit, headed `## [YYYY-MM-DD HH:MM] <kind>` (UTC) with kind `init`, `interview`, `work`, `pr`, `adversary`, `review`, `wiki-ingest`, `wiki-maintenance` or `chore` — see [log-and-commit](../../.agents/skills/feature-branching/log-and-commit.md). `/project:wiki` archives this file once it passes ~100 entries.

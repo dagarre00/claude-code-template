@@ -1,0 +1,284 @@
+// Loader and validator for `.agents/config.json` — engine executables, the
+// model/effort each profile maps to, and per-role overrides.
+//
+// Validation is deliberately strict and noisy. These are the knobs a human
+// actually turns, and a typo that is silently ignored ("model" for "models")
+// leaves a worker running the default model while the file claims otherwise —
+// a discrepancy nothing downstream can detect.
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { ENGINES, MODEL, engineNames } from './engines/index.mjs';
+import { PROFILES } from './canonical.mjs';
+import { isSafeRepoPath } from './compose.mjs';
+import { explainMisfit, modelFits } from './model-fit.mjs';
+
+const ROLE_KEYS = ['engine', 'models', 'effort', 'extraSkills'];
+const SKILL_NAME = /^[a-z0-9][a-z0-9-]{0,63}$/;
+// `$comment` is the one free-text key: JSON has no comments, so it is where a
+// file can point a reader at the editor (`node tools/workflow-mcp/config-ui.mjs`).
+const TOP_KEYS = ['$comment', 'version', 'defaultEngine', 'workerTimeoutSeconds', 'workerCommands',
+  'worktreeSetup', 'protectedPaths', 'architecture', 'roles', 'engines'];
+const ENGINE_KEYS = ['executable', 'models', 'effort', 'toolOutputTokenLimit', 'modelAutoCompactTokenLimit'];
+// Every key the loader accepts, for the test that holds config.md to documenting them all.
+export const CONFIG_KEYS = Object.freeze({
+  top: TOP_KEYS, role: ROLE_KEYS, engine: ENGINE_KEYS, architecture: ['command', 'rules']
+});
+
+export function loadConfig(root) {
+  const path = resolve(root, '.agents/config.json');
+  if (!existsSync(path)) throw new Error('Missing .agents/config.json');
+  let config;
+  try { config = JSON.parse(readFileSync(path, 'utf8')); }
+  catch (error) { throw new Error(`.agents/config.json is not valid JSON: ${error.message}`); }
+  return validateConfig(config);
+}
+
+// Validates and normalizes a parsed config, in place, and returns it. Pure — no
+// file — so the config editor can refuse a bad edit before it is written, with
+// exactly the rule the dispatcher would apply. Normalization (the architecture
+// command joining workerCommands, rule files joining protectedPaths) mutates its
+// argument, so anything that must save what a human wrote validates a clone.
+export function validateConfig(config) {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    throw new Error('.agents/config.json must be a JSON object');
+  }
+  // Same reasoning as the role keys below: `worktreeSetups` for `worktreeSetup`
+  // loaded cleanly and did nothing, and `protectedPath` for `protectedPaths`
+  // silently left every path writable.
+  for (const key of Object.keys(config)) {
+    if (!TOP_KEYS.includes(key)) {
+      throw new Error(`Unknown key "${key}" in .agents/config.json; expected ${TOP_KEYS.join(', ')}`);
+    }
+  }
+  if (config.$comment != null && typeof config.$comment !== 'string') {
+    throw new Error('$comment must be a string');
+  }
+  if (config.version !== 1) throw new Error('Unsupported config version; expected 1');
+  if (!['inherit', ...engineNames].includes(config.defaultEngine)) {
+    throw new Error(`Invalid defaultEngine "${config.defaultEngine}"; expected inherit or one of ${engineNames.join(', ')}`);
+  }
+  if (!Number.isInteger(config.workerTimeoutSeconds)
+    || config.workerTimeoutSeconds < 1 || config.workerTimeoutSeconds > 86400) {
+    throw new Error('workerTimeoutSeconds must be an integer between 1 and 86400');
+  }
+  // The exact shell commands a worker may run. Both gating engines match a
+  // command line *exactly* — Claude Code against `Bash(<cmd>:*)`, agy against a
+  // `command(<cmd>)` rule in its user-global settings — so this is a list of
+  // literal command lines, not patterns, and a worker that chains or redirects
+  // one is denied. Empty is legal and means "no worker may run anything", which
+  // is a working configuration only for roles that never verify.
+  if (!Array.isArray(config.workerCommands)) {
+    throw new Error('workerCommands must be an array of exact shell command lines');
+  }
+  if (config.workerCommands.length > 32) {
+    throw new Error('workerCommands is capped at 32 entries; a longer allowlist is not an allowlist');
+  }
+  for (const command of config.workerCommands) {
+    if (typeof command !== 'string' || !command.trim() || command.length > 200
+      || /[\r\n\0]/.test(command)) {
+      throw new Error(`Invalid workerCommands entry: ${JSON.stringify(command)}`);
+    }
+    // A command line carrying its own separators cannot be matched exactly by
+    // either engine, so it would be granted and then denied at run time.
+    if (/[;&|<>`]|\$\(/.test(command)) {
+      throw new Error(
+        `workerCommands entry "${command}" contains shell composition; both engines grant `
+        + 'permission by exact match, so a composed line can never be allowed. '
+        + 'List the plain command instead.');
+    }
+  }
+  // Commands the conductor runs inside a fresh worktree before dispatching into
+  // it — building a per-worktree virtualenv is the measured case (engine-setup.md
+  // § Projects with a Python virtualenv). They are handed back by
+  // prepare_worktree, never run by this server, and never granted to a worker, so
+  // unlike workerCommands they may compose: the conductor's own shell runs them.
+  if (config.worktreeSetup != null) {
+    if (!Array.isArray(config.worktreeSetup) || config.worktreeSetup.length > 16) {
+      throw new Error('worktreeSetup must be an array of at most 16 shell command lines');
+    }
+    for (const command of config.worktreeSetup) {
+      if (typeof command !== 'string' || !command.trim() || command.length > 500 || /[\r\n\0]/.test(command)) {
+        throw new Error(`Invalid worktreeSetup entry: ${JSON.stringify(command)}`);
+      }
+    }
+  }
+  // Paths no worker may change, even inside its owned paths — the architecture
+  // rules a developer is judged by, the workflow's own text. Checked at
+  // composition (an owned path inside one is refused) and at inspection (a
+  // change under one rejects the dispatch).
+  if (config.protectedPaths == null) config.protectedPaths = [];
+  if (!Array.isArray(config.protectedPaths) || config.protectedPaths.some(path => !isSafeRepoPath(path))) {
+    throw new Error('protectedPaths must be an array of repository-relative paths (no absolute paths, no ..)');
+  }
+  // The project's architecture check: one exact command that fails on a
+  // dependency the declared layers forbid, and the files that define those
+  // rules. The command is granted to every worker; the rule files are protected.
+  const architecture = config.architecture ?? { command: null, rules: [] };
+  if (typeof architecture !== 'object' || Array.isArray(architecture)) {
+    throw new Error('architecture must be an object: { "command": <exact command line or null>, "rules": [<paths>] }');
+  }
+  for (const key of Object.keys(architecture)) {
+    if (!['command', 'rules'].includes(key)) throw new Error(`Unknown key "${key}" in architecture; expected command, rules`);
+  }
+  if (architecture.command != null && (typeof architecture.command !== 'string' || !architecture.command.trim()
+    || architecture.command.length > 200 || /[\r\n\0;&|<>`]|\$\(/.test(architecture.command))) {
+    throw new Error('architecture.command must be one plain command line (it joins the worker allowlist, which matches exactly)');
+  }
+  const rules = architecture.rules ?? [];
+  if (!Array.isArray(rules) || rules.some(path => !isSafeRepoPath(path))) {
+    throw new Error('architecture.rules must be an array of repository-relative paths');
+  }
+  config.architecture = { command: architecture.command ?? null, rules };
+  if (config.architecture.command && !config.workerCommands.includes(config.architecture.command)) {
+    config.workerCommands = [...config.workerCommands, config.architecture.command];
+  }
+  config.protectedPaths = [...new Set([...config.protectedPaths, ...rules])];
+
+  if (!config.roles || typeof config.roles !== 'object' || Array.isArray(config.roles)) {
+    throw new Error('roles must be an object keyed by role name');
+  }
+
+  // Every registered adapter needs a settings block, and every settings block
+  // needs an adapter: a name in one and not the other is a silent misconfiguration.
+  for (const name of engineNames) {
+    const engine = config.engines?.[name];
+    if (!engine || typeof engine.executable !== 'string' || !engine.executable.trim()
+      || /[\r\n\0]/.test(engine.executable)) {
+      throw new Error(`Invalid engine executable for ${name}`);
+    }
+    // A .cmd/.bat shim is executed through the Windows command interpreter,
+    // which reintroduces shell quoting rules to an argv we deliberately keep
+    // shell-free. Point at the real executable instead.
+    if (/\.(cmd|bat)$/i.test(engine.executable)) {
+      throw new Error(`Engine ${name} points at a shell shim (${engine.executable}); use a native executable`);
+    }
+    for (const key of Object.keys(engine)) {
+      if (!ENGINE_KEYS.includes(key)) {
+        throw new Error(`Unknown key "${key}" in engines.${name}; expected ${ENGINE_KEYS.join(', ')}`);
+      }
+    }
+    for (const profile of PROFILES) {
+      if (!(profile in (engine.models ?? {})) || !(profile in (engine.effort ?? {}))) {
+        throw new Error(`Engine ${name} is missing models/effort for profile "${profile}"`);
+      }
+      checkModel(name, engine.models[profile], `engines.${name}.models.${profile}`);
+      checkEffort(name, engine.effort[profile], `engines.${name}.effort.${profile}`);
+    }
+    // Codex-only context-management knobs (see codex.mjs): capping how many
+    // tokens of a single tool output it keeps, and when it auto-compacts its
+    // own history. Scoped to codex specifically, not just "any positive
+    // integer on any engine", because the other two adapters have no argv slot
+    // that reads these fields — setting one on claude or antigravity would be
+    // silently inert, exactly the typo this loader exists to catch loudly.
+    for (const key of ['toolOutputTokenLimit', 'modelAutoCompactTokenLimit']) {
+      if (engine[key] == null) continue;
+      if (name !== 'codex') {
+        throw new Error(`Engine ${name} does not support "${key}"; it is a Codex-only setting`);
+      }
+      if (!Number.isInteger(engine[key]) || engine[key] < 1) {
+        throw new Error(`Engine ${name}.${key} must be a positive integer (tokens), got ${JSON.stringify(engine[key])}`);
+      }
+    }
+  }
+  for (const name of Object.keys(config.engines ?? {})) {
+    if (!engineNames.includes(name)) {
+      throw new Error(`Config declares unregistered engine "${name}"; add tools/workflow-mcp/engines/${name}.mjs`);
+    }
+  }
+
+  for (const [name, role] of Object.entries(config.roles)) {
+    if (!role || typeof role !== 'object' || Array.isArray(role)) throw new Error(`Invalid role config: ${name}`);
+    for (const key of Object.keys(role)) {
+      if (!ROLE_KEYS.includes(key)) {
+        throw new Error(`Unknown key "${key}" in role ${name}; expected ${ROLE_KEYS.join(', ')}`);
+      }
+    }
+    // A string is one engine; an array is an ordered fallback chain, tried in
+    // order at dispatch. The chain exists because four roles sharing one engine
+    // all became undispatchable together when that engine did, with a manual
+    // per-dispatch override as the only remedy (dispatch-findings F-C).
+    if (role.engine != null && Array.isArray(role.engine)) {
+      if (!role.engine.length) {
+        throw new Error(`Role ${name}.engine is an empty list; a chain needs at least one engine`);
+      }
+      if (role.engine.length > engineNames.length + 1) {
+        throw new Error(`Role ${name}.engine lists more entries than there are engines`);
+      }
+      for (const entry of role.engine) {
+        if (!['inherit', ...engineNames].includes(entry)) {
+          throw new Error(`Invalid engine "${entry}" in role ${name}'s fallback chain; `
+            + `expected inherit or one of ${engineNames.join(', ')}`);
+        }
+      }
+    } else if (role.engine != null && !['inherit', ...engineNames].includes(role.engine)) {
+      throw new Error(`Invalid engine for role ${name}: ${role.engine}`);
+    }
+    // Project-specific skills this role receives on top of what the commands
+    // declare for it — design-system-check for the developer of a project with a
+    // UI. Kept here, not in the command files, because sync-template never
+    // overwrites config.json and always reports an edited command as customized.
+    // Whether each names a skill a worker may receive is checked at composition,
+    // where the skills are known.
+    if (role.extraSkills != null && (!Array.isArray(role.extraSkills) || role.extraSkills.length > 16
+      || role.extraSkills.some(skill => typeof skill !== 'string' || !SKILL_NAME.test(skill))
+      || new Set(role.extraSkills).size !== role.extraSkills.length)) {
+      throw new Error(`Role ${name}.extraSkills must be a list of distinct skill names (kebab-case, at most 16)`);
+    }
+    for (const field of ['models', 'effort']) {
+      if (role[field] == null) continue;
+      if (typeof role[field] !== 'object' || Array.isArray(role[field])) {
+        throw new Error(`Role ${name}.${field} must be an object keyed by engine name`);
+      }
+      for (const [key, value] of Object.entries(role[field])) {
+        if (!engineNames.includes(key)) throw new Error(`Unknown engine "${key}" in role ${name}.${field}`);
+        if (field === 'models') checkModel(key, value, `roles.${name}.models.${key}`);
+        else checkEffort(key, value, `roles.${name}.effort.${key}`);
+      }
+    }
+  }
+  return config;
+}
+
+// null is "the engine's own default" and stays legal. Anything else is checked
+// here because the dispatcher would otherwise be the first to notice — after a
+// prompt was composed, and only for the one role that reached the bad value.
+function checkEffort(engine, value, where) {
+  if (value == null || ENGINES[engine].efforts.includes(value)) return;
+  throw new Error(`${where} is ${JSON.stringify(value)}, which ${engine} does not accept; `
+    + `supported: ${ENGINES[engine].efforts.join(', ')}`);
+}
+
+// A model is stored under the engine that will be launched with it, so it is also
+// checked to be one that engine runs (model-fit.mjs). Without that, `gpt-5.6-sol`
+// under `antigravity` loaded cleanly and only failed when a worker started.
+function checkModel(engine, value, where) {
+  if (value == null) return;
+  if (typeof value !== 'string' || !MODEL.test(value)) {
+    throw new Error(`${where} is not a valid model id: ${JSON.stringify(value)}`);
+  }
+  if (!modelFits(ENGINES[engine], value)) throw new Error(`${where}: ${explainMisfit(ENGINES, engine, value)}`);
+}
+
+// Which engines a role may run on, in the order it wants them tried. `inherit`
+// means "whatever CLI the conductor is", so a Claude Code session dispatches
+// Claude workers by default and a Codex session dispatches Codex workers.
+//
+// Deduped, because `["inherit", "claude"]` conducted from Claude Code is a chain
+// of one, and a fallback to the engine that just failed is not a fallback.
+export function resolveEngineChain(config, role, conductorEngine) {
+  const configured = config.roles?.[role]?.engine ?? config.defaultEngine;
+  const chain = [...new Set((Array.isArray(configured) ? configured : [configured])
+    .map(entry => entry === 'inherit' ? conductorEngine : entry))];
+  for (const resolved of chain) {
+    if (!engineNames.includes(resolved)) {
+      throw new Error(`Cannot resolve an engine for role "${role}": got ${JSON.stringify(resolved)}`);
+    }
+  }
+  return chain;
+}
+
+// The role's first choice. Everything that only needs to name one engine — the
+// role catalog, a dispatch with nothing unavailable — goes through here.
+export function resolveEngine(config, role, conductorEngine) {
+  return resolveEngineChain(config, role, conductorEngine)[0];
+}

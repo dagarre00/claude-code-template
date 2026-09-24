@@ -7,7 +7,7 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-07-21
+updated: 2026-09-14
 ---
 
 # Commands
@@ -28,6 +28,20 @@ updated: 2026-07-21
 > Required for `/project:work` — `/project:work` precondition checks fail if this is `<TBD>`.
 
 `<TBD>`
+
+## Architecture
+
+> The command that fails when an import breaks [[architecture#Layers]]. Must be one plain command line — it is copied verbatim into `.agents/config.json` `architecture.command`, which grants it to every worker. Prove it fires before trusting it (`/project:init` step 5b).
+
+`<TBD>`
+
+## Verify
+
+> Stack-independent workflow checks — generated files, wikilinks, log order, and (against a base branch) wiki-with-code, log-with-change, ADR-with-architecture-rule. Run before opening a PR; CI runs it on every PR.
+
+```bash
+node tools/workflow-mcp/verify.mjs --base origin/develop
+```
 
 ## Lint
 

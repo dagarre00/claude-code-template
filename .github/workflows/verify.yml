@@ -1,0 +1,52 @@
+# The template's own CI: the workflow-mcp suite, plus verify.mjs's whole-tree
+# checks (generated-file drift, wikilinks, log order, encoding), on Linux, macOS
+# and Windows — the runner, the red check's process-tree kill and the command
+# quoting each take a different path per OS, and all three must hold.
+#
+# Not the --base range checks: they require every change to ship a
+# docs/wiki/log.md entry and a wiki update, and the template deliberately keeps
+# an empty wiki. An adopting project's /project:init (step 5c) writes its own
+# workflow — install, its test and architecture commands, and verify.mjs WITH
+# --base on pull requests — and never runs this template's test suite.
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        # Git Bash on Windows: the suite's stand-in engines are `sh` and `cat`.
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install workflow-mcp
+        run: npm ci
+        working-directory: tools/workflow-mcp
+
+      - name: Configure git for the test fixtures
+        run: |
+          git config --global user.email "ci@example.invalid"
+          git config --global user.name "ci"
+
+      - name: workflow-mcp test suite (template only)
+        run: npm test
+        working-directory: tools/workflow-mcp
+
+      - name: Workflow checks
+        run: node tools/workflow-mcp/verify.mjs
