@@ -350,6 +350,32 @@ test('a finished worktree is reused for the next task: new branch at HEAD, same 
   });
 });
 
+// Rule 21 gives a parallel conductor a checkout of its own, which is usually a
+// linked worktree of the same repository: one git store, one branch namespace,
+// but dispatch records local to each checkout. A worker of the other conductor's
+// listed here was reusable without its decision gate and removable outright
+// (adversary R4-F2 on PR #40).
+test('another conductor\'s worker worktrees are not this checkout\'s to list, reuse or remove', () => {
+  repo(root => {
+    const other = mkdtempSync(resolve(tmpdir(), 'workflow-mcp-conductor-b-'));
+    const theirs = resolve(other, 'b');
+    try {
+      assert.equal(git(root, 'worktree', 'add', '-q', '-b', 'conductor-b', theirs).status, 0);
+      const running = prepareWorktree(theirs, { task_id: 'their-review' });
+      assert.deepEqual(listWorktrees(theirs).map(entry => entry.task_id), ['their-review']);
+
+      assert.deepEqual(listWorktrees(root), [], 'the other conductor\'s worker is listed here');
+      assert.throws(() => prepareWorktree(root, { task_id: 'mine', reuse: 'their-review' }), /No worktree/);
+      assert.throws(() => removeWorktree(root, 'their-review'), /No such workspace/);
+      assert.ok(existsSync(running.workspace), 'the other conductor\'s checkout survived');
+    } finally {
+      git(root, 'worktree', 'remove', '--force', resolve(theirs, '.worktrees', 'their-review'));
+      git(root, 'worktree', 'remove', '--force', theirs);
+      cleanup(other);
+    }
+  });
+});
+
 test('a worktree still holding something is never reused', () => {
   repo(root => {
     const dirty = prepareWorktree(root, { task_id: 'dirty' });

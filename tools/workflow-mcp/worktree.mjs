@@ -120,16 +120,25 @@ function exclude(root) {
   writeFileSync(path, current + (current && !current.endsWith('\n') ? '\n' : '') + entry + '\n');
 }
 
-// Whether two paths name the same directory. realpathSync.native, not the JS
-// realpath: measured on GitHub's Windows runner, the temp directory is an 8.3
+// A path in the one form two paths can be compared in. realpathSync.native, not
+// the JS realpath: measured on GitHub's Windows runner, the temp directory is an 8.3
 // short name (RUNNER~1) that only the native call expands, while git reports the
 // long one; and on macOS /var is a symlink to /private/var, which git resolves
 // and resolve() does not. Case never matters on Windows.
+const located = path => {
+  let real;
+  try { real = realpathSync.native(path); } catch { real = resolve(path); }
+  const norm = real.replaceAll('\\', '/').replace(/\/+$/, '');
+  return process.platform === 'win32' ? norm.toLowerCase() : norm;
+};
+
+// Whether two paths name the same directory.
 export function sameLocation(a, b) {
-  const real = path => { try { return realpathSync.native(path); } catch { return resolve(path); } };
-  const norm = path => real(path).replaceAll('\\', '/').replace(/\/+$/, '');
-  return process.platform === 'win32' ? norm(a).toLowerCase() === norm(b).toLowerCase() : norm(a) === norm(b);
+  return located(a) === located(b);
 }
+
+// Whether `path` lies inside `dir`.
+const within = (path, dir) => located(path).startsWith(`${located(dir)}/`);
 
 const readRecord = (root, task_id, name) => {
   const path = resolve(root, WORKSPACES, '.dispatch', task_id, name);
@@ -232,11 +241,16 @@ export function listWorktrees(root) {
   // HEAD leaves nothing to compare against, and an unanswerable question is
   // reported as unanswered rather than as "no".
   const integration = git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], { allowFailure: true });
+  // git lists every worktree of the repository, and a parallel conductor's own
+  // checkout is usually one of them, with worker/* branches of its own. Its
+  // dispatch records live in its checkout, not here, so only this checkout's
+  // .worktrees/ is ours to list, reuse or remove.
+  const home = resolve(root, WORKSPACES);
 
   return raw.split(/\n\n+/).map(entry => {
     const path = /^worktree (.+)$/m.exec(entry)?.[1];
     const branch = /^branch refs\/heads\/(.+)$/m.exec(entry)?.[1];
-    if (!path || !branch?.startsWith('worker/')) return null;
+    if (!path || !branch?.startsWith('worker/') || !within(path, home)) return null;
     const task_id = branch.slice('worker/'.length);
     const record = dispatchRecord(root, task_id);
     const changed = existsSync(path) ? changedPaths(path) : [];
