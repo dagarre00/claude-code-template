@@ -102,11 +102,14 @@ else
   fi
 fi
 
+# `npm ci` installs exactly what the copied lockfile pins — the versions the
+# template was tested with. `npm install` is the fallback for a lockfile the
+# local npm refuses.
 if command -v npm >/dev/null 2>&1; then
-  (cd "$TARGET/tools/workflow-mcp" && npm install --silent)
-  echo "Step 2: npm install done in tools/workflow-mcp/"
+  (cd "$TARGET/tools/workflow-mcp" && { npm ci --silent || npm install --silent; })
+  echo "Step 2: dependencies installed in tools/workflow-mcp/ (from the lockfile)"
 else
-  echo "Step 2: npm not found on PATH — run 'npm install' in" >&2
+  echo "Step 2: npm not found on PATH — run 'npm ci' in" >&2
   echo "        '$TARGET/tools/workflow-mcp' yourself before dispatching any worker." >&2
 fi
 
@@ -215,7 +218,10 @@ fi
 # ---------------------------------------------------------------------------
 # Step 4 — .claude/settings.json: written only when none exists
 # ---------------------------------------------------------------------------
-SETTINGS_SNIPPET="  \"extraKnownMarketplaces\": {\n    \"$MARKETPLACE\": { \"source\": { \"source\": \"directory\", \"path\": \".\" } }\n  },\n  \"enabledPlugins\": { \"project@$MARKETPLACE\": true }"
+# claudeMdExcludes: every worker worktree under .worktrees/ is a full checkout
+# with its own CLAUDE.md, which Claude Code would otherwise load into the
+# conductor's context the first time it reads a file there — once per worktree.
+SETTINGS_SNIPPET="  \"extraKnownMarketplaces\": {\n    \"$MARKETPLACE\": { \"source\": { \"source\": \"directory\", \"path\": \".\" } }\n  },\n  \"enabledPlugins\": { \"project@$MARKETPLACE\": true },\n  \"claudeMdExcludes\": [\"**/.worktrees/**/CLAUDE.md\", \"**/.worktrees/**/AGENTS.md\"]"
 
 echo
 echo "-------------------------------------------------------------------"
@@ -226,7 +232,7 @@ if [[ ! -e "$TARGET/.claude/settings.json" ]]; then
   echo "        Only needed if Claude Code conducts; skip it for codex/agy."
 else
   echo "Step 4 (yours to finish): '$TARGET/.claude/settings.json' already exists."
-  echo "Merge these two keys into it by hand — do not overwrite the file:"
+  echo "Merge these three keys into it by hand — do not overwrite the file:"
   echo
   printf '%b\n' "$SETTINGS_SNIPPET"
   echo

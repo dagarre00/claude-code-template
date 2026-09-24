@@ -3,6 +3,7 @@
     "workflow-claude-code-template": { "source": { "source": "directory", "path": "." } }
   },
   "enabledPlugins": { "project@workflow-claude-code-template": true },
+  "claudeMdExcludes": ["**/.worktrees/**/CLAUDE.md", "**/.worktrees/**/AGENTS.md"],
   "permissions": {
     "allow": ["mcp__workflow"]
   }

@@ -87,7 +87,7 @@ The transcript is `docs/raw/interviews/YYYY-MM-DD-init.md`, opened before the fi
 
 ### 5. Scaffold the wiki
 
-Create any missing directory: `docs/raw/interviews/`, `docs/wiki/entities/`, `concepts/`, `decisions/`, `summaries/`. Fill these with **real answers** — `<TBD>` only for a topic genuinely not discussed:
+Create any missing directory: `docs/raw/interviews/`, `docs/wiki/entities/`, `concepts/`, `decisions/`, `summaries/`, `reviews/`. Fill these with **real answers** — `<TBD>` only for a topic genuinely not discussed:
 
 - `requirements.md` — `## Vision`, `## Users`, `## User stories` (`- As a <user type>, I want <capability>, so that <benefit>.` with Acceptance and `Maps to:`), `## Functional requirements`, `## Non-functional requirements`, `## Out of scope`, `## Open questions`.
 - `architecture.md` — `## Stack`, `## Layout`, `## Layers` (topic 12; or step 5b), `## Data`, `## External services`, `## Testing strategy`, `## Conventions`, `## Deployment`.

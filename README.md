@@ -25,7 +25,7 @@ claude
 bash scripts/adopt.sh /path/to/my-existing-project
 ```
 
-It copies `.agents/` and `tools/workflow-mcp/` (without `node_modules/` or the template-only `test/` suite), installs the server's dependencies, writes `.mcp.json` and a per-project plugin marketplace, registers the server with `codex`/`agy` if installed, and creates `.claude/settings.json` — or, if one exists, prints the two keys to merge by hand. Then start your CLI in the project. By hand, without the script:
+It copies `.agents/` and `tools/workflow-mcp/` (without `node_modules/` or the template-only `test/` suite), installs the server's dependencies, writes `.mcp.json` and a per-project plugin marketplace, registers the server with `codex`/`agy` if installed, and creates `.claude/settings.json` — or, if one exists, prints the three keys to merge by hand. Then start your CLI in the project. By hand, without the script:
 
 ```bash
 cd my-existing-project
@@ -38,7 +38,8 @@ mkdir -p .claude-plugin && cp <template>/.claude-plugin/marketplace.json .claude
 # merge into .claude/settings.json, with the same name:
 #   "extraKnownMarketplaces": {"workflow-<your-dir-name>": {"source": {"source": "directory", "path": "."}}}
 #   "enabledPlugins": {"project@workflow-<your-dir-name>": true}
-cd tools/workflow-mcp && npm install && cd ../..
+#   "claudeMdExcludes": ["**/.worktrees/**/CLAUDE.md", "**/.worktrees/**/AGENTS.md"]   # worker checkouts
+cd tools/workflow-mcp && npm ci && cd ../..
 claude
 ```
 

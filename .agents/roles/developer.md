@@ -38,6 +38,7 @@ Follow the `tdd-loop` skill **one case at a time, all the way through**: B1 red 
 
 - Tick the case (`[~]` → `[x]`) and update the entity page's `## Implementation` and `## Tests`.
 - A project-specific pitfall → `gotcha-recording`; a non-obvious design call → `decision-recording`. Both land beside the case's code and are listed with its paths.
+- That is the whole of your wiki work. Anything larger — a new concept or entity page, a contradiction between two pages, a pattern recurring on 3+ pages, a merge, a split, cleanup across sections — is one line for `docs/wiki/wiki-todos.md` (`- [ ] YYYY-MM-DD developer: <action>`), never an edit.
 - Todos and wiki-todos you create go under `Follow-ups:` unless those files are in your owned paths.
 
 ## Answering a review finding

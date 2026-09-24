@@ -6,7 +6,7 @@ type: command
 skills:
   planner: [plan-writing, spec-writing]
   plan-adversary: [plan-review]
-  developer: [tdd-loop, clean-architecture, wiki-update, gotcha-recording, decision-recording]
+  developer: [tdd-loop, clean-architecture, gotcha-recording, decision-recording]
   adversary: [adversarial-review]
 ---
 
@@ -45,12 +45,12 @@ Any failure → stop and `human-checkpoint`.
 
 **On a `feat/*` branch:**
 
-- Uncommitted changes, unpushed commits, or entity cases still `[ ]`/`[~]` → stay and continue the feature (step 5).
+- Uncommitted changes, unpushed commits, or entity cases still `[ ]`/`[~]` → stay and continue the feature (step 5). Uncommitted changes first: every dispatch needs a clean checkout. Account for every path (rule 21) — a case you integrated but had not committed is yours to commit, anything else is a `human-checkpoint` — then push what is unpushed.
 - Every case `[x]` and pushed → first confirm the PR actually merged (`gh pr view <branch> --json state`, or the merge commit on `develop`) — `[x]`-and-pushed is also true of an open PR. Then `git checkout develop`, `git fetch origin develop && git merge --ff-only origin/develop`, and `git branch -d <branch>` (lowercase `-d` refuses an unmerged branch — a second check).
 
 ## Resuming an interrupted cycle
 
-You commit and push after each green case, so a recycled container loses at most the case in flight. Re-run `/project:work`: `git fetch origin feat/<slug>` recovers what was pushed, and the cases still `[ ]`/`[~]` on the entity page are the resume point. A dispatch interrupted with its worktree intact (a rate-limit pause) resumes from its recorded state — `worker-dispatch` § Resuming an interrupted dispatch.
+You commit and push after each green case, and the plan review's record before the first one (step 4a), so a recycled container loses at most the case in flight. Re-run `/project:work`: `git fetch origin feat/<slug>` recovers what was pushed, and the cases still `[ ]`/`[~]` on the entity page are the resume point. The plan itself is scratch: if `.handoff/<slug>-plan.md` is gone on a `[complex]` cycle, re-dispatch the `planner` for the remaining cases and re-apply the dispositions the log entry records rather than re-reviewing from scratch. A dispatch interrupted with its worktree intact (a rate-limit pause) resumes from its recorded state — `worker-dispatch` § Resuming an interrupted dispatch.
 
 ## Steps
 
@@ -66,12 +66,13 @@ You commit and push after each green case, so a recycled container loses at most
 
 3. **Verify the Behavior cases.** Read `## Behavior` on the entity page (or the `[infra]` concept page). Its unimplemented `[ ]` cases are the test target. Empty or vague → stop: `/project:interview` or the `spec-writing` skill defines them first. **Config and deploy changes are behavior** — middleware, an auth header, a CORS rule each takes a failing test first like any other case.
 
-4. **Plan, if complex or batched.** A `[complex]` todo or a batch of 2+ → dispatch the `planner` with the entity slug(s), the batch contents, this cycle's case IDs and the test command from `docs/wiki/commands.md`. It is read-only and returns the plan in its report: **save it to `.handoff/<slug>-plan.md`** (gitignored scratch) and pass that path as `instructions_file` in steps 4a and 5 — the MCP inlines the file's text, so the plan never passes through a tool call twice and no worker is handed a path. Sanity-check it: the steps cover the listed cases and the scope has not drifted. Wrong → send it back once; a second failure means re-spec via `/project:interview`. A single simple todo skips this step.
+4. **Plan, if complex or batched.** A `[complex]` todo or a batch of 2+ → dispatch the `planner` with the entity slug(s), the batch contents, this cycle's case IDs and the test command from `docs/wiki/commands.md`. It is read-only and returns the plan in its report: **copy its `report_file` to `.handoff/<slug>-plan.md`** with `cp` (gitignored scratch) — never re-type it, which costs the plan's length again in output — and pass that path as `instructions_file` in steps 4a and 5. The MCP inlines the file's text, so the plan never passes through a tool call and no worker is handed a path. Sanity-check it: the steps cover the listed cases and the scope has not drifted. Wrong → send it back once; a second failure means re-spec via `/project:interview`. A single simple todo skips this step.
 
 4a. **Review the brief — every cycle, before any test.** Dispatch the `plan-adversary` and run the brief round of the `finding-disposition` skill.
    - The subject is exactly one of: the step 4 plan (`instructions_file: .handoff/<slug>-plan.md`), or on a simple cycle the todo line plus the `$ARGUMENTS` instruction verbatim. Add the entity slug(s), case IDs, test command and branch name — **nothing else**. Your own reading of the plan is the framing that turns a review into agreement.
    - Dispose of every finding before the developer runs. **Applied** (the default) edits the plan file step 5 sends, or the todo line. **Escalated** — the spec is what is wrong — is a `human-checkpoint` recommending `/project:interview`, and the cycle stops. **Rejected** takes one sentence. A `blocker` you disagree with is a checkpoint, never a rejection.
    - Re-dispatch the `planner` only for a structural blocker (wrong decomposition, impossible order), once. Apply everything smaller yourself.
+   - **Commit the record before any test.** Open this cycle's `work` entry in `docs/wiki/log.md` now (`log-and-commit.md`), with `TODO(s)`, `Branch` and the `Plan review` block (step 8's format), and commit it alone on the branch — `docs(<slug>): plan review` — and push. The plan is gitignored scratch and the dispositions exist nowhere else, so a recycled container would otherwise lose them (rule 20). Step 8 completes the same entry.
    - Unlike step 7a this is not gated on `[complex]`: a one-line todo is where an unstated assumption travels furthest. `skip the pre-flight` turns it off; say so in the report.
 
 5. **Dispatch the `developer`, one Behavior case per dispatch,** with:
@@ -98,9 +99,9 @@ You commit and push after each green case, so a recycled container loses at most
 
    A simple single todo skips this step; the human can run `/project:adversary`.
 
-8. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — kind `work`, fields `TODO(s)`, `Cases: B1, B2`, `Branch: feat/<slug>`, `Plan review: <N> findings — <A> applied, <E> escalated, <R> rejected` followed by one line per finding (the log is that review's only committed record), and `Adversary: <N> findings — <Fi> filed, <Fx> fixed, <R> rejected` (omit it if step 7a did not run; omit the plan review only if the argument skipped step 4a). Stage `docs/wiki/log.md` alone; subject `docs(<slug>): log cycle`. This is the one commit `/project:work` makes on its own account — the cases and review records are already committed.
+8. **Log, commit and push** per [`log-and-commit.md`](../skills/feature-branching/log-and-commit.md) — complete the `work` entry step 4a opened (open it now if the argument skipped step 4a): kind `work`, fields `TODO(s)`, `Cases: B1, B2`, `Branch: feat/<slug>`, `Plan review: <N> findings — <A> applied, <E> escalated, <R> rejected` followed by one line per finding (the log is that review's only committed record), and `Adversary: <N> findings — <Fi> filed, <Fx> fixed, <R> rejected` (omit it if step 7a did not run). Stage `docs/wiki/log.md` alone; subject `docs(<slug>): log cycle`. With step 4a's, these are the commits `/project:work` makes on its own account — the cases and review records are already committed.
 
-   Delete `.handoff/<slug>-plan.md`. Confirm `git status --porcelain` is empty and `git log --oneline develop..HEAD` reads as one commit per case.
+   Delete `.handoff/<slug>-plan.md`. Confirm `git status --porcelain` is empty and `git log --oneline develop..HEAD` reads as one commit per case, plus the review and log records.
 
 9. **Feature complete?** Re-read the entity's `## Behavior`. All `[x]` → step 10. Otherwise → step 11, no PR yet.
 

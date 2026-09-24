@@ -29,7 +29,7 @@ The reviewers' own procedures are `plan-review` and `adversarial-review`; they r
 
    A `blocker` you disagree with is a `human-checkpoint`, never a rejection. When a finding turns on code you cannot settle by reading, dispatch `triage` with the brief and the findings verbatim; the disposition stays yours.
 5. **Re-plan only for a structural blocker** (wrong decomposition, impossible order), once, with the findings attached. Everything smaller you apply. A second disagreement is a `human-checkpoint`.
-6. **Record** in the cycle's `work` log entry — no commit exists yet to carry it:
+6. **Record** in the cycle's `work` log entry — no code commit exists yet to carry it — and commit that entry alone before the developer runs (`/project:work` step 4a): the plan is gitignored scratch, so this is the only copy that survives a recycled container.
 
    ```markdown
    - Plan review: 3 findings — 2 applied, 1 rejected
