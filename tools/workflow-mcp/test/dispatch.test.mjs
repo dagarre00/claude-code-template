@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { loadConfig } from '../config.mjs';
-import { prepareDispatch as preparePrepared, shellArg } from '../dispatch.mjs';
+import { commandPortability, prepareDispatch as preparePrepared, shellArg } from '../dispatch.mjs';
 import { RUN_WORKER, cleanup, composeIn, fixture, readRun, runAs, stubWorktree } from './helpers.mjs';
 
 const prepareDispatch = composeIn(preparePrepared);
@@ -132,6 +132,28 @@ test('the command reads the same in every shell, spaces in the path included', (
     const result = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude', workspace });
     assert.doesNotMatch(result.command, /\\/, 'no backslash for a POSIX shell to eat');
   });
+});
+
+// No quoting reads the same in all four shells: cmd has only double quotes,
+// inside which bash and PowerShell expand `$` and interactive bash expands `!`,
+// and cmd expands %NAME% quoted or not. A path like that gets the POSIX form,
+// and the dispatch says which shells cannot run it instead of letting the worker
+// never start (adversary R2-F1 on PR #40).
+test('a path no quoting carries everywhere is named, with the shells that cannot run it', () => {
+  assert.equal(shellArg('/tmp/a,b/x'), '"/tmp/a,b/x"', 'PowerShell reads an unquoted comma as an array');
+  assert.equal(commandPortability(['/tmp/plain/x', '/home/me/My Projects/x']), null);
+  assert.match(commandPortability(['/tmp/release!candidate/x']), /cannot run in cmd:/);
+  assert.match(commandPortability(["/odd/it's $x"]), /cannot run in cmd or PowerShell:.*Run them from bash or zsh\./);
+  assert.match(commandPortability(['/tmp/%TEMP%/x']), /cannot run in cmd:.*%TEMP%/);
+
+  const plain = fixture({ '.agents/config.json': JSON.stringify(CONFIG) });
+  const root = `${plain}-release!candidate`;
+  renameSync(plain, root);
+  try {
+    const result = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude',
+      workspace: resolve(root, '.worktrees/x') });
+    assert.ok(result.warnings.some(w => /cmd/.test(w) && w.includes(root.replaceAll('\\', '/'))), result.warnings.join('\n'));
+  } finally { cleanup(root); }
 });
 
 // The conductor decides whether an engine is appropriate for a task, and it can

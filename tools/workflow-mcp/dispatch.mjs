@@ -23,13 +23,39 @@ import { currentVerdict } from './inspect.mjs';
 // One argument of a command the conductor pastes into whatever shell it has —
 // bash, zsh, PowerShell or cmd. Forward slashes, which node accepts on Windows
 // too, and double quotes only when a path needs them: both read the same in all
-// four. A value double quotes cannot carry safely falls back to POSIX quoting.
+// four. No comma unquoted: PowerShell reads `a,b` as an array and passes two
+// arguments. A value double quotes cannot carry safely falls back to POSIX
+// quoting, and commandPortability says where that cannot run.
+const portablePath = value => (process.platform === 'win32' ? value.replaceAll('\\', '/') : value);
 export const shellArg = value => {
-  const path = process.platform === 'win32' ? value.replaceAll('\\', '/') : value;
-  if (/^[A-Za-z0-9_@%+=:,./-]+$/.test(path)) return path;
-  if (!/["$`\\!%]/.test(path)) return `"${path}"`;
+  const path = portablePath(value);
+  if (/^[A-Za-z0-9_@%+=:./-]+$/.test(path)) return path;
+  if (!/["$`\\!]/.test(path)) return `"${path}"`;
   return `'${path.replaceAll("'", `'\\''`)}'`;
 };
+
+// Which shells cannot run a command built from these values, as one sentence —
+// null when all four can. No quoting reads the same everywhere: cmd has only
+// double quotes, inside which bash and PowerShell expand `$` and backticks and
+// interactive bash expands `!`, so those get POSIX single quotes, which cmd does
+// not have; PowerShell escapes a quote inside them differently; and cmd expands
+// %NAME% whether quoted or not.
+export function commandPortability(values) {
+  const reasons = new Map();
+  for (const value of values) {
+    const path = portablePath(value);
+    if (shellArg(value).startsWith("'")) {
+      reasons.set('cmd', `cmd has no single quotes (${path})`);
+      if (path.includes("'")) reasons.set('PowerShell', `PowerShell escapes a quote inside single quotes differently (${path})`);
+    }
+    const variable = /%[^%\s/]+%/.exec(path)?.[0];
+    if (variable && !reasons.has('cmd')) reasons.set('cmd', `cmd expands ${variable} even inside quotes (${path})`);
+  }
+  if (!reasons.size) return null;
+  const others = ['bash', 'zsh', 'PowerShell'].filter(shell => !reasons.has(shell));
+  return `The returned commands cannot run in ${[...reasons.keys()].join(' or ')}: ${[...reasons.values()].join('; ')}. `
+    + `Run them from ${others.slice(0, -1).join(', ')} or ${others.at(-1)}.`;
+}
 
 // Resolved against this file's own location, not `root`: the runner and the
 // checks are part of the workflow-mcp tool, always siblings of dispatch.mjs,
@@ -431,6 +457,11 @@ export function prepareDispatch(root, input = {}) {
     warnings.push(`The diff for ${diff.range} was truncated at ${diff.bytes} bytes. The worker is `
       + 'told, but its findings cover only the part it received.');
   }
+  // The command is pasted into whatever shell the conductor has; a path no
+  // quoting carries into all of them has to be said before it is run, not
+  // discovered as a worker that never started.
+  const portability = commandPortability([RUN_WORKER, dir, ...(composed.test_paths ? [RED_CHECK] : [])]);
+  if (portability) warnings.push(portability);
   // The diff is data; the worktree is where the reviewer reads whole files. A
   // checkout at another commit hands it files the diff did not produce —
   // measured on a post-merge review, the reviewer refused to review at all.
