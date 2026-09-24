@@ -192,8 +192,8 @@ test('each engine reaches report_file by its own mechanism, and none needs a tra
     assert.equal(readRun(codex).stdout, 'raw', 'its transcript stays out of the report');
 
     const claude = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude', workspace });
-    assert.equal(readRun(claude).stdout, 'report', 'claude\'s stdout is its report');
-    assert.equal(readRun(claude).stderr, 'inherit', 'claude\'s stderr must stay out of its report');
+    assert.equal(readRun(claude).extract, 'extract-claude-result.mjs', 'claude\'s JSON result is extracted');
+    assert.ok(readRun(claude).args.join(' ').includes('--output-format json'));
 
     const agy = prepareDispatch(root, { ...base, cli_engine: 'antigravity', conductorEngine: 'claude', workspace });
     assert.equal(readRun(agy).extract, 'extract-agy-result.mjs', 'antigravity needs the post-processing step');
@@ -546,18 +546,39 @@ test('every engine reports through report_file, so the conductor has one retriev
   });
 });
 
-test('claude\'s report file holds the report, and its stderr still reaches the conductor', () => {
+// The shape measured 2026-09-24 from `claude -p --output-format json`, trimmed to
+// the fields the extraction reads.
+const claudeResult = fields => JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'the report',
+  num_turns: 3, total_cost_usd: 0.0123, permission_denials: [],
+  usage: { input_tokens: 9, cache_creation_input_tokens: 4213, cache_read_input_tokens: 16130, output_tokens: 37 }, ...fields });
+const printing = (stdout, stderr = '') =>
+  ['-e', `process.stdout.write(${JSON.stringify(stdout + '\n')}); process.stderr.write(${JSON.stringify(stderr)});`];
+
+test('claude\'s report is the result text of its JSON output, with its usage recorded beside it', () => {
   withRepo(root => {
     const built = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude',
       workspace: resolve(root, '.worktrees/x') });
-    const outcome = runAs(built, 'sh', ['-c', 'echo the report; echo a warning >&2']);
+    const outcome = runAs(built, process.execPath, printing(claudeResult({}), 'a warning\n'), { engineOutput: true });
 
-    assert.equal(outcome.status, 0);
-    assert.match(readFileSync(built.report_file, 'utf8'), /the report/);
-    assert.doesNotMatch(readFileSync(built.report_file, 'utf8'), /a warning/,
-      'stderr must not be folded into the report the conductor reads as the worker\'s answer');
-    assert.match(outcome.stderr, /a warning/, 'stderr still belongs to the conductor');
+    assert.equal(outcome.status, 0, outcome.stderr);
+    assert.equal(readFileSync(built.report_file, 'utf8'), 'the report\n');
     assert.match(outcome.stdout, /the report/, 'a foreground run still prints the report');
+    const usage = JSON.parse(readFileSync(resolve(dirname(built.report_file), 'usage.json'), 'utf8'));
+    assert.equal(usage.total_tokens, 9 + 4213 + 16130 + 37);
+    assert.equal(usage.total_cost_usd, 0.0123);
+  });
+});
+
+test('a claude error result, or none at all, fails the run', () => {
+  withRepo(root => {
+    const workspace = resolve(root, '.worktrees/x');
+    const errored = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude', workspace, task_id: 'err' });
+    assert.notEqual(runAs(errored, process.execPath, printing(claudeResult({ is_error: true, subtype: 'error_max_turns' })),
+      { engineOutput: true }).status, 0);
+    const silent = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude', workspace, task_id: 'none' });
+    const outcome = runAs(silent, process.execPath, printing('not json at all'), { engineOutput: true });
+    assert.notEqual(outcome.status, 0);
+    assert.match(outcome.stdout, /No result object found/);
   });
 });
 

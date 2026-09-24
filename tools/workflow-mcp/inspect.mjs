@@ -47,6 +47,18 @@ function readReport(record, dir) {
       summary.empty = true;
     }
   }
+  // extract-claude-result.mjs writes these beside the transcript. A denial does
+  // not end a claude run — the model is told and carries on — so it is a warning
+  // for the conductor to weigh, not a rejection.
+  if (record?.engine === 'claude') {
+    const recorded = readJson(resolve(dir, 'usage.json'));
+    if (recorded) {
+      summary.usage = { total_tokens: recorded.total_tokens, total_cost_usd: recorded.total_cost_usd,
+        num_turns: recorded.num_turns };
+      summary.permission_denials = (recorded.permission_denials ?? []).map(denial =>
+        `${denial?.tool_name ?? 'tool'} ${JSON.stringify(denial?.tool_input ?? {}).slice(0, 160)}`);
+    }
+  }
   if (record?.engine === 'codex') {
     summary.usage = codexUsage(resolve(dir, 'raw.txt'));
     // Codex's sandbox does not bound reads (measured), so its transcript is
@@ -150,6 +162,10 @@ function verdictFor({ record, outcome, report, worktree, decision, red }) {
     warnings.push(`The worker read skills it was not sent: ${unsent.join(', ')}. Every worktree holds every `
       + 'committed skill; for a reviewer, reading another role\'s procedures can void its independence.');
   }
+  if (report.permission_denials?.length) {
+    warnings.push(`claude denied ${report.permission_denials.length} tool call(s) and the worker carried on: `
+      + `${report.permission_denials.slice(0, 5).join('; ')}. Check the report does not rest on what it could not do.`);
+  }
   if (audit?.commands_not_allowlisted?.length) {
     warnings.push(`Commands not on the allowlist verbatim: ${audit.commands_not_allowlisted.join('; ')}.`);
   }
@@ -229,8 +245,8 @@ function summarise(root, task_id, dir, listing, { archived = false } = {}) {
       duration_ms: outcome.duration_ms ?? null, exit_code: outcome.exit_code ?? null,
       process_exit_code: outcome.process_exit_code ?? null, extraction_exit_code: outcome.extraction_exit_code ?? null } : null,
     report: reportSummary,
-    // agy reports usage in its result event and codex in its transcript; claude's
-    // report is the final message alone, so it has none.
+    // agy reports usage in its result event, codex in its transcript, claude in
+    // its JSON result (usage.json).
     usage: usage ?? null,
     audit: audit ?? null,
     worktree,
@@ -415,7 +431,7 @@ export function dispatchStats(root) {
     attempts: attempts.length,
     by_engine_role,
     note: 'Counts cover every attempt composed in this checkout, archived retries included. accepted/rejected are the '
-      + 'conductor\'s recorded decisions; mechanical_* are computed. total_tokens is null where the engine reports no '
-      + 'usage counters (claude, whose report is its final message alone).'
+      + 'conductor\'s recorded decisions; mechanical_* are computed. total_tokens is null where no attempt reported '
+      + 'usage counters (an engine that reports none, or runs from before claude workers reported theirs).'
   };
 }

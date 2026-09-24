@@ -149,10 +149,13 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
         if (!standIn) throw new Error(`standIns given, but none for "${task_id}" attempt ${attempt} — refusing to fall back to a real engine`);
         standIn.effect?.(wt.workspace);
         // run.json is the one record of what runs: pointing it at a shell script
-        // exercises the real runner with everything but the engine.
+        // exercises the real runner with everything but the engine. A stand-in
+        // prints plain text, not claude's JSON result, so on claude its stdout is
+        // captured as the report directly.
         const runFile = resolve(current.report_file, '..', 'run.json');
-        writeFileSync(runFile, JSON.stringify({ ...JSON.parse(readFileSync(runFile, 'utf8')),
-          executable: shell, args: ['-c', standIn.script] }, null, 2) + '\n');
+        const run = JSON.parse(readFileSync(runFile, 'utf8'));
+        const plain = run.extract === 'extract-claude-result.mjs' ? { stdout: 'report', stderr: 'inherit', extract: null } : {};
+        writeFileSync(runFile, JSON.stringify({ ...run, executable: shell, args: ['-c', standIn.script], ...plain }, null, 2) + '\n');
       }
       // Verbatim, through a shell, the way a conductor runs it.
       const run = spawnSync(current.command, { shell: true, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024 });

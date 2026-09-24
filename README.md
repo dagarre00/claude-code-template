@@ -116,7 +116,7 @@ Conductor-only rules (branch, commit, push, open a PR) are withheld from workers
 
 | | leaf worker | read-only | running commands | clean report |
 | --- | --- | --- | --- | --- |
-| claude | process (`--disallowedTools Agent,Task`) | process (no approval surface for edits) | allowlisted from `workerCommands` | stdout already is the report |
+| claude | process (`--disallowedTools Agent,Task`) | process (no approval surface for edits) | allowlisted from `workerCommands` | `report_file`, extracted from its JSON result, with tokens, cost and denied tool calls |
 | codex | process (`agents.enabled=false`) | process (OS sandbox) | free inside the sandbox | `report_file`, via `-o` |
 | agy | process (custom agent with no subagent tools) | process (custom agent with no write tools) | allowlisted; needs a one-time user-global grant | `report_file`, extracted by the runner, plus an audit of reads outside the workspace |
 

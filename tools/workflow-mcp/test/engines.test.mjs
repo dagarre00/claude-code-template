@@ -148,8 +148,9 @@ test('codex omits both context-management overrides when not configured', () => 
 // runs extractReportFrom over the captured transcript instead — writesReportFile
 // is true either way, because from the conductor's side the outcome is the same.
 test('each engine declares honestly whether the conductor can read its report cleanly', () => {
-  assert.equal(ENGINES.claude.reportIsStdout, true);
-  assert.equal(ENGINES.claude.writesReportFile, false);
+  assert.equal(ENGINES.claude.reportIsStdout, false);
+  assert.equal(ENGINES.claude.writesReportFile, true);
+  assert.equal(ENGINES.claude.extractReportFrom, 'extract-claude-result.mjs', 'claude\'s JSON result carries its usage');
   assert.equal(ENGINES.codex.reportIsStdout, false);
   assert.equal(ENGINES.codex.writesReportFile, true);
   assert.equal(ENGINES.codex.extractReportFrom, undefined, 'codex writes report_file itself, via -o');

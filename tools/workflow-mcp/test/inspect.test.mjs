@@ -111,6 +111,24 @@ test('an empty report is rejected even when the process exited 0', () => {
   });
 });
 
+// claude used to report no tokens at all, so dispatch_stats could not compare
+// its cost with the other engines; and a tool call it denied mid-run (the worker
+// carries on) left no trace for the conductor.
+test('a claude dispatch reports its tokens, and warns about tool calls it denied', () => {
+  repo((root, tools) => {
+    const { built } = dispatch(tools, { task_id: 'counted', script: 'unused' });
+    const result = JSON.stringify({ type: 'result', subtype: 'success', is_error: false, result: 'F1 — minor — x', num_turns: 2,
+      total_cost_usd: 0.02, usage: { input_tokens: 10, cache_creation_input_tokens: 20, cache_read_input_tokens: 30, output_tokens: 40 },
+      permission_denials: [{ tool_name: 'Bash', tool_use_id: 't1', tool_input: { command: 'curl https://example.com' } }] });
+    runAs(built, process.execPath, ['-e', `console.log(${JSON.stringify(result)})`], { engineOutput: true });
+    const inspected = tools.inspect_dispatch({ task_id: 'counted' });
+    assert.equal(inspected.verdict.mechanical, 'pass', inspected.verdict.reasons.join(' '));
+    assert.deepEqual(inspected.usage, { total_tokens: 100, total_cost_usd: 0.02, num_turns: 2 });
+    assert.match(inspected.verdict.warnings.join(' '), /denied 1 tool call.*curl https:\/\/example\.com/);
+    assert.equal(tools.dispatch_stats().by_engine_role.find(row => row.engine === 'claude').total_tokens, 100);
+  });
+});
+
 // Before a decision, a vanished worktree means the scope check had nothing to
 // look at — which used to read as "no violations". After one, cleanup is expected.
 test('a finished dispatch whose worktree is gone is rejected until someone decides on it', () => {

@@ -37,7 +37,8 @@ export default {
   // below without a note here fails the suite. `config` rows show `value` instead of
   // a real value: it is whatever the project's settings say.
   flagNotes: {
-    '--print': { kind: 'plumbing', why: 'Runs non-interactively. It prints only the final message, and that message is the worker\'s report.' },
+    '--print': { kind: 'plumbing', why: 'Runs non-interactively, and the final message is the worker\'s report.' },
+    '--output-format': { kind: 'plumbing', why: 'Prints one JSON result: the report, plus the tokens, cost and any denied tool calls, which the runner records for inspection and dispatch_stats.' },
     '--safe-mode': { kind: 'guarantee', why: 'The context guarantee: the worker sees only the prompt it was composed, not the project\'s own instruction files.' },
     '--no-session-persistence': { kind: 'hygiene', why: 'Does not save the run as a session that could be resumed.' },
     '--permission-mode': { kind: 'guarantee', why: 'Read-only roles run in dontAsk mode: with no approval surface, edits are denied while the allowed commands still run. Write roles run in acceptEdits.' },
@@ -62,13 +63,18 @@ export default {
   // automatically denied because it requires user approval and there's no
   // approval interface in this session type", and no file appears.
   enforcesReadOnly: true,
-  // `--print` with no --output-format prints only the final assistant
-  // message — no per-tool-call echo. Nothing to isolate, so no report_file.
-  reportIsStdout: true,
-  writesReportFile: false,
+  // `--output-format json` prints one result object: the final message plus the
+  // run's token usage, cost and permission denials, which plain `--print` never
+  // showed — dispatch_stats had no token count for claude workers.
+  // extract-claude-result.mjs writes the message to report_file and the rest to
+  // usage.json.
+  reportIsStdout: false,
+  writesReportFile: true,
+  extractReportFrom: 'extract-claude-result.mjs',
   buildArgs({ settings, readOnly, model, effort }) {
     const args = [
       '--print',
+      '--output-format', 'json',
       // The context guarantee. Everything else here is hygiene.
       '--safe-mode',
       '--no-session-persistence',

@@ -39,12 +39,13 @@ const RED_CHECK = fileURLToPath(new URL('./red-check.mjs', import.meta.url));
 
 // Where each stream goes, per engine. Three ways to one destination —
 // report_file — so the conductor reads one file whatever the engine:
-//   - reportIsStdout (claude): stdout IS the report. stderr stays with the
-//     conductor: a crash trace folded into the report reads as a strange answer.
+//   - reportIsStdout (an engine whose stdout IS the report): captured straight
+//     into report_file, stderr left with the conductor — a crash trace folded
+//     into the report reads as a strange answer.
 //   - writesReportFile (codex): the engine writes report_file itself (-o), and
 //     its transcript goes to raw_file.
-//   - extractReportFrom (antigravity): the transcript goes to raw_file and the
-//     runner extracts report_file from it.
+//   - extractReportFrom (claude's JSON result, antigravity's transcript): the
+//     output goes to raw_file and the runner extracts report_file from it.
 function streamsFor(adapter) {
   if (adapter.reportIsStdout) return { stdout: 'report', stderr: 'inherit', extract: null };
   return { stdout: 'raw', stderr: 'raw', extract: adapter.extractReportFrom ?? null };
@@ -367,9 +368,8 @@ export function prepareDispatch(root, input = {}) {
       + 'worktree\'s `violations` against the access level recorded for this dispatch, so the check is '
       + 'computed rather than remembered. Anything it touched voids the round (behavioral rule 12).');
   }
-  // Only worth a warning where nothing already solves it: claude's stdout is
-  // already just the final message (reportIsStdout), and codex gets a separate
-  // report_file below (writesReportFile). Antigravity has neither.
+  // Only worth a warning where nothing already solves it: every current engine
+  // either writes report_file or has it extracted (writesReportFile).
   if (!adapter.writesReportFile && !adapter.reportIsStdout) {
     warnings.push(`${engine} has no way to separate the worker's report from its full tool-call `
       + 'transcript — everything lands in stdout together, and on a large task that can reach '

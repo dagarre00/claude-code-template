@@ -12,9 +12,16 @@ export const readRun = built => JSON.parse(readFileSync(resolve(dirname(built.re
 // the engine: run.json is the one record of what runs, so pointing it at `sh`
 // (or node) exercises everything but the engine itself. `run` overrides any
 // other run.json field, such as timeout_seconds.
-export function runAs(built, executable, args = [], { env = process.env, run = {} } = {}) {
+//
+// Stand-ins print plain text, while a real claude worker prints a JSON result the
+// runner extracts. Unless a test is about that extraction (`engineOutput`), a
+// claude stand-in's stdout is captured as the report directly.
+export function runAs(built, executable, args = [], { env = process.env, run = {}, engineOutput = false } = {}) {
   const dir = dirname(built.report_file);
-  writeFileSync(resolve(dir, 'run.json'), JSON.stringify({ ...readRun(built), executable, args, ...run }, null, 2) + '\n');
+  const current = readRun(built);
+  const plain = !engineOutput && current.extract === 'extract-claude-result.mjs'
+    ? { stdout: 'report', stderr: 'inherit', extract: null } : {};
+  writeFileSync(resolve(dir, 'run.json'), JSON.stringify({ ...current, executable, args, ...plain, ...run }, null, 2) + '\n');
   return spawnSync(process.execPath, [RUN_WORKER, dir], { encoding: 'utf8', env });
 }
 
