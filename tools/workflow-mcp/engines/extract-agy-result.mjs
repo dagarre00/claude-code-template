@@ -2,8 +2,8 @@
 // Pulls the report out of an antigravity (agy) stream-json transcript, and
 // doubles as the only mechanical failure signal agy's own exit code cannot
 // give. The underlying process exits 0 with status: SUCCESS in every one of
-// these cases, so this script exits non-zero for each and dispatch.mjs's
-// buildRunnableCommand folds that into the wrapped command's own exit code:
+// these cases, so this script exits non-zero for each and run-worker.mjs folds
+// that into the run's own exit code:
 //
 //   - no "result" event at all (killed, timed out);
 //   - a denied action headless mode could not prompt for;

@@ -42,11 +42,13 @@ export function createServer(root, conductorEngine) {
     {}, () => api.list_roles());
 
   register('build_worker_prompt',
-    'Compose the complete prompt for one worker from .agents/ and return the exact command to run it. '
-    + 'Writes prompt.txt (readable) and stdin.txt (the bytes to pipe). The worker receives this prompt and '
-    + 'nothing else — every engine is launched with project-file discovery suppressed. Run the returned '
-    + 'command yourself; this server never spawns anything. The command records how the run went; call '
-    + 'inspect_dispatch afterwards rather than judging the exit code and report by hand.',
+    'Compose the complete prompt for one worker from .agents/ and return the one-line command that runs it '
+    + '(node run-worker.mjs <dispatch dir> — any shell, any OS). Writes prompt.txt (readable), stdin.txt and '
+    + 'run.json beside it. The worker receives this prompt and nothing else — every engine is launched with '
+    + 'project-file discovery suppressed. Run the returned command yourself, in the background if your shell '
+    + 'tool has a short limit: it can take up to workerTimeoutSeconds. This server never spawns anything. The '
+    + 'command records how the run went; call inspect_dispatch afterwards rather than judging the exit code and '
+    + 'report by hand.',
     {
       role: z.string().describe('Role name from list_roles.'),
       instructions: z.string().min(1).max(100000).optional().describe('What this worker must do. Use instructions_file instead for anything large.'),

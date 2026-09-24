@@ -11,10 +11,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { buildRunnableCommand } from '../dispatch.mjs';
-import { ENGINES } from '../engines/index.mjs';
 import { makeTools } from '../tools.mjs';
-import { cleanup, fixture } from './helpers.mjs';
+import { cleanup, fixture, runAs } from './helpers.mjs';
 
 const CONFIG = {
   version: 1, defaultEngine: 'inherit', workerTimeoutSeconds: 1800, workerCommands: ['npm test'],
@@ -54,12 +52,7 @@ function dispatch(tools, { task_id, role = 'adversary', engine = 'claude', scrip
   const wt = tools.prepare_worktree({ task_id });
   const built = tools.build_worker_prompt({ role, instructions: 'Do the task.', workspace: wt.workspace,
     cli_engine: engine, task_id, ...(role === 'developer' ? { owned_paths: ['src'] } : {}), ...extra });
-  return { wt, built, run: () => {
-    const command = { executable: 'sh', args: ['-c', script] };
-    const wrapped = buildRunnableCommand({ workspace: wt.workspace, command, stdin_file: built.stdin_file,
-      report_file: built.report_file, raw_file: resolve(built.report_file, '..', 'raw.txt'), adapter: ENGINES[engine] });
-    return spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' });
-  } };
+  return { wt, built, run: () => runAs(built, 'sh', ['-c', script]) };
 }
 
 test('a prepared worktree already has a record, before any prompt is composed', () => {
@@ -324,9 +317,7 @@ test('re-dispatching into the same worktree keeps the attempt before it, and cou
     const wt = tools.prepare_worktree({ task_id: 'resume' });
     const compose = () => tools.build_worker_prompt({ role: 'adversary', instructions: 'Review.',
       workspace: wt.workspace, cli_engine: 'claude', task_id: 'resume' });
-    const runWith = (built, script) => spawnSync('sh', ['-c', buildRunnableCommand({ workspace: wt.workspace,
-      command: { executable: 'sh', args: ['-c', script] }, stdin_file: built.stdin_file, report_file: built.report_file,
-      raw_file: resolve(built.report_file, '..', 'raw.txt'), adapter: ENGINES.claude })]);
+    const runWith = (built, script) => runAs(built, 'sh', ['-c', script]);
 
     runWith(compose(), 'exit 4');
     compose();                                   // composed again, not yet run

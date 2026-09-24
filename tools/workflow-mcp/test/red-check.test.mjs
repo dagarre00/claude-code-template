@@ -10,11 +10,9 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
-import { buildRunnableCommand } from '../dispatch.mjs';
-import { ENGINES } from '../engines/index.mjs';
 import { makeTools } from '../tools.mjs';
 import { restoreRedCheck, revertForRedCheck, runRedCheck } from '../red-check.mjs';
-import { cleanup, fixture } from './helpers.mjs';
+import { cleanup, fixture, runAs } from './helpers.mjs';
 
 const CONFIG = {
   version: 1, defaultEngine: 'inherit', workerTimeoutSeconds: 1800, workerCommands: ['npm test'],
@@ -65,10 +63,7 @@ function developer(tools, task_id, files, extra = {}) {
   const built = tools.build_worker_prompt({ role: 'developer', instructions: 'Implement B1.', workspace: wt.workspace,
     cli_engine: 'claude', task_id, owned_paths: ['src', 'test'], test_paths: ['test'], test_command: TEST_COMMAND, ...extra });
   for (const [path, body] of Object.entries(files)) put(wt.workspace, path, body);
-  const wrapped = buildRunnableCommand({ workspace: wt.workspace, command: { executable: 'sh', args: ['-c', 'echo "B1 red: AssertionError"'] },
-    stdin_file: built.stdin_file, report_file: built.report_file, raw_file: resolve(built.report_file, '..', 'raw.txt'),
-    adapter: ENGINES.claude });
-  assert.equal(spawnSync('sh', ['-c', wrapped], { encoding: 'utf8' }).status, 0);
+  assert.equal(runAs(built, 'sh', ['-c', 'echo "B1 red: AssertionError"']).status, 0);
   return { wt, built, dir: dirname(built.report_file) };
 }
 

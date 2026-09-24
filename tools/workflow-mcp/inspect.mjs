@@ -95,14 +95,16 @@ function verdictFor({ record, outcome, report, worktree, decision, red }) {
   if (!record) return { mechanical: 'incomplete', reasons: ['No prompt has been composed for this task yet.'], warnings };
   if (!outcome) {
     return { mechanical: 'incomplete', warnings, reasons: ['This dispatch has not been run through its returned command — '
-      + 'no outcome is recorded. A process launched from the structured executable/args fields bypasses the '
-      + 'recording: judge its report by hand, or re-run the command string.'] };
+      + 'no outcome is recorded. Run the command build_worker_prompt returned.'] };
   }
   if (!outcome.finished_at) {
     return { mechanical: 'incomplete', warnings,
       reasons: [`Started at ${outcome.started_at} and has not finished (or was killed before it could record an exit).`] };
   }
-  if (outcome.exit_code !== 0) {
+  if (outcome.timed_out) {
+    reasons.push('The worker ran past its time limit (workerTimeoutSeconds) and was stopped with every process it '
+      + 'started; its work is unfinished. Narrow the brief, or raise the limit if the task genuinely needs longer.');
+  } else if (outcome.exit_code !== 0) {
     reasons.push(`The command exited ${outcome.exit_code} (process ${outcome.process_exit_code}`
       + `${outcome.extraction_exit_code == null ? '' : `, report extraction ${outcome.extraction_exit_code}`}).`);
   }

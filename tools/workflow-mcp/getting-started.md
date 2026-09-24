@@ -62,7 +62,8 @@ Two failures on the same approach trigger the **two-strike rule**: the agent tag
 | A role runs the wrong engine or model | `node tools/workflow-mcp/config-ui.mjs` shows what each role will run, and edits it; [config.md](config.md) is the reference. |
 | A role's CLI isn't installed | `check` lists the undispatchable roles. Give the role a fallback chain (`"engine": ["codex", "claude"]`) or pass `cli_engine` for one dispatch. |
 | An agy worker exits 0 with an empty report | A command grant is missing: call `grant_antigravity_setup` ([engine-setup.md](engine-setup.md)). |
-| A claude or codex worker runs past `workerTimeoutSeconds` | Only Antigravity enforces it today; stop the process yourself. |
+| A worker is stopped at `workerTimeoutSeconds` (exit 124, `inspect_dispatch` names it) | The runner stops every engine, and every process it started, at the limit. Narrow the brief first; raise the limit only for a task that genuinely needs longer. |
+| The conductor's shell tool returns before the worker finishes | The worker is still running: its record says `running` until the runner exits. Run dispatches in the background and wait for completion; never compose into the task meanwhile. |
 | The adversary says only "looks good" | An unexplained pass is a failed review: re-dispatch demanding the `Checked:` line. |
 | Review rounds keep producing findings | Three rounds is the cap; after it, criticals and majors are filed and the range is split next time. |
 | `sync` or `check` reports no drift but the new content is missing — or the server rejects something the files on disk accept | The MCP server caches its own source for the life of the session, so edits to `tools/workflow-mcp/` (or a `/project:sync-template`) don't reach it. Regenerate directly — from `tools/workflow-mcp/`: `node -e "import('./generate.mjs').then(m => m.generate('<repo-root>'))"` (forward slashes), confirm with a grep — and restart the session to reload the server. |
@@ -70,7 +71,7 @@ Two failures on the same approach trigger the **two-strike rule**: the agent tag
 | Skills load from another project's checkout (their `Base directory` is elsewhere) | Two projects share a marketplace name, and Claude Code keeps one per name per machine. Use `workflow-<dir-name>` in `.claude-plugin/marketplace.json` and both `.claude/settings.json` keys (`extraKnownMarketplaces`, `enabledPlugins`), then restart. |
 | The `workflow` server fails to start under codex or agy (`MODULE_NOT_FOUND`) | The registration used relative paths, and the CLI spawns the server from another directory. Codex: use the project-local `.codex/config.toml` `scripts/adopt.sh` writes (absolute paths, gitignored). agy: its registration is machine-global (antigravity-cli#60), so register with absolute paths — `agy mcp add workflow node <abs>/tools/workflow-mcp/server.mjs --root <abs> --engine antigravity` — and again whenever you switch projects; two agy sessions in different projects collide. |
 | After testing `scripts/adopt.sh` on a scratch directory, agy dispatches against the wrong project | The script's `agy mcp add` overwrote the global registration. Re-register the real project, or hide `agy` from `PATH` for such runs. |
-| `cd: C:/…: No such file or directory` when running a dispatch command | It ran under WSL, which cannot see Windows paths. Use Git Bash, or launch from the returned `executable`/`args`/`cwd`/`stdin_file`. |
+| `Cannot find module 'C:/…/run-worker.mjs'` when running a dispatch command | It ran under WSL, whose node cannot see Windows paths. Run it from a shell on the machine that holds the checkout — Git Bash, PowerShell or cmd on Windows. |
 
 ## Habits that break the loop
 

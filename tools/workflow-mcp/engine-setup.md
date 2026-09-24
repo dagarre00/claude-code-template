@@ -82,7 +82,7 @@ headless mode cannot prompt for, so it was auto-denied.
 
 **`check` finds this before a cycle:** its `antigravity.setup` block lists every entry with no grant, and `roles_with_unmet_setup` names each role whose engine — the first *installed* one in its chain — has one missing.
 
-**The wrapped command turns silent agy failures into real ones.** `extract-agy-result.mjs` exits non-zero on a denied action (naming the refused target from the transcript), a missing `result` event, an empty response with no denial, a write outside the workspace, or a subagent call; the whole command's exit code carries it unless the process itself already failed. Twice in about thirty runs agy rejected the model's own malformed tool call (`invalid arguments: missing property …`) and the run simply ended: that is marked `transient`, `inspect_dispatch` reports `verdict.transient: true`, and the `worker-dispatch` skill allows one unchanged retry.
+**The runner turns silent agy failures into real ones.** `run-worker.mjs` runs `extract-agy-result.mjs` over the transcript, which exits non-zero on a denied action (naming the refused target from the transcript), a missing `result` event, an empty response with no denial, a write outside the workspace, or a subagent call; the whole command's exit code carries it unless the process itself already failed. Twice in about thirty runs agy rejected the model's own malformed tool call (`invalid arguments: missing property …`) and the run simply ended: that is marked `transient`, `inspect_dispatch` reports `verdict.transient: true`, and the `worker-dispatch` skill allows one unchanged retry.
 
 ### Read grants for files outside the worktree
 

@@ -23,8 +23,7 @@ import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, write
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { buildRunnableCommand } from '../dispatch.mjs';
-import { ENGINES, engineNames } from '../engines/index.mjs';
+import { engineNames } from '../engines/index.mjs';
 import { makeTools } from '../tools.mjs';
 import { runRedCheck } from '../red-check.mjs';
 
@@ -144,17 +143,19 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
     if (dryRun) return { wt, built, inspected: tools.inspect_dispatch({ task_id }) };
     const runOnce = (attempt, current) => {
       const started = Date.now();
-      let command = current.command;
       if (standIns) {
         const entry = standIns[task_id];
         const standIn = Array.isArray(entry) ? entry[attempt - 1] : entry;
         if (!standIn) throw new Error(`standIns given, but none for "${task_id}" attempt ${attempt} — refusing to fall back to a real engine`);
         standIn.effect?.(wt.workspace);
-        command = buildRunnableCommand({ workspace: wt.workspace, command: { executable: 'sh', args: ['-c', standIn.script] },
-          stdin_file: current.stdin_file, report_file: current.report_file,
-          raw_file: resolve(current.report_file, '..', 'raw.txt'), adapter: ENGINES[engine] });
+        // run.json is the one record of what runs: pointing it at a shell script
+        // exercises the real runner with everything but the engine.
+        const runFile = resolve(current.report_file, '..', 'run.json');
+        writeFileSync(runFile, JSON.stringify({ ...JSON.parse(readFileSync(runFile, 'utf8')),
+          executable: shell, args: ['-c', standIn.script] }, null, 2) + '\n');
       }
-      const run = spawnSync(shell, ['-c', command], { encoding: 'utf8', timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024 });
+      // Verbatim, through a shell, the way a conductor runs it.
+      const run = spawnSync(current.command, { shell: true, encoding: 'utf8', timeout: timeoutMs, maxBuffer: 64 * 1024 * 1024 });
       runs += 1;
       const inspected = tools.inspect_dispatch({ task_id });
       log(`      ${task_id}: attempt ${attempt}, exit ${run.status} in ${Math.round((Date.now() - started) / 1000)}s — verdict ${inspected.verdict.mechanical}`);

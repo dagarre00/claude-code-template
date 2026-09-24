@@ -60,7 +60,7 @@ export default {
     '--add-dir': { kind: 'plumbing', why: 'Gives the worker its worktree as workspace, and separately the folder that holds its agent definition.' },
     '--agent': { kind: 'guarantee', why: 'Runs the worker as a custom agent whose tool list has no write tools (read-only roles) and no sub-agent tools. That is what enforces both rules on this engine.' },
     '--mode': { kind: 'guarantee', why: 'plan for read-only roles, accept-edits for write roles. No --sandbox is passed on purpose: with it, a headless worker cannot run any shell command.' },
-    '--print-timeout': { kind: 'config', value: '<seconds>s', why: 'From workerTimeoutSeconds (General → Worker time limit). The only engine that uses it.' },
+    '--print-timeout': { kind: 'config', value: '<seconds>s', why: 'From workerTimeoutSeconds (General → Worker time limit). agy stops itself and still reports; the runner stops every engine a minute later regardless.' },
     '--disable-slash-commands': { kind: 'hygiene', why: 'The skills are already in the prompt; this stops agy adding its own built-in ones on top.' },
     '--input-format': { kind: 'plumbing', why: 'The prompt is sent as stream-json.' },
     '--output-format': { kind: 'plumbing', why: 'The transcript comes back as stream-json, and the report is extracted from it.' },
@@ -90,6 +90,8 @@ export default {
   reportIsStdout: false,
   writesReportFile: true,
   extractReportFrom: 'extract-agy-result.mjs',
+  // --print-timeout below; run-worker.mjs's own limit stands a minute behind it.
+  enforcesTimeout: true,
   // --print always requires a value, and in text mode that value IS the prompt —
   // which would put a 35KB worker prompt on the command line, far past the
   // ~32K Windows limit. stream-json takes the prompt from stdin instead, with

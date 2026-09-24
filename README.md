@@ -88,7 +88,7 @@ dispatch_stats       # per engine and role: acceptance, retries, durations, toke
 list_worktrees / remove_worktree / list_roles / sync / grant_antigravity_setup
 ```
 
-The server never spawns, commits, merges or pushes — the conductor keeps all of that, and a failed worker is debugged by re-running a command line you can read. The full procedure is the `worker-dispatch` skill. Whatever the engine, running the returned command leaves only the worker's final report in `report_file`; the raw codex/agy transcript, which reached 6.9 MB on one real health pass, goes to a separate `raw_file`. `npm --prefix tools/workflow-mcp run e2e -- --engine <antigravity|codex|claude>` runs one small real cycle on an engine — run it after upgrading an engine CLI or before moving a role onto one.
+The server never spawns, commits, merges or pushes — the conductor keeps all of that. The command it hands back is one line, `node tools/workflow-mcp/run-worker.mjs <dispatch dir>`, the same in bash, zsh, PowerShell or cmd on Linux, macOS or Windows: the runner launches the engine from the argv recorded in `run.json` (no shell in between), stops it and everything it started at `workerTimeoutSeconds`, records the outcome and prints the report. The full procedure is the `worker-dispatch` skill. Whatever the engine, the run leaves only the worker's final report in `report_file`; the raw codex/agy transcript, which reached 6.9 MB on one real health pass, goes to a separate `raw_file`. `npm --prefix tools/workflow-mcp run e2e -- --engine <antigravity|codex|claude>` runs one small real cycle on an engine — run it after upgrading an engine CLI or before moving a role onto one.
 
 **Which model runs which role.** `.agents/config.json` is the only place: a role declares a `profile` (`reasoning` / `balanced` / `fast`), `engines.<engine>.models.<profile>` sets each CLI's default, and `roles.<role>` can pin an engine chain, model and effort. As shipped, four roles have their own engine chain and the rest follow the conducting CLI:
 
@@ -117,7 +117,7 @@ Conductor-only rules (branch, commit, push, open a PR) are withheld from workers
 | --- | --- | --- | --- | --- |
 | claude | process (`--disallowedTools Agent,Task`) | process (no approval surface for edits) | allowlisted from `workerCommands` | stdout already is the report |
 | codex | process (`agents.enabled=false`) | process (OS sandbox) | free inside the sandbox | `report_file`, via `-o` |
-| agy | process (custom agent with no subagent tools) | process (custom agent with no write tools) | allowlisted; needs a one-time user-global grant | `report_file`, via command wrapping, plus an audit of reads outside the workspace |
+| agy | process (custom agent with no subagent tools) | process (custom agent with no write tools) | allowlisted; needs a one-time user-global grant | `report_file`, extracted by the runner, plus an audit of reads outside the workspace |
 
 `build_worker_prompt` warns per dispatch about any box an engine cannot back. A worktree is not a read boundary on agy or codex (measured), which is why `inspect_dispatch` audits their transcripts for outside reads and for skills a worker opened without being sent them. Details: [`tools/workflow-mcp/engine-setup.md`](tools/workflow-mcp/engine-setup.md).
 

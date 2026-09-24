@@ -1,6 +1,22 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+export const RUN_WORKER = fileURLToPath(new URL('../run-worker.mjs', import.meta.url));
+
+export const readRun = built => JSON.parse(readFileSync(resolve(dirname(built.report_file), 'run.json'), 'utf8'));
+
+// Runs a composed dispatch through the real runner, with a stand-in in place of
+// the engine: run.json is the one record of what runs, so pointing it at `sh`
+// (or node) exercises everything but the engine itself. `run` overrides any
+// other run.json field, such as timeout_seconds.
+export function runAs(built, executable, args = [], { env = process.env, run = {} } = {}) {
+  const dir = dirname(built.report_file);
+  writeFileSync(resolve(dir, 'run.json'), JSON.stringify({ ...readRun(built), executable, args, ...run }, null, 2) + '\n');
+  return spawnSync(process.execPath, [RUN_WORKER, dir], { encoding: 'utf8', env });
+}
 
 // A throwaway canonical tree. Tests that care about one field override just that
 // field, so a failure names the field under test rather than the fixture.
