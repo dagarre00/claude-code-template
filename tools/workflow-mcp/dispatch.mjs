@@ -7,7 +7,6 @@
 // means a failed worker is debugged by re-running a command line a human can
 // read, not by reading a supervisor's logs.
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
 import { isAbsolute, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadCanonical } from './canonical.mjs';
@@ -142,8 +141,41 @@ function archiveAttempt(root, dir, task_id, { number, abandoned }) {
   }
 }
 
+// Path equality the way the filesystem sees it: separators and a trailing slash
+// never matter, and case does not on Windows.
+const samePath = (a, b) => {
+  const norm = path => resolve(path).replaceAll('\\', '/').replace(/\/+$/, '');
+  return process.platform === 'win32' ? norm(a).toLowerCase() === norm(b).toLowerCase() : norm(a) === norm(b);
+};
+
+// The worktree prepare_worktree made for this task, or a refusal. Every scope
+// check downstream — violations, commits, the Red check's base — is keyed on the
+// task's own worktree, so a dispatch into any other directory (the conductor's
+// own checkout, a sibling task's worktree) used to compose cleanly and then pass
+// inspection with nothing checked, because there was no worktree listing to
+// check it against.
+function preparedWorktree(root, task_id, workspace) {
+  if (typeof task_id !== 'string' || !task_id.trim()) {
+    throw new Error('task_id is required — pass the id prepare_worktree was given. The dispatch record, the '
+      + 'scope check and the Red check all key on it.');
+  }
+  const record = readJson(resolve(dispatchDir(root, task_id), 'worktree.json'));
+  if (!record?.workspace) {
+    throw new Error(`No worktree was prepared for task "${task_id}". Call prepare_worktree with this task_id first: `
+      + 'a worker runs only in its own task\'s worktree.');
+  }
+  if (!samePath(workspace, record.workspace)) {
+    throw new Error(`workspace ${workspace} is not the worktree prepared for task "${task_id}" (${record.workspace}). `
+      + 'A worker runs only in its own task\'s worktree; anywhere else, nothing checks what it changed.');
+  }
+  if (!existsSync(record.workspace)) {
+    throw new Error(`The worktree for task "${task_id}" is gone (${record.workspace}). Prepare a new task.`);
+  }
+  return record;
+}
+
 export function prepareDispatch(root, input = {}) {
-  const { conductorEngine, cli_engine, workspace, task_id = randomUUID() } = input;
+  const { conductorEngine, cli_engine, workspace, task_id } = input;
   // Every engine's command begins by entering the worktree — claude has no --cd
   // flag and works in the process's working directory — so a dispatch without
   // one produces `cd undefined`. Caught here because the alternative is what it
@@ -153,6 +185,7 @@ export function prepareDispatch(root, input = {}) {
     throw new Error('workspace is required — pass the path from prepare_worktree. A worker runs in its '
       + 'own checkout, and the command that starts it has to enter one.');
   }
+  const worktreeRecord = preparedWorktree(root, task_id, workspace);
   const canonical = loadCanonical(root);
   const config = loadConfig(root);
 
@@ -259,7 +292,6 @@ export function prepareDispatch(root, input = {}) {
   // which attempt" are all computable afterwards (dispatch-findings F-F,
   // resume-report §5). worker_commands is what extract-agy-result.mjs audits
   // run_command calls against; it reads this file from beside the transcript.
-  const worktreeRecord = readJson(resolve(dir, 'worktree.json'));
   writeFileSync(resolve(dir, 'dispatch.json'), JSON.stringify({
     task_id, role: composed.role, access: composed.access, profile: composed.profile,
     owned_paths: composed.owned_paths, protected_paths: config.protectedPaths,

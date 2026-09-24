@@ -118,6 +118,24 @@ test('an empty report is rejected even when the process exited 0', () => {
   });
 });
 
+// Before a decision, a vanished worktree means the scope check had nothing to
+// look at — which used to read as "no violations". After one, cleanup is expected.
+test('a finished dispatch whose worktree is gone is rejected until someone decides on it', () => {
+  repo((root, tools) => {
+    const { wt, run } = dispatch(tools, { task_id: 'vanished', script: 'echo "F1 — minor — correctness — x"' });
+    run();
+    assert.equal(git(root, 'worktree', 'remove', '--force', wt.workspace).status, 0);
+    const { verdict } = tools.inspect_dispatch({ task_id: 'vanished' });
+    assert.equal(verdict.mechanical, 'reject');
+    assert.match(verdict.reasons.join(' '), /worktree is gone/);
+    assert.throws(() => tools.record_decision({ task_id: 'vanished', decision: 'accepted', reason: 'Looks fine.' }),
+      /override_mechanical/);
+    tools.record_decision({ task_id: 'vanished', decision: 'rejected', reason: 'Its scope cannot be checked.' });
+    assert.doesNotMatch(tools.inspect_dispatch({ task_id: 'vanished' }).verdict.reasons.join(' '), /worktree is gone/,
+      'once decided, a removed worktree is ordinary cleanup');
+  });
+});
+
 // The acceptance example from the resume report, verbatim: exit 0 plus SUCCESS
 // plus a denied read must come out rejected.
 test('an agy SUCCESS with a denied read is rejected, and its usage counters are carried', () => {

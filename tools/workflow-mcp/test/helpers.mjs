@@ -34,6 +34,27 @@ export function fixture(overrides = {}) {
   return root;
 }
 
+// What prepare_worktree leaves behind, without git: the workspace directory and
+// the record a dispatch is checked against. For unit tests of composition that
+// never run a worker; anything that inspects a real worktree prepares one.
+export function stubWorktree(root, task_id = 'x', workspace = resolve(root, '.worktrees', task_id)) {
+  mkdirSync(workspace, { recursive: true });
+  const dir = resolve(root, '.worktrees', '.dispatch', task_id);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(resolve(dir, 'worktree.json'), JSON.stringify({ task_id, workspace, branch: `worker/${task_id}`,
+    base_sha: null, integration_branch: null, created_at: new Date().toISOString() }, null, 2) + '\n');
+  return { task_id, workspace };
+}
+
+// prepareDispatch for unit tests that compose without git: the worktree record
+// for the task is stubbed first, pointing at whatever workspace the test names.
+// Tests of the refusal itself call the real prepareDispatch.
+export const composeIn = prepare => (root, input = {}) => {
+  const task_id = input.task_id ?? 'x';
+  if (typeof input.workspace === 'string' && input.workspace.trim()) stubWorktree(root, task_id, input.workspace);
+  return prepare(root, { ...input, task_id });
+};
+
 export function cleanup(root) {
   rmSync(root, { recursive: true, force: true });
 }

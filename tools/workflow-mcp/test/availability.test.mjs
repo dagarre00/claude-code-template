@@ -11,9 +11,11 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { dirname, resolve } from 'node:path';
 import { findExecutable, grantAntigravitySetup } from '../availability.mjs';
 import { loadConfig, resolveEngine, resolveEngineChain } from '../config.mjs';
-import { prepareDispatch } from '../dispatch.mjs';
+import { prepareDispatch as preparePrepared } from '../dispatch.mjs';
 import { makeTools } from '../tools.mjs';
-import { cleanup, fixture } from './helpers.mjs';
+import { cleanup, composeIn, fixture } from './helpers.mjs';
+
+const prepareDispatch = composeIn(preparePrepared);
 
 // Isolates $HOME/$USERPROFILE for the duration of `fn`, the way agy's
 // engineSetup tests already do, so a real machine's own antigravity-cli

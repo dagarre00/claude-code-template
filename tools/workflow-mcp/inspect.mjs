@@ -113,6 +113,13 @@ function verdictFor({ record, outcome, report, worktree, decision, red }) {
   if (worktree.exists && worktree.violations?.length) {
     reasons.push(`A ${record.access} worker changed paths outside its scope: ${worktree.violations.join(', ')}.`);
   }
+  // A decided attempt's worktree is expected to be gone — cleanup follows the
+  // decision. Before one, a missing worktree means nothing above could look at
+  // what the worker changed, which is not the same as it having changed nothing.
+  if (!worktree.exists && !worktree.archived && !decision) {
+    reasons.push('This task\'s worktree is gone, so what the worker changed cannot be checked against its scope. '
+      + 'Accepting it needs override_mechanical and a reason that accounts for that.');
+  }
   // Only an acceptance accounts for commits: the conductor commits after
   // accepting. A rejection leaves them exactly as unexplained as before
   // (adversary F1, round 1).
@@ -181,7 +188,7 @@ function summarise(root, task_id, dir, listing, { archived = false } = {}) {
   const decision = readJson(resolve(dir, 'decision.json'));
   const state = !record ? 'prepared' : !outcome ? 'composed' : !outcome.finished_at ? 'running' : 'finished';
   const report = record ? readReport(record, dir) : { path: resolve(dir, 'report.txt'), exists: false, bytes: 0, empty: true };
-  const worktree = archived ? { exists: false } : worktreeState(root, record ?? worktreeRecord, listing);
+  const worktree = archived ? { exists: false, archived: true } : worktreeState(root, record ?? worktreeRecord, listing);
   const red = readRed(record, dir);
   // An archived attempt keeps the verdict it had when it was archived: its
   // worktree has moved on, so recomputing would forget any change outside scope

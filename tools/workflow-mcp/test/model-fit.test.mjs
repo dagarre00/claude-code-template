@@ -9,9 +9,11 @@ import assert from 'node:assert/strict';
 import { ENGINES, engineNames, buildCommand } from '../engines/index.mjs';
 import { validateConfig } from '../config.mjs';
 import { enginesFor, explainMisfit, modelFits } from '../model-fit.mjs';
-import { prepareDispatch } from '../dispatch.mjs';
+import { prepareDispatch as preparePrepared } from '../dispatch.mjs';
 import { resolve } from 'node:path';
-import { cleanup, fixture } from './helpers.mjs';
+import { cleanup, composeIn, fixture } from './helpers.mjs';
+
+const prepareDispatch = composeIn(preparePrepared);
 
 const efforts = { reasoning: 'high', balanced: 'medium', fast: 'low' };
 const base = () => ({

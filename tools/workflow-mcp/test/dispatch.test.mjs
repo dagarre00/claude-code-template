@@ -1,11 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { loadConfig } from '../config.mjs';
-import { prepareDispatch, buildRunnableCommand } from '../dispatch.mjs';
-import { cleanup, fixture } from './helpers.mjs';
+import { prepareDispatch as preparePrepared, buildRunnableCommand } from '../dispatch.mjs';
+import { cleanup, composeIn, fixture, stubWorktree } from './helpers.mjs';
+
+const prepareDispatch = composeIn(preparePrepared);
 
 const CONFIG = {
   version: 1, defaultEngine: 'inherit', workerTimeoutSeconds: 1800, workerCommands: ['npm test'],
@@ -413,6 +415,29 @@ test('a dispatch with no workspace names the missing parameter, not the adapter'
       assert.throws(() => prepareDispatch(root, { ...base, cli_engine, conductorEngine: 'claude' }),
         /workspace/i, `${cli_engine} failed with something other than the real reason`);
     }
+  });
+});
+
+// Every scope check downstream keys on the task's own worktree. A dispatch into
+// another directory — measured: the conductor's own checkout, under a task id
+// that was never prepared — composed cleanly and later passed inspection with
+// nothing checked, because no worktree listing existed to check it against.
+test('a dispatch runs only in the worktree prepared for its task', () => {
+  withRepo(root => {
+    const input = { ...base, cli_engine: 'claude', conductorEngine: 'claude' };
+    assert.throws(() => preparePrepared(root, { ...input, workspace: root }), /task_id is required/);
+    assert.throws(() => preparePrepared(root, { ...input, workspace: root, task_id: 'never' }),
+      /No worktree was prepared for task "never"/);
+    const { workspace } = stubWorktree(root, 'mine');
+    stubWorktree(root, 'theirs');
+    assert.throws(() => preparePrepared(root, { ...input, workspace: root, task_id: 'mine' }),
+      /is not the worktree prepared for task "mine"/, 'the conductor\'s own checkout is refused');
+    assert.throws(() => preparePrepared(root, { ...input, workspace: resolve(root, '.worktrees/theirs'), task_id: 'mine' }),
+      /is not the worktree prepared for task "mine"/, 'a sibling task\'s worktree is refused');
+    assert.equal(preparePrepared(root, { ...input, workspace: `${workspace}/`, task_id: 'mine' }).task_id, 'mine',
+      'a trailing separator is the same directory');
+    rmSync(workspace, { recursive: true, force: true });
+    assert.throws(() => preparePrepared(root, { ...input, workspace, task_id: 'mine' }), /is gone/);
   });
 });
 
