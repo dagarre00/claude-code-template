@@ -7,22 +7,12 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-07-21
+updated: 2026-09-23
 ---
 
 # Summaries
 
 > [!abstract] Essence
-> One summary page per ingested raw source in `docs/raw/`. The summary is what the rest of the wiki cross-references — entities, concepts, and decisions link to the summary, not to the raw file.
+> One digest per ingested `docs/raw/` source. The rest of the wiki links the summary; the immutable raw file stays the source of truth, cited where accuracy matters.
 
-## Filing
-
-`/project:wiki <source>` produces these one at a time; its argument-free health pass has the `wiki-maintainer` catch stragglers in a batch. Both run the placement check first — if the source's concept already has a page, they update it instead of duplicating.
-
-## Page shape
-
-Use the summary template in `/project:wiki` (`.agents/commands/wiki.md`): Obsidian-standard frontmatter (`type: summary`, `sources:` pointing at the raw path, `contradicts`, `open_questions`), then `> [!abstract] Essence`, `## Summary`, `## Key claims` (each claim ← its raw source), `## Boundaries`, `## Updates to the wiki`.
-
-## Why these aren't the source
-
-The raw file in `docs/raw/` is **immutable** — that's the source of truth. The summary is the *digestible* version for ongoing reference. Cross-link the summary, cite the raw file when accuracy matters.
+`/project:wiki <source>` writes them one at a time, and its argument-free health pass catches raw files that never got one. Both run the placement check first, so a concept that already has a page is updated rather than duplicated. Template: `.agents/skills/wiki-update/summary-template.md`.

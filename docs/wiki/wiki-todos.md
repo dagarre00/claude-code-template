@@ -7,15 +7,16 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-05-11
-updated: 2026-07-21
+updated: 2026-09-23
 ---
 
 # Wiki Todos
 
 > [!abstract] Essence
-> Queue of cleanup tasks for the wiki-maintainer. Agents append a one-line entry whenever they discover something the maintainer should handle later (orphan, missing ADR, repeated concept, broken link). `/project:wiki` processes this queue and removes resolved lines.
+> The wiki-maintainer's inbox: cleanup any agent found but could not safely do inline (orphans, missing ADRs, repeated concepts, broken links). `/project:wiki` works the queue and removes resolved lines.
 
 ## Format
+
 ```
 - [ ] <YYYY-MM-DD> <agent>: <one-line action>
 ```
