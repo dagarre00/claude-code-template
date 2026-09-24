@@ -10,12 +10,26 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { runBounded } from '../process-tree.mjs';
+import { killTree, runBounded } from '../process-tree.mjs';
 import { cleanup } from './helpers.mjs';
 
 const TOOL = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
 
 const sleep = ms => new Promise(done => setTimeout(done, ms));
+
+// Every caller hands killTree a process-group leader (runBounded detaches its
+// child on POSIX), so a failed group kill means the group is gone — and the
+// bare pid may by then belong to an unrelated process (adversary R1-F1 on
+// PR #40). The stub stands in for process.kill: no real process is signalled.
+test('on POSIX a process group that is gone is left alone, never retried as a bare pid', () => {
+  const calls = [];
+  const kill = pid => {
+    calls.push(pid);
+    throw Object.assign(new Error('kill ESRCH'), { code: 'ESRCH' });
+  };
+  killTree(2147483645, { platform: 'linux', kill });
+  assert.deepEqual(calls, [-2147483645]);
+});
 
 test('a timeout stops the process and everything it started', async () => {
   const dir = mkdtempSync(resolve(tmpdir(), 'workflow-mcp-tree-'));
