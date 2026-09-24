@@ -31,7 +31,7 @@ Read 2–3 existing files of the kind first and match their tone, length and str
 
 **Add:**
 1. `.agents/commands/<name>.md`, flat. The `project` plugin (`.agents/.claude-plugin/plugin.json`) makes it `/project:<name>`; commands have no MCP surface — don't add one.
-2. Frontmatter `name`, `type: command`, a one-line `description`, an `argument-hint` (`[scope — e.g. "the auth module" | "security only"]`), and — if it dispatches workers — `skills:`, either a list or a per-role map (`developer: [tdd-loop]`). Two roles of one command never share a skill.
+2. Frontmatter `name`, `type: command`, a one-line `description`, an `argument-hint` (`[scope — e.g. "the auth module" | "security only"]`), and — if it dispatches workers — `skills:`, either a list or a per-role map (`developer: [tdd-loop]`). Two roles of one command never share a skill. A skill only this project's roles need goes in `roles.<role>.extraSkills` in `.agents/config.json`, not in a command file — commands are generic text `/project:sync-template` overwrites.
 3. **Every command takes an argument.** Under the H1 write `**Argument:** \`$ARGUMENTS\``, then what it does: the step it overrides, its two or three shapes, what empty means, what it can never bypass (preconditions, Red, human checkpoints). Wire it into the step it changes — an echo nothing consumes silently drops the human's instruction. A dispatched role gets it verbatim.
 4. Body: **Preconditions** → numbered **Steps** (one action each) → **Failure modes** → wiki updates → where it pauses for the human.
 5. Run `sync` (the `AGENTS.md` catalog is generated; `check` fails if you forget), update `docs/wiki/commands.md` if the human can run shell pieces of it, and commit `feat: add /<name> command — <reason>`.

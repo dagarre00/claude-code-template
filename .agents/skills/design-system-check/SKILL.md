@@ -1,6 +1,6 @@
 ---
 name: design-system-check
-description: How to make a UI change against docs/wiki/design-system.md — read the token roles first, reference roles instead of raw values, and verify the page's assertions before the case is done. Declared for the developer by /project:init on projects with a UI surface. Trigger on "UI change", "component", "styling", "CSS", "add a button", "design system", "design tokens", "colour", "typography", "spacing", "contrast", "accessibility", "dark mode", "responsive".
+description: How to make a UI change against docs/wiki/design-system.md — read the token roles first, reference roles instead of raw values, and verify the page's assertions before the case is done. Given to the developer by /project:init on projects with a UI surface, through roles.developer.extraSkills in .agents/config.json. Trigger on "UI change", "component", "styling", "CSS", "add a button", "design system", "design tokens", "colour", "typography", "spacing", "contrast", "accessibility", "dark mode", "responsive".
 type: skill
 ---
 

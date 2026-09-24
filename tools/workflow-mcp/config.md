@@ -92,6 +92,7 @@ A single dispatch can override all of this without touching the file: `build_wor
 | `engine` | `null`, an engine name, or an ordered list | `null` follows `defaultEngine`. A list is tried in order, first installed wins. |
 | `models` | `{ "<engine>": "<model>" }` | Pin a model for this role on that engine. Leave the engine out to use its profile default. |
 | `effort` | `{ "<engine>": "<effort>" }` | Pin an effort the same way. |
+| `extraSkills` | a list of skill names | Skills this project adds to the role on top of what the commands declare — `["design-system-check"]` for the developer of a project with a UI. Checked when a prompt is composed: the skill must exist, must not be conductor-only, and must not be one a command gives another role. Here rather than in `.agents/commands/`, so `/project:sync-template` never sees a customized command. The editor keeps it as written; edit it in the file. |
 
 ### `engines.<name>`
 

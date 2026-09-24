@@ -96,7 +96,7 @@ Create any missing directory: `docs/raw/interviews/`, `docs/wiki/entities/`, `co
 - `todos.md` — seeded with the first work items.
 - `gotchas.md` and `wiki-todos.md` — create empty **only if missing**; never clear existing entries on a re-run.
 - `log.md` — the init entry (step 7).
-- `design-system.md` — **only with a UI surface**, from the design-system template beside the `wiki-update` skill, filled with the topic-11 answers; token sections stay `<TBD>` with a todo to run `/project:interview the design system`. Never created "for later". Then add `design-system-check` to the `developer` list in `.agents/commands/work.md`'s `skills:` — the developer is the one writing UI code, and it only receives declared skills.
+- `design-system.md` — **only with a UI surface**, from the design-system template beside the `wiki-update` skill, filled with the topic-11 answers; token sections stay `<TBD>` with a todo to run `/project:interview the design system`. Never created "for later". Then set `"extraSkills": ["design-system-check"]` on `roles.developer` in `.agents/config.json` — the developer is the one writing UI code, and it only receives declared skills. Never edit `work.md`'s `skills:` for this: it is generic text `/project:sync-template` would then report as customized on every run.
 
 Add an entity page per feature or module (`spec-writing` skill) and an ADR per non-trivial choice (`decision-recording` skill). Every page gets standard frontmatter (`wiki-update` skill).
 
@@ -176,8 +176,7 @@ Append to `docs/wiki/log.md` (stamp from `date -u +'%Y-%m-%d %H:%M'`):
 ### 8. Commit
 
 ```bash
-# plus any step 5a skeleton (manifest, lockfile), the architecture rule files, the CI workflow,
-# and .agents/commands/work.md if step 5 declared design-system-check
+# plus any step 5a skeleton (manifest, lockfile), the architecture rule files and the CI workflow
 git add docs/ CLAUDE.md AGENTS.md .agents/project.md .agents/config.json .gitattributes <skeleton-paths> <architecture-rule-files> <ci-workflow>
 git commit -m "chore(init): scaffold wiki, regenerate AGENTS.md/CLAUDE.md, and a runnable test command"
 git push -u origin main   # no remote → skip and say so

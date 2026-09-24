@@ -123,6 +123,15 @@ test('a role that was written by hand in another shape is kept as it was while i
   assert.deepEqual(assembleConfig({ roles: { planner: raw } }, { planner: form }, NAMES).roles.planner, raw);
 });
 
+test('a role key the page does not edit survives a save that changes the role', () => {
+  const raw = { engine: 'claude', models: {}, effort: {}, extraSkills: ['design-system-check'] };
+  const form = roleToForm(raw, NAMES);
+  addToChain(form, 'codex', config(), 'balanced', NAMES);
+  const saved = assembleConfig({ roles: { developer: raw } }, { developer: form }, NAMES).roles.developer;
+  assert.deepEqual(saved.engine, ['claude', 'codex']);
+  assert.deepEqual(saved.extraSkills, ['design-system-check']);
+});
+
 // ─── where the model lists come from ───────────────────────────────────────
 
 test('codex\'s model list is read from its own catalog, hidden models left out', () => {

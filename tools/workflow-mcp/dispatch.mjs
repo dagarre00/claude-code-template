@@ -256,7 +256,8 @@ export function prepareDispatch(root, input = {}) {
 
   const composed = composePrompt(canonical, {
     ...input, instructions, context: context ?? '', diff,
-    task_id, workspace, workerCommands, commandNotes, protectedPaths: config.protectedPaths });
+    task_id, workspace, workerCommands, commandNotes, protectedPaths: config.protectedPaths,
+    extraSkills: config.roles?.[input.role]?.extraSkills ?? [] });
 
   // Every file lives beside the others so a human can read exactly what was sent
   // and re-run it byte for byte. The prompt is the readable form; the stdin file

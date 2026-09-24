@@ -40,6 +40,48 @@ test('an explicit skill list narrows the command default rather than adding to i
   assert.doesNotMatch(prompt, /Check for an existing page first\./);
 });
 
+// Measured before this check: an adversary composed with skills: ['tdd-loop',
+// 'finding-disposition'] got the developer's procedure and a conductor-only one.
+test('an explicit skill list can never add a skill the command does not give that role', () => {
+  const roleMap = { '.agents/commands/work.md':
+    '---\nname: work\ndescription: d\nskills:\n  developer: [tdd-loop]\n  adversary: [wiki-update]\n---\n\nBody.\n' };
+  assert.throws(() => compose({ role: 'adversary', instructions: 'Review.', command: 'work', skills: ['tdd-loop'] }, roleMap),
+    /not one \/work gives role "adversary".*only narrow/);
+  assert.deepEqual(compose({ role: 'adversary', instructions: 'Review.', command: 'work', skills: [] }, roleMap).skills, []);
+});
+
+// A conductor that omitted `command` used to send the worker no procedure.
+test('with no command named, a role gets the skills the commands declare for it', () => {
+  const twoCommands = {
+    '.agents/commands/work.md': '---\nname: work\ndescription: d\nskills:\n  developer: [tdd-loop]\n  adversary: [wiki-update]\n---\n\nBody.\n',
+    '.agents/commands/adversary.md': '---\nname: adversary\ndescription: d\nskills:\n  adversary: [wiki-update]\n---\n\nBody.\n'
+  };
+  assert.deepEqual(compose({ role: 'adversary', instructions: 'Review.' }, twoCommands).skills, ['wiki-update'],
+    'two commands agreeing is one answer');
+  assert.deepEqual(compose(base, twoCommands).skills, ['tdd-loop']);
+  assert.throws(() => compose({ role: 'adversary', instructions: 'Review.' }, { ...twoCommands,
+    '.agents/commands/adversary.md': '---\nname: adversary\ndescription: d\nskills:\n  adversary: [tdd-loop]\n---\n\nBody.\n' }),
+  /different skills from \/adversary, \/work; pass command/);
+});
+
+// A project adds a skill to a role in config.json, not by editing a command file
+// that every sync-template run would then report as customized.
+test('extraSkills add a project skill to a role, under the same rules as a declaration', () => {
+  const files = {
+    '.agents/commands/work.md': '---\nname: work\ndescription: d\nskills:\n  developer: [tdd-loop]\n  adversary: [wiki-update]\n---\n\nBody.\n',
+    '.agents/skills/design-check/SKILL.md': '---\nname: design-check\ndescription: UI checks.\n---\n\nCheck the tokens.\n',
+    '.agents/skills/dispose/SKILL.md': '---\nname: dispose\ndescription: Conductor-only. Findings.\n---\n\nDispose.\n'
+  };
+  const added = compose({ ...base, command: 'work', extraSkills: ['design-check'] }, files);
+  assert.deepEqual(added.skills, ['tdd-loop', 'design-check']);
+  assert.match(added.prompt, /Check the tokens\./);
+  assert.deepEqual(compose({ ...base, command: 'work', extraSkills: ['design-check'], skills: ['design-check'] }, files).skills,
+    ['design-check'], 'an extra can be narrowed to like any other');
+  assert.throws(() => compose({ ...base, command: 'work', extraSkills: ['dispose'] }, files), /conductor-only/);
+  assert.throws(() => compose({ ...base, command: 'work', extraSkills: ['wiki-update'] }, files), /already gives "adversary"/);
+  assert.throws(() => compose({ ...base, command: 'work', extraSkills: ['nope'] }, files), /unknown skill "nope"/);
+});
+
 test('no command and no skills means no skill section at all', () => {
   const { prompt, skills } = compose(base);
   assert.deepEqual(skills, []);
@@ -85,7 +127,7 @@ test('the prefix before the assignment is identical across two dispatches of one
 });
 
 test('supporting files are named but not inlined', () => {
-  const { prompt } = compose({ ...base, skills: ['tdd-loop'] }, {
+  const { prompt } = compose({ ...base, command: 'work', skills: ['tdd-loop'] }, {
     '.agents/skills/tdd-loop/CHECKLIST.md': 'x'.repeat(5000)
   });
   assert.match(prompt, /\.agents\/skills\/tdd-loop\/CHECKLIST\.md/);
