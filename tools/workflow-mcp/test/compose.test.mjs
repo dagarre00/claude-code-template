@@ -93,8 +93,12 @@ test('engine notes reach the worker even when no command is allowed', () => {
   assert.doesNotMatch(compose({ ...base, workerCommands: [], commandNotes: [] }).prompt, /Commands you may run/);
 });
 
-test('no command and no skills means no skill section at all', () => {
-  const { prompt, skills } = compose(base);
+// A flat `skills:` list names no role, so nothing in it can be attributed to one
+// when no command is named. With role-keyed commands the same call does get the
+// role's skills — see 'with no command named, …' above (adversary R3-F2 on PR #40).
+test('with no command named, a flat skill list gives a role no skill section', () => {
+  const flat = { '.agents/commands/work.md': '---\nname: work\ndescription: d\nskills: [tdd-loop, wiki-update]\n---\n\nBody.\n' };
+  const { prompt, skills } = compose(base, flat);
   assert.deepEqual(skills, []);
   assert.doesNotMatch(prompt, /Write the failing test first\./);
 });
