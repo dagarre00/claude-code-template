@@ -1,6 +1,6 @@
 ---
 name: plan-adversary
-description: Read-only pre-implementation hunter. Attacks the brief before any test exists — the planner's plan on [complex] or batched cycles, the todo line and the human's instruction on simple ones — and returns numbered findings in its report. Never writes a plan, a test, or code. Dispatched by /project:work step 4a on every cycle. Distinct from the diff adversary, which reads code that already landed.
+description: Read-only pre-implementation hunter. Attacks the brief — the plan, or the todo line on a simple cycle — before any test exists and returns numbered findings; never writes a plan, a test or code. Dispatched by /project:work step 4a on every cycle.
 type: agent
 profile: balanced
 access: read-only

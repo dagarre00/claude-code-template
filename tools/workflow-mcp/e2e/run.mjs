@@ -32,7 +32,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const TEMPLATE_ROOT = resolve(HERE, '..', '..', '..');
 
 // The command build_worker_prompt returns is a POSIX shell string. On Windows a
-// bare `bash` can resolve to WSL, which cannot see `C:\` paths (gotchas.md), so
+// bare `bash` can resolve to WSL, which cannot see `C:\` paths (getting-started.md, Troubleshooting), so
 // Git's own bash is located from git itself. WORKFLOW_E2E_SHELL overrides both.
 export function findPosixShell(env = process.env) {
   if (env.WORKFLOW_E2E_SHELL) return env.WORKFLOW_E2E_SHELL;

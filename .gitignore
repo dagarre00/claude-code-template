@@ -2,42 +2,24 @@
 .claude/settings.local.json
 .claude/tmp/
 
-# Codex — project-local MCP registration (tools/workflow-mcp/server.mjs
-# `--root` is an absolute, machine-specific path, same reasoning as
-# .claude/settings.local.json above). scripts/adopt.sh generates this.
+# Codex project-local MCP registration — machine-specific absolute paths,
+# written by scripts/adopt.sh.
 .codex/config.toml
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Handoff scratch — the cycle's working surface, deleted when the cycle ends.
-#
-# Both files are transient and neither is a record. The plan is the conductor's
-# copy of what it pasted to the developer, discarded when the cycle ends; the
-# handoff brief is a prompt written for an external agent, not repo content.
-#
-# Reviews leave nothing here. Findings come back in a worker's report — a
-# read-only role cannot write a file at all on an engine that enforces its
-# sandbox — and each disposition is written into the body of the commit that
-# answers it (behavioral rule 20). Git history is already tracked, dated and
-# immutable, so `git log --grep="adversary round"` reads the reasons back. Do not
-# add a tracked review report here; that is `/project:review`'s artifact.
-#
-# Note these globs match only names ending exactly in `-plan.md` / `-handoff.md`;
-# a suffixed variant (`auth-plan-v2.md`) is NOT ignored and will surface as
-# untracked, failing the clean-tree gate at the end of the cycle. One file per
-# slug, no suffixes.
+# Plan scratch: /project:work saves the planner's report here and deletes it
+# when the cycle ends. Only `<slug>-plan.md` matches — a suffixed name
+# (`auth-plan-v2.md`) shows up as untracked and fails the clean-tree check.
 .handoff/*-plan.md
-.handoff/*-handoff.md
 
-# Worker worktrees prepared by the coordination MCP. Never committed: each is a
-# throwaway checkout of committed HEAD, and one of them containing the repo it
-# was cut from is exactly the recursion this must not have.
+# Worker worktrees prepared by the workflow MCP — throwaway checkouts, never committed.
 .worktrees/
 
 # Node dependencies (tools/workflow-mcp).
 node_modules/
 
-# Obsidian per-user vault config (users open the vault themselves)
+# Obsidian per-user vault config
 docs/.obsidian/

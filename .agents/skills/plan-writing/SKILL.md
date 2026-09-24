@@ -1,6 +1,6 @@
 ---
 name: plan-writing
-description: How to write an implementation plan for a complex or batched todo in this project. Loads when the planner agent runs, or when the human asks for "a plan", "decomposition", "breakdown", "implementation strategy", "sequencing".
+description: How to write an implementation plan for a complex or batched todo. Used by the planner, or when the human asks for "a plan", "decomposition", "breakdown", "implementation strategy", "sequencing".
 type: skill
 ---
 

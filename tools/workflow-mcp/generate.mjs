@@ -13,7 +13,7 @@
 // will eventually be edited alone.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { loadCanonical } from './canonical.mjs';
+import { loadCanonical, parseFrontmatter } from './canonical.mjs';
 
 export const GENERATED = Object.freeze(['AGENTS.md', 'CLAUDE.md']);
 
@@ -39,72 +39,54 @@ ${canonical.project}
 
 # How this repository works
 
-\`.agents/\` is the single canonical source for the agent workflow. Every CLI
-reads it directly:
+\`.agents/\` is the single canonical source for the agent workflow, read in
+place by every CLI and never copied:
 
-- **Claude Code** loads \`.agents/\` as a plugin named \`project\` — skills,
-  commands and agent definitions — configured in \`.claude/settings.json\`.
+- **Claude Code** loads it as a plugin named \`project\` (skills and commands),
+  configured in \`.claude/settings.json\`.
 - **Codex** reads \`.agents/skills/\` natively, plus this file.
-- **Antigravity** reads no repository files in print mode; its workers receive
-  everything in the prompt composed by the workflow MCP.
+- **Antigravity** reads no repository files in print mode; its workers get
+  everything from the prompt the workflow MCP composes.
 
-Nothing under \`.agents/\` is ever copied. Only this file and \`CLAUDE.md\` are
-generated, because those two filenames are hardcoded by the CLIs that read them.
+Only this file and \`CLAUDE.md\` are generated, because the CLIs hardcode those
+names. To change the workflow, edit \`.agents/\` and regenerate (\`sync\`) — never
+edit \`AGENTS.md\` or \`CLAUDE.md\` by hand.
 
-Top-level commands have no MCP surface — they are a conductor concern, and a
-conductor that can read \`.agents/commands/\` never needs a tool call to reach
-one. Claude Code is the only conductor with a native command surface today
-(the plugin above); when another CLI conducts, point it at
-\`.agents/commands/<name>.md\` directly and it reads that like any other
-project file.
+Commands have no MCP surface. Claude Code runs them as \`/project:<name>\`; any
+other conductor reads \`.agents/commands/<name>.md\` when a human names one.
 
 ## Working here
 
-1. Read the behavioral rules below — they override default inclinations.
+1. The behavioral rules below override default inclinations.
 2. Before implementation, read \`docs/wiki/gotchas.md\`, \`docs/wiki/todos.md\`,
    the matching entity Behavior cases, and the relevant requirements and
-   architecture.
-3. Search \`docs/wiki/\` for related concepts and decisions before changing
-   behavior.
-4. Load only the skills the task needs. If a CLI exposes no skill loader, read
+   architecture. Search \`docs/wiki/\` for related concepts and decisions before
+   changing behavior.
+3. Load only the skills the task needs. A CLI with no skill loader reads
    \`.agents/skills/<name>/SKILL.md\` directly.
-
-To change the workflow itself, edit \`.agents/\` and regenerate — never edit
-\`AGENTS.md\` or \`CLAUDE.md\` by hand.
 
 ## Delegating work
 
-Workers are dispatched through the workflow MCP server
-(\`tools/workflow-mcp\`), which composes a prompt from \`.agents/\` and hands
-back a command to run. A worker receives that prompt and nothing else: every
-engine is launched with its project-file discovery suppressed, so the prompt is
-the complete statement of how it must work. The conductor owns branches,
-commits, pushes and pull requests; workers deliver files.
+Workers are dispatched only through the workflow MCP (\`tools/workflow-mcp\`;
+procedure: the \`worker-dispatch\` skill). It composes a prompt from \`.agents/\`
+and returns a command to run, and every engine is launched with project-file
+discovery suppressed, so that prompt is all a worker knows. The conductor owns
+branches, commits, pushes and pull requests; workers deliver files.
 
-**MCP is the only dispatch path.** Never delegate a role to a host CLI's own
-subagent mechanism, and never recreate \`.agents/agents/\` — roles deliberately
-live in \`.agents/roles/\`, which no plugin loader scans, so they cannot be
-published as native subagent types. A natively dispatched role would inherit the
-conductor's whole context and run in the conductor's checkout with no worktree,
-no owned paths and no suppression: every guarantee above, lost silently. This
-holds even when a role's configured engine is identical to the conductor's own
-— Claude Code conducting and also running \`developer\` on Sonnet still
-dispatches through \`prepare_worktree\`/\`build_worker_prompt\`, never through
-its own native Task/Agent tool. Same engine is not the same process.
+**Never dispatch a role through a host CLI's own subagent tool** (Task/Agent) —
+not even when the role's engine is the conductor's own: Claude Code running
+\`developer\` on Sonnet still goes through \`prepare_worktree\`/\`build_worker_prompt\`.
+A native subagent inherits the conductor's context and checkout: no worktree,
+no owned paths, no suppression. That is also why roles live in \`.agents/roles/\`,
+which no plugin loader scans — never recreate \`.agents/agents/\`.
 
-Only a dispatched worker is a leaf. The conductor may dispatch as many workers
-as a cycle needs — \`/project:work\` runs a planner, a developer and an
-adversary — and it is not itself a worker.
+A dispatched worker is a leaf; the conductor may dispatch as many as a cycle needs.
 
 ## Commands
 
-Reachable today as native Claude Code slash commands (\`/project:<name>\`);
-another CLI's conductor reads the file in \`.agents/commands/\` directly when a
-human names one. \`skills\` names what each **dispatched role** receives
-inlined in its composed prompt — not what the conductor uses, which it loads
-itself from \`.agents/skills/\`. Two roles dispatched by one command may never
-share a skill: if both need the same procedure, one role would have done the
-work of both.
+The last column is what each dispatched role receives inlined in its prompt, not
+what the conductor loads. Two roles of one command never share a skill — if both
+need the same procedure, one role would do.
 
 | Command | Purpose | Skills per dispatched role |
 | --- | --- | --- |
@@ -118,23 +100,23 @@ ${roles}
 
 ## Skills
 
-Each skill is \`.agents/skills/<name>/SKILL.md\`, with its trigger in the
-\`description\` frontmatter. Claude Code (as \`project:<name>\`) and Codex list
-them natively; a conductor on a CLI that does not should list that directory.
-Skills marked conductor-only in their description are never sent to a worker.
+Each skill is \`.agents/skills/<name>/SKILL.md\`, triggered by its \`description\`
+frontmatter. Claude Code (as \`project:<name>\`) and Codex list them natively;
+elsewhere, list that directory. Skills marked conductor-only are never sent to a
+worker.
 
 ## Wiki map
 
-- \`docs/raw/\`: immutable input; append new sources, never edit old ones.
-- \`docs/wiki/requirements.md\`: what the application must do.
-- \`docs/wiki/architecture.md\`: stack, layout, patterns, testing strategy.
-- \`docs/wiki/entities/\`: feature/module specs and Behavior cases.
-- \`docs/wiki/concepts/\`, \`decisions/\`, \`summaries/\`: patterns, ADRs, sources.
-- \`docs/wiki/commands.md\`: verified application commands.
-- \`docs/wiki/todos.md\`, \`gotchas.md\`, \`log.md\`, \`wiki-todos.md\`: work,
+- \`docs/raw/\` — immutable sources; add new ones, never edit old ones.
+- \`docs/wiki/requirements.md\` — what the application must do;
+  \`architecture.md\` — stack, layout, layers, testing strategy.
+- \`docs/wiki/entities/\` — feature specs and their Behavior cases;
+  \`concepts/\`, \`decisions/\`, \`summaries/\` — patterns, ADRs, source digests.
+- \`docs/wiki/commands.md\` — verified application commands.
+- \`docs/wiki/todos.md\`, \`gotchas.md\`, \`log.md\`, \`wiki-todos.md\` — work queue,
   traps, history, deferred wiki maintenance.
 
-${canonical.rules}
+${parseFrontmatter(canonical.rules, '.agents/rules.md').body.trim()}
 `;
 }
 

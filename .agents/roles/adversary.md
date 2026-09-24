@@ -1,6 +1,6 @@
 ---
 name: adversary
-description: Read-only diff hunter. Reviews the current change against the wiki with zero developer context and returns numbered findings in its report — never edits, commits, or pushes. Dispatched by /project:work for [complex] or batched cycles, and by /project:adversary on demand. Distinct from the periodic whole-repo reviewer.
+description: Read-only diff hunter. Reviews a change against the wiki with none of the author's context and returns numbered findings; never edits. Dispatched by /project:work on [complex] or batched cycles, and by /project:adversary.
 type: agent
 profile: reasoning
 access: read-only

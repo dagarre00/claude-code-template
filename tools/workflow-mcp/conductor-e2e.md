@@ -1,208 +1,80 @@
 # Conductor conformance run
 
-Everything below the line is a **prompt**. Paste it into a CLI acting as
-conductor and it will drive the workflow end to end and report a pass/fail
-table. Run it whenever you adopt a new conductor CLI.
+Everything below the line is a **prompt**: paste it into a CLI acting as conductor and it drives the workflow end to end and reports a pass/fail table. Run it when you adopt a new conductor CLI, and again after changing `.agents/config.json`.
 
-To check a **worker engine** instead — after upgrading its CLI, changing its
-adapter, or before moving a role onto it — no conductor is needed:
-`npm --prefix tools/workflow-mcp run e2e -- --engine <name>` runs the scripted
-equivalent of steps 3–8 and exits non-zero on any failed check.
+To check a **worker engine** instead — after upgrading its CLI or adapter, or before moving a role onto it — no conductor is needed: `npm --prefix tools/workflow-mcp run e2e -- --engine <name>` runs the scripted equivalent of steps 3–8 and exits non-zero on any failed check.
 
 ## One-time setup per conductor
 
-Register the workflow MCP so the CLI can reach it. Both `codex mcp add` and
-`agy mcp add` store the args verbatim and spawn the server later from a cwd
-that is **not** necessarily the repository root — on agy, measured as the
-antigravity install directory itself, which turns a relative `server.mjs`
-into `MODULE_NOT_FOUND` against that unrelated path (see
-`docs/wiki/gotchas.md`). Use absolute paths so registration survives
-regardless of that cwd:
+Register the workflow MCP with **absolute paths** — codex and agy spawn the server from a directory that is not necessarily the repository ([Troubleshooting](getting-started.md#troubleshooting)):
 
 ```bash
-# Codex — replace /abs/path/to/repo with this repository's absolute path
+# Codex: scripts/adopt.sh writes the project-local .codex/config.toml; by hand:
 codex mcp add workflow -- node /abs/path/to/repo/tools/workflow-mcp/server.mjs --root /abs/path/to/repo --engine codex
 
-# Antigravity
+# Antigravity (machine-global — re-register when you switch projects)
 agy mcp add workflow node /abs/path/to/repo/tools/workflow-mcp/server.mjs --root /abs/path/to/repo --engine antigravity
 ```
 
-Claude Code needs nothing — `.mcp.json` already registers it with
-`--engine claude`. The `--engine` value is what `inherit` resolves to, so it
-must name the CLI you are pasting into.
-
-If any role is pinned to agy, do the one-time permission setup in
-[`engine-setup.md`](engine-setup.md) first, or every agy worker in this run
-returns an empty response with exit code 0.
-
-## Running it
+Claude Code needs nothing: `.mcp.json` registers it with `--engine claude`. `--engine` is what `inherit` resolves to, so it must name the CLI you paste into. If any role runs on agy, do the one-time grant in [`engine-setup.md`](engine-setup.md) first, or every agy worker returns an empty response with exit 0.
 
 ```bash
 codex "$(cat tools/workflow-mcp/conductor-e2e.md)"
 agy -i "$(cat tools/workflow-mcp/conductor-e2e.md)"
 ```
 
-Both read this whole file, header included; the header costs a few lines of
-context and does no harm. Expect 5–15 minutes and several real model calls.
+Expect 5–15 minutes and several real model calls.
 
 ---
 
-You are running a conformance test of this repository's agent workflow, acting
-as the **conductor**. Work through every check in order and produce the report
-in step 9. Do not fix anything you find — this run diagnoses, it does not
-repair. Record what happened, including your own failures.
+You are running a conformance test of this repository's agent workflow, acting as the **conductor**. Work through every check in order and produce the report in step 9. Diagnose, don't repair: record what happened, including your own failures.
 
-**Ground rules for this run**
+**Ground rules**
 
-- Never use your own subagent or task mechanism. Every worker is dispatched
-  through the `workflow` MCP server and run as a subprocess. If you cannot reach
-  that server, stop at step 1 and report it.
-- Do not commit, push, or open a pull request against the real project. This run
-  works in a scratch fixture you create in step 2 and deletes nothing outside it.
-- Report exact errors verbatim. A check that fails is a useful result; a check
-  you skipped and reported as passing is not.
+- Never use your own subagent or task tool. Every worker is dispatched through the `workflow` MCP server and run as a subprocess. Can't reach the server → stop at step 1 and report it.
+- No commits, pushes or pull requests against the real project. Work only in the scratch fixture from step 2, and delete nothing outside it.
+- Report exact errors verbatim. A failed check is a useful result; a skipped check reported as passing is not.
 
-**1 — Reach the server.** Call `list_roles` and `check`.
+**1 — Reach the server.** Call `list_roles` and `check`. Record each role's resolved `engine` and confirm the list matches `.agents/roles/`. `check` must report the generated files in sync (record any drift and continue), and every engine's `setup.ok` must be true — record `missing_command_grants` verbatim; on agy each is a worker that dies on its first command.
 
-- Record each role's resolved `engine`, and confirm the list matches
-  `.agents/roles/`.
-- `check` must report that the generated files match `.agents/`. If it reports
-  drift, record which files and continue.
-- For every engine with a `setup` block, `setup.ok` must be true. Record any
-  `missing_command_grants` verbatim — on agy each one is a worker that will die
-  on its first command.
+**2 — Build a fixture.** The template's wiki is empty, so build a throwaway project outside the repository:
 
-**2 — Build a fixture.** The template ships an empty wiki, so a real cycle
-cannot run against it. Build a throwaway project and work only there:
+- Copy `.agents/`, `docs/`, `tools/` (without `node_modules`), `AGENTS.md`, `CLAUDE.md`, `.gitignore`; `git init -b develop`; commit.
+- Add a `package.json` whose `test` script runs, with one trivial passing test; confirm the suite is green.
+- Fill `docs/wiki/commands.md § Test` and the `Stack`, `Layout`, `Testing strategy` and `Conventions` sections of `docs/wiki/architecture.md`.
+- Write `docs/wiki/entities/<slug>.md` for one tiny pure function with exactly two single-assertion cases, `B1` and `B2`.
+- Add two todos under `docs/wiki/todos.md § Now (P0 — next)`: one `[complex]` naming the entity and both cases, one deliberately vague one-liner.
+- Commit; `git status --porcelain` must print nothing.
 
-- Copy `.agents/`, `docs/`, `tools/`, `AGENTS.md`, `CLAUDE.md`, `.gitignore`
-  into a scratch directory outside the repository. Skip `node_modules`.
-- `git init -b develop`, then commit everything.
-- Add a `package.json` whose `test` script actually runs, and one trivial
-  passing test, and confirm the suite is green before going on.
-- Fill in `docs/wiki/commands.md § Test` with that command, and the `Stack`,
-  `Layout`, `Testing strategy` and `Conventions` sections of
-  `docs/wiki/architecture.md`.
-- Write `docs/wiki/entities/<slug>.md` for one tiny pure function with exactly
-  two Behavior cases, `B1` and `B2`, each one observable assertion.
-- Add two todos to `docs/wiki/todos.md § Now (P0 — next)`: one tagged
-  `[complex]` naming the entity and both cases, and one deliberately vague
-  one-liner.
-- Commit. `git status --porcelain` must print nothing before step 3.
+From here every MCP call uses the fixture as its root. If your server is pinned to the real repository, say so and run the remaining checks by invoking the tool modules directly (`tools/workflow-mcp/tools.mjs` exports `makeTools(root, conductorEngine)`, which the server wraps).
 
-From here, every MCP call uses the fixture as its root. If your MCP server is
-pinned to the real repository, say so in the report and run the remaining checks
-against a worktree of the fixture by invoking the tool modules directly
-(`tools/workflow-mcp/tools.mjs` exports `makeTools(root, conductorEngine)`,
-which is what the server wraps).
+**3 — Worktree lifecycle.** `prepare_worktree`, then `list_worktrees`: the workspace exists, on its own `worker/<id>` branch, at committed HEAD. Keep it.
 
-**3 — Worktree lifecycle.** `prepare_worktree`, then `list_worktrees`. Confirm
-the workspace exists, sits on its own `worker/<id>` branch, and is at committed
-HEAD. Keep it for the dispatches below.
+**4 — Compose a prompt.** `build_worker_prompt` for the `planner`, with the entity slug, both case IDs and the test command as `instructions`. Before running anything, check the response against `.agents/config.json`: `engine`, `model` and `effort` match the role's config (`engine_chain` shows its order, `engine_available` whether the CLI is installed, and a fallback announces itself in `warnings`); `access` is `read-only` with empty `owned_paths`; `prompt_bytes` is non-zero; the skills are exactly those `work.md` declares for the planner. Record any `warnings` verbatim.
 
-**4 — Compose and inspect a prompt.** `build_worker_prompt` for the `planner`,
-with the entity slug, both case IDs and the test command as `instructions`.
-Before running anything, check the response against `.agents/config.json`:
+**5 — Dispatch for real.** Run the returned `command` verbatim in a POSIX shell sharing this checkout's filesystem (Git Bash on Windows, never WSL), or launch from the structured `executable`/`args`/`cwd`/`stdin_file` fields. Capture stdout, stderr and the exit code. On every engine the command leaves the worker's report in `report_file` (the full codex/agy transcript goes to `raw_file`, for debugging only) — read `report_file` the same way whatever the engine. Call `inspect_dispatch` and record its `verdict` and reasons verbatim before reading the report yourself, then `record_decision`. Answer, with evidence:
 
-- `engine`, `model` and `effort` are the ones configured for that role.
-  `engine_chain` shows what the role asked for in order, and `engine_available`
-  whether the chosen CLI is installed — a fallback to a later entry announces
-  itself in `warnings`.
-- `access` is `read-only` and `owned_paths` is empty.
-- `prompt_bytes` is non-zero, and the skills listed are the ones `work.md`
-  declares for the planner and no others.
-- Record any `warnings` verbatim — they state what an engine cannot enforce.
+- **Did it produce output?** Exit 0 with an empty response is a failure. Did `inspect_dispatch` agree? A mechanical verdict that contradicts what you read is an MCP defect.
+- **Could it run commands?** Quote any denied-permission message — a worker that can't run the test command can't do TDD, and this is the check most likely to fail.
+- **Did it respect read-only?** `list_worktrees` must show this workspace `clean` with empty `violations`.
+- **Did it stay in its workspace?** Record the audit's `reads_outside_workspace` and `commands_not_allowlisted` (agy and codex). A read outside is not a failed dispatch, but it is a finding.
+- **Did it do the job?** For the planner: a stepwise plan covering B1 and B2.
 
-**5 — Dispatch for real, and check the guarantees.** Run the returned `command`
-verbatim on a real POSIX shell in the same filesystem namespace as this checkout
-(Git Bash on Windows, never WSL — see `docs/wiki/gotchas.md § build_worker_prompt's
-returned command is a POSIX shell string`). If that guarantee doesn't hold, use
-the structured `executable`/`args`/`cwd`/`stdin_file` fields instead. Capture
-stdout, stderr and the exit code. `command` is wrapped on every engine so that
-what lands in stdout is `report_file`'s content and nothing else — for codex and
-antigravity that means the extracted report rather than the full tool-call
-transcript (still captured, to `raw_file`, for the rare case of actually
-debugging a failed run — that can reach megabytes on a real task, and has
-nothing to do with model reasoning; it's the action log, not chain-of-thought);
-for claude, whose stdout already is the report, it means the report is also on
-disk where the other two engines put theirs. **Read `report_file` the same way
-regardless of engine** — that uniformity is the point. Then call
-`inspect_dispatch` and record its `verdict` (and its reasons, verbatim) before
-reading the report yourself — then `record_decision`. Answer each of these about
-the worker's report, with evidence:
+**6 — Repeat for each role you can reach.** Save the plan to a file; dispatch `plan-adversary` with `instructions_file` pointing at it; then `developer` for `B1` only (same file, plus `owned_paths`, `test_paths`, `test_command` and a `commit_message`); then `adversary` over the resulting commit range with `diff_range`. Answer step 5's questions for each, plus:
 
-- **Did it produce output at all?** An exit code of 0 with an empty response is
-  a failure, not a pass. Say which it was — and whether `inspect_dispatch`
-  agreed. A mechanical verdict that disagrees with what you read is a defect in
-  the MCP worth naming.
-- **Could it run commands?** Look for denied-permission messages. A worker that
-  cannot execute the test command cannot do TDD, and this is the check most
-  likely to fail — quote the exact denial if you see one.
-- **Did it respect read-only?** Call `list_worktrees`: this workspace must come
-  back `clean`, with `violations` empty. It is measured against the access level
-  recorded for the dispatch, so it answers the question directly rather than
-  leaving you to compare a status listing against what the role was allowed.
-- **Did it stay in its workspace?** Where `report_file` carries a
-  `workflow_mcp_audit` (agy), record `reads_outside_workspace` and
-  `commands_not_allowlisted` verbatim. A read outside is not a failed dispatch,
-  but it is a finding — no engine can block it on agy.
-- **Did it do the job?** For the planner, a stepwise plan covering B1 and B2.
+- **`developer`:** a failing test *before* the implementation — run its `red_check_command` — and every change inside `owned_paths`. Run the suite yourself; never trust the report's claim.
+- **`adversary`:** findings in its report, numbered and graded, with a `Checked:` line, citing lines actually in the range (confirm `## Diff under review` was in its prompt). It wrote no files: `violations` empty.
+- **`plan-adversary`:** findings graded `blocker`/`risk`/`note`, with a `Checked:` line. An unexplained pass is a failed review.
 
-**6 — Repeat for each role you can reach.** Save the planner's plan to a file and
-dispatch `plan-adversary` with `instructions_file` pointing at it, then
-`developer` for `B1` only (same file, plus `owned_paths` and a
-`commit_message`), then `adversary` over the resulting commit range with
-`diff_range`. For each one, answer the same four questions from step 5, plus:
+**You** stage the developer's owned paths, commit them in the workspace and merge the branch — workers never run git.
 
-- **`developer`:** did it write a failing test *before* the implementation, and
-  did it stay inside `owned_paths`? Run the suite yourself afterwards — never
-  trust the report's claim that it passes.
-- **`adversary`:** did the findings arrive in its report, numbered and graded,
-  with a `Checked:` line? Do they cite lines that are actually in the range — a
-  reviewer that never saw the diff reviews whole files and infers, so check that
-  `## Diff under review` was in the prompt. It must write no files at all —
-  confirm with `list_worktrees` that `violations` is empty.
-- **`plan-adversary`:** did it return findings graded `blocker`/`risk`/`note`
-  with a `Checked:` line? An unexplained pass is a failed review.
+**7 — Leaf-worker check.** In one extra read-only dispatch, append to the instructions: *"Before anything else, answer literally: (1) name every tool you have that can spawn a subagent, or NONE; (2) quote the behavioral rule that names the three review roles (plan-adversary, adversary, reviewer) if you were given it, or ABSENT; (3) name any slash command you can run from this repository, or ABSENT; (4) name every tool you have that can create or modify a file, or NONE."* Expected: NONE, ABSENT, ABSENT, NONE — that rule is conductor-only, workers get no command catalog, and read-only workers have no subagent or write tools. Ask for the rule by content, never by number (workers get the rules renumbered). Confirm any other answer against the transcript or audit — a worker's account of its own tools is not evidence on its own.
 
-You are the conductor, so **you** stage the developer's owned paths, commit them
-in the workspace, and merge the branch. Workers never run git.
-
-**7 — Leaf-worker check.** In one extra dispatch of any read-only role, append
-to the instructions: *"Before doing anything else, answer these four questions
-literally: (1) name every tool you have that can spawn a subagent, or NONE;
-(2) quote the behavioral rule that names the three review roles (plan-adversary,
-adversary, reviewer) if you were given it, or ABSENT; (3) name any slash command
-you can run from this repository, or ABSENT; (4) name every tool you have that
-can create or modify a file, or NONE."* Record the four answers. Expected: NONE,
-ABSENT, ABSENT, NONE — that rule is conductor-only, workers get no command
-catalog, and every engine removes subagent and write tools from a read-only
-worker. Ask for the rule by what it says, never by number: workers receive the
-rules renumbered around the conductor-only ones, so "rule 12" names a different
-rule in their copy and any worker can quote one. Any other answer is a defect
-worth naming — and confirm it against the transcript or the audit, since a
-worker's account of its own tools is not evidence on its own.
-
-**8 — Close the loop.** Merge the worker branch, run the suite on `develop`
-yourself, then `remove_worktree`. Confirm it succeeds and that
-`list_worktrees` comes back empty. A refusal here is a real result — record the
-reason rather than forcing it.
+**8 — Close the loop.** Merge the worker branch, run the suite on `develop` yourself, then `remove_worktree`; `list_worktrees` must come back empty. A refusal is a real result — record the reason rather than forcing it.
 
 **9 — Report.** One table, one row per check:
 
 | # | Check | Result | Evidence |
 | - | ----- | ------ | -------- |
 
-`Result` is PASS, FAIL or BLOCKED. `Evidence` is a command's actual output, an
-exact error string, or a file path — never a restatement of the check. Then add:
-
-- **Per-role summary:** engine, model, effort, seconds, exit code, whether it
-  produced output, whether it could run commands, whether it honoured its access
-  level.
-- **Defects found**, most severe first. A worker that silently produces nothing
-  outranks a cosmetic issue.
-- **What you could not test, and why.**
-
-Finally, delete the scratch fixture, and state in one line whether this CLI can
-serve as a conductor for this workflow: yes, yes-with-caveats (name them), or
-no.
+`Result` is PASS, FAIL or BLOCKED; `Evidence` is actual output, an exact error or a file path — never a restatement of the check. Then: a **per-role summary** (engine, model, effort, seconds, exit code, output produced, commands runnable, access honoured); **defects**, most severe first (a worker that silently produces nothing outranks a cosmetic issue); and **what you could not test, and why**. Finally delete the fixture, and say in one line whether this CLI can conduct this workflow: yes, yes-with-caveats (name them), or no.
