@@ -34,6 +34,11 @@ and edits with its own file tools, which need no permission; commands are
 only for running the suite and the few read-only git calls the role
 checklists name.
 
+You can edit `workerCommands`, and every other setting in that file, in a local
+page instead of by hand: `node tools/workflow-mcp/config-ui.mjs`. It refuses a
+line the engines could never match and explains each setting; see
+[config.md](config.md).
+
 **The list is also inlined into every worker prompt**, under `## Commands you may
 run`. That is not redundancy: a worker that does not know the list improvises a
 near-miss — `git log -n 3` instead of an allowlisted read — and on agy a single
@@ -75,6 +80,21 @@ this on Windows** (measured) — it takes a literal path per worktree, or the
 blanket `git config --global --add safe.directory "*"`, which trusts every
 repository on the machine and is a real loosening of the ownership check, not
 just a convenience.
+
+**The conductor itself is exposed too, not only the workers it dispatches.**
+`prepare_worktree` only registers trust for the worktree paths it creates —
+the root checkout is never touched. A conductor whose own shell runs under a
+different account than the checkout owner (conducting from Codex directly is
+the case seen; any other sandboxed shell with a distinct SID would hit the
+same thing) gets `dubious ownership` on its *own* git calls against the root
+checkout, before any worker is involved. `verify.mjs`'s own `git()` helper
+covers itself with a per-invocation `-c safe.directory=*` (scoped to that one
+spawned process, not written to any config file, so it widens nothing beyond
+the command it runs). That does not cover ad hoc git commands the conductor
+runs outside `verify.mjs` — for those, either trust the root checkout path
+the same way as a worktree (`git config --global --add safe.directory
+<absolute path to the repo root>`), or pass `-c safe.directory=*` on that one
+call yourself.
 
 ### Codex — optional context-management overrides
 
@@ -137,7 +157,7 @@ cannot mutate, exfiltrate, or read outside their worktree" still is. A custom
 tried as a fix and neither restored the literal allowlist without also
 breaking the commands it's meant to grant — see `docs/wiki/gotchas.md`.
 
-## Antigravity (agy) — one manual step, per machine
+## Antigravity (agy) — one step, per machine
 
 **agy reads no project-local configuration in print mode.** A `.gemini/settings.json`
 in the repository is ignored — measured: identical run, identical denial. The
@@ -147,8 +167,29 @@ only file it reads is user-global:
 ~/.gemini/antigravity-cli/settings.json
 ```
 
-Add one `command(...)` rule per `workerCommands` entry, matching the string
-exactly:
+**Call `grant_antigravity_setup`.** It performs exactly the additive merge
+below directly — no `--allowedTools`/`Edit`-style permission surface applies to
+this server process, so it can write a file outside the repository (this one,
+under `$HOME`) that a conductor's own edit tools are commonly denied from
+touching. It creates the file and any missing parent directories if absent,
+adds one `command(<line>)` rule per `workerCommands` entry with no exact match
+already present, and never touches or reorders anything else already there —
+your interactive grants included. Returns the grants it actually added; call
+it again anytime `workerCommands` changes, and a call that finds nothing
+missing is a no-op. `check`'s antigravity `setup` block tells you beforehand
+whether there is anything to add. A file that exists but cannot be read as
+JSON — a BOM a Windows editor left, a trailing comma — is reported there as
+`problem` (with `ok: false` and an empty `missing_command_grants`, since nothing
+is known about it), and `grant_antigravity_setup` refuses it and writes
+nothing: an additive merge cannot know what it would be dropping. Fix the file
+by hand first. The read-modify-write runs under `settings.json.lock` beside the
+file, so two conductors granting at once queue rather than overwrite each
+other; a lock whose holder died is taken over once it is a minute old, and a
+live one is waited for a few seconds and then reported — nothing written — so
+you retry rather than lose a grant.
+
+Equivalent by hand, if you'd rather see the file yourself first — add one
+`command(...)` rule per `workerCommands` entry, matching the string exactly:
 
 ```json
 {
@@ -180,7 +221,12 @@ headless mode cannot prompt for, so it was auto-denied.
 
 **`check` tells you before a cycle.** Its `antigravity` entry carries a `setup`
 block listing every `workerCommands` entry with no exact grant in that file, so a
-missing grant is found without spending a dispatch on it.
+missing grant is found without spending a dispatch on it. `check`'s top-level
+`roles_with_unmet_setup` names every role whose engine — the first installed
+entry in its chain, the one a dispatch would run on, never an uninstalled first
+choice — has one of these unmet, so a role that looks dispatchable in `roles_without_an_available_engine`
+(its CLI is installed) can still be flagged here as one whose first command will
+be silently denied. `grant_antigravity_setup` closes exactly that gap.
 
 **The wrapped command turns every silent agy failure into a real one.**
 `extract-agy-result.mjs` exits non-zero when `denied_actions` is non-empty (and
@@ -374,6 +420,23 @@ behind; worktrees are now created and removed with `core.longpaths=true`.
 Either way, `check`'s `setup` block lists the command if agy has no exact grant
 for it.
 
+**`worktreeSetup` runs in the conductor's own shell, not any engine's — a
+different Windows quirk from the one above.** The codex `npm`/`npx` respelling
+earlier in this doc is about a *worker's* command, spelled for the sandboxed
+account codex launches it under, and does not touch `worktreeSetup` at all:
+`prepareWorktree` returns these commands verbatim and neither runs nor spells
+them. If a conductor's own shell for running them is Windows PowerShell with
+an execution policy that blocks local scripts, `npm`/`npx` resolve to their
+`.ps1` shim there and fail the same underlying way codex's sandboxed account
+does — `npm.cmd`/`npx.cmd` sidestep it, being plain batch files with no
+PowerShell execution policy to trip. Not measured against a real dispatch the
+way the codex case is (this machine's own PowerShell already runs with an
+unrestricted process-scoped policy, so it doesn't reproduce here) — if you hit
+it, write the `.cmd` spelling directly in the `worktreeSetup` entry; unlike
+`workerCommands`, these are free-form command lines the conductor's shell runs
+as given, not matched against any engine's allowlist, so there is nothing else
+to keep in sync.
+
 ## When an engine is unavailable
 
 Two different problems wear the same face, and only one of them is computable.
@@ -401,7 +464,10 @@ amount of checking will predict it. What is left is recovering cheaply:
 
 - **Override one dispatch.** `cli_engine` on `build_worker_prompt` beats the
   chain entirely, which is the right tool for a usage limit: the engine is
-  installed, so the chain has no reason to skip it.
+  installed, so the chain has no reason to skip it. A `model_override` is a
+  model, not an engine, so it goes with `cli_engine`: an override left to the
+  chain would follow it to a fallback engine that cannot run that model, and is
+  refused there (`config.md` § Reference, "a model belongs to its engine").
 
 Worth checking when you pin roles: how many of them land on the same engine. A
 measured session had four of seven on one, so a single usage limit made all four

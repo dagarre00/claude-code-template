@@ -7,13 +7,28 @@
 // before composing anything.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { findExecutable } from '../availability.mjs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { findExecutable, grantAntigravitySetup } from '../availability.mjs';
 import { loadConfig, resolveEngine, resolveEngineChain } from '../config.mjs';
 import { prepareDispatch } from '../dispatch.mjs';
 import { makeTools } from '../tools.mjs';
 import { cleanup, fixture } from './helpers.mjs';
+
+// Isolates $HOME/$USERPROFILE for the duration of `fn`, the way agy's
+// engineSetup tests already do, so a real machine's own antigravity-cli
+// settings are never at risk of being read, let alone written, by this suite.
+const withHome = fn => {
+  const home = fixture();
+  const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+  process.env.HOME = home; process.env.USERPROFILE = home;
+  try { return fn(home); } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+    cleanup(home);
+  }
+};
 
 // A real executable that exists on every machine this suite runs on, and a name
 // that exists on none. Availability has to be measured, not stubbed, or the test
@@ -26,7 +41,7 @@ const engines = (claude, codex) => ({
     effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } },
   codex: { executable: codex, models: { reasoning: null, balanced: null, fast: null },
     effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } },
-  antigravity: { executable: ABSENT, models: { reasoning: 'pro', balanced: 'inherit', fast: 'flash' },
+  antigravity: { executable: ABSENT, models: { reasoning: 'gemini-3.8-pro', balanced: 'inherit', fast: 'gemini-3.8-flash' },
     effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } }
 });
 
@@ -146,6 +161,26 @@ test('check names every worker command agy has no exact grant for', () => {
   }
 });
 
+// F-C's silent-failure shape again, one layer up: an engine can be installed
+// (available: true) and still refuse a worker's first command. `ok` stays
+// about drift alone, so this is the separate signal a conductor would
+// otherwise only find by reading each engine's `setup` block by hand.
+test('check names every role whose engine has an unmet setup requirement', () => {
+  withHome(() => {
+    // antigravity is installed in this fixture, so developer really would run
+    // on it — and the fixture HOME has no settings file, so its grants are
+    // absent. adversary's claude has nothing to set up at all.
+    const installed = engines(PRESENT, ABSENT);
+    installed.antigravity = { ...installed.antigravity, executable: PRESENT };
+    withRepo({
+      developer: { engine: ['antigravity', 'claude'] },
+      adversary: { engine: 'claude' }
+    }, root => {
+      assert.deepEqual(makeTools(root, 'claude').check().roles_with_unmet_setup, ['developer']);
+    }, installed);
+  });
+});
+
 test('check reports a missing agy settings file as every grant missing, not as fine', () => {
   const home = fixture();
   const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
@@ -183,6 +218,66 @@ test('a chain in the config survives a round trip through the real project confi
   } finally { cleanup(root); }
 });
 
+// engine-setup.md otherwise walks a human through pasting this merge in by
+// hand, because a conductor's own edit tools are commonly denied from
+// touching a file outside the repo. This server process is not gated the same
+// way, so it can perform the exact additive merge directly.
+test('grantAntigravitySetup writes the missing grants and creates the file if absent', () => {
+  withHome(home => {
+    withRepo({}, root => {
+      const config = loadConfig(root);
+      const settings_file = resolve(home, '.gemini', 'antigravity-cli', 'settings.json');
+      assert.equal(existsSync(settings_file), false, 'nothing written yet');
+
+      const result = grantAntigravitySetup(config);
+      assert.deepEqual(result.added, ['command(npm test)']);
+      assert.equal(result.already_granted, false);
+      assert.equal(result.settings_file, settings_file);
+
+      const written = JSON.parse(readFileSync(settings_file, 'utf8'));
+      assert.deepEqual(written.permissions.allow, ['command(npm test)']);
+    });
+  });
+});
+
+test('grantAntigravitySetup only adds what is missing, and never touches existing grants', () => {
+  withHome(home => {
+    const settings_file = resolve(home, '.gemini', 'antigravity-cli', 'settings.json');
+    mkdirSync(dirname(settings_file), { recursive: true });
+    writeFileSync(settings_file, JSON.stringify({
+      permissions: { allow: ['command(git status --porcelain)', 'read_file(C:/shared/vendor)'] }, otherTopLevelKey: true }));
+
+    withRepo({}, root => {
+      const config = { ...loadConfig(root), workerCommands: ['git status --porcelain', 'npm test', 'git diff'] };
+      const result = grantAntigravitySetup(config);
+      assert.deepEqual(result.added, ['command(npm test)', 'command(git diff)']);
+
+      const written = JSON.parse(readFileSync(settings_file, 'utf8'));
+      assert.deepEqual(written.permissions.allow,
+        ['command(git status --porcelain)', 'read_file(C:/shared/vendor)', 'command(npm test)', 'command(git diff)'],
+        'the pre-existing grants, interactive or not, are kept verbatim and in place');
+      assert.equal(written.otherTopLevelKey, true, 'unrelated keys in the file are preserved');
+    });
+  });
+});
+
+test('grantAntigravitySetup is a no-op once every command is already granted', () => {
+  withHome(home => {
+    const settings_file = resolve(home, '.gemini', 'antigravity-cli', 'settings.json');
+    mkdirSync(dirname(settings_file), { recursive: true });
+    writeFileSync(settings_file, JSON.stringify({ permissions: { allow: ['command(npm test)'] } }));
+
+    withRepo({}, root => {
+      const config = loadConfig(root);
+      const before = readFileSync(settings_file, 'utf8');
+      const result = grantAntigravitySetup(config);
+      assert.deepEqual(result.added, []);
+      assert.equal(result.already_granted, true);
+      assert.equal(readFileSync(settings_file, 'utf8'), before, 'nothing was rewritten');
+    });
+  });
+});
+
 test('check names every role whose chain reaches an engine lacking a capability it needs', () => {
   const root = fixture({
     '.agents/config.json': config({ researcher: { engine: ['antigravity', 'codex'] } }),
@@ -192,4 +287,69 @@ test('check names every role whose chain reaches an engine lacking a capability 
     assert.deepEqual(makeTools(root, 'claude').check().capability_gaps,
       [{ role: 'researcher', engine: 'antigravity', missing: ['web'] }]);
   } finally { cleanup(root); }
+});
+
+// Adversary round 1 on fix/workflow-mcp-hardening, F2: every read failure used
+// to collapse to "nothing granted", and the additive merge then wrote that
+// nothing back over the file — a BOM from a Windows editor or one trailing
+// comma was enough to lose every interactive grant silently. The promise is
+// "never dropped", so an unparseable file is a refusal, not an empty one.
+test('grantAntigravitySetup refuses a settings file it cannot parse, and leaves it byte for byte', () => {
+  withHome(home => {
+    const settings_file = resolve(home, '.gemini', 'antigravity-cli', 'settings.json');
+    mkdirSync(dirname(settings_file), { recursive: true });
+    const original = '\uFEFF{ "permissions": { "allow": ["command(git status)", "read_file(C:/shared)",] } }';
+    writeFileSync(settings_file, original);
+    withRepo({}, root => {
+      assert.throws(() => grantAntigravitySetup(loadConfig(root)), /parse|by hand/i);
+      assert.equal(readFileSync(settings_file, 'utf8'), original, 'nothing was rewritten');
+      assert.deepEqual(readdirSync(dirname(settings_file)), ['settings.json'], 'no staging file left beside it');
+    });
+  });
+});
+
+test('grantAntigravitySetup refuses a permissions.allow that is not an array, and leaves it byte for byte', () => {
+  withHome(home => {
+    const settings_file = resolve(home, '.gemini', 'antigravity-cli', 'settings.json');
+    mkdirSync(dirname(settings_file), { recursive: true });
+    const original = JSON.stringify({ permissions: { allow: { 'command(npm test)': true } } });
+    writeFileSync(settings_file, original);
+    withRepo({}, root => {
+      assert.throws(() => grantAntigravitySetup(loadConfig(root)), /permissions\.allow/);
+      assert.equal(readFileSync(settings_file, 'utf8'), original, 'nothing was rewritten');
+    });
+  });
+});
+
+// The same failure one layer up: check used to report an unparseable file as
+// "every grant missing", which is what sends a conductor to grant_antigravity_setup
+// in the first place. A file that cannot be read is a setup problem in its own
+// right, named as such, and still not ok.
+test('check reports an unparseable agy settings file as a named problem, not as every grant missing', () => {
+  withHome(home => {
+    const settings_file = resolve(home, '.gemini', 'antigravity-cli', 'settings.json');
+    mkdirSync(dirname(settings_file), { recursive: true });
+    writeFileSync(settings_file, '{ not json');
+    withRepo({ developer: { engine: ['antigravity', 'claude'] } }, root => {
+      const agy = makeTools(root, 'claude').check().engines.find(engine => engine.name === 'antigravity');
+      assert.equal(agy.setup.ok, false);
+      assert.match(agy.setup.problem, /parse/i);
+      assert.deepEqual(agy.setup.missing_command_grants, [], 'nothing is known to be missing from a file that could not be read');
+    });
+  });
+});
+
+// Adversary round 1, F3: the flag keyed on the chain's first entry whether or
+// not that engine was installed, so a role chained [antigravity, claude] on a
+// machine without agy was flagged — and the dispatch skill turns that into a
+// human-checkpoint — although dispatch falls through to claude and never runs
+// on agy. The engine that matters is the one dispatch would pick.
+test('roles_with_unmet_setup keys on the engine dispatch would pick, not on an uninstalled first choice', () => {
+  withHome(() => {
+    // antigravity is ABSENT in the fixture engines and there is no settings
+    // file, so its setup is unmet — but this chain never runs on it.
+    withRepo({ developer: { engine: ['antigravity', 'claude'] } }, root => {
+      assert.deepEqual(makeTools(root, 'claude').check().roles_with_unmet_setup, []);
+    });
+  });
 });

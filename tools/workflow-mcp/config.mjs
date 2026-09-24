@@ -7,11 +7,21 @@
 // a discrepancy nothing downstream can detect.
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { engineNames } from './engines/index.mjs';
+import { ENGINES, MODEL, engineNames } from './engines/index.mjs';
 import { PROFILES } from './canonical.mjs';
 import { isSafeRepoPath } from './compose.mjs';
+import { explainMisfit, modelFits } from './model-fit.mjs';
 
 const ROLE_KEYS = ['engine', 'models', 'effort'];
+// `$comment` is the one free-text key: JSON has no comments, so it is where a
+// file can point a reader at the editor (`node tools/workflow-mcp/config-ui.mjs`).
+const TOP_KEYS = ['$comment', 'version', 'defaultEngine', 'workerTimeoutSeconds', 'workerCommands',
+  'worktreeSetup', 'protectedPaths', 'architecture', 'roles', 'engines'];
+const ENGINE_KEYS = ['executable', 'models', 'effort', 'toolOutputTokenLimit', 'modelAutoCompactTokenLimit'];
+// Every key the loader accepts, for the test that holds config.md to documenting them all.
+export const CONFIG_KEYS = Object.freeze({
+  top: TOP_KEYS, role: ROLE_KEYS, engine: ENGINE_KEYS, architecture: ['command', 'rules']
+});
 
 export function loadConfig(root) {
   const path = resolve(root, '.agents/config.json');
@@ -19,7 +29,29 @@ export function loadConfig(root) {
   let config;
   try { config = JSON.parse(readFileSync(path, 'utf8')); }
   catch (error) { throw new Error(`.agents/config.json is not valid JSON: ${error.message}`); }
+  return validateConfig(config);
+}
 
+// Validates and normalizes a parsed config, in place, and returns it. Pure — no
+// file — so the config editor can refuse a bad edit before it is written, with
+// exactly the rule the dispatcher would apply. Normalization (the architecture
+// command joining workerCommands, rule files joining protectedPaths) mutates its
+// argument, so anything that must save what a human wrote validates a clone.
+export function validateConfig(config) {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) {
+    throw new Error('.agents/config.json must be a JSON object');
+  }
+  // Same reasoning as the role keys below: `worktreeSetups` for `worktreeSetup`
+  // loaded cleanly and did nothing, and `protectedPath` for `protectedPaths`
+  // silently left every path writable.
+  for (const key of Object.keys(config)) {
+    if (!TOP_KEYS.includes(key)) {
+      throw new Error(`Unknown key "${key}" in .agents/config.json; expected ${TOP_KEYS.join(', ')}`);
+    }
+  }
+  if (config.$comment != null && typeof config.$comment !== 'string') {
+    throw new Error('$comment must be a string');
+  }
   if (config.version !== 1) throw new Error('Unsupported config version; expected 1');
   if (!['inherit', ...engineNames].includes(config.defaultEngine)) {
     throw new Error(`Invalid defaultEngine "${config.defaultEngine}"; expected inherit or one of ${engineNames.join(', ')}`);
@@ -119,10 +151,17 @@ export function loadConfig(root) {
     if (/\.(cmd|bat)$/i.test(engine.executable)) {
       throw new Error(`Engine ${name} points at a shell shim (${engine.executable}); use a native executable`);
     }
+    for (const key of Object.keys(engine)) {
+      if (!ENGINE_KEYS.includes(key)) {
+        throw new Error(`Unknown key "${key}" in engines.${name}; expected ${ENGINE_KEYS.join(', ')}`);
+      }
+    }
     for (const profile of PROFILES) {
       if (!(profile in (engine.models ?? {})) || !(profile in (engine.effort ?? {}))) {
         throw new Error(`Engine ${name} is missing models/effort for profile "${profile}"`);
       }
+      checkModel(name, engine.models[profile], `engines.${name}.models.${profile}`);
+      checkEffort(name, engine.effort[profile], `engines.${name}.effort.${profile}`);
     }
     // Codex-only context-management knobs (see codex.mjs): capping how many
     // tokens of a single tool output it keeps, and when it auto-compacts its
@@ -178,12 +217,34 @@ export function loadConfig(root) {
       if (typeof role[field] !== 'object' || Array.isArray(role[field])) {
         throw new Error(`Role ${name}.${field} must be an object keyed by engine name`);
       }
-      for (const key of Object.keys(role[field])) {
+      for (const [key, value] of Object.entries(role[field])) {
         if (!engineNames.includes(key)) throw new Error(`Unknown engine "${key}" in role ${name}.${field}`);
+        if (field === 'models') checkModel(key, value, `roles.${name}.models.${key}`);
+        else checkEffort(key, value, `roles.${name}.effort.${key}`);
       }
     }
   }
   return config;
+}
+
+// null is "the engine's own default" and stays legal. Anything else is checked
+// here because the dispatcher would otherwise be the first to notice — after a
+// prompt was composed, and only for the one role that reached the bad value.
+function checkEffort(engine, value, where) {
+  if (value == null || ENGINES[engine].efforts.includes(value)) return;
+  throw new Error(`${where} is ${JSON.stringify(value)}, which ${engine} does not accept; `
+    + `supported: ${ENGINES[engine].efforts.join(', ')}`);
+}
+
+// A model is stored under the engine that will be launched with it, so it is also
+// checked to be one that engine runs (model-fit.mjs). Without that, `gpt-5.6-sol`
+// under `antigravity` loaded cleanly and only failed when a worker started.
+function checkModel(engine, value, where) {
+  if (value == null) return;
+  if (typeof value !== 'string' || !MODEL.test(value)) {
+    throw new Error(`${where} is not a valid model id: ${JSON.stringify(value)}`);
+  }
+  if (!modelFits(ENGINES[engine], value)) throw new Error(`${where}: ${explainMisfit(ENGINES, engine, value)}`);
 }
 
 // Which engines a role may run on, in the order it wants them tried. `inherit`

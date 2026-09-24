@@ -9,7 +9,7 @@ sources:
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-09-16
+updated: 2026-09-18
 ---
 
 # Todos
@@ -72,7 +72,7 @@ _(Empty — run `/project:interview` to populate.)_
 
 ## Next (P1)
 
-_(Empty.)_
+- [ ] `withLock` in `tools/workflow-mcp/availability.mjs` throws instead of waiting when another process is mid-unlink of the lock on Windows: `openSync(lock, 'wx')` then fails with `EPERM`, and only `EEXIST` is treated as contention — so `grants from concurrent processes are all kept` (`test/grant-lock.test.mjs`) fails ~1 run in 25 with that file alone, more under load, and two conductors granting at once get a bare `EPERM`. Treat `EPERM`/`EACCES` as contention on win32, bounded by the deadline (the `statSync` failure path `continue`s without checking it, so a real permission error would spin). Test first. — major/correctness, found 2026-09-18, entity `workflow-mcp`
 
 ## Later (P2)
 
@@ -80,6 +80,6 @@ _(Empty.)_
 
 ## Backlog
 
-- [ ] [infra] `scripts/adopt.sh` step 3: for codex, stop registering `workflow` globally (`codex mcp add`) and instead write a project-local `<target>/.codex/config.toml` with `[mcp_servers.workflow]` pointing at that project's own `tools/workflow-mcp/server.mjs --root <target>`, plus a `.codex/config.toml` line in `.gitignore` (paths are machine-specific absolute paths, same reasoning as `.claude/settings.local.json`). Verified 2026-09-16 that codex honors project-local config and it wins over the global entry for that cwd — see `docs/wiki/gotchas.md` § "codex mcp add / agy mcp add with relative paths break at spawn time" → "Real fix for codex". Keep the existing global `agy mcp add` path unchanged — agy's own project-local config is a known no-op upstream (google-antigravity/antigravity-cli#60).
+_(Empty.)_
 
 _(Long-tail. Periodically pruned during `/project:review`.)_

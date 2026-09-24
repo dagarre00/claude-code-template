@@ -58,9 +58,9 @@ test('inspect_dispatch carries the codex audit and warns about reads outside the
   const root = fixture({ '.agents/config.json': JSON.stringify({
     version: 1, defaultEngine: 'inherit', workerTimeoutSeconds: 1800, workerCommands: ['npm test'], roles: {},
     engines: {
-      claude: { executable: 'claude', models: { reasoning: 'o', balanced: 's', fast: 'h' }, effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } },
+      claude: { executable: 'claude', models: { reasoning: 'opus', balanced: 'sonnet', fast: 'haiku' }, effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } },
       codex: { executable: 'codex', models: { reasoning: null, balanced: null, fast: null }, effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } },
-      antigravity: { executable: 'agy', models: { reasoning: 'p', balanced: 'i', fast: 'f' }, effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } }
+      antigravity: { executable: 'agy', models: { reasoning: 'gemini-3.8-pro', balanced: 'inherit', fast: 'gemini-3.8-flash' }, effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } }
     } }) });
   const git = (...args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
   git('init', '-b', 'main', '-q'); git('config', 'user.email', 't@e.com'); git('config', 'user.name', 'T');

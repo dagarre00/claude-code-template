@@ -13,6 +13,45 @@
 export default {
   name: 'codex',
   efforts: ['minimal', 'low', 'medium', 'high', 'xhigh'],
+  // The ids the config editor's dropdown offers when the tool cannot be asked — see claude.mjs.
+  knownModels: ['gpt-6-astra', 'gpt-5.6-terra', 'gpt-5.6-luna'],
+  // Every id this engine can run starts with one of these — see claude.mjs.
+  modelPrefixes: ['gpt-', 'codex-', 'o1', 'o3', 'o4'],
+  // gpt-oss is the open-weight family: `agy models` serves it, `codex debug models` does
+  // not, and `codex --model gpt-oss-…` without its `--oss` provider setup cannot start.
+  modelExcludes: ['gpt-oss'],
+  // How to ask the tool which models it has, so the editor's list is the tool's own and
+  // never goes stale. `codex debug models` prints its model catalog as JSON; a model
+  // it marks `hide` is one it keeps out of its own picker.
+  listModels: {
+    args: ['debug', 'models'],
+    parse(stdout) {
+      let catalog;
+      try { catalog = JSON.parse(stdout); } catch { throw new Error('codex printed a model catalog that is not JSON'); }
+      if (!Array.isArray(catalog?.models)) throw new Error('codex printed no model catalog (no "models" list)');
+      return catalog.models.filter(model => typeof model?.slug === 'string' && model.visibility !== 'hide')
+        .map(model => ({ id: model.slug, label: model.display_name ?? model.slug }));
+    }
+  },
+  // What each flag buildArgs passes is for — see claude.mjs. `-c key=value` flags are
+  // keyed as `-c key`, since the key is what says what they do.
+  flagNotes: {
+    'exec': { kind: 'plumbing', why: 'Non-interactive mode: run the prompt to completion and exit.' },
+    '--ephemeral': { kind: 'hygiene', why: 'Does not keep session files for the run.' },
+    '--color': { kind: 'hygiene', why: 'No terminal colour codes in the captured output.' },
+    '--cd': { kind: 'plumbing', why: 'Runs in the dispatch\'s own worktree.' },
+    '--sandbox': { kind: 'guarantee', why: 'An OS-level sandbox. Read-only roles cannot write anything; write roles can write only inside their worktree.' },
+    '-c approval_policy': { kind: 'plumbing', why: 'Never asks for approval, because nobody is there to answer.' },
+    '-c project_doc_max_bytes': { kind: 'guarantee', why: 'Codex reads no AGENTS.md: the worker gets only the prompt it was composed.' },
+    '-c mcp_servers': { kind: 'guarantee', why: 'No MCP servers at all, so a worker cannot call the workflow server or any other tool server.' },
+    '-c agents.enabled': { kind: 'guarantee', why: 'A worker is a leaf: it cannot start sub-agents.' },
+    '--model': { kind: 'config', value: '<model>', why: 'The role\'s own pin, else the engine\'s default for its profile. Left out when blank or inherit, so the tool uses its own default.' },
+    '-c model_reasoning_effort': { kind: 'config', value: '<effort>', why: 'The role\'s own pin, else the engine\'s default effort for its profile.' },
+    '-c tool_output_token_limit': { kind: 'config', value: '<limit>', when: 'only when set in the config', why: 'Caps how much of one file read or command output a worker keeps in its own history. From the Codex-only setting toolOutputTokenLimit.' },
+    '-c model_auto_compact_token_limit': { kind: 'config', value: '<limit>', when: 'only when set in the config', why: 'When a worker summarizes its own history. From the Codex-only setting modelAutoCompactTokenLimit.' },
+    '-o': { kind: 'plumbing', value: '<report file>', why: 'Writes the worker\'s final report to its own file, apart from the transcript.' },
+    '-': { kind: 'plumbing', value: '(prompt on stdin)', why: 'Reads the prompt from standard input. Always the last argument.' }
+  },
   readsProjectDocs: true,
   promptFormat: 'text',
   // agents.enabled=false removes delegation. Measured: a worker asked what

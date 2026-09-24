@@ -9,6 +9,7 @@
 //   generated          AGENTS.md / CLAUDE.md match .agents/
 //   wikilinks          every [[link]] in docs/wiki/ resolves
 //   log                log entries use the closed kind vocabulary, oldest first
+//   encoding           no stray UTF-8 BOM, no mojibake "?" landed in tracked text
 //   range.log          (with --base) a change ships with its log entry
 //   range.wiki         (with --base) code ships with a wiki update, or says why not
 //   range.architecture (with --base) an architecture rule changes only with an ADR
@@ -66,6 +67,40 @@ function checkWikilinks(root) {
   return { id: 'wikilinks', ok: !broken.length, details: broken };
 }
 
+// A worker whose stdout encoding did not round-trip UTF-8 writes a literal `?`
+// (0x3F) for every character it could not represent, and can leave a stray
+// UTF-8 BOM at the top of the file — both measured from a Codex conductor's
+// report on Windows, and neither caught before this: verify.mjs read the text
+// fine either way, since a `?` and a BOM are both perfectly valid on their own.
+// A `?` sitting directly between two digits is the cheap, low-noise signal —
+// real prose and code essentially never put a literal question mark there, but
+// a mangled dash, multiplication sign or degree symbol in a date, a version or
+// a measurement does.
+function checkEncoding(root) {
+  const files = [...markdownFiles(resolve(root, WIKI)), ...markdownFiles(resolve(root, '.agents')),
+    ...['AGENTS.md', 'CLAUDE.md'].map(name => resolve(root, name)).filter(existsSync)];
+  const broken = [];
+  for (const path of files) {
+    const rel = relative(root, path).replaceAll('\\', '/');
+    const buffer = readFileSync(path);
+    if (buffer.length >= 3 && buffer[0] === 0xEF && buffer[1] === 0xBB && buffer[2] === 0xBF) {
+      broken.push(`${rel}: starts with a UTF-8 BOM`);
+      continue;
+    }
+    const text = prose(buffer.toString('utf8'));
+    if (text.includes('�')) {
+      broken.push(`${rel}: contains the Unicode replacement character (U+FFFD) — a decode failure landed in tracked text`);
+      continue;
+    }
+    const mangled = /\d\?\d/.exec(text);
+    if (mangled) {
+      broken.push(`${rel}: "${mangled[0]}" — a literal "?" between two digits usually means a non-ASCII `
+        + 'character (dash, ×, °, …) was written as "?" instead');
+    }
+  }
+  return { id: 'encoding', ok: !broken.length, details: broken };
+}
+
 function checkLog(root) {
   const path = resolve(root, WIKI, 'log.md');
   if (!existsSync(path)) return { id: 'log', ok: true, details: ['no docs/wiki/log.md'] };
@@ -100,7 +135,15 @@ export function sortLog(root) {
 }
 
 function git(root, args) {
-  const result = spawnSync('git', ['-C', root, '-c', 'core.quotepath=false', ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  // A per-invocation override, not a write to any config file: it widens
+  // nothing beyond this one spawned process. Needed because `verify.mjs` runs
+  // in the conductor's own shell, not inside a worktree `prepare_worktree`
+  // already registered — a sandboxed conductor account (its SID distinct from
+  // the checkout owner's, the same mismatch documented in engine-setup.md's
+  // "Codex on Windows" section for workers) hits `dubious ownership` on its
+  // very first git call here, before any worker exists to blame it on.
+  const result = spawnSync('git', ['-C', root, '-c', 'core.quotepath=false', '-c', 'safe.directory=*', ...args],
+    { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
   if (result.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${result.stderr.trim()}`);
   return result.stdout;
 }
@@ -160,7 +203,7 @@ export function verify(root, { base = null } = {}) {
     checks.push({ id: 'generated', ok: generated.ok,
       details: generated.ok ? [] : [`regenerate: ${generated.drifted.join(', ')} differ from .agents/`] });
   }
-  checks.push(checkWikilinks(root), checkLog(root));
+  checks.push(checkWikilinks(root), checkLog(root), checkEncoding(root));
   if (base) checks.push(...checkRange(root, base, config));
   return { ok: checks.every(check => check.ok), checks, warnings: warnings(root, config) };
 }

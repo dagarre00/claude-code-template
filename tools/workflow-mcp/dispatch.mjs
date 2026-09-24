@@ -16,6 +16,7 @@ import { loadConfig, resolveEngineChain } from './config.mjs';
 import { composePrompt } from './compose.mjs';
 import { computeDiff } from './diff.mjs';
 import { ENGINES, buildCommand, stdinPayload } from './engines/index.mjs';
+import { explainMisfit, modelFits } from './model-fit.mjs';
 import { dispatchDir, trustWorktree } from './worktree.mjs';
 import { currentVerdict } from './inspect.mjs';
 
@@ -218,6 +219,16 @@ export function prepareDispatch(root, input = {}) {
   const agent = definition ? { name: definition.name, dir: resolve(dir, 'agent') } : undefined;
 
   const roleConfig = config.roles?.[composed.role] ?? {};
+  // A model_override names a model, not an engine — and when the chain falls through,
+  // the engine that runs is not the one the conductor had in mind. Handing it on
+  // would launch that engine with a model it cannot run, so say so instead, and say
+  // how to pin the engine the override is for.
+  if (input.model_override != null && !modelFits(adapter, input.model_override)) {
+    throw new Error(`model_override ${JSON.stringify(input.model_override)} cannot run on ${engine}, the engine this `
+      + `dispatch resolved to${engine !== chain[0] ? ` (${chain[0]} is not installed, so the role's chain fell through)` : ''}. `
+      + `${explainMisfit(ENGINES, engine, input.model_override)} Pass cli_engine to name the engine the override is for, `
+      + 'or drop model_override.');
+  }
   const command = buildCommand(config, {
     engine,
     profile: composed.profile,

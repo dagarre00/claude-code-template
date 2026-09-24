@@ -52,6 +52,23 @@ fi
 
 TARGET="$(cd "$TARGET" && pwd)"
 
+# Only for text we write into a *file's content* (a TOML/JSON value), never for
+# a path handed to a subprocess as an argv (Git Bash's MSYS runtime already
+# rewrites a POSIX-style argument to Windows form for a native, non-MSYS
+# executable like codex.exe or agy.exe — measured: `codex mcp add --root
+# "$TARGET"` with `$TARGET` still POSIX-style produced a correct
+# `C:/Users/...` entry). A path inside a heredoc is plain text the runtime
+# never touches, so `/c/Users/...` would be written verbatim — and Node on
+# Windows resolves a leading `/` against the current drive, not `C:\`, so the
+# server would fail to start with that path silently wrong. `cygpath -m` gives
+# the same drive-letter-plus-forward-slashes form the argv path ends up in, so
+# both are visibly the same path if you print them side by side. Absent
+# outside Git Bash on Windows, where TARGET is already the only form there is.
+TARGET_FOR_FILE_CONTENT="$TARGET"
+if command -v cygpath >/dev/null 2>&1; then
+  TARGET_FOR_FILE_CONTENT="$(cygpath -m "$TARGET")"
+fi
+
 if [[ "$TARGET" == "$TEMPLATE_ROOT" ]]; then
   echo "Error: target is the template checkout itself. Pass the path to the" >&2
   echo "project you're adopting the mechanism into." >&2
@@ -122,23 +139,89 @@ else
   echo "Step 3: copied .mcp.json (registers the server with --engine claude)"
 fi
 
+# One marketplace per name per machine: Claude Code keeps
+# ~/.claude/plugins/known_marketplaces.json once per user, and a second
+# project registering the same name replaces the first — after which the
+# plugin, which loads in place from the marketplace's directory, serves every
+# skill and command from the *other* checkout (docs/wiki/gotchas.md). So the
+# name is derived from the project directory rather than fixed: the same on
+# every machine that clones this project, since it lives in committed files,
+# and distinct from every other project on this one.
+MARKETPLACE="workflow-$(basename "$TARGET" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//; s/-$//')"
+
 if [[ -e "$TARGET/.claude-plugin/marketplace.json" ]]; then
-  echo "Step 3: '$TARGET/.claude-plugin/marketplace.json' already exists — leaving it untouched." >&2
+  EXISTING_NAME="$(sed -n 's/^[[:space:]]*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$TARGET/.claude-plugin/marketplace.json" | head -n 1)"
+  if [[ "$EXISTING_NAME" == "$MARKETPLACE" ]]; then
+    echo "Step 3: '$TARGET/.claude-plugin/marketplace.json' already exists as marketplace '$MARKETPLACE' — leaving it untouched."
+  else
+    echo "Step 3: '$TARGET/.claude-plugin/marketplace.json' already exists, named '${EXISTING_NAME:-?}' — leaving it untouched." >&2
+    echo "        A name shared with another project on this machine makes Claude Code serve this" >&2
+    echo "        project's skills from that other checkout (docs/wiki/gotchas.md). To move to the" >&2
+    echo "        per-project name, set \"name\": \"$MARKETPLACE\" in that file and use the same name in" >&2
+    echo "        .claude/settings.json: the extraKnownMarketplaces key, and enabledPlugins \"project@$MARKETPLACE\"." >&2
+  fi
 else
   mkdir -p "$TARGET/.claude-plugin"
-  cp "$TEMPLATE_ROOT/.claude-plugin/marketplace.json" "$TARGET/.claude-plugin/marketplace.json"
-  echo "Step 3: copied .claude-plugin/marketplace.json (needed for Claude Code's" \
-       "extraKnownMarketplaces path \".\" in settings.json to resolve project@workflow" \
-       "— without this file the plugin never registers, no matter how many times the" \
-       "session restarts)"
+  cat > "$TARGET/.claude-plugin/marketplace.json" <<EOF
+{
+  "name": "$MARKETPLACE",
+  "owner": { "name": "claude-code-template" },
+  "plugins": [
+    {
+      "name": "project",
+      "source": "./.agents",
+      "description": "Wiki-driven development workflow: spec, TDD, adversarial review, and wiki maintenance."
+    }
+  ]
+}
+EOF
+  echo "Step 3: wrote .claude-plugin/marketplace.json as marketplace '$MARKETPLACE' (Claude Code's"
+  echo "        extraKnownMarketplaces path \".\" in settings.json resolves against it; the name is"
+  echo "        per project because the machine keeps one marketplace per name)"
 fi
 
 if command -v codex >/dev/null 2>&1; then
-  if codex mcp add workflow -- node "$TARGET/tools/workflow-mcp/server.mjs" --root "$TARGET" --engine codex 2>/dev/null; then
-    echo "Step 3: registered workflow with codex (global config — see note below)"
+  if [[ -e "$TARGET/.codex/config.toml" ]]; then
+    echo "Step 3: '$TARGET/.codex/config.toml' already exists — leaving it untouched." >&2
+    echo "        Merge this table into it by hand if [mcp_servers.workflow] isn't there:" >&2
+    echo "        [mcp_servers.workflow]" >&2
+    echo "        command = \"node\"" >&2
+    echo "        args = [\"$TARGET_FOR_FILE_CONTENT/tools/workflow-mcp/server.mjs\", \"--root\", \"$TARGET_FOR_FILE_CONTENT\", \"--engine\", \"codex\"]" >&2
   else
-    echo "Step 3: 'codex mcp add' failed or was already registered — check manually if you conduct with codex." >&2
+    mkdir -p "$TARGET/.codex"
+    cat > "$TARGET/.codex/config.toml" <<EOF
+[mcp_servers.workflow]
+command = "node"
+args = ["$TARGET_FOR_FILE_CONTENT/tools/workflow-mcp/server.mjs", "--root", "$TARGET_FOR_FILE_CONTENT", "--engine", "codex"]
+EOF
+    echo "Step 3: wrote $TARGET/.codex/config.toml (project-local; wins over any"
+    echo "        machine-global 'workflow' entry for this directory — see"
+    echo "        docs/wiki/gotchas.md § 'codex mcp add / agy mcp add with relative"
+    echo "        paths break at spawn time' for why this beats 'codex mcp add')."
+    echo "        If an earlier global registration exists, it's now redundant here"
+    echo "        but harmless; drop it elsewhere with 'codex mcp remove workflow'"
+    echo "        if you want one canonical entry."
   fi
+fi
+
+# The file above holds this machine's absolute paths, so it must never be
+# committed — and it is the target's .gitignore, not the template's, that
+# decides that (adversary round 1 on fix/workflow-mcp-hardening, F1). Done
+# whether or not codex is on PATH here: a later contributor who has codex
+# writes the same file by hand (docs/wiki/gotchas.md), and the ignore line
+# has to be there before they do. Idempotent — an exact existing line is left
+# alone (a trailing CR, as in a CRLF .gitignore, counts as the same line),
+# and a file with no trailing newline gets one before the append.
+if grep -qE '^\.codex/config\.toml[[:space:]]*$' "$TARGET/.gitignore" 2>/dev/null; then
+  echo "Step 3: $TARGET/.gitignore already ignores .codex/config.toml"
+else
+  if [[ -s "$TARGET/.gitignore" && -n "$(tail -c1 "$TARGET/.gitignore")" ]]; then
+    echo >> "$TARGET/.gitignore"
+  fi
+  printf '%s\n' \
+    '# Codex project-local MCP registration: machine-specific absolute paths (written by scripts/adopt.sh)' \
+    '.codex/config.toml' >> "$TARGET/.gitignore"
+  echo "Step 3: appended .codex/config.toml to $TARGET/.gitignore (machine-specific paths, never committed)"
 fi
 
 if command -v agy >/dev/null 2>&1; then
@@ -149,18 +232,19 @@ if command -v agy >/dev/null 2>&1; then
   fi
 fi
 
-if command -v codex >/dev/null 2>&1 || command -v agy >/dev/null 2>&1; then
-  echo "Step 3: NOTE — codex/agy MCP registration is machine-global, not" >&2
-  echo "        per-project. Adopting into a second project under the same" >&2
-  echo "        name 'workflow' overwrites this one's entry. Re-run this" >&2
-  echo "        script (or 'codex/agy mcp add workflow ...') from inside" >&2
-  echo "        whichever project you're about to conduct in." >&2
+if command -v agy >/dev/null 2>&1; then
+  echo "Step 3: NOTE — agy's MCP registration is machine-global, not" >&2
+  echo "        per-project (its own project-local config is a known upstream" >&2
+  echo "        no-op: google-antigravity/antigravity-cli#60). Adopting into a" >&2
+  echo "        second project under the same name 'workflow' overwrites this" >&2
+  echo "        one's entry. Re-run this script (or 'agy mcp add workflow ...')" >&2
+  echo "        from inside whichever project you're about to conduct in with agy." >&2
 fi
 
 # ---------------------------------------------------------------------------
 # Step 4 — .claude/settings.json: safe to do only when nothing exists yet
 # ---------------------------------------------------------------------------
-SETTINGS_SNIPPET='  "extraKnownMarketplaces": {\n    "workflow": { "source": { "source": "directory", "path": "." } }\n  },\n  "enabledPlugins": { "project@workflow": true }'
+SETTINGS_SNIPPET="  \"extraKnownMarketplaces\": {\n    \"$MARKETPLACE\": { \"source\": { \"source\": \"directory\", \"path\": \".\" } }\n  },\n  \"enabledPlugins\": { \"project@$MARKETPLACE\": true }"
 
 echo
 echo "-------------------------------------------------------------------"
@@ -190,3 +274,9 @@ echo "a worker can actually dispatch and write files on this machine before you"
 echo "trust it — see tools/workflow-mcp/conductor-e2e.md for how to run it."
 echo "It's meant to be re-run whenever you change .agents/config.json, not just"
 echo "once, so keep it rather than deleting it after the first pass."
+echo
+echo "To see or change which tool and model runs each role, run:"
+echo "    node tools/workflow-mcp/config-ui.mjs"
+echo "It opens a page over .agents/config.json that explains every setting and"
+echo "refuses invalid ones; tools/workflow-mcp/config.md is the guide. /project:init"
+echo "also asks you about these, so you can leave it until then."

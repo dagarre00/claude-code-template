@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workflow config</title>
+<style>
+  :root {
+    --bg: #f6f6f3; --panel: #ffffff; --ink: #1c1c1a; --muted: #666660; --line: #dcdcd3;
+    --accent: #2456d6; --accent-ink: #ffffff; --ok: #17703f; --bad: #b3261e;
+    --warn-bg: #fff3d1; --warn-ink: #6b4500; --bad-bg: #fde7e5; --code: #eeeee8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141413; --panel: #1e1e1c; --ink: #ecece6; --muted: #a4a49a; --line: #35352f;
+      --accent: #8aa9ff; --accent-ink: #10131c; --ok: #62d18f; --bad: #ff8b82;
+      --warn-bg: #3a3014; --warn-ink: #f0c56b; --bad-bg: #3d1f1c; --code: #2a2a26;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 920px; margin: 0 auto; padding: 12px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .bar h1 { font-size: 17px; margin: 0; flex: 1 1 auto; }
+  .bar h1 small { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 6px; }
+  #status { flex: 1 1 100%; font-size: 13px; color: var(--muted); order: 3; overflow-wrap: anywhere; }
+  #status.ok { color: var(--ok); } #status.bad { color: var(--bad); }
+  main { max-width: 920px; margin: 0 auto; padding: 16px; display: grid; gap: 16px; }
+  section, details.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  h2 { font-size: 16px; margin: 0 0 4px; }
+  h3 { font-size: 14px; margin: 0; }
+  .lede { color: var(--muted); margin: 0 0 12px; font-size: 14px; }
+  .help { color: var(--muted); font-size: 13px; margin: 2px 0 0; }
+  .field { margin: 12px 0; }
+  .field > label { font-weight: 600; display: block; }
+  input[type=text], input[type=number], select, textarea {
+    font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+    border-radius: 6px; padding: 6px 8px; max-width: 100%; }
+  input[type=text] { width: 100%; }
+  textarea { width: 100%; min-height: 86px; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 1px; }
+  button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+    border-radius: 6px; padding: 6px 14px; cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .banner { border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+  .banner.warn { background: var(--warn-bg); color: var(--warn-ink); }
+  .banner.bad { background: var(--bad-bg); color: var(--bad); }
+  .banner.good { background: var(--code); color: var(--ok); }
+  .banner button { margin-left: 8px; padding: 2px 10px; }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+  th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 600; padding: 4px 6px; }
+  td { padding: 4px 6px; vertical-align: middle; }
+  td input[type=text] { min-width: 150px; }
+  .model-pick { display: grid; gap: 4px; }
+  .model-pick select { min-width: 190px; max-width: 340px; }
+  .model-pick .misfit { color: var(--bad); font-size: 13px; margin: 0; }
+  .model-pick select[aria-invalid=true], .model-pick input[aria-invalid=true] { border-color: var(--bad); }
+  button.add { margin-top: 8px; }
+  ul { margin: 6px 0 0; padding-left: 20px; }
+  .tablewrap { overflow-x: auto; }
+  .role + .role { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 16px; }
+  .role header { position: static; border: 0; background: none; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .tag { font-size: 12px; background: var(--code); border-radius: 4px; padding: 1px 6px; color: var(--muted); }
+  .now { margin-top: 8px; font-size: 13px; background: var(--code); border-radius: 6px; padding: 8px 10px; }
+  .now b { font-weight: 600; }
+  .now .pin { color: var(--accent); }
+  .now .misfit { color: var(--bad); font-weight: 600; }
+  .follow { margin: 8px 0 0; }
+  details > summary { cursor: pointer; font-weight: 600; }
+  pre { background: var(--code); border-radius: 6px; padding: 10px; overflow: auto; font-size: 12px; margin: 8px 0 0; }
+  code { background: var(--code); border-radius: 4px; padding: 0 4px; font-size: 13px; }
+  table.engines .handlecell { width: 34px; padding-left: 0; }
+  .handle { display: inline-block; cursor: grab; user-select: none; padding: 2px 8px; border-radius: 4px;
+    color: var(--muted); font-size: 16px; line-height: 1.2; }
+  .handle:hover, .handle:focus-visible { background: var(--code); color: var(--ink); }
+  .handle:active { cursor: grabbing; }
+  td.order { width: 28px; font-weight: 600; text-align: center; }
+  td.actioncell { width: 1%; white-space: nowrap; }
+  tr.unused > td { opacity: .62; }
+  tr.dragging > td { opacity: .35; }
+  tr.divider td { font-size: 12px; color: var(--muted); border-top: 1px dashed var(--line); padding: 8px 6px 4px; }
+  tr.drop-before > td { box-shadow: inset 0 2px 0 var(--accent); }
+  tr.drop-after > td { box-shadow: inset 0 -2px 0 var(--accent); }
+  tr.drop-out > td { background: var(--code); }
+  /* Each role card gets its own tint (--hue is set per card by app.js): a pale wash
+     in the light theme, a deep one in the dark, plus a solid edge so the colour still
+     reads at a glance. Text stays on the theme's own ink, so contrast is unchanged. */
+  .role.tinted { --wash: hsl(var(--hue) 60% 95%); --edge: hsl(var(--hue) 55% 48%); --inset: hsl(var(--hue) 45% 89%);
+    background: var(--wash); border: 1px solid hsl(var(--hue) 40% 84%); border-left: 5px solid var(--edge);
+    border-radius: 8px; padding: 12px 14px; margin-top: 12px; }
+  .role.tinted + .role.tinted { border-top: 1px solid hsl(var(--hue) 40% 84%); padding-top: 12px; margin-top: 12px; }
+  .role.tinted input[type=text], .role.tinted input[type=number], .role.tinted select { background: var(--panel); }
+  .role.tinted .now { background: var(--inset); }
+  .role.tinted .tag { background: var(--inset); }
+  @media (prefers-color-scheme: dark) {
+    .role.tinted { --wash: hsl(var(--hue) 30% 17%); --edge: hsl(var(--hue) 55% 60%); --inset: hsl(var(--hue) 28% 12%);
+      border-color: hsl(var(--hue) 25% 26%); border-left-color: var(--edge); }
+    .role.tinted + .role.tinted { border-top-color: hsl(var(--hue) 25% 26%); }
+  }
+  details.flags { margin-top: 12px; }
+  details.flags td { vertical-align: top; font-size: 13px; }
+  details.flags td code, details.flags .tag { white-space: nowrap; }
+  tr.flag-guarantee td:first-child code { font-weight: 700; }
+  .tag.kind-guarantee { background: var(--warn-bg); color: var(--warn-ink); }
+  .tag.kind-config { color: var(--accent); }
+  .legend { display: grid; gap: 2px; font-size: 13px; margin: 8px 0 0; }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>Workflow config <small id="path"></small></h1>
+    <button id="reload" type="button">Discard changes</button>
+    <button id="save" type="button" class="primary" disabled>Save</button>
+    <div id="status" role="status" aria-live="polite">Loading…</div>
+  </div>
+</header>
+<main id="app"></main>
+<script type="module" src="/app.js"></script>
+</body>
+</html>

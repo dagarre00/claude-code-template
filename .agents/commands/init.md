@@ -38,7 +38,12 @@ land only partway:
   isn't available, the server isn't reachable — stop and check:
   - `.mcp.json` exists at the repo root and registers `workflow`.
   - **Claude Code only:** `.claude/settings.json` has both
-    `extraKnownMarketplaces.workflow` and `enabledPlugins["project@workflow"]`.
+    `extraKnownMarketplaces.<name>` and `enabledPlugins["project@<name>"]`,
+    where `<name>` is the `name` in `.claude-plugin/marketplace.json` — per
+    project, `workflow-<dir-name>` as `scripts/adopt.sh` derives it. A fixed
+    `workflow` shared with another project on the machine makes that project
+    serve this one's skills (`docs/wiki/gotchas.md`); if you find one, rename
+    it in both files and restart the session.
     Codex and Antigravity read `.agents/` directly and don't need this — if
     you're conducting on either and this command is running at all, this file
     is a non-issue by construction.
@@ -82,7 +87,16 @@ re-litigate it without being asked.
    current. If you can't confirm one, say so to the human instead of writing
    an unverified guess into config.
 4. **Write the confirmed `engine` / `models` / `effort` per role** into
-   `.agents/config.json`, matching its existing shape.
+   `.agents/config.json`, matching its existing shape. A model is written under
+   the engine that runs it and nowhere else — `gpt-*` under `codex`, `claude-*`
+   under `claude`, `gemini-*` under `antigravity` (which also lists `claude-*`
+   and `gpt-oss-*`); the loader refuses an id under an engine that cannot run it.
+
+If the human would rather review or adjust the choices than answer per role,
+point them at the editor: `node tools/workflow-mcp/config-ui.mjs` opens a page
+over `.agents/config.json` that shows what each role will run and refuses an
+invalid value ([`config.md`](../../tools/workflow-mcp/config.md) is the guide).
+It edits the same file this step writes; never run it for them.
 
 Report the resolved engine + model per role in one line each. This step
 produces no commit of its own — it lands in step 8 with everything else.

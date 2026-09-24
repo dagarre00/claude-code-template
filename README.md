@@ -56,9 +56,15 @@ rm -rf tools/workflow-mcp/test                            # template-only test s
 # also delete the "scripts" block in tools/workflow-mcp/package.json —
 # its "test" script only made sense for the excluded test/ directory
 cp <template>/.mcp.json .
-# merge into .claude/settings.json — don't overwrite it:
-#   "extraKnownMarketplaces": {"workflow": {"source": {"source": "directory", "path": "."}}}
-#   "enabledPlugins": {"project@workflow": true}
+# the plugin marketplace: copy the manifest, then give it THIS project's name —
+# "workflow-<your-project-dir-name>" (lowercase, runs of non-alphanumerics → "-").
+# Claude Code keeps one marketplace per name per machine, so a shared name makes
+# one project serve another's skills (docs/wiki/gotchas.md):
+mkdir -p .claude-plugin && cp <template>/.claude-plugin/marketplace.json .claude-plugin/
+#   edit .claude-plugin/marketplace.json: "name": "workflow-<your-project-dir-name>"
+# merge into .claude/settings.json — don't overwrite it — with that same name:
+#   "extraKnownMarketplaces": {"workflow-<your-project-dir-name>": {"source": {"source": "directory", "path": "."}}}
+#   "enabledPlugins": {"project@workflow-<your-project-dir-name>": true}
 cd tools/workflow-mcp && npm install && cd ../..
 claude
 ```
@@ -145,6 +151,8 @@ Run the returned `command`, `inspect_dispatch` (and, for a developer, the return
 | `developer` | agy → codex → claude | profile default (`gemini-3.8-flash`, medium, on agy) | profile default |
 | `plan-adversary` | agy → codex → claude | `gemini-3.8-flash` on agy | high |
 | `adversary` | codex → agy → claude | `gpt-6-astra` on codex | medium |
+
+**Changing it without reading JSON.** `node tools/workflow-mcp/config-ui.mjs` (or `npm --prefix tools/workflow-mcp run config`) opens a local page over `.agents/config.json` — guide and full setting reference in [`tools/workflow-mcp/config.md`](tools/workflow-mcp/config.md), which adopting projects receive with the rest of `tools/workflow-mcp/`. Every setting has a one-line explanation, each role shows what it will actually run (engine order, model, effort — the role's own pin, else the engine's default for its profile), and Save stays disabled until the edit passes the same validation the dispatcher loads the file with. A save writes only what you changed, in the file's own line endings, and refuses if the file changed on disk in the meantime. It listens on loopback only, and its API needs the token in the URL it prints. Changes apply to the next dispatch, no restart. Hand-editing still works, and the loader now rejects what used to be silently ignored: an unknown key (top level or inside an `engines.<name>` block), and an effort or model id the engine does not accept. `workerTimeoutSeconds` is only enforced for Antigravity workers today.
 
 Pinning roles to agy is the one trade-off worth naming: its workers need a one-time user-global permission grant before they can run a command at all (`check` lists any that are missing), and a worktree is not a read boundary on agy — nor on codex, whose read-only sandbox bounds writes but not reads (measured) — so `inspect_dispatch` audits both engines' transcripts for reads outside the workspace and skills a worker opened without being sent them. The setup is in [`tools/workflow-mcp/engine-setup.md`](tools/workflow-mcp/engine-setup.md).
 

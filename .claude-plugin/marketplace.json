@@ -1,5 +1,5 @@
 {
-  "name": "workflow",
+  "name": "workflow-claude-code-template",
   "owner": { "name": "claude-code-template" },
   "plugins": [
     {

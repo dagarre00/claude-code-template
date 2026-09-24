@@ -2,7 +2,7 @@
 // as plain functions and so the transport stays a thin shell over them.
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { engineAvailability, engineSetup } from './availability.mjs';
+import { engineAvailability, engineSetup, grantAntigravitySetup } from './availability.mjs';
 import { loadCanonical } from './canonical.mjs';
 import { loadConfig, resolveEngineChain } from './config.mjs';
 import { ENGINES, engineNames } from './engines/index.mjs';
@@ -90,6 +90,7 @@ export function makeTools(root, conductorEngine) {
         setup: engineSetup(config, name)
       }));
       const available = new Set(engines.filter(engine => engine.available).map(engine => engine.name));
+      const setupByEngine = Object.fromEntries(engines.map(engine => [engine.name, engine.setup]));
 
       return {
         ...(result.ok
@@ -102,6 +103,19 @@ export function makeTools(root, conductorEngine) {
         // chain is gone.
         roles_without_an_available_engine: Object.keys(chains)
           .filter(role => !chains[role].some(engine => available.has(engine))).sort(),
+        // Installed is not the same as usable: an available engine can still deny
+        // a worker's first command (engineSetup, e.g. agy's missing command()
+        // grants), and that failure is silent enough on two of three engines to
+        // look like success (engine-setup.md). `ok` above stays about drift
+        // alone — a missing grant is not a broken checkout — so this is the
+        // separate, explicit signal: every role whose engine has an unmet setup
+        // requirement, found before a dispatch is composed rather than after it
+        // comes back empty. "Its engine" is the one a dispatch would run on —
+        // the first installed entry in the chain, exactly as prepareDispatch
+        // picks it — never a first choice that is not installed here and so
+        // never runs (adversary round 1 on fix/workflow-mcp-hardening, F3).
+        roles_with_unmet_setup: Object.keys(chains)
+          .filter(role => setupByEngine[chains[role].find(name => available.has(name)) ?? chains[role][0]]?.ok === false).sort(),
         // A role whose chain reaches an engine that cannot give it what it
         // declares it needs. Only measured gaps are listed.
         capability_gaps: loadCanonical(root).roles.flatMap(role => (chains[role.name] ?? []).map(engine => ({
@@ -112,6 +126,10 @@ export function makeTools(root, conductorEngine) {
         // worker runs. A missing rule file means the check guards nothing.
         architecture: architectureStatus(root, config)
       };
+    },
+
+    grant_antigravity_setup() {
+      return grantAntigravitySetup(loadConfig(root));
     },
 
     get_contract() {
