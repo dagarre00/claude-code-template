@@ -25,7 +25,8 @@
 // Usage: node run-worker.mjs <dispatchDir>
 // Exit:  the engine's own exit code, or the extraction's when the engine exited
 //        0 and extraction found a failure; 124 on timeout; 127 when the
-//        executable is not installed; 128+n when a signal stopped the runner.
+//        executable is not installed or the worker could not be started;
+//        128+n when a signal stopped the runner.
 import { spawnSync } from 'node:child_process';
 import { closeSync, existsSync, openSync, readFileSync, writeFileSync } from 'node:fs';
 import { constants } from 'node:os';
@@ -73,7 +74,16 @@ export async function runWorker(dir) {
     return recordFinish(dir, { processCode: 127 });
   }
 
-  const streams = openStreams(run);
+  // The start is already recorded, so a failure here has to be recorded too:
+  // otherwise the dispatch reads `running` forever and its task refuses a
+  // re-compose until the conductor abandons it by hand.
+  let streams;
+  try { streams = openStreams(run); } catch (error) {
+    const reason = `The worker could not be started: ${error.message}`;
+    process.stderr.write(`${reason}\n`);
+    try { note(run.report_file, reason); } catch { /* the report file may be what could not be opened */ }
+    return recordFinish(dir, { processCode: 127 });
+  }
   let child = null;
   let stoppedBy = null;
   // Something stopping the runner — a conductor interrupting it — stops the

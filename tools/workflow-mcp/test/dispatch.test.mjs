@@ -357,6 +357,23 @@ test('an engine that is not installed is reported as such, exit 127, with nothin
   });
 });
 
+// The start is recorded before the streams are opened, so a failure opening
+// them used to leave a dispatch that reads `running` forever, and composing
+// into its task again was refused (adversary R2-F2 on PR #40).
+test('a worker whose streams cannot be opened is recorded as finished, with the reason', () => {
+  withRepo(root => {
+    const built = prepareDispatch(root, { ...base, cli_engine: 'codex', conductorEngine: 'claude',
+      workspace: resolve(root, '.worktrees/x') });
+    const missing = resolve(dirname(built.report_file), 'no-such-stdin.txt');
+    const outcome = runAs(built, process.execPath, ['-e', '0'], { run: { stdin_file: missing } });
+    assert.notEqual(outcome.status, 0);
+    const recorded = JSON.parse(readFileSync(resolve(dirname(built.report_file), 'outcome.json'), 'utf8'));
+    assert.ok(recorded.finished_at, 'the dispatch still reads as running');
+    assert.notEqual(recorded.exit_code, 0);
+    assert.match(`${outcome.stdout}${outcome.stderr}`, /could not be started.*no-such-stdin/s);
+  });
+});
+
 // The command is handed to whatever shell the conductor has. It must run as
 // given — through a real shell, not reconstructed from its parts.
 test('the returned command runs verbatim through a shell', () => {
