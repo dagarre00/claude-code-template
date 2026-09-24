@@ -1,11 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { loadConfig } from '../config.mjs';
 import { prepareDispatch as preparePrepared, shellArg } from '../dispatch.mjs';
-import { cleanup, composeIn, fixture, readRun, runAs, stubWorktree } from './helpers.mjs';
+import { RUN_WORKER, cleanup, composeIn, fixture, readRun, runAs, stubWorktree } from './helpers.mjs';
 
 const prepareDispatch = composeIn(preparePrepared);
 
@@ -644,4 +644,29 @@ test('a worker whose engine reads files through the shell is told reading is not
     assert.match(codex, /never .*(write|move|delete)/i);
     for (const engine of ['claude', 'antigravity']) assert.doesNotMatch(prompt(engine), /no separate file tools/i);
   });
+});
+
+// A runner stopped from outside — a shell tool giving up on it, a task stop —
+// cannot record how its run ended, and used to leave the dispatch `running` for
+// good, with its worker still going on POSIX. Its watchdog stops the worker and
+// records the run as stopped from outside.
+test('a runner killed outright leaves no worker behind and no dispatch stuck running', async () => {
+  const root = fixture({ '.agents/config.json': JSON.stringify(CONFIG) });
+  try {
+    const built = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude',
+      workspace: resolve(root, '.worktrees/x'), task_id: 'killed' });
+    const dir = dirname(built.report_file);
+    const marker = resolve(root, 'worker-survived.txt');
+    writeFileSync(resolve(dir, 'run.json'), JSON.stringify({ ...readRun(built), stdout: 'report', stderr: 'inherit', extract: null,
+      executable: process.execPath, args: ['-e', `setTimeout(() => require('fs').writeFileSync(${JSON.stringify(marker)}, 'x'), 7000)`] }));
+    const runner = spawn(process.execPath, [RUN_WORKER, dir], { stdio: 'ignore' });
+    await new Promise(done => setTimeout(done, 2500));
+    runner.kill('SIGKILL');
+    await new Promise(done => setTimeout(done, 7500));
+    assert.equal(existsSync(marker), false, 'the worker outlived its killed runner');
+    const outcome = JSON.parse(readFileSync(resolve(dir, 'outcome.json'), 'utf8'));
+    assert.ok(outcome.finished_at, 'the run is recorded as ended, not left running');
+    assert.equal(outcome.runner_stopped, true);
+    assert.equal(outcome.exit_code, 137);
+  } finally { cleanup(root); }
 });

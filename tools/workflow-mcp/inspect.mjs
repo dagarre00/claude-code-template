@@ -113,7 +113,11 @@ function verdictFor({ record, outcome, report, worktree, decision, red }) {
     return { mechanical: 'incomplete', warnings,
       reasons: [`Started at ${outcome.started_at} and has not finished (or was killed before it could record an exit).`] };
   }
-  if (outcome.timed_out) {
+  if (outcome.runner_stopped) {
+    reasons.push('The runner was stopped from outside before the worker finished — a shell tool gave up on the command, or '
+      + 'it was killed — and its watchdog stopped the worker with everything it started. The work is unfinished: '
+      + 're-dispatch, running the command in the background and waiting for it.');
+  } else if (outcome.timed_out) {
     reasons.push('The worker ran past its time limit (workerTimeoutSeconds) and was stopped with every process it '
       + 'started; its work is unfinished. Narrow the brief, or raise the limit if the task genuinely needs longer.');
   } else if (outcome.exit_code !== 0) {

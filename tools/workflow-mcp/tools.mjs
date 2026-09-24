@@ -1,15 +1,15 @@
 // The tool implementations, kept separate from MCP wiring so they can be tested
 // as plain functions and so the transport stays a thin shell over them.
-import { existsSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { engineAvailability, engineSetup, grantAntigravitySetup } from './availability.mjs';
 import { loadCanonical } from './canonical.mjs';
 import { loadConfig, resolveEngineChain } from './config.mjs';
 import { ENGINES, engineNames } from './engines/index.mjs';
-import { prepareDispatch } from './dispatch.mjs';
+import { prepareDispatch, setupCommand } from './dispatch.mjs';
 import { generate, checkGenerated } from './generate.mjs';
 import { dispatchStats, inspectDispatch, recordDecision } from './inspect.mjs';
-import { listWorktrees, prepareWorktree, removeWorktree } from './worktree.mjs';
+import { dispatchDir, listWorktrees, prepareWorktree, removeWorktree } from './worktree.mjs';
 
 function architectureStatus(root, config) {
   const { command, rules } = config.architecture;
@@ -54,9 +54,19 @@ export function makeTools(root, conductorEngine) {
     },
 
     // Loaded first, so a malformed worktreeSetup fails before a worktree exists.
+    // The commands are recorded beside the worktree and handed back as one
+    // bounded line (bounded.mjs --setup): typed raw into the conductor's shell
+    // they ran with no limit, could outlive a shell tool that gave up on them,
+    // and printed an install's whole output into the conductor's context.
     prepare_worktree(input = {}) {
-      const setup_commands = loadConfig(root).worktreeSetup ?? [];
-      return { ...prepareWorktree(root, input), setup_commands };
+      const config = loadConfig(root);
+      const setup_commands = config.worktreeSetup ?? [];
+      const prepared = prepareWorktree(root, input);
+      if (!setup_commands.length) return { ...prepared, setup_commands };
+      const dir = dispatchDir(root, prepared.task_id);
+      writeFileSync(resolve(dir, 'setup.json'), JSON.stringify({ workspace: prepared.workspace, commands: setup_commands,
+        timeout_seconds: config.workerTimeoutSeconds }, null, 2) + '\n');
+      return { ...prepared, setup_commands, setup_command: setupCommand(dir) };
     },
 
     inspect_dispatch({ task_id } = {}) {

@@ -133,9 +133,10 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
 
   const dispatch = (task_id, spec) => {
     const wt = tools.prepare_worktree({ task_id });
-    for (const command of wt.setup_commands) {
-      const setup = spawnSync(shell ?? 'sh', ['-c', command], { cwd: wt.workspace, encoding: 'utf8' });
-      if (setup.status !== 0) throw new Error(`setup command failed in ${task_id}: ${command}\n${setup.stderr}`);
+    // The one bounded line prepare_worktree hands back, run the way a conductor runs it.
+    if (wt.setup_command) {
+      const setup = spawnSync(wt.setup_command, { shell: true, encoding: 'utf8' });
+      if (setup.status !== 0) throw new Error(`worktree setup failed in ${task_id}:\n${setup.stdout}${setup.stderr}`);
     }
     const built = tools.build_worker_prompt({ ...spec, task_id, workspace: wt.workspace, cli_engine: engine });
     record(`${task_id}.compose`, `${spec.role} prompt composed for ${engine}`, built.prompt_bytes > 0 && built.engine === engine,

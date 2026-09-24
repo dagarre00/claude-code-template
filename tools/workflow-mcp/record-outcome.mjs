@@ -21,9 +21,11 @@ export function recordStart(dir) {
   writeFileSync(outcomeFile(dir), JSON.stringify({ started_at: new Date().toISOString() }, null, 2) + '\n');
 }
 
-// `timed_out` and `signal` say why a process has an exit code it did not choose:
-// the runner stopped it at the time limit, or something stopped the runner.
-export function recordFinish(dir, { processCode, extractionCode = null, timedOut = false, signal = null }) {
+// `timed_out`, `signal` and `runner_stopped` say why a process has an exit code
+// it did not choose: the runner stopped it at the time limit, a signal reached the
+// runner, or the runner was killed outright and its watchdog stopped the worker.
+export function recordFinish(dir, { processCode, extractionCode = null, timedOut = false, signal = null,
+  runnerStopped = false }) {
   const file = outcomeFile(dir);
   let outcome = {};
   try { if (existsSync(file)) outcome = JSON.parse(readFileSync(file, 'utf8')); } catch { /* rewrite below */ }
@@ -37,7 +39,8 @@ export function recordFinish(dir, { processCode, extractionCode = null, timedOut
     duration_ms: Number.isFinite(started) ? now.getTime() - started : null,
     process_exit_code: processCode, extraction_exit_code: extractionCode, exit_code,
     ...(timedOut ? { timed_out: true } : {}),
-    ...(signal ? { signal } : {})
+    ...(signal ? { signal } : {}),
+    ...(runnerStopped ? { runner_stopped: true } : {})
   }, null, 2) + '\n');
   return exit_code;
 }

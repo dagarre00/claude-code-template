@@ -39,7 +39,7 @@ Every dispatch follows the `worker-dispatch` skill — read it before the cycle'
 
 - **Clean working tree — clean *and yours*.** Run `git status --porcelain` and account for every line. Changes you did not make are another session's live work: never stash, reset or check out over them (rule 21) — `human-checkpoint`, naming the paths.
 - `docs/wiki/todos.md` has at least one item.
-- `docs/wiki/commands.md § Test` is not `<TBD>` **and actually runs** — execute it once before dispatching anything. A command that errors (framework missing, no manifest, no test directory) makes every Red fail for the wrong reason. The fix is `/project:init` step 5a, never a skeleton improvised mid-cycle.
+- `docs/wiki/commands.md § Test` is not `<TBD>` **and actually runs** — execute it once before dispatching anything, bounded: `node tools/workflow-mcp/bounded.mjs -- "<test command>"`. A command that errors (framework missing, no manifest, no test directory) makes every Red fail for the wrong reason. The fix is `/project:init` step 5a, never a skeleton improvised mid-cycle.
 
 Any failure → stop and `human-checkpoint`.
 

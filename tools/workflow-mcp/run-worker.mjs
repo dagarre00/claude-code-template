@@ -88,8 +88,10 @@ export async function runWorker(dir) {
   });
   let result;
   try {
+    // guard: killed outright, this runner cannot stop the worker itself — its
+    // watchdog does, and records the run as stopped from outside.
     result = await runBounded({ file: executable, args: run.args, cwd: run.cwd, stdio: streams.stdio,
-      timeoutMs: run.timeout_seconds * 1000, onStart: started => { child = started; } });
+      timeoutMs: run.timeout_seconds * 1000, onStart: started => { child = started; }, guard: { dir } });
   } finally {
     streams.close();
     for (const [signal, handler] of handlers) process.off(signal, handler);

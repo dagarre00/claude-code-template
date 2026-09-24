@@ -36,6 +36,7 @@ export const shellArg = value => {
 // whether this is the template checkout or a project that adopted a copy of it.
 const RUN_WORKER = fileURLToPath(new URL('./run-worker.mjs', import.meta.url));
 const RED_CHECK = fileURLToPath(new URL('./red-check.mjs', import.meta.url));
+const BOUNDED = fileURLToPath(new URL('./bounded.mjs', import.meta.url));
 
 // Where each stream goes, per engine. Three ways to one destination —
 // report_file — so the conductor reads one file whatever the engine:
@@ -339,6 +340,8 @@ export function prepareDispatch(root, input = {}) {
     red_check_command: composed.test_paths ? redCheckCommand(dir) : null,
     // Run by the red check's architecture phase, with the worker's files in place.
     architecture_command: composed.test_paths ? config.architecture.command : null,
+    // The limit on each red check phase, as on the worker itself.
+    timeout_seconds: config.workerTimeoutSeconds,
     engine, model: command.model, effort: command.effort,
     // What the worker was given. Every worktree holds every committed skill, so
     // this is what inspect_dispatch reads a skill the worker opened against.
@@ -466,3 +469,4 @@ export function prepareDispatch(root, input = {}) {
 
 export const runWorkerCommand = dir => `node ${shellArg(RUN_WORKER)} ${shellArg(dir)}`;
 export const redCheckCommand = dir => `node ${shellArg(RED_CHECK)} ${shellArg(dir)}`;
+export const setupCommand = dir => `node ${shellArg(BOUNDED)} --setup ${shellArg(dir)}`;

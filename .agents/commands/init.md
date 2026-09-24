@@ -104,7 +104,7 @@ Add an entity page per feature or module (`spec-writing` skill) and an ADR per n
 
 `/project:work` cannot start Red until the test command executes; on a greenfield repo it doesn't yet.
 
-1. **Run it.** A clean zero-test result ("no tests collected", "0 passing") means it is runnable — skip to step 6.
+1. **Run it**, bounded — `node tools/workflow-mcp/bounded.mjs -- "<test command>"`, as for the install below: a hung command then stops, with everything it started, instead of outliving the session. A clean zero-test result ("no tests collected", "0 passing") means it is runnable — skip to step 6.
 2. **Otherwise propose the minimum skeleton** via `human-checkpoint` before creating anything: the dependency manifest declaring the chosen test framework, the framework's empty test directory, and the empty source directory from `architecture.md § Layout`. No application code, no example module, no placeholder test.
 3. **Install, then run the test command** and confirm it exits cleanly on an empty suite. An install failure (no network, missing toolchain) → `human-checkpoint`; never paper over it with a fake command.
 4. **Record only commands you have run** in `docs/wiki/commands.md` (`## Install`, `## Test`, …).

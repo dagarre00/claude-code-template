@@ -147,7 +147,8 @@ async function runPhase(command, cwd, timeoutSeconds) {
   // printing them — the output tail would then hold no assertion to read.
   const { NODE_TEST_CONTEXT, ...env } = process.env;
   const started = Date.now();
-  const run = await runBounded({ command, cwd, env, timeoutMs: timeoutSeconds * 1000, tailBytes: OUTPUT_TAIL_BYTES * 2 });
+  const run = await runBounded({ command, cwd, env, timeoutMs: timeoutSeconds * 1000, tailBytes: OUTPUT_TAIL_BYTES * 2,
+    guard: true });
   const judged = !run.error && !run.timed_out && run.status !== null;
   return {
     command,
@@ -173,8 +174,11 @@ function stateOf({ green, architecture, red }) {
   return red.failed ? 'proven' : 'refuted';
 }
 
-export async function runRedCheck(dir, { timeoutSeconds = 1800 } = {}) {
+export async function runRedCheck(dir, { timeoutSeconds } = {}) {
   const record = dispatchFor(dir);
+  // Per phase: the project's workerTimeoutSeconds, as recorded when the dispatch
+  // was composed — the same limit its worker had.
+  timeoutSeconds ??= record.timeout_seconds ?? 1800;
   if (existsSync(paths(dir).manifest)) {
     throw new Error(`A previous red check did not finish. Run: node red-check.mjs ${dir} --restore`);
   }

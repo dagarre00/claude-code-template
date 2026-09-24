@@ -17,8 +17,23 @@
 // the caller hands over a command line (a project's test command), and an argv
 // is spawned directly.
 import { spawn, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 export const KILL_GRACE_MS = 5000;
+const WATCHDOG = fileURLToPath(new URL('./watchdog.mjs', import.meta.url));
+
+// Starts watchdog.mjs for a child: detached from this process, so it outlives
+// it, and killing the child's tree if this process dies first. `dir` names a
+// dispatch whose outcome it then marks as stopped from outside.
+function startWatchdog(childPid, dir) {
+  try {
+    const watchdog = spawn(process.execPath, [WATCHDOG, String(process.pid), String(childPid), ...(dir ? [dir] : [])],
+      { detached: true, stdio: 'ignore', windowsHide: true });
+    watchdog.on('error', () => {});
+    watchdog.unref();
+    return watchdog;
+  } catch { return null; }
+}
 
 export function killTree(pid, { platform = process.platform, signal = 'SIGKILL' } = {}) {
   if (!pid) return;
@@ -53,8 +68,10 @@ function tailCollector(limit) {
 //
 // stdio: an array as for spawn (file descriptors, 'ignore', 'inherit'); any
 // 'pipe' stream is collected, and only its last `tailBytes` bytes are kept.
+// guard: true, or { dir } for a dispatch — a watchdog kills the tree if this
+// process is itself stopped before the child ends (watchdog.mjs).
 export function runBounded({ file, args = [], command, cwd, env = process.env, timeoutMs,
-  stdio = ['ignore', 'pipe', 'pipe'], tailBytes = 64 * 1024, onStart } = {}) {
+  stdio = ['ignore', 'pipe', 'pipe'], tailBytes = 64 * 1024, onStart, guard = false } = {}) {
   return new Promise(resolvePromise => {
     const posix = process.platform !== 'win32';
     const options = { cwd, env, stdio, windowsHide: true, detached: posix };
@@ -97,6 +114,8 @@ export function runBounded({ file, args = [], command, cwd, env = process.env, t
       if (child.pid === undefined) finish(null, null);
     });
     child.on('close', finish);
+    const watchdog = guard && child.pid ? startWatchdog(child.pid, guard?.dir) : null;
+    child.on('close', () => { try { watchdog?.kill(); } catch { /* already gone */ } });
     onStart?.(child);
   });
 }

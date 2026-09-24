@@ -77,8 +77,10 @@ export function createServer(root, conductorEngine) {
     + 'Pass `reuse: <task id>` to hand a finished task\'s worktree to this one instead — a new branch at HEAD in the same directory, '
     + 'its installed dependencies intact — for the next case of a cycle. Refused unless that worktree is clean, merged, free of violations '
     + 'and its dispatch decided. '
-    + 'Returns `setup_commands` from config (e.g. building a per-worktree virtualenv): run each in the workspace before dispatching, and treat a failure as a blocker. '
-    + 'On a reused worktree they already ran once; run them again, cheaply, since the last case may have changed a dependency.',
+    + 'With worktreeSetup configured (e.g. building a per-worktree virtualenv) it returns `setup_command`: one line that runs every step in the '
+    + 'workspace under workerTimeoutSeconds, stops at the first failure and prints only its output. Run it before dispatching, and treat a '
+    + 'failure as a blocker; never paste `setup_commands` into your shell one by one. On a reused worktree it is quick, and still needed '
+    + 'if the last case changed a dependency.',
     { task_id: z.string(), reuse: z.string().optional().describe('task_id of a finished task whose worktree this one takes over.') },
     input => api.prepare_worktree(input), false);
 

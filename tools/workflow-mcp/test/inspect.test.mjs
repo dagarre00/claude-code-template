@@ -8,7 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { makeTools } from '../tools.mjs';
@@ -397,6 +397,31 @@ test('prepare_worktree hands back the configured setup commands for the conducto
   repo((root, tools) => {
     assert.deepEqual(tools.prepare_worktree({ task_id: 'none' }).setup_commands, []);
   });
+});
+
+// Typed raw into the conductor's shell, setup ran with no limit, could outlive a
+// shell tool that gave up on it, and printed a whole install into the conductor's
+// context. The one command prepare_worktree hands back runs every step bounded,
+// in the worktree, stops at the first failure, and prints only a failure's output.
+test('the setup command runs every step in the worktree, bounded, and stops at the first failure', () => {
+  const step = (name, code = 0) => `node -e "require('fs').writeFileSync('${name}', 'x'); console.log('noise '.repeat(500)); process.exitCode = ${code}"`;
+  repo((root, tools) => {
+    const wt = tools.prepare_worktree({ task_id: 'setup-ok' });
+    assert.match(wt.setup_command, /bounded\.mjs --setup /);
+    const run = spawnSync(wt.setup_command, { shell: true, encoding: 'utf8' });
+    assert.equal(run.status, 0, run.stderr);
+    assert.ok(existsSync(resolve(wt.workspace, 'one.txt')) && existsSync(resolve(wt.workspace, 'two.txt')), 'ran in the worktree');
+    assert.doesNotMatch(run.stdout, /noise noise/, 'a successful step prints no output');
+    assert.match(run.stdout, /Setup done: 2 command/);
+  }, { ...CONFIG, worktreeSetup: [step('one.txt'), step('two.txt')] });
+  repo((root, tools) => {
+    const wt = tools.prepare_worktree({ task_id: 'setup-bad' });
+    const run = spawnSync(wt.setup_command, { shell: true, encoding: 'utf8' });
+    assert.equal(run.status, 3);
+    assert.match(run.stdout, /FAIL .*exit 3/);
+    assert.match(run.stdout, /noise noise/, 'the failing step shows its output');
+    assert.equal(existsSync(resolve(wt.workspace, 'two.txt')), false, 'nothing runs after a failure');
+  }, { ...CONFIG, worktreeSetup: [step('one.txt', 3), step('two.txt')] });
 });
 
 test('a malformed worktreeSetup fails at load, not in the middle of a cycle', () => {
