@@ -63,7 +63,7 @@ export function createServer(root, conductorEngine) {
       test_paths: z.array(z.string()).optional().describe('For a developer: the paths (inside owned_paths) that hold its tests. The response then carries red_check_command, and inspect_dispatch stays `incomplete` until you run it — it reverts every other changed file to the base commit and the tests must fail.'),
       test_command: z.string().max(500).optional().describe('The exact command that runs the tests — required with test_paths.'),
       workspace: z.string().describe('Worktree path from prepare_worktree. Required: the command that starts a worker begins by entering its checkout.'),
-      task_id: z.string().optional().describe('The id prepare_worktree was given. Composing again into a task whose last attempt already ran archives that attempt and counts this one as a retry.'),
+      task_id: z.string().describe('The id prepare_worktree was given. Composing again into a task whose last attempt already ran archives that attempt and counts this one as a retry.'),
       retry_of: z.string().optional().describe('task_id of an attempt in another worktree that this dispatch replaces, so retries are counted per engine and role.'),
       abandon_running: z.boolean().optional().describe('Composing into a task whose attempt started and never finished is refused, because a live process would finish into the new attempt. Pass true only when that process is gone; the attempt is archived as abandoned.'),
       cli_engine: z.enum([...engineNames]).optional(),
