@@ -119,18 +119,20 @@ const pause = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0,
 // taken over through a rename, so of several waiters only one can ever break
 // it — the others see the rename fail and go back to waiting. A live lock is
 // never deleted: past the timeout the caller is told, and nothing is written.
-function withLock(lock, fn, timeoutMs) {
+// `fs` exists so a test can reproduce a platform's race deterministically.
+const LOCK_FS = { openSync, statSync, renameSync, unlinkSync, writeSync, closeSync };
+export function withLock(lock, fn, timeoutMs, { fs = LOCK_FS } = {}) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     let fd;
-    try { fd = openSync(lock, 'wx'); }
+    try { fd = fs.openSync(lock, 'wx'); }
     catch (error) {
       if (error.code !== 'EEXIST') throw error;
       let age;
-      try { age = Date.now() - statSync(lock).mtimeMs; } catch { continue; } // released between the two calls
+      try { age = Date.now() - fs.statSync(lock).mtimeMs; } catch { continue; } // released between the two calls
       if (age > LOCK_STALE_MS) {
         const stale = `${lock}.stale-${process.pid}`;
-        try { renameSync(lock, stale); unlinkSync(stale); } catch { /* another waiter took it over */ }
+        try { fs.renameSync(lock, stale); fs.unlinkSync(stale); } catch { /* another waiter took it over */ }
         continue;
       }
       if (Date.now() >= deadline) {
@@ -141,9 +143,9 @@ function withLock(lock, fn, timeoutMs) {
       pause(LOCK_POLL_MS);
       continue;
     }
-    try { writeSync(fd, String(process.pid)); } finally { closeSync(fd); }
+    try { fs.writeSync(fd, String(process.pid)); } finally { fs.closeSync(fd); }
     try { return fn(); }
-    finally { try { unlinkSync(lock); } catch { /* already gone */ } }
+    finally { try { fs.unlinkSync(lock); } catch { /* already gone */ } }
   }
 }
 
