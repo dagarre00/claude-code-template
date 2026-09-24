@@ -149,8 +149,9 @@ export function composePrompt(canonical, input = {}) {
       + `your owned paths. After you exit, the conductor stages those paths and commits them as \`${subject}\`.`
       + (protectedHere.length ? `\n\nNever change these, even where they sit inside your owned paths: ${protectedHere.map(path => `\`${path}\``).join(', ')}. `
         + 'They hold the rules your work is judged by; a change under them rejects the whole dispatch. If the task seems to need one, stop and report why.' : '')
-      + (tests.length ? `\n\nYour test paths are ${tests.map(path => `\`${path}\``).join(', ')}. After you finish, the conductor reverts every other file you changed `
-        + `to the base commit and runs \`${test_command.trim()}\`: your tests must fail then. Keep every test inside those paths and no test code anywhere else.` : '')));
+      + (tests.length ? `\n\nYour test paths are ${tests.map(path => `\`${path}\``).join(', ')}. After you finish, the conductor runs \`${test_command.trim()}\` `
+        + 'with your changes in place — it must pass — then reverts every other file you changed to the base commit and runs it '
+        + 'again: your tests must fail then. Keep every test, fixture and test helper inside those paths and no test code anywhere else.' : '')));
   }
 
   // Per-dispatch, so it sits after everything cacheable and before the

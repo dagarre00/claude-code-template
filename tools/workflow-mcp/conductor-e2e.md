@@ -62,7 +62,7 @@ From here every MCP call uses the fixture as its root. If your server is pinned 
 
 **6 — Repeat for each role you can reach.** Save the plan to a file; dispatch `plan-adversary` with `instructions_file` pointing at it; then `developer` for `B1` only (same file, plus `owned_paths`, `test_paths`, `test_command` and a `commit_message`); then `adversary` over the resulting commit range with `diff_range`. Answer step 5's questions for each, plus:
 
-- **`developer`:** a failing test *before* the implementation — run its `red_check_command` — and every change inside `owned_paths`. Run the suite yourself; never trust the report's claim.
+- **`developer`:** a failing test *before* the implementation and a passing suite after it — run its `red_check_command`, which proves both — and every change inside `owned_paths`. Never trust the report's claim.
 - **`adversary`:** findings in its report, numbered and graded, with a `Checked:` line, citing lines actually in the range (confirm `## Diff under review` was in its prompt). It wrote no files: `violations` empty.
 - **`plan-adversary`:** findings graded `blocker`/`risk`/`note`, with a `Checked:` line. An unexplained pass is a failed review.
 

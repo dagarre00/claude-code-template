@@ -297,6 +297,8 @@ export function prepareDispatch(root, input = {}) {
     owned_paths: composed.owned_paths, protected_paths: config.protectedPaths,
     test_paths: composed.test_paths, test_command: composed.test_command,
     red_check_command: composed.test_paths ? redCheckCommand(dir) : null,
+    // Run by the red check's architecture phase, with the worker's files in place.
+    architecture_command: composed.test_paths ? config.architecture.command : null,
     engine, model: command.model, effort: command.effort,
     // What the worker was given. Every worktree holds every committed skill, so
     // this is what inspect_dispatch reads a skill the worker opened against.

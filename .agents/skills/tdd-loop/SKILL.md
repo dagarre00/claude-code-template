@@ -27,7 +27,7 @@ Case states on the entity page: `[ ]` not started · `[~]` test written and conf
 4. Mark the case `[ ]` → `[~]`.
 5. Quote the failing assertion in your report, not a pass/fail count. "12 tests, 1 failed" is not Red evidence.
 
-The conductor re-proves Red after you finish: it reverts every non-test file you changed to the base commit and runs your tests, which must fail. A test that passes against the unchanged code is rejected no matter what the report says — so list your test files exactly.
+The conductor re-proves the case after you finish: your tests must pass with your changes in place, and fail once every non-test file you changed is reverted to the base commit. A test that passes against the unchanged code, or fails with your implementation, is rejected no matter what the report says — so keep every test file, fixture and test helper inside your test paths.
 
 ## Green
 

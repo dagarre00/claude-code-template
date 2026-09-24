@@ -12,7 +12,7 @@ Hard constraints from real failures. They override default inclinations.
 
 1. **Wiki-first, code-second.** Never change code behavior without updating the relevant `docs/wiki/entities/<slug>.md`. If the spec is wrong, fix the spec first, then the code — in the same commit.
 
-2. **Tests before implementation.** No production code without a failing test first. A dispatched developer's Red is re-proven mechanically (its tests must fail with every other change reverted), but writing the test first is still on you.
+2. **Tests before implementation.** No production code without a failing test first. A dispatched developer's case is re-proven mechanically (its tests must pass with its changes and fail with every other change reverted), but writing the test first is still on you.
 
 3. **Never modify tests to make them pass.** A test that seems wrong means the Behavior spec changes first, then the test, then the code.
 

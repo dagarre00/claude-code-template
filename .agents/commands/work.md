@@ -30,7 +30,7 @@ Every dispatch follows the `worker-dispatch` skill — read it before the cycle'
 
 - **Each role already receives only its own skills.** Narrow `skills` only when a worker clearly needs less.
 - **Inputs outside the worktree** (a baseline, a large fixture) are inlined in `instructions`, or covered by the engine's read grant before dispatch. A denied read ends the run.
-- **A developer case is accepted only after its Red is proven.** Pass `test_paths` and `test_command` on every developer dispatch; `inspect_dispatch` stays `incomplete` until you run the returned `red_check_command` (step 6).
+- **A developer case is accepted only after Green, architecture and Red are proven.** Pass `test_paths` and `test_command` on every developer dispatch; `inspect_dispatch` stays `incomplete` until you run the returned `red_check_command` (step 6). Prefer the case's test directory to a single file for `test_paths`: a fixture or helper the developer adds beside the test is then kept, not reverted with the implementation.
 - **Removals.** Workers cannot delete files. A moved file splits: the worker writes the new path and reports the old one as superseded, and you `git rm` it in the same commit, so git records a rename.
 
 ## Preconditions
@@ -83,9 +83,7 @@ You commit and push after each green case, so a recycled container loses at most
 
    The developer runs Red → Green → refactor → tick, leaves the result as files and runs no git. **You commit once per case** (`docs/wiki/git-conventions.md` § Cadence), before dispatching the next — that keeps the history per case. Anything changed outside `owned_paths` is a defect: read it before deciding, and never widen ownership after the fact.
 
-6. **Verify Red, Green and architecture before accepting the case.**
-   - **Red, mechanically:** run the `red_check_command` (also in `inspect_dispatch` → `red.command`). It reverts every non-test file the developer changed, runs the tests, and restores the files byte for byte. Exit 0 = Red proven; exit 1 = **refuted** — the tests pass without the implementation, and the case is rejected whatever the report says. The output tail must show the missing behavior (an assertion, or the not-yet-written symbol), not a broken fixture. Interrupted → re-run it with `--restore` first.
-   - **Green and architecture:** in the worktree, the full test command and `docs/wiki/commands.md § Architecture` both pass, with no regression.
+6. **Verify Green, architecture and Red before accepting the case** — one command, the `red_check_command` (also in `inspect_dispatch` → `red.command`). It runs the test command with the developer's files in place (**Green**, the full suite, no regression), then the architecture check if `config.json` has one, then reverts every non-test file the developer changed and runs the tests again (**Red**: they must now fail), restoring the files byte for byte. It prints a verdict line per phase and only the output tail of the run that decided. Exit 0 = proven; exit 1 = not green, architecture failing, **refuted** (the tests pass without the implementation) or timed out — `inspect_dispatch` rejects the first three whatever the report says; 2 = a phase could not run. On a proven case, read the red tail: it must show the missing behavior (an assertion, or the not-yet-written symbol), not a broken fixture. Interrupted → re-run it with `--restore` first. Don't re-run the suite by hand to confirm what it recorded.
    - **Follow-ups** the developer handed back for `todos.md`/`wiki-todos.md` are yours to append in the case commit.
    - **A case the worker could not verify** — its check needs a command outside the allowlist (a GUI application, a machine-specific runner, a service without credentials) — is yours to run before the commit claims it done. The developer names such a case in its first report on it. A substitute harness can fail *as a pass* (a script it never executes exits 0), so run the real thing and read its output. If you cannot run it either, the case stays `[~]` and the report says so.
 
@@ -124,7 +122,7 @@ You commit and push after each green case, so a recycled container loses at most
     - `/project:wiki` — 10+ open `wiki-todos.md` entries, 5+ `work` entries since the last `wiki-maintenance`, or the `[adversary]` count at `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`).
     - A missing skill — a multi-step procedure you hand-rolled this cycle, or a new service in the stack → the `update-toolkit` skill (rule 17).
     - A risky next change → `git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)` first.
-    - Every 10th `work` entry: `dispatch_stats`, reduced to one line per review role (findings raised vs. acted on) and per developer engine (`red_refuted`, `findings_against`) — the evidence for keeping the plan-adversary on simple todos, or moving a role to another engine.
+    - Every 10th `work` entry: `dispatch_stats`, reduced to one line per review role (findings raised vs. acted on) and per developer engine (`red_refuted`, `green_failed`, `findings_against`) — the evidence for keeping the plan-adversary on simple todos, or moving a role to another engine.
     - `check` reports `architecture.enforced: false` while `architecture.md § Layers` is filled → `/project:init` step 5b.
 
 ## Failure modes
@@ -138,7 +136,7 @@ You commit and push after each green case, so a recycled container loses at most
 - **A read-only reviewer changes anything** (plan-adversary or adversary) → the round is void: report it, restore the tree, re-dispatch.
 - **Adversary findings survive three rounds** → no fourth: file the `critical`/`major` ones (the human gate still applies), list the `minor`/`nit` ones unfiled in the round commit, and `human-checkpoint` any `critical`/`major` you think is wrong, with both positions.
 - **The developer cannot confirm Red** → the cases or the test environment are wrong: `human-checkpoint`.
-- **The red check refutes Red** → reject (`record_decision`) and re-dispatch with the output tail in the brief. The one exception is tests that live inside the source file (Rust `#[cfg(test)]`), where reverting the code reverts the test: brief the test into `tests/`, or accept with `override_mechanical` and a reason naming that layout.
+- **The red check is not green, fails the architecture check, or refutes Red** → reject (`record_decision`) and re-dispatch with the deciding output tail in the brief. The one exception is tests that live inside the source file (Rust `#[cfg(test)]`), where reverting the code reverts the test: brief the test into `tests/`, or accept with `override_mechanical` and a reason naming that layout.
 - **The architecture check fails** → send it back with the check's output: move the code or add a port. A request to loosen a rule is a `human-checkpoint` and, if approved, an ADR in the same commit as the rule change.
 - **Two failures on one mechanism** → rule 5: tag `checkpoint-<stamp>` and `human-checkpoint` with both attempts; the `git reset --hard` is the human's call, after `git status --porcelain` accounts for every line. On an approved reset, re-spec via `/project:interview`; for complex work, re-dispatch the `planner` for a fundamentally different approach first.
 - **Pre-existing test failures on `develop`** → stop; `human-checkpoint`. Never build on a broken base.

@@ -69,8 +69,10 @@ function codexUsage(rawFile) {
   return Number.isFinite(total) ? { total_tokens: total } : null;
 }
 
-// Where Red stands for a dispatch that declared test paths (red-check.mjs).
-// null for every other dispatch: nothing is claimed about Red there.
+// Where the case check stands for a dispatch that declared test paths
+// (red-check.mjs: green, architecture, red). null for every other dispatch:
+// nothing is claimed about Red there. The output tails stay in red.json — the
+// check already printed the one that decided — so this stays a bounded record.
 function readRed(record, dir) {
   if (!record?.test_paths?.length) return null;
   const command = record.red_check_command ?? null;
@@ -79,9 +81,12 @@ function readRed(record, dir) {
   }
   const result = readJson(resolve(dir, 'red.json'));
   if (!result) return { state: 'not_run', command };
-  return { state: result.timed_out ? 'timed_out' : result.proven ? 'proven' : 'refuted', command,
-    exit_code: result.exit_code, checked_at: result.checked_at, reverted_paths: result.reverted_paths,
-    output_tail: result.output_tail };
+  // A red.json from before the green phase existed carries no state.
+  const state = result.state ?? (result.timed_out ? 'timed_out' : result.proven ? 'proven' : 'refuted');
+  const exits = Object.fromEntries(Object.entries(result.phases ?? {})
+    .map(([name, phase]) => [name, phase?.timed_out ? 'timed out' : phase?.exit_code ?? null]));
+  return { state, command, checked_at: result.checked_at, exit_codes: exits,
+    reverted_paths: result.reverted_paths, result_file: resolve(dir, 'red.json') };
 }
 
 function verdictFor({ record, outcome, report, worktree, decision, red }) {
@@ -150,6 +155,14 @@ function verdictFor({ record, outcome, report, worktree, decision, red }) {
     reasons.push(`The declared tests pass with the implementation reverted to ${record.base_sha} (\`${record.test_command}\` `
       + `exited 0) — they do not test the change, whatever the report says about Red.`);
   }
+  if (red?.state === 'green_failed') {
+    reasons.push(`The declared tests fail with the worker's implementation in place (\`${record.test_command}\` exited `
+      + `${red.exit_codes?.green}) — the case is not Green, whatever the report says. The output is in ${red.result_file}.`);
+  }
+  if (red?.state === 'architecture_failed') {
+    reasons.push(`The architecture check fails with the worker's implementation in place (\`${record.architecture_command}\` `
+      + `exited ${red.exit_codes?.architecture}). The output is in ${red.result_file}.`);
+  }
   if (red?.state === 'interrupted') {
     reasons.push(`A red check was interrupted with the implementation still reverted. Put the worker's files back first: ${red.restore_command}`);
   }
@@ -163,7 +176,10 @@ function verdictFor({ record, outcome, report, worktree, decision, red }) {
     return { mechanical: 'incomplete', warnings, transient: false,
       reasons: [red.state === 'timed_out'
         ? `The red check timed out, so Red is not proven. Investigate, then re-run: ${red.command}`
-        : `Red has not been proven. Run the red check before accepting: ${red.command}`] };
+        : red.state === 'error'
+          ? `The red check could not run a phase (a command that failed to start or was killed), so nothing is `
+            + `proven. The output is in ${red.result_file}; fix the cause and re-run: ${red.command}`
+          : `Red has not been proven. Run the red check before accepting: ${red.command}`] };
   }
   return { mechanical: reasons.length ? 'reject' : 'pass', reasons, warnings,
     transient: !!report.transient && reasons.length <= sameFault
@@ -342,7 +358,7 @@ export function dispatchStats(root) {
     if (!rows.has(key)) {
       rows.set(key, { engine: attempt.engine, role: attempt.role, dispatches: 0, finished: 0, exit_nonzero: 0,
         mechanical_pass: 0, mechanical_reject: 0, accepted: 0, rejected: 0, undecided: 0, retries: 0,
-        red_proven: 0, red_refuted: 0, reviews_with_findings_recorded: 0, findings_raised: 0, findings_acted_on: 0,
+        red_proven: 0, red_refuted: 0, green_failed: 0, reviews_with_findings_recorded: 0, findings_raised: 0, findings_acted_on: 0,
         findings_against: {}, durations: [], tokens: [] });
     }
     const row = rows.get(key);
@@ -350,6 +366,7 @@ export function dispatchStats(root) {
     if (attempt.attempt > 1) row.retries += 1;
     if (attempt.red?.state === 'proven') row.red_proven += 1;
     if (attempt.red?.state === 'refuted') row.red_refuted += 1;
+    if (attempt.red?.state === 'green_failed') row.green_failed += 1;
     if (attempt.state === 'finished') {
       row.finished += 1;
       if (attempt.run.exit_code !== 0) row.exit_nonzero += 1;

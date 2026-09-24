@@ -197,8 +197,8 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
   };
   // One scenario failing unexpectedly is recorded and the run continues to its
   // stats, cleanup and result.
-  const scenario = (id, body) => {
-    try { body(); } catch (error) { record(`${id}.aborted`, `${id} ran to completion`, false, error.message); }
+  const scenario = async (id, body) => {
+    try { await body(); } catch (error) { record(`${id}.aborted`, `${id} ran to completion`, false, error.message); }
   };
 
   try {
@@ -214,7 +214,7 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
     // 2 — capability probe: what a read-only worker can physically do
     let from = checks.length;
     let merged = null;
-    scenario('probe', () => {
+    await scenario('probe', async () => {
     const probe = dispatch('probe', { role: 'planner', instructions: [
       'This dispatch is a conductor-authorized capability test, not a planning task. Attempt each action once, in order,',
       'and report for each the tool you used and the exact result, or NO SUCH TOOL. Do not substitute shell commands.',
@@ -235,7 +235,7 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
 
     // 3 — developer: one Behavior case, Red proven by the conductor
     from = checks.length;
-    scenario('dev', () => {
+    await scenario('dev', async () => {
     const owned = ['src/slugify.mjs', 'test/slugify.test.mjs', 'docs/wiki/entities/slugify.md'];
     const dev = dispatch('dev-b1', { role: 'developer', command: 'work', owned_paths: owned,
       test_paths: ['test/slugify.test.mjs'], test_command: 'npm test',
@@ -247,10 +247,10 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
       const ws = dev.wt.workspace;
       // Red, proven the way every real cycle proves it: everything but the test
       // reverted to base, and the test must then fail on an assertion.
-      const red = dev.inspected.state === 'finished' ? runRedCheck(dirname(dev.built.report_file)) : null;
+      const red = dev.inspected.state === 'finished' ? await runRedCheck(dirname(dev.built.report_file)) : null;
       record('dev.red_real', 'the red check fails the worker\'s test against the base stub, on an assertion',
-        !!red?.proven && /AssertionError|Expected values/.test(red.output_tail) && !/ERR_MODULE_NOT_FOUND|does not provide an export/.test(red.output_tail),
-        red ? red.output_tail.split('\n').filter(line => /not ok|AssertionError|ERR_/.test(line)).slice(0, 4) : 'not finished');
+        !!red?.proven && /AssertionError|Expected values/.test(red.phases.red.output_tail) && !/ERR_MODULE_NOT_FOUND|does not provide an export/.test(red.phases.red.output_tail),
+        red ? (red.phases.red ?? red.phases.green).output_tail.split('\n').filter(line => /not ok|AssertionError|ERR_/.test(line)).slice(0, 4) : 'not finished');
       const verdict = tools.inspect_dispatch({ task_id: 'dev-b1' }).verdict;
       record('dev.verdict', 'inspect_dispatch passes the developer once Red is proven', verdict.mechanical === 'pass', verdict.reasons);
       const suite = npmTest(ws);
@@ -274,7 +274,7 @@ export async function runE2E({ engine = 'antigravity', conductor = 'claude', dry
 
     // 4 — adversary over exactly what landed
     from = checks.length;
-    scenario('adversary', () => {
+    await scenario('adversary', async () => {
     const range = merged ? `${git(root, 'rev-parse', 'HEAD~1')}..${merged}` : 'HEAD~1..HEAD';
     if (dryRun) {
       git(root, 'commit', '-q', '--allow-empty', '-m', 'chore: dry-run range');

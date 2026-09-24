@@ -66,7 +66,7 @@ It stops and asks before: merging a PR, pushing to `develop` or `main` directly,
 
 | Practice | Mechanism |
 | --- | --- |
-| Tests fail before implementation | Every developer dispatch declares `test_paths`; `red-check.mjs` reverts every other changed file to the base commit and the tests must fail. Until it runs, `inspect_dispatch` is `incomplete`; if they pass, the case is rejected. |
+| Tests fail before implementation, pass after | Every developer dispatch declares `test_paths`; `red-check.mjs` runs the tests with the developer's changes (they must pass), the architecture check, then reverts every other changed file to the base commit (the tests must now fail). Until it runs, `inspect_dispatch` is `incomplete`; if any phase fails, the case is rejected. A time limit stops the whole process tree on every OS. |
 | Workers stay in scope | Worktrees, `owned_paths`, read-only sandboxes, no subagent tools, and a transcript audit on agy and codex. |
 | Clean architecture | `docs/wiki/architecture.md § Layers` declares the dependency rule; `/project:init` installs a stack-specific check (dependency-cruiser, import-linter, ArchUnit, …), proves it fails on a planted violation, grants it to every worker and protects its rule files — no worker can loosen them, and `verify.mjs` fails a branch that changes them without an ADR. |
 | Wiki ships with code, log ships with change | `tools/workflow-mcp/verify.mjs --base <branch>` in CI — plus generated-file drift, wikilinks and log order. |
