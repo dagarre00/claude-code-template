@@ -119,26 +119,33 @@ const pause = ms => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0,
 // taken over through a rename, so of several waiters only one can ever break
 // it — the others see the rename fail and go back to waiting. A live lock is
 // never deleted: past the timeout the caller is told, and nothing is written.
-// `fs` exists so a test can reproduce a platform's race deterministically.
+// `fs` and `platform` exist so a test can reproduce a platform's race
+// deterministically.
 const LOCK_FS = { openSync, statSync, renameSync, unlinkSync, writeSync, closeSync };
-export function withLock(lock, fn, timeoutMs, { fs = LOCK_FS } = {}) {
+export function withLock(lock, fn, timeoutMs, { fs = LOCK_FS, platform = process.platform } = {}) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     let fd;
     try { fd = fs.openSync(lock, 'wx'); }
     catch (error) {
-      if (error.code !== 'EEXIST') throw error;
-      let age;
-      try { age = Date.now() - fs.statSync(lock).mtimeMs; } catch { continue; } // released between the two calls
-      if (age > LOCK_STALE_MS) {
+      // Windows refuses to create a file another process is still deleting with
+      // EPERM or EACCES rather than EEXIST: the lock is being released, which is
+      // contention too. Every wait below is bounded by the deadline.
+      const releasing = platform === 'win32' && (error.code === 'EPERM' || error.code === 'EACCES');
+      if (error.code !== 'EEXIST' && !releasing) throw error;
+      let age = null;
+      try { age = Date.now() - fs.statSync(lock).mtimeMs; } catch { /* released, or still being deleted */ }
+      if (age !== null && age > LOCK_STALE_MS) {
         const stale = `${lock}.stale-${process.pid}`;
         try { fs.renameSync(lock, stale); fs.unlinkSync(stale); } catch { /* another waiter took it over */ }
         continue;
       }
       if (Date.now() >= deadline) {
-        throw new Error(`${lock} is held by another process (for ${Math.round(age / 1000)}s), so nothing was written. `
-          + 'Another conductor may be granting right now: retry in a moment. If that process is gone, the lock is '
-          + `taken over on its own once it is ${LOCK_STALE_MS / 1000}s old.`);
+        // No lock ever became visible: a real permission problem, reported as itself.
+        if (releasing && age === null) throw error;
+        throw new Error(`${lock} is held by another process${age === null ? '' : ` (for ${Math.round(age / 1000)}s)`}, `
+          + 'so nothing was written. Another conductor may be granting right now: retry in a moment. If that process '
+          + `is gone, the lock is taken over on its own once it is ${LOCK_STALE_MS / 1000}s old.`);
       }
       pause(LOCK_POLL_MS);
       continue;

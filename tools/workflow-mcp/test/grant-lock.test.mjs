@@ -11,7 +11,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, utimesSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { grantAntigravitySetup } from '../availability.mjs';
+import { grantAntigravitySetup, withLock } from '../availability.mjs';
 import { cleanup, fixture } from './helpers.mjs';
 
 const MODULE = pathToFileURL(resolve(import.meta.dirname, '../availability.mjs')).href;
@@ -85,4 +85,46 @@ test('a live lock is waited for, then refused with the file untouched and the lo
     assert.equal(readFileSync(file, 'utf8'), original, 'nothing was written');
     assert.equal(existsSync(lock), true, 'a live lock is never deleted out from under its holder');
   });
+});
+
+// Measured on Windows: creating a lock that another process is still deleting
+// fails with EPERM, not EEXIST — about once in 25 runs of the concurrent test
+// above, which then failed with a bare EPERM. That is contention, not failure.
+// A scripted filesystem reproduces the race every time.
+const failure = code => Object.assign(new Error(code), { code });
+const scriptedFs = ({ open, stat }) => {
+  const calls = { open: 0 };
+  return { calls, fs: {
+    openSync: () => { calls.open += 1; return open(calls.open); },
+    statSync: () => stat(),
+    renameSync: () => {}, unlinkSync: () => {}, writeSync: () => {}, closeSync: () => {}
+  } };
+};
+
+test('on Windows, a lock still being deleted (EPERM on create) is waited out, not reported as a failure', () => {
+  const { calls, fs } = scriptedFs({
+    open: attempt => { if (attempt <= 2) throw failure('EPERM'); return 7; },
+    stat: () => { throw failure('ENOENT'); }
+  });
+  assert.equal(withLock('settings.json.lock', () => 'granted', 1000, { fs, platform: 'win32' }), 'granted');
+  assert.equal(calls.open, 3, 'it retried until the release finished');
+});
+
+test('on Windows, an EPERM that never clears is reported as itself once the wait runs out', () => {
+  const { fs } = scriptedFs({ open: () => { throw failure('EPERM'); }, stat: () => { throw failure('ENOENT'); } });
+  const started = Date.now();
+  assert.throws(() => withLock('settings.json.lock', () => 'granted', 100, { fs, platform: 'win32' }), { code: 'EPERM' });
+  assert.ok(Date.now() - started >= 90, 'it waited for the deadline before calling it a real permission error');
+});
+
+test('elsewhere, EPERM on create is a real permission error and is thrown at once', () => {
+  const { calls, fs } = scriptedFs({ open: () => { throw failure('EPERM'); }, stat: () => { throw failure('ENOENT'); } });
+  assert.throws(() => withLock('settings.json.lock', () => 'granted', 1000, { fs, platform: 'linux' }), { code: 'EPERM' });
+  assert.equal(calls.open, 1);
+});
+
+// Last on purpose: before the fix this loop never ends, so the file hangs here.
+test('a held lock that cannot be inspected gives up at the deadline instead of spinning', () => {
+  const { fs } = scriptedFs({ open: () => { throw failure('EEXIST'); }, stat: () => { throw failure('EACCES'); } });
+  assert.throws(() => withLock('settings.json.lock', () => 'granted', 100, { fs, platform: 'win32' }), /held by another process/);
 });
