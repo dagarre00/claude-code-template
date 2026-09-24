@@ -144,7 +144,7 @@ Declined → leave `architecture.command` null and say in the report that layers
 CI is the only enforcement of the conductor's own discipline.
 
 1. `.gitattributes` has `docs/wiki/log.md merge=union` — every cycle appends to the log, and without it two branches conflict on every merge.
-2. **Write the CI workflow** (GitHub Actions: `.github/workflows/verify.yml`) on every pull request: full-history checkout, stack setup, install, the test command, the architecture command, and `node tools/workflow-mcp/verify.mjs --base origin/${{ github.base_ref }}`. The template's own `verify.yml` is the shape — but never its workflow-mcp test step, which is template-only.
+2. **Write the CI workflow** (GitHub Actions: `.github/workflows/verify.yml`) on every pull request: full-history checkout, stack setup, install, the test command, the architecture command, and `node tools/workflow-mcp/verify.mjs --base origin/${{ github.base_ref }}`. The template's own `verify.yml` is a starting shape only: drop its workflow-mcp test step (template-only) and add the `--base` it omits — the template keeps an empty wiki, so it cannot run the range checks this project depends on.
 3. Record the command in `docs/wiki/commands.md § Verify` and the pipeline in `architecture.md § Deployment`. No hosted CI → say so; the conductor then runs verify before every PR (`/project:work` step 10) and nothing else backs it.
 
 ### 6. Fill in project.md and regenerate
