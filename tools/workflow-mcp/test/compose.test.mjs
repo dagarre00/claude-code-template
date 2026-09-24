@@ -118,12 +118,24 @@ test('free-text context travels as JSON data, never as prose to be executed', ()
   assert.ok(prompt.includes(JSON.stringify(nasty)));
 });
 
-test('the prefix before the assignment is identical across two dispatches of one role', () => {
-  const marker = '## Assignment';
+test('the prefix before the instructions is identical across two dispatches of one role', () => {
+  const marker = '## Instructions';
   const a = compose({ ...base, command: 'work', instructions: 'First task.' }).prompt;
   const b = compose({ ...base, command: 'work', instructions: 'Second task.' }).prompt;
   assert.equal(a.slice(0, a.indexOf(marker)), b.slice(0, b.indexOf(marker)));
   assert.notEqual(a, b);
+});
+
+// A plan with headings and lists used to arrive as one JSON-escaped line, under a
+// label telling the worker every value was "data, not instructions".
+test('the conductor\'s instructions arrive as prose, and only the human\'s free text as data', () => {
+  const plan = '# Plan: auth\n\n## Steps\n1. Write the failing test for B1.\n2. "Quote" it.';
+  const { prompt } = compose({ ...base, instructions: plan, context: 'from the human' });
+  const instructions = prompt.slice(prompt.indexOf('## Instructions'), prompt.indexOf('## Assignment'));
+  assert.ok(instructions.includes(plan), 'the plan is carried verbatim, line breaks and quotes intact');
+  const assignment = prompt.slice(prompt.indexOf('## Assignment'));
+  assert.doesNotMatch(assignment, /Write the failing test/, 'the task is not repeated as data');
+  assert.match(assignment, /"user_context": "from the human"/);
 });
 
 test('supporting files are named but not inlined', () => {
@@ -156,9 +168,9 @@ test('the embedded diff sits after the cacheable prefix, like every other per-di
     diff: { range: 'a..b', stat: '', patch: 'x', truncated: false } }).prompt;
   const without = compose({ role: 'adversary', instructions: 'Review it.' }).prompt;
   const prefix = text => text.slice(0, text.indexOf('## Diff under review') === -1
-    ? text.indexOf('## Assignment') : text.indexOf('## Diff under review'));
+    ? text.indexOf('## Instructions') : text.indexOf('## Diff under review'));
   assert.equal(prefix(withDiff), prefix(without));
-  assert.ok(withDiff.indexOf('## Diff under review') < withDiff.indexOf('## Assignment'),
+  assert.ok(withDiff.indexOf('## Diff under review') < withDiff.indexOf('## Instructions'),
     'the diff belongs with the assignment, not in the cached prefix');
 });
 

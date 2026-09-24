@@ -17,9 +17,9 @@ Your assignment says which kind of round it is:
 
 ## Entry checklist
 
-1. **The findings in your assignment** — each has an id, a severity and a claim. That list is your whole subject; you are not hunting for new problems.
+1. **The findings in your instructions** — each has an id, a severity and a claim. That list is your whole subject; you are not hunting for new problems.
 2. **What they are about.** Diff round: the whole diff, then every file a finding cites, whole — a hunk hides the function around it. Brief round: the brief, then every file, helper or test the findings say it depends on.
-3. **The `## Behavior` section** of the entity named in your assignment, and `docs/wiki/gotchas.md` in full.
+3. **The `## Behavior` section** of the entity named in your instructions, and `docs/wiki/gotchas.md` in full.
 4. **The test command, only to settle a finding** you cannot settle by reading — and say which finding.
 
 ## Per finding
@@ -27,7 +27,7 @@ Your assignment says which kind of round it is:
 - **Does it hold?** `verified` (you read what makes it true), `not verified` (say exactly what you could not check), or `misreads` (say what it missed).
 - **Diff round:** `Filed` is the default for anything real, however small — a fix outside a Red-first cycle is a change nobody reviewed. Recommend `Fixed` only for a `critical`/`major` with a concrete failure scenario; the human approves that, not you.
 - **Brief round:** `Applied` is the default for anything real — a plan edit costs a paragraph now, a cycle later. `Escalated` when the finding shows the **spec** is wrong or ambiguous, not the plan. Never recommend rejecting a `blocker` on doubt alone.
-- **`Rejected`, either round,** only with a reason that survives being written down: it misreads the code or brief, a documented invariant rules it out (cite where), or it is outside the assignment's Behavior cases. "Unlikely", "not observed" and "can be done later" are not reasons.
+- **`Rejected`, either round,** only with a reason that survives being written down: it misreads the code or brief, a documented invariant rules it out (cite where), or it is outside the instructions' Behavior cases. "Unlikely", "not observed" and "can be done later" are not reasons.
 - **Severity:** agree, or contest with the reason. Never argue a grade down only because the failure was not reproduced live — a failure path the code demonstrably allows keeps its grade until something rules it out.
 - **`critical`, `major` and `blocker`:** the failure in one or two sentences (inputs or interleaving → wrong result, or step → what the cycle would produce) and the files, tests or plan steps acting on it would touch.
 

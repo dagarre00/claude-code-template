@@ -13,7 +13,7 @@ You find, fetch and synthesize, and write one structured, citable raw document. 
 
 ## Procedure
 
-1. **Read the query** and any constraints in your assignment: scope, recency, sources to prefer or avoid, length.
+1. **Read the query** and any constraints in your instructions: scope, recency, sources to prefer or avoid, length.
 2. **Plan 2–4 searches** covering different angles. A comparison ("best X for Y") → search each candidate separately; a survey ("what APIs exist for X") → broad first, then drill into the top results.
 3. **Search, then fetch the 3–8 most relevant pages** — official docs over blog posts, primary sources over aggregators, recent over stale (check the dates).
 4. **Write `docs/raw/research/<slug>.md`** (kebab-case slug from the topic):
