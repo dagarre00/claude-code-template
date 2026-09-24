@@ -17,7 +17,7 @@ One procedure for every dispatch any command makes. The command decides *which* 
 1. **Call `check`** and act on every field before composing anything:
    - `ok: false` → regenerate with `sync` — or, if `tools/workflow-mcp/` changed since the server started, run `generate.mjs` directly: the server caches its own source (`tools/workflow-mcp/getting-started.md` § Troubleshooting).
    - A role you are about to dispatch appears in `roles_without_an_available_engine` → `human-checkpoint`.
-   - An engine that role resolves to has `setup.ok: false` → `human-checkpoint` naming its `missing_command_grants` — or its `problem`, a settings file that exists but could not be read, which `grant_antigravity_setup` refuses to touch. A worker on it dies on its first command.
+   - An engine that role resolves to has `setup.ok: false` → `human-checkpoint` naming its `missing_command_grants` and `missing_url_grants` (a web-capable role's `read_url(*)`, user-global) — or its `problem`, a settings file that exists but could not be read, which `grant_antigravity_setup` refuses to touch. A worker on it dies on its first denied command or URL. On the human's yes, `grant_antigravity_setup` writes exactly what is listed.
    - The role appears in `capability_gaps` for its first engine → dispatch it with `cli_engine` set to an engine not listed there.
    - `architecture.enforced: false` on a project whose `docs/wiki/architecture.md § Layers` is filled → say so in the cycle report; the layers are then enforced by review alone.
 

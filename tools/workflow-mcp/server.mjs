@@ -134,7 +134,8 @@ export function createServer(root, conductorEngine) {
     {}, () => api.check());
 
   register('grant_antigravity_setup',
-    'Write the missing `command(<line>)` rules check\'s antigravity `setup` block reports into the user-global '
+    'Write the missing `command(<line>)` rules check\'s antigravity `setup` block reports — and `read_url(*)` when a '
+    + 'role that needs the web runs on antigravity and no read_url rule exists — into the user-global '
     + '~/.gemini/antigravity-cli/settings.json, creating the file if absent. Strictly additive: existing entries '
     + '(including interactive grants) are read back and kept, never removed or reordered. Exists because this file '
     + 'is outside the repository, and a conductor\'s own edit tools are commonly denied from touching it, while this '

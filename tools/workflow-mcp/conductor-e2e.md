@@ -35,7 +35,7 @@ You are running a conformance test of this repository's agent workflow, acting a
 - No commits, pushes or pull requests against the real project. Work only in the scratch fixture from step 2, and delete nothing outside it.
 - Report exact errors verbatim. A failed check is a useful result; a skipped check reported as passing is not.
 
-**1 — Reach the server.** Call `list_roles` and `check`. Record each role's resolved `engine` and confirm the list matches `.agents/roles/`. `check` must report the generated files in sync (record any drift and continue), and every engine's `setup.ok` must be true — record `missing_command_grants` verbatim; on agy each is a worker that dies on its first command.
+**1 — Reach the server.** Call `list_roles` and `check`. Record each role's resolved `engine` and confirm the list matches `.agents/roles/`. `check` must report the generated files in sync (record any drift and continue), and every engine's `setup.ok` must be true — record `missing_command_grants` and `missing_url_grants` verbatim; on agy each is a worker that dies on its first denied command or URL.
 
 **2 — Build a fixture.** The template's wiki is empty, so build a throwaway project outside the repository:
 

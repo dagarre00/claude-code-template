@@ -242,6 +242,45 @@ test('grantAntigravitySetup writes the missing grants and creates the file if ab
   });
 });
 
+// A web-capable role on agy needs `read_url` granted, or its first fetch is
+// denied and the run ends (measured 2026-09-24, agy 1.2.9). A role that never
+// runs there must not cause a user-global wildcard to be written.
+test('the read_url grant is required, and granted, only when a web role would run on agy', () => {
+  withHome(home => {
+    const installed = engines(PRESENT, ABSENT);
+    installed.antigravity = { ...installed.antigravity, executable: PRESENT };
+    const researcher = '---\nname: researcher\ndescription: Web research.\nprofile: fast\naccess: write\ncapabilities: [web]\n---\n\nResearch.\n';
+    const repoWith = researcherEngine => fixture({ '.agents/roles/researcher.md': researcher,
+      '.agents/config.json': config({ researcher: { engine: researcherEngine } }, installed) });
+    const settings_file = resolve(home, '.gemini', 'antigravity-cli', 'settings.json');
+    mkdirSync(dirname(settings_file), { recursive: true });
+    writeFileSync(settings_file, JSON.stringify({ permissions: { allow: ['command(npm test)'] } }));
+
+    const elsewhere = repoWith('claude');
+    try {
+      const agy = makeTools(elsewhere, 'claude').check().engines.find(engine => engine.name === 'antigravity');
+      assert.deepEqual(agy.setup.missing_url_grants, [], 'no web role runs on agy');
+      assert.equal(agy.setup.ok, true);
+      assert.deepEqual(makeTools(elsewhere, 'claude').grant_antigravity_setup().added, []);
+    } finally { cleanup(elsewhere); }
+
+    const onAgy = repoWith('antigravity');
+    try {
+      const tools = makeTools(onAgy, 'claude');
+      const before = tools.check();
+      assert.deepEqual(before.engines.find(engine => engine.name === 'antigravity').setup.missing_url_grants, ['read_url(*)']);
+      assert.deepEqual(before.roles_with_unmet_setup, ['researcher']);
+      assert.deepEqual(before.capability_gaps, [], 'agy provides the web once granted');
+      assert.deepEqual(tools.grant_antigravity_setup().added, ['read_url(*)']);
+      assert.deepEqual(tools.check().roles_with_unmet_setup, []);
+
+      writeFileSync(settings_file, JSON.stringify({ permissions: { allow: ['command(npm test)', 'read_url(github.com)'] } }));
+      assert.deepEqual(tools.check().engines.find(engine => engine.name === 'antigravity').setup.missing_url_grants, [],
+        'a grant a human narrowed to domains by hand satisfies the check');
+    } finally { cleanup(onAgy); }
+  });
+});
+
 test('grantAntigravitySetup only adds what is missing, and never touches existing grants', () => {
   withHome(home => {
     const settings_file = resolve(home, '.gemini', 'antigravity-cli', 'settings.json');
@@ -280,14 +319,16 @@ test('grantAntigravitySetup is a no-op once every command is already granted', (
   });
 });
 
-test('check names every role whose chain reaches an engine lacking a capability it needs', () => {
+// capability_gaps lists only measured "no"s. agy was one until 2026-09-24, when
+// search_web and a granted read_url_content were measured working headless on
+// 1.2.9; no engine declares a gap today, so none is reported.
+test('check reports no capability gap for a web role on an engine measured to provide the web', () => {
   const root = fixture({
     '.agents/config.json': config({ researcher: { engine: ['antigravity', 'codex'] } }),
     '.agents/roles/researcher.md': '---\nname: researcher\ndescription: Web research.\nprofile: fast\naccess: write\ncapabilities: [web]\n---\n\nResearch.\n'
   });
   try {
-    assert.deepEqual(makeTools(root, 'claude').check().capability_gaps,
-      [{ role: 'researcher', engine: 'antigravity', missing: ['web'] }]);
+    assert.deepEqual(makeTools(root, 'claude').check().capability_gaps, []);
   } finally { cleanup(root); }
 });
 

@@ -580,15 +580,18 @@ test('a role with no config entry still dispatches on the inherited engine', () 
   });
 });
 
-test('a role that needs the web is warned off an engine whose workers have none', () => {
+test('a web role on agy gets the web tools, and is told where fetched pages land', () => {
   withRepo(root => {
     const workspace = resolve(root, '.worktrees/x');
     const agy = prepareDispatch(root, { role: 'researcher', instructions: 'Research slugs.', owned_paths: ['docs/raw'],
-      cli_engine: 'antigravity', conductorEngine: 'claude', workspace });
-    assert.ok(agy.warnings.some(w => /web/i.test(w) && /antigravity/.test(w)), agy.warnings.join(' | '));
-    const codex = prepareDispatch(root, { role: 'researcher', instructions: 'Research slugs.', owned_paths: ['docs/raw'],
-      cli_engine: 'codex', conductorEngine: 'claude', workspace });
-    assert.ok(!codex.warnings.some(w => /web tools/i.test(w)));
+      cli_engine: 'antigravity', conductorEngine: 'claude', workspace, task_id: 'web' });
+    assert.ok(!agy.warnings.some(w => /web/i.test(w)), agy.warnings.join(' | '));
+    const definition = readFileSync(resolve(root, '.worktrees/.dispatch/web/agent/.agents/agents/workflow-researcher.md'), 'utf8');
+    assert.match(definition, /^ {2}- search_web$/m);
+    assert.match(definition, /^ {2}- read_url_content$/m);
+    assert.match(readFileSync(agy.prompt_file, 'utf8'), /read_url_content saves the page/);
+    const developer = prepareDispatch(root, { ...base, cli_engine: 'antigravity', conductorEngine: 'claude', workspace, task_id: 'dev' });
+    assert.doesNotMatch(readFileSync(developer.prompt_file, 'utf8'), /read_url_content/, 'no web note for a role without web');
   }, { '.agents/roles/researcher.md':
     '---\nname: researcher\ndescription: Web research.\nprofile: fast\naccess: write\ncapabilities: [web]\n---\n\nResearch.\n' });
 });

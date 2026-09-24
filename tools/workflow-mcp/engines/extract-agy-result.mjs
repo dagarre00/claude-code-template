@@ -143,6 +143,13 @@ if (existsSync(dispatchFile)) {
     const norm = path => path.replaceAll('\\', '/').replace(/\/+$/, '').toLowerCase();
     const workspace = norm(record.workspace);
     const inside = path => norm(path) === workspace || norm(path).startsWith(`${workspace}/`);
+    // read_url_content saves the page under agy's own brain directory for this
+    // conversation and hands the worker that path (measured 2026-09-24, agy
+    // 1.2.9). Reading it is reading the tool's output, not the author's material
+    // or another checkout, so it is listed apart and never warned about.
+    const conversation = String(result.conversation_id
+      ?? events.find(event => event.conversation_id)?.conversation_id ?? '').toLowerCase();
+    const toolOutput = path => !!conversation && norm(path).includes(`/antigravity-cli/brain/${conversation}/`);
     const absolute = path => /^([a-zA-Z]:[\\/]|[\\/])/.test(path);
     const allowed = Array.isArray(record.worker_commands) ? new Set(record.worker_commands) : null;
 
@@ -150,7 +157,7 @@ if (existsSync(dispatchFile)) {
     // opened — by a file tool or a command, anywhere — is what shows whether a
     // reviewer read the author's procedures instead of reading independently.
     const SKILL_PATH = /\.agents[\\/]+skills[\\/]+([A-Za-z0-9._-]+)[\\/]/g;
-    const reads = [], writes = [], subagents = [], commands = [], skills = [];
+    const reads = [], writes = [], subagents = [], commands = [], skills = [], outputs = [];
     for (const call of calls) {
       const tool = canon(call.tool);
       if (!WRITE_TOOLS.has(tool)) {
@@ -163,6 +170,7 @@ if (existsSync(dispatchFile)) {
         && !allowed.has(call.parameters.CommandLine)) commands.push(call.parameters.CommandLine);
       for (const [key, value] of Object.entries(call.parameters)) {
         if (!PATH_KEYS.has(canon(key)) || typeof value !== 'string' || !absolute(value) || inside(value)) continue;
+        if (!WRITE_TOOLS.has(tool) && toolOutput(value)) { outputs.push(`${call.tool} ${value}`); continue; }
         (WRITE_TOOLS.has(tool) ? writes : reads).push(`${call.tool} ${value}`);
       }
     }
@@ -174,7 +182,8 @@ if (existsSync(dispatchFile)) {
       writes_outside_workspace: unique(writes),
       subagent_calls: unique(subagents),
       commands_not_allowlisted: unique(commands),
-      skill_reads: unique(skills).sort()
+      skill_reads: unique(skills).sort(),
+      tool_output_reads: unique(outputs)
     };
   }
 }

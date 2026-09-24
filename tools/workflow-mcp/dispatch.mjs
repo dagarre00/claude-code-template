@@ -236,6 +236,16 @@ export function prepareDispatch(root, input = {}) {
       + `${respelled.map(command => `\`${spell(command, platform)}\``).join(', ')} instead. It is the same command; `
       + 'the plain spelling is refused by this shell before it starts.']
     : [];
+  const capabilities = canonical.roles.find(entry => entry.name === input.role)?.capabilities ?? [];
+  // Measured on agy 1.2.9: read_url_content does not return the page; it saves it
+  // under agy's own brain directory and names the file. That read is the tool's
+  // output, not a read outside the task, and the audit exempts it — but a worker
+  // told never to read outside its workspace would stop at it.
+  if (engine === 'antigravity' && capabilities.includes('web')) {
+    commandNotes.push('Web tools: search_web returns a cited summary. read_url_content saves the page to a file under '
+      + 'your engine\'s own brain directory and gives you its path; reading that exact file with view_file is allowed — '
+      + 'it is the tool\'s output, the one exception to reading outside your workspace.');
+  }
   if (ENGINES[engine]?.filesThroughShell) {
     commandNotes.push('On this engine you have no separate file tools: reading, listing and searching files happen '
       + 'through your shell. Read-only shell commands that only read inside your workspace — printing a file, listing a '
@@ -269,7 +279,7 @@ export function prepareDispatch(root, input = {}) {
   // the dispatch's files. Outside the worktree on purpose: inside, it would be an
   // untracked file the worker appears to have written.
   const adapter = ENGINES[engine];
-  const definition = adapter.agentDefinition?.({ role: composed.role, access: composed.access, workspace }) ?? null;
+  const definition = adapter.agentDefinition?.({ role: composed.role, access: composed.access, workspace, capabilities }) ?? null;
   const agent = definition ? { name: definition.name, dir: resolve(dir, 'agent') } : undefined;
 
   const roleConfig = config.roles?.[composed.role] ?? {};
@@ -395,10 +405,9 @@ export function prepareDispatch(root, input = {}) {
   }
   // A role that needs the web, on an engine whose workers were measured to have
   // none, would spend its whole dispatch discovering that.
-  const roleDefinition = canonical.roles.find(entry => entry.name === composed.role);
-  if (roleDefinition?.capabilities?.includes('web') && adapter.providesWeb === false) {
-    warnings.push(`The ${composed.role} role needs web access, and ${engine} workers have no web tools — `
-      + 'measured: search failed and every URL fetch was denied headless. Dispatch it elsewhere with cli_engine.');
+  if (capabilities.includes('web') && adapter.providesWeb === false) {
+    warnings.push(`The ${composed.role} role needs web access, and ${engine} workers were measured to have no working `
+      + 'web tools. Dispatch it elsewhere with cli_engine.');
   }
   // An empty diff almost always means the range was wrong, and finding that out
   // from a reviewer's report costs the whole dispatch.

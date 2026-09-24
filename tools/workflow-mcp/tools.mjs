@@ -1,6 +1,6 @@
 // The tool implementations, kept separate from MCP wiring so they can be tested
 // as plain functions and so the transport stays a thin shell over them.
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { engineAvailability, engineSetup, grantAntigravitySetup } from './availability.mjs';
 import { loadCanonical } from './canonical.mjs';
@@ -22,6 +22,16 @@ function architectureStatus(root, config) {
       : missing_rules.length
         ? `The architecture rule files ${missing_rules.join(', ')} do not exist, so the check cannot be guarding what the wiki declares.`
         : 'The architecture check is granted to workers and its rule files are protected.' };
+}
+
+// Whether any role that declares `capabilities: [web]` would run on antigravity —
+// its dispatch engine being the first installed one in its chain, exactly as
+// prepareDispatch picks it. Only then does agy need the read_url grant.
+function webRoleOnAntigravity(root, config, conductorEngine) {
+  return loadCanonical(root).roles.filter(role => role.capabilities.includes('web')).some(role => {
+    const chain = resolveEngineChain(config, role.name, conductorEngine);
+    return (chain.find(name => engineAvailability(config, name).available) ?? chain[0]) === 'antigravity';
+  });
 }
 
 export function makeTools(root, conductorEngine) {
@@ -84,10 +94,11 @@ export function makeTools(root, conductorEngine) {
       const config = loadConfig(root);
       const chains = Object.fromEntries(loadCanonical(root).roles
         .map(role => [role.name, resolveEngineChain(config, role.name, conductorEngine)]));
+      const web = webRoleOnAntigravity(root, config, conductorEngine);
       const engines = engineNames.map(name => ({
         ...engineAvailability(config, name),
         roles: Object.keys(chains).filter(role => chains[role].includes(name)).sort(),
-        setup: engineSetup(config, name)
+        setup: engineSetup(config, name, { web })
       }));
       const available = new Set(engines.filter(engine => engine.available).map(engine => engine.name));
       const setupByEngine = Object.fromEntries(engines.map(engine => [engine.name, engine.setup]));
@@ -129,11 +140,8 @@ export function makeTools(root, conductorEngine) {
     },
 
     grant_antigravity_setup() {
-      return grantAntigravitySetup(loadConfig(root));
-    },
-
-    get_contract() {
-      return readFileSync(resolve(root, '.agents/worker-contract.md'), 'utf8');
+      const config = loadConfig(root);
+      return grantAntigravitySetup(config, { web: webRoleOnAntigravity(root, config, conductorEngine) });
     }
   };
 }

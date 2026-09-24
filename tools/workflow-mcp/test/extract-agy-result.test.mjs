@@ -94,6 +94,24 @@ test('the audit reports reads outside the workspace without failing the run', ()
   assert.equal(report.workflow_mcp_audit.clean, false);
 });
 
+// Measured 2026-09-24 (agy 1.2.9): read_url_content saves the page as
+// brain/<conversation>/.system_generated/steps/<n>/content.md under agy's home and
+// hands the worker that path. Reading it is the tool's output, not an outside read
+// — but another conversation's brain directory is somebody else's material.
+test('the audit lists reads of this run\'s own fetched pages apart, and still flags anyone else\'s', () => {
+  const own = 'C:\\Users\\me\\.gemini\\antigravity-cli\\brain\\c1\\.system_generated\\steps\\4\\content.md';
+  const other = 'C:\\Users\\me\\.gemini\\antigravity-cli\\brain\\c9\\.system_generated\\steps\\2\\content.md';
+  const { status, report } = run([
+    step(3, 'read_url_content', { Url: 'https://nodejs.org/en/about/previous-releases' }),
+    step(4, 'view_file', { AbsolutePath: own }),
+    step(5, 'view_file', { AbsolutePath: other }),
+    result({})
+  ], { dispatch });
+  assert.equal(status, 0);
+  assert.deepEqual(report.workflow_mcp_audit.tool_output_reads, [`view_file ${own}`]);
+  assert.deepEqual(report.workflow_mcp_audit.reads_outside_workspace, [`view_file ${other}`]);
+});
+
 test('the audit fails a run that wrote outside its workspace or spawned a subagent', () => {
   const outside = run([step(3, 'write_to_file', { TargetFile: 'C:\\work\\repo\\.worktrees\\t2\\x.md' }), result({})], { dispatch });
   assert.notEqual(outside.status, 0);
