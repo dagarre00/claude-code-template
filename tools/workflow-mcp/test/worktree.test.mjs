@@ -57,6 +57,29 @@ test('creates an isolated checkout at committed HEAD on its own branch', () => {
   });
 });
 
+// A review of a range that ends before HEAD needs the files that range
+// produced: measured on PR #40's post-merge review, a reviewer handed a checkout
+// at HEAD refused to review at all, because its files did not match the diff.
+test('a worktree can be prepared at an earlier revision instead of HEAD', () => {
+  repo(root => {
+    const first = git(root, 'rev-parse', 'HEAD').stdout.trim();
+    writeFileSync(resolve(root, 'later.txt'), 'later\n');
+    git(root, 'add', 'later.txt'); git(root, 'commit', '-qm', 'later');
+
+    const wt = prepareWorktree(root, { task_id: 'earlier', at: first });
+    assert.equal(wt.base_sha, first);
+    assert.equal(git(wt.workspace, 'rev-parse', 'HEAD').stdout.trim(), first);
+    assert.equal(existsSync(resolve(wt.workspace, 'later.txt')), false, 'the later commit is not in the checkout');
+    assert.equal(listWorktrees(root)[0].merged, true, 'an ancestor of the integration branch holds nothing unique');
+
+    for (const at of ['-x', 'no-such-revision', `${first}..HEAD`]) {
+      assert.throws(() => prepareWorktree(root, { task_id: `bad-${listWorktrees(root).length}`, at }), /revision/,
+        `${at} was accepted`);
+    }
+    assert.deepEqual(listWorktrees(root).map(entry => entry.task_id), ['earlier'], 'a refusal creates nothing');
+  });
+});
+
 test('refuses to dispatch from a dirty checkout', () => {
   repo(root => {
     writeFileSync(resolve(root, 'stray.txt'), 'uncommitted\n');

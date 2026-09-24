@@ -14,10 +14,10 @@ import { loadCanonical } from './canonical.mjs';
 import { engineAvailability } from './availability.mjs';
 import { loadConfig, resolveEngineChain } from './config.mjs';
 import { composePrompt } from './compose.mjs';
-import { computeDiff } from './diff.mjs';
+import { computeDiff, rangeEnd } from './diff.mjs';
 import { ENGINES, buildCommand, stdinPayload } from './engines/index.mjs';
 import { explainMisfit, modelFits } from './model-fit.mjs';
-import { dispatchDir, trustWorktree } from './worktree.mjs';
+import { dispatchDir, git, trustWorktree } from './worktree.mjs';
 import { currentVerdict } from './inspect.mjs';
 
 // One argument of a command the conductor pastes into whatever shell it has —
@@ -430,6 +430,20 @@ export function prepareDispatch(root, input = {}) {
   if (diff?.truncated) {
     warnings.push(`The diff for ${diff.range} was truncated at ${diff.bytes} bytes. The worker is `
       + 'told, but its findings cover only the part it received.');
+  }
+  // The diff is data; the worktree is where the reviewer reads whole files. A
+  // checkout at another commit hands it files the diff did not produce —
+  // measured on a post-merge review, the reviewer refused to review at all.
+  if (diff) {
+    const end = rangeEnd(diff.range);
+    const tree = (dir, rev) => git(dir, ['rev-parse', '--verify', '--quiet', `${rev}^{tree}`], { allowFailure: true });
+    const wanted = tree(root, end);
+    const checkout = tree(worktreeRecord.workspace, 'HEAD');
+    if (wanted && checkout && wanted !== checkout) {
+      const sha = git(root, ['rev-parse', '--verify', '--quiet', `${end}^{commit}`], { allowFailure: true }) ?? end;
+      warnings.push(`The worktree is not at the end of ${diff.range}: its files are not the ones this diff produced, `
+        + `and the reviewer reads them whole. Prepare the review's worktree with at: "${sha}".`);
+    }
   }
 
   return {

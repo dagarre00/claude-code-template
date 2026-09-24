@@ -81,7 +81,7 @@ The conductor — usually Claude Code — delegates through the workflow MCP ser
 
 ```
 check                # drift, installed engines, missing agy grants, capability gaps, architecture enforcement
-prepare_worktree     # isolated checkout at committed HEAD on worker/<id>, plus setup_commands to run in it
+prepare_worktree     # isolated checkout at committed HEAD (or `at` a commit) on worker/<id>, plus setup_commands to run in it
 build_worker_prompt  # role + rules + contract + the role's skills -> { command, prompt_file, report_file, … }
 inspect_dispatch     # after the run: exit code, report, worktree changes, audit, and a verdict (pass / reject / incomplete)
 record_decision      # accepted or rejected, with the reason (and finding counts for a review)
