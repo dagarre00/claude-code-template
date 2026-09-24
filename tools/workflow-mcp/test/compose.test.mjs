@@ -82,6 +82,17 @@ test('extraSkills add a project skill to a role, under the same rules as a decla
   assert.throws(() => compose({ ...base, command: 'work', extraSkills: ['nope'] }, files), /unknown skill "nope"/);
 });
 
+// The notes are about the engine, not the allowlist: agy's web tools and codex's
+// file reading through the shell apply whether or not the project allows any
+// command (adversary R3-F3 on PR #40).
+test('engine notes reach the worker even when no command is allowed', () => {
+  const note = 'On this engine you have no separate file tools.';
+  const { prompt } = compose({ ...base, workerCommands: [], commandNotes: [note] });
+  assert.match(prompt, /## Commands you may run[\s\S]*None/);
+  assert.ok(prompt.includes(note), 'the note was dropped with the empty allowlist');
+  assert.doesNotMatch(compose({ ...base, workerCommands: [], commandNotes: [] }).prompt, /Commands you may run/);
+});
+
 test('no command and no skills means no skill section at all', () => {
   const { prompt, skills } = compose(base);
   assert.deepEqual(skills, []);

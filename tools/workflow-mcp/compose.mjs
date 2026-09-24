@@ -170,8 +170,14 @@ export function composePrompt(canonical, input = {}) {
   // run, report included: measured, a developer that had already written its
   // failing test returned an empty response after one denied `git log`. Telling
   // it the exact strings is what turns a narrow allowlist from a tripwire into a
-  // usable contract.
-  if (workerCommands.length) {
+  // usable contract. The notes are about the engine, not the list — agy's web
+  // tools, codex reading files through its shell — so an empty list keeps them.
+  if (!workerCommands.length && commandNotes.length) {
+    parts.push(section('Commands you may run',
+      'None: this project allows no command that executes the project or changes anything. Reading, searching, '
+      + 'listing and editing need no command: use your file tools.'
+      + commandNotes.map(note => `\n\n${note}`).join('')));
+  } else if (workerCommands.length) {
     parts.push(section('Commands you may run',
       'Run these **verbatim** — no `cd`, no chaining with `;` or `&&`, no redirection, no extra flags:\n\n'
       + workerCommands.map(command => `- \`${command}\``).join('\n')
