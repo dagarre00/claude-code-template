@@ -204,3 +204,28 @@ test('the prompt tells the developer its test paths and that Red is re-proven', 
     assert.match(prompt, /reverts every other file you changed/);
   });
 });
+
+// Two cases of one cycle in one reused worktree: each dispatch is judged against
+// its own base, so the second case's Red reverts only what the second case did.
+test('a case dispatched into a reused worktree is proven against its own base', async () => {
+  await repo(async (root, tools) => {
+    const first = developer(tools, 'case-1', { 'src/slug.mjs': IMPLEMENTED, 'test/slug.check.mjs': REAL_TEST });
+    assert.equal((await runRedCheck(first.dir)).state, 'proven');
+    tools.record_decision({ task_id: 'case-1', decision: 'accepted', reason: 'Proven green, red and scoped.' });
+    git(first.wt.workspace, 'add', 'src', 'test');
+    git(first.wt.workspace, 'commit', '-qm', 'feat(slug): B1');
+    git(root, 'merge', '-q', '--no-edit', 'worker/case-1');
+
+    const wt = tools.prepare_worktree({ task_id: 'case-2', reuse: 'case-1' });
+    assert.equal(wt.workspace, first.wt.workspace);
+    const built = tools.build_worker_prompt({ role: 'developer', instructions: 'Implement B2.', workspace: wt.workspace,
+      cli_engine: 'claude', task_id: 'case-2', owned_paths: ['src', 'test'], test_paths: ['test'], test_command: TEST_COMMAND });
+    put(wt.workspace, 'src/trim.mjs', 'export const trim = text => text.trim();\n');
+    put(wt.workspace, 'test/slug.check.mjs', `${REAL_TEST}import { trim } from '../src/trim.mjs';\nif (trim(' a ') !== 'a') process.exit(1);\n`);
+    assert.equal(runAs(built, 'sh', ['-c', 'echo "B2 red: missing trim"']).status, 0);
+    const result = await runRedCheck(dirname(built.report_file));
+    assert.equal(result.state, 'proven');
+    assert.deepEqual(result.reverted_paths, ['src/trim.mjs'], 'B1 is in the base now, so only B2 is reverted');
+    assert.equal(tools.inspect_dispatch({ task_id: 'case-2' }).verdict.mechanical, 'pass');
+  });
+});

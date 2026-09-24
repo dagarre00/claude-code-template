@@ -74,8 +74,12 @@ export function createServer(root, conductorEngine) {
 
   register('prepare_worktree',
     'Create an isolated checkout at committed HEAD on its own worker/<id> branch. Requires a clean checkout. Not a security sandbox — it prevents collisions, not malice. '
-    + 'Returns `setup_commands` from config (e.g. building a per-worktree virtualenv): run each in the workspace before dispatching, and treat a failure as a blocker.',
-    { task_id: z.string().optional() },
+    + 'Pass `reuse: <task id>` to hand a finished task\'s worktree to this one instead — a new branch at HEAD in the same directory, '
+    + 'its installed dependencies intact — for the next case of a cycle. Refused unless that worktree is clean, merged, free of violations '
+    + 'and its dispatch decided. '
+    + 'Returns `setup_commands` from config (e.g. building a per-worktree virtualenv): run each in the workspace before dispatching, and treat a failure as a blocker. '
+    + 'On a reused worktree they already ran once; run them again, cheaply, since the last case may have changed a dependency.',
+    { task_id: z.string(), reuse: z.string().optional().describe('task_id of a finished task whose worktree this one takes over.') },
     input => api.prepare_worktree(input), false);
 
   register('inspect_dispatch',

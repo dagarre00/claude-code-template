@@ -290,3 +290,60 @@ test('a task id that is not a plain slug is refused before touching git', () => 
     }
   });
 });
+
+// A fresh worktree per Behavior case meant a fresh dependency install per case.
+// A finished task's worktree is handed to the next one only when it provably
+// holds nothing: clean, merged, no violations, its dispatch decided.
+const integrate = (root, wt, file) => {
+  writeFileSync(resolve(wt.workspace, file), 'case\n');
+  git(wt.workspace, 'add', file);
+  git(wt.workspace, 'commit', '-qm', `feat: ${file}`);
+  git(root, 'merge', '-q', '--no-edit', wt.branch);
+};
+
+test('a finished worktree is reused for the next task: new branch at HEAD, same directory, environment intact', () => {
+  repo(root => {
+    writeFileSync(resolve(root, '.gitignore'), 'node_modules/\n');
+    git(root, 'add', '.gitignore'); git(root, 'commit', '-qm', 'ignore deps');
+    const first = prepareWorktree(root, { task_id: 'case-b1' });
+    mkdirSync(resolve(first.workspace, 'node_modules'));
+    writeFileSync(resolve(first.workspace, 'node_modules/installed.txt'), 'deps\n');
+    integrate(root, first, 'b1.txt');
+
+    const second = prepareWorktree(root, { task_id: 'case-b2', reuse: 'case-b1' });
+    assert.equal(second.workspace, first.workspace);
+    assert.equal(second.branch, 'worker/case-b2');
+    assert.equal(second.reused_from, 'case-b1');
+    assert.equal(second.base_sha, git(root, 'rev-parse', 'HEAD').stdout.trim(), 'based on the integrated HEAD');
+    assert.ok(existsSync(resolve(second.workspace, 'b1.txt')), 'the previous case is in the new base');
+    assert.ok(existsSync(resolve(second.workspace, 'node_modules/installed.txt')), 'the installed environment survived');
+    assert.deepEqual(listWorktrees(root).map(entry => entry.task_id), ['case-b2']);
+    assert.equal(git(root, 'rev-parse', '--verify', '--quiet', 'worker/case-b1').status, 1, 'the merged branch is gone');
+
+    assert.throws(() => removeWorktree(root, 'case-b1'), /reused it/, 'removing the old task never touches the new checkout');
+    assert.ok(existsSync(second.workspace));
+    removeWorktree(root, 'case-b2');
+    assert.equal(existsSync(second.workspace), false);
+  });
+});
+
+test('a worktree still holding something is never reused', () => {
+  repo(root => {
+    const dirty = prepareWorktree(root, { task_id: 'dirty' });
+    writeFileSync(resolve(dirty.workspace, 'wip.txt'), 'x\n');
+    assert.throws(() => prepareWorktree(root, { task_id: 'next1', reuse: 'dirty' }), /uncommitted/);
+
+    const unmerged = prepareWorktree(root, { task_id: 'unmerged' });
+    writeFileSync(resolve(unmerged.workspace, 'u.txt'), 'x\n');
+    git(unmerged.workspace, 'add', 'u.txt'); git(unmerged.workspace, 'commit', '-qm', 'u');
+    assert.throws(() => prepareWorktree(root, { task_id: 'next2', reuse: 'unmerged' }), /not merged/);
+
+    const undecided = prepareWorktree(root, { task_id: 'undecided' });
+    record(root, 'undecided', { access: 'read-only', role: 'adversary' });
+    assert.throws(() => prepareWorktree(root, { task_id: 'next3', reuse: 'undecided' }), /no recorded decision/);
+
+    assert.throws(() => prepareWorktree(root, { task_id: 'next4', reuse: 'nothing-here' }), /No worktree/);
+    assert.throws(() => prepareWorktree(root, { task_id: 'dirty', reuse: 'undecided' }), /already prepared/);
+    assert.ok(existsSync(undecided.workspace), 'a refusal changes nothing');
+  });
+});
