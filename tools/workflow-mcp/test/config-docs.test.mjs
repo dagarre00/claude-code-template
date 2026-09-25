@@ -72,7 +72,8 @@ test('the places a person looks first all point at the editor', () => {
     '.agents/commands/init.md': 'step 0a asks per role which engine and model',
     '.agents/commands/sync-template.md': 'step 7 tells you to fix a rejected config',
     'scripts/adopt.sh': 'what an adopter reads last, in the terminal',
-    'README.md': 'the template\'s own front page'
+    'README.md': 'the template\'s own front page',
+    'scripts/release-readme.md': 'the README a project started from a release opens with'
   };
   for (const [path, why] of Object.entries(entryPoints)) {
     assert.match(read(path), /config-ui\.mjs|config\.md/, `${path} does not mention the editor or its guide (${why})`);
