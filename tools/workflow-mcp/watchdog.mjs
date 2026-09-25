@@ -31,6 +31,13 @@ const [, , parentArg, childArg, dir] = process.argv;
 const parent = Number.parseInt(parentArg, 10);
 const child = Number.parseInt(childArg, 10);
 
+// On POSIX the child leads its own process group, and the group is what is
+// guarded: a leader can exit while what it started runs on, and the watch used
+// to end with the leader (adversary R5-F1 on PR #40). Windows has no such
+// handle — taskkill /T finds a tree only through its live parent — so there the
+// child itself is all that can be watched.
+const running = () => (process.platform === 'win32' ? alive(child) : alive(-child));
+
 const outcome = () => {
   const path = dir ? resolve(dir, 'outcome.json') : null;
   if (!path || !existsSync(path)) return null;
@@ -56,11 +63,11 @@ if (Number.isInteger(parent) && Number.isInteger(child)) {
     // The parent first: on Windows a non-detached child is in the parent's job
     // object and dies with it, so "child gone" does not mean "ended normally".
     if (alive(parent)) {
-      if (!alive(child) && settled()) clearInterval(timer);   // it ended, and the parent recorded that
+      if (!running() && settled()) clearInterval(timer);   // it ended, and the parent recorded that
       return;
     }
     clearInterval(timer);
-    if (!alive(child)) { recordStopped(); return; }
+    if (!running()) { recordStopped(); return; }
     // On POSIX the child leads its own group, so the group goes; on Windows
     // taskkill /T takes the tree by parent id.
     killTree(child, { signal: 'SIGTERM' });
