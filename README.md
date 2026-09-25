@@ -10,14 +10,15 @@ A template for building software with an LLM agent as the developer, across Clau
 
 ## Quick start
 
-**New project** — no code or history yet:
+**New project** — no code or history yet. Start from the latest [release](https://github.com/dagarre00/claude-code-template/releases/latest): its `claude-code-template-<version>.zip` is the template without what only the template uses ([§ Releases](#releases)).
 
 ```bash
-git clone <this-template> my-project
-cd my-project
-rm -rf .git    # drop the template's history — /project:init starts your own
-claude
+gh release download --repo dagarre00/claude-code-template --pattern '*.zip'   # or from the release page
+unzip claude-code-template-*.zip && mv claude-code-template-*/ my-project
+cd my-project  # then follow its README.md: install, name the plugin, /project:init
 ```
+
+A clone with `.git` removed works too, but carries the template's own test suite, CI and scripts.
 
 **Existing project** — never touch its `.git`. From a checkout of this template:
 
@@ -134,6 +135,7 @@ Conductor-only rules (branch, commit, push, open a PR) are withheld from workers
 ├── worker-contract.md, config.json, project.md
 └── .claude-plugin/  # makes this directory a Claude Code plugin named "project"
 tools/workflow-mcp/  # the MCP: composes worker prompts, prepares worktrees, verifies, generates the root files
+scripts/             # template-side, never in a release: adopt.sh, release.mjs
 docs/
 ├── raw/             # immutable sources (interviews, research, documents)
 └── wiki/            # the agent-maintained knowledge base (requirements, architecture, entities, decisions, log, …)
@@ -142,6 +144,18 @@ CLAUDE.md            # generated from .agents/ — imports AGENTS.md
 ```
 
 Claude Code loads `.agents/` as a plugin (skills and commands, not roles) via `.claude/settings.json`; Codex reads `.agents/skills/` natively plus `AGENTS.md`; Antigravity reads no repository files and runs purely on the composed prompt.
+
+## Releases
+
+A release is what a new project starts from: the tagged tree as `claude-code-template-<version>.zip`, without what only the template uses — `tools/workflow-mcp/test/` and its `test` npm script, `.github/workflows/`, `scripts/`, and this README, which becomes a starter ([`scripts/release-readme.md`](scripts/release-readme.md)). `docs/`, `.agents/`, the MCP and its guides all ship. The list, with the reason for each entry, is `TEMPLATE_ONLY` in [`scripts/release.mjs`](scripts/release.mjs).
+
+To cut one, merge `develop` into `main`, then publish a release whose tag is the version:
+
+```bash
+gh release create 0.2.0 --target main --generate-notes
+```
+
+[`.github/workflows/release.yml`](.github/workflows/release.yml) builds the zip from that tag and attaches it to the release; GitHub's own "Source code" archives stay the whole repository. To see what a release would contain before tagging, `node scripts/release.mjs <version> --ref HEAD` writes one and prints its path.
 
 ## Philosophy
 

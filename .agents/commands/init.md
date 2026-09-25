@@ -25,12 +25,12 @@ Empty → the full procedure. A path that doesn't exist → say so and ask; neve
 
 ### 0. Verify the workflow wiring
 
-Seconds on a fresh clone of the template; it matters on a project adopted into an existing codebase, where the mechanical steps can land partway.
+Seconds on a new project from a template release; it matters on a project adopted into an existing codebase, where the mechanical steps can land partway.
 
 - Call `list_roles`. If it errors or no `mcp__workflow__*` tool exists, the server is unreachable — check:
   - `.mcp.json` at the root registers `workflow`.
   - **Claude Code only:** `.claude/settings.json` has `extraKnownMarketplaces.<name>` and `enabledPlugins["project@<name>"]`, where `<name>` is the `name` in `.claude-plugin/marketplace.json` — per project, `workflow-<dir-name>`, as `scripts/adopt.sh` derives it. A name shared with another project on this machine serves that project's skills here (`tools/workflow-mcp/getting-started.md` § Troubleshooting); rename it in both files and restart the session. Codex and Antigravity read `.agents/` directly and need neither file.
-  - Point the human at `README.md § Quick start` or a re-run of `scripts/adopt.sh`.
+  - Point the human at `tools/workflow-mcp/getting-started.md` § Setup, or a re-run of `scripts/adopt.sh` from a template checkout.
 - `tools/workflow-mcp/node_modules/` exists; if not, `npm install` there — every later cycle dispatches.
 
 Report it in one line ("workflow-mcp reachable, wiring intact"). A failure here is a hard stop (`human-checkpoint`): nothing past it can dispatch a worker.
@@ -144,7 +144,7 @@ Declined → leave `architecture.command` null and say in the report that layers
 CI is the only enforcement of the conductor's own discipline.
 
 1. `.gitattributes` has `docs/wiki/log.md merge=union` — every cycle appends to the log, and without it two branches conflict on every merge.
-2. **Write the CI workflow** (GitHub Actions: `.github/workflows/verify.yml`) on every pull request: full-history checkout, stack setup, install, the test command, the architecture command, and `node tools/workflow-mcp/verify.mjs --base origin/${{ github.base_ref }}`. The template's own `verify.yml` is a starting shape only: drop its workflow-mcp test step (template-only) and add the `--base` it omits — the template keeps an empty wiki, so it cannot run the range checks this project depends on.
+2. **Write the CI workflow** (GitHub Actions: `.github/workflows/verify.yml`) on every pull request: full-history checkout, stack setup, install, the test command, the architecture command, and `node tools/workflow-mcp/verify.mjs --base origin/${{ github.base_ref }}`. A template release ships no workflows. A project cloned from the template instead still has the template's own: replace `verify.yml` — its workflow-mcp test step is template-only, and it omits the `--base` range checks, which the template's empty wiki cannot pass — and delete `release.yml`, which builds template releases.
 3. Record the command in `docs/wiki/commands.md § Verify` and the pipeline in `architecture.md § Deployment`. No hosted CI → say so; the conductor then runs verify before every PR (`/project:work` step 10) and nothing else backs it.
 
 ### 6. Fill in project.md and regenerate
