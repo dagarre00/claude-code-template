@@ -709,3 +709,27 @@ test('a runner killed outright leaves no worker behind and no dispatch stuck run
     assert.equal(outcome.exit_code, 137);
   } finally { cleanup(root); }
 });
+
+// The worker's exit is not the end of the run: the runner still extracts the
+// report and only then records the finish. A watchdog that stopped when the
+// worker exited left that stretch unguarded, and a runner killed inside it left
+// the dispatch `running` (adversary R5-F2 on PR #40).
+test('a runner killed after its worker exits, before the finish is recorded, is still recorded as stopped', async () => {
+  const root = fixture({ '.agents/config.json': JSON.stringify(CONFIG) });
+  try {
+    const built = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude',
+      workspace: resolve(root, '.worktrees/x'), task_id: 'killed-extracting' });
+    const dir = dirname(built.report_file);
+    const slowExtract = resolve(root, 'slow-extract.mjs');
+    writeFileSync(slowExtract, 'setTimeout(() => {}, 6000);\n');
+    writeFileSync(resolve(dir, 'run.json'), JSON.stringify({ ...readRun(built), stdout: 'report', stderr: 'inherit',
+      extract: slowExtract, executable: process.execPath, args: ['-e', '0'] }));
+    const runner = spawn(process.execPath, [RUN_WORKER, dir], { stdio: 'ignore' });
+    await new Promise(done => setTimeout(done, 2500));
+    runner.kill('SIGKILL');
+    await new Promise(done => setTimeout(done, 3500));
+    const outcome = JSON.parse(readFileSync(resolve(dir, 'outcome.json'), 'utf8'));
+    assert.ok(outcome.finished_at, 'the dispatch was left running');
+    assert.equal(outcome.runner_stopped, true);
+  } finally { cleanup(root); }
+});

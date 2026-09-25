@@ -117,7 +117,9 @@ export function runBounded({ file, args = [], command, cwd, env = process.env, t
     });
     child.on('close', finish);
     const watchdog = guard && child.pid ? startWatchdog(child.pid, guard?.dir) : null;
-    child.on('close', () => { try { watchdog?.kill(); } catch { /* already gone */ } });
+    // A dispatch's watchdog outlives the worker, until the runner has recorded
+    // the finish, and then exits on its own (watchdog.mjs).
+    if (!guard?.dir) child.on('close', () => { try { watchdog?.kill(); } catch { /* already gone */ } });
     onStart?.(child);
   });
 }
