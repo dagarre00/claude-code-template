@@ -103,6 +103,26 @@ test('dispatch embeds the diff for a range and reports what it cost', () => {
   });
 });
 
+// The worktree is where a reviewer reads whole files, so it has to hold what
+// the range produced. Measured on PR #40's post-merge review: a checkout at
+// HEAD under a range ending three commits earlier, and the reviewer refused to
+// review at all. Said at compose time, the conductor can still fix it.
+test('a review whose worktree is not at the end of its range is warned, naming the revision to use', () => {
+  repo((root, before, after) => {
+    const review = workspace => prepareDispatch(root, { role: 'adversary', instructions: 'Review the change.',
+      diff_range: `${before}..${after}`, conductorEngine: 'claude', workspace });
+    const stale = resolve(root, '.worktrees/stale');
+    assert.equal(git(root, 'worktree', 'add', '-q', '--detach', stale, before).status, 0);
+    const warned = review(stale).warnings.filter(w => /end of/.test(w));
+    assert.equal(warned.length, 1, 'a checkout that is not the end of the range passes silently');
+    assert.ok(warned[0].includes(`at: "${after}"`), warned[0]);
+
+    const current = resolve(root, '.worktrees/current');
+    assert.equal(git(root, 'worktree', 'add', '-q', '--detach', current, after).status, 0);
+    assert.deepEqual(review(current).warnings.filter(w => /end of/.test(w)), []);
+  });
+});
+
 // An empty diff usually means the conductor passed the wrong range. Silence
 // there costs a whole dispatch before anyone notices.
 test('dispatching a review over an empty range warns instead of proceeding quietly', () => {

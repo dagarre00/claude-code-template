@@ -149,6 +149,7 @@ A worktree is a fresh checkout with no `.venv`. Measured 2026-09-13 (src-layout 
 ## When an engine is unavailable
 
 - **Not installed** — computable: `check` reports per engine whether its `executable` is on PATH, which roles use it, and `roles_without_an_available_engine`.
+- **Installed as a shim (Windows)** — npm installs a CLI as an extensionless sh script, a `.cmd` and a `.ps1`, and Windows starts none of them without a shell, which the runner never uses (measured: `ENOENT`, `EINVAL`). On Windows a name therefore counts as installed only as a native `.exe`/`.com`; a shim alone reads as unavailable, with a `problem` naming it. Point `engines.<name>.executable` at the native executable.
 - **Installed but refusing** (a usage limit, an expired login) — not computable before running it. Recover cheaply:
   - **A fallback chain:** `roles.<name>.engine` takes an ordered list, e.g. `"planner": { "engine": ["codex", "claude"], "models": { "codex": "gpt-6-astra" } }`. The first installed entry runs, and `warnings` says when it fell through. `inherit` may appear in a chain; repeats collapse.
   - **One dispatch elsewhere:** `cli_engine` on `build_worker_prompt` overrides the chain — right for a usage limit, since the engine is still installed. A `model_override` needs `cli_engine` with it; left to the chain it could reach an engine that can't run that model, and is refused.

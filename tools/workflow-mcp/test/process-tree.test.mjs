@@ -10,12 +10,26 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { runBounded } from '../process-tree.mjs';
+import { killTree, runBounded } from '../process-tree.mjs';
 import { cleanup } from './helpers.mjs';
 
 const TOOL = resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
 
 const sleep = ms => new Promise(done => setTimeout(done, ms));
+
+// Every caller hands killTree a process-group leader (runBounded detaches its
+// child on POSIX), so a failed group kill means the group is gone — and the
+// bare pid may by then belong to an unrelated process (adversary R1-F1 on
+// PR #40). The stub stands in for process.kill: no real process is signalled.
+test('on POSIX a process group that is gone is left alone, never retried as a bare pid', () => {
+  const calls = [];
+  const kill = pid => {
+    calls.push(pid);
+    throw Object.assign(new Error('kill ESRCH'), { code: 'ESRCH' });
+  };
+  killTree(2147483645, { platform: 'linux', kill });
+  assert.deepEqual(calls, [-2147483645]);
+});
 
 test('a timeout stops the process and everything it started', async () => {
   const dir = mkdtempSync(resolve(tmpdir(), 'workflow-mcp-tree-'));
@@ -58,6 +72,27 @@ test('an executable that does not exist is an error, not an exit code', async ()
 // Measured without the guard: on Linux the child survived its killed parent (it
 // leads its own process group); on Windows node's job object already took it,
 // so this test only discriminates on Linux and macOS — where CI runs it too.
+// On POSIX the guarded child leads a process group, and the group is what has to
+// die: a leader that exits while what it started runs on — here holding the
+// output pipe, so the parent is still waiting — used to end the watch, and a
+// parent killed after that left the rest running (adversary R5-F1 on PR #40).
+// Windows has no equivalent: taskkill /T finds a tree only through its live parent.
+test('a guarded group outlives its leader, and still dies with its killed parent',
+  { skip: process.platform === 'win32' && 'a Windows tree is found only through its live parent' }, async () => {
+    const dir = mkdtempSync(resolve(tmpdir(), 'workflow-mcp-group-'));
+    try {
+      const marker = resolve(dir, 'descendant-survived.txt');
+      const parentScript = resolve(dir, 'parent.mjs');
+      writeFileSync(parentScript, `import { runBounded } from ${JSON.stringify(pathToFileURL(resolve(TOOL, 'process-tree.mjs')).href)};\n`
+        + `await runBounded({ guard: true, command: ${JSON.stringify(`(sleep 6; touch '${marker}') & exit 0`)} });\n`);
+      const parent = spawn(process.execPath, [parentScript], { stdio: 'ignore' });
+      await sleep(2500);
+      parent.kill('SIGKILL');
+      await sleep(7000);
+      assert.equal(existsSync(marker), false, 'what the leader started outlived the killed parent');
+    } finally { cleanup(dir); }
+  });
+
 test('a guarded child dies with its parent, even when the parent is killed outright', async () => {
   const dir = mkdtempSync(resolve(tmpdir(), 'workflow-mcp-guard-'));
   try {

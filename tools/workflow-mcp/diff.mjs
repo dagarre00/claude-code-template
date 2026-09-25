@@ -23,6 +23,14 @@ const RANGE = /^[A-Za-z0-9_][A-Za-z0-9._/@{}~^-]{0,199}$/;
 // than this is a review that should have been split.
 export const DEFAULT_MAX_DIFF_BYTES = 200_000;
 
+// The revision whose files the range's diff produces: what follows `..` or
+// `...`, HEAD when that is empty, and HEAD for a single revision, which git
+// diffs against the checkout — clean whenever a worker is dispatched.
+export const rangeEnd = range => {
+  const at = range.lastIndexOf('..');
+  return (at === -1 ? '' : range.slice(at + 2)) || 'HEAD';
+};
+
 export function computeDiff(root, range, { maxBytes = DEFAULT_MAX_DIFF_BYTES } = {}) {
   if (typeof range !== 'string' || !RANGE.test(range)) {
     throw new Error(`Invalid diff range ${JSON.stringify(range)}; expected a revision range like `

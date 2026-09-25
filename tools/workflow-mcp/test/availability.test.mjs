@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { findExecutable, grantAntigravitySetup } from '../availability.mjs';
+import { engineAvailability, findExecutable, grantAntigravitySetup } from '../availability.mjs';
 import { loadConfig, resolveEngine, resolveEngineChain } from '../config.mjs';
 import { prepareDispatch as preparePrepared } from '../dispatch.mjs';
 import { makeTools } from '../tools.mjs';
@@ -62,6 +62,32 @@ test('finds an executable that exists and reports one that does not', () => {
   assert.equal(findExecutable(ABSENT), null);
   assert.equal(findExecutable('node') !== null, true, 'a bare name is looked up on PATH');
   assert.equal(findExecutable(resolve(PRESENT, 'nope')), null, 'a path that is not there is not found');
+});
+
+// npm installs a CLI on Windows as three shims side by side — an extensionless
+// sh script, a .cmd and a .ps1 — and none of them starts without a shell.
+// Found by name, the runner spawned the sh script and failed with ENOENT (the
+// .cmd alone: EINVAL) while check reported the engine installed (adversary
+// R2-F3 on PR #40, reproduced on Windows).
+test('on Windows only a native executable is found by name; a shim is named as the problem', () => {
+  const root = fixture({ 'bin/codex': '#!/bin/sh\n', 'bin/codex.cmd': '@echo off\r\n', 'bin/codex.ps1': '' });
+  try {
+    const bin = resolve(root, 'bin');
+    const env = { PATH: bin, PATHEXT: '.com;.exe;.bat;.cmd' };
+    assert.equal(findExecutable('codex', env, 'win32'), null, 'a shim was returned as the executable');
+    assert.equal(findExecutable('codex', { PATH: bin }, 'linux'), resolve(bin, 'codex'), 'elsewhere the name is the file');
+
+    const config = { engines: { codex: { executable: 'codex' } } };
+    const shimmed = engineAvailability(config, 'codex', { env, platform: 'win32' });
+    assert.equal(shimmed.available, false);
+    assert.match(shimmed.problem, /shim/);
+    assert.ok(shimmed.problem.includes(resolve(bin, 'codex')), shimmed.problem);
+
+    writeFileSync(resolve(bin, 'codex.exe'), '');
+    assert.equal(findExecutable('codex', env, 'win32'), resolve(bin, 'codex.exe'));
+    assert.deepEqual(engineAvailability(config, 'codex', { env, platform: 'win32' }),
+      { name: 'codex', executable: 'codex', available: true, path: resolve(bin, 'codex.exe') });
+  } finally { cleanup(root); }
 });
 
 test('a role can declare an ordered chain of engines instead of exactly one', () => {

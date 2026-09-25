@@ -82,8 +82,23 @@ test('extraSkills add a project skill to a role, under the same rules as a decla
   assert.throws(() => compose({ ...base, command: 'work', extraSkills: ['nope'] }, files), /unknown skill "nope"/);
 });
 
-test('no command and no skills means no skill section at all', () => {
-  const { prompt, skills } = compose(base);
+// The notes are about the engine, not the allowlist: agy's web tools and codex's
+// file reading through the shell apply whether or not the project allows any
+// command (adversary R3-F3 on PR #40).
+test('engine notes reach the worker even when no command is allowed', () => {
+  const note = 'On this engine you have no separate file tools.';
+  const { prompt } = compose({ ...base, workerCommands: [], commandNotes: [note] });
+  assert.match(prompt, /## Commands you may run[\s\S]*None/);
+  assert.ok(prompt.includes(note), 'the note was dropped with the empty allowlist');
+  assert.doesNotMatch(compose({ ...base, workerCommands: [], commandNotes: [] }).prompt, /Commands you may run/);
+});
+
+// A flat `skills:` list names no role, so nothing in it can be attributed to one
+// when no command is named. With role-keyed commands the same call does get the
+// role's skills — see 'with no command named, …' above (adversary R3-F2 on PR #40).
+test('with no command named, a flat skill list gives a role no skill section', () => {
+  const flat = { '.agents/commands/work.md': '---\nname: work\ndescription: d\nskills: [tdd-loop, wiki-update]\n---\n\nBody.\n' };
+  const { prompt, skills } = compose(base, flat);
   assert.deepEqual(skills, []);
   assert.doesNotMatch(prompt, /Write the failing test first\./);
 });
