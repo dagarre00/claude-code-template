@@ -17,8 +17,21 @@ import { resolve } from 'node:path';
 
 const outcomeFile = dir => resolve(dir, 'outcome.json');
 
+// Returns the start it recorded, which also names this attempt: a retry reuses
+// the directory and records its own start in the same file.
 export function recordStart(dir) {
-  writeFileSync(outcomeFile(dir), JSON.stringify({ started_at: new Date().toISOString() }, null, 2) + '\n');
+  const started_at = new Date().toISOString();
+  writeFileSync(outcomeFile(dir), JSON.stringify({ started_at }, null, 2) + '\n');
+  return started_at;
+}
+
+// The worker has exited and the runner has yet to record the finish. From here on
+// a Windows pid can belong to another process, so the watchdog stops treating
+// the worker's pid as the worker.
+export function recordWorkerExit(dir) {
+  const file = outcomeFile(dir);
+  const outcome = JSON.parse(readFileSync(file, 'utf8'));
+  writeFileSync(file, JSON.stringify({ ...outcome, worker_exited_at: new Date().toISOString() }, null, 2) + '\n');
 }
 
 // `timed_out`, `signal` and `runner_stopped` say why a process has an exit code

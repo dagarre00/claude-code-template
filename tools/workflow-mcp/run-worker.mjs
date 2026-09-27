@@ -33,8 +33,8 @@ import { constants } from 'node:os';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { locateExecutable, shimProblem } from './availability.mjs';
-import { killTree, runBounded } from './process-tree.mjs';
-import { recordFinish, recordStart } from './record-outcome.mjs';
+import { killChildTree, runBounded } from './process-tree.mjs';
+import { recordFinish, recordStart, recordWorkerExit } from './record-outcome.mjs';
 
 const ENGINES_DIR = fileURLToPath(new URL('./engines', import.meta.url));
 export const TIMEOUT_EXIT = 124;
@@ -65,7 +65,7 @@ const note = (path, text) => {
 
 export async function runWorker(dir) {
   const run = readJson(resolve(dir, 'run.json'));
-  recordStart(dir);
+  const startedAt = recordStart(dir);
   const { path: executable, shim } = locateExecutable(run.executable);
   if (!executable) {
     writeFileSync(run.report_file, shim ? `${shimProblem(run.engine, shim)} No worker ran.\n`
@@ -90,7 +90,13 @@ export async function runWorker(dir) {
   // worker too: it leads its own process group and would not hear the signal.
   const onSignal = signal => {
     stoppedBy = signal;
-    if (child) killTree(child.pid);
+    killChildTree(child);
+  };
+  const started = worker => {
+    child = worker;
+    // Before the finish, and the moment it happens: the watchdog must not stop
+    // this pid from then on (recordWorkerExit).
+    worker.once('exit', () => { try { recordWorkerExit(dir); } catch { /* the finish still gets recorded */ } });
   };
   const handlers = ['SIGINT', 'SIGTERM', 'SIGHUP'].map(signal => {
     const handler = () => onSignal(signal);
@@ -102,7 +108,7 @@ export async function runWorker(dir) {
     // guard: killed outright, this runner cannot stop the worker itself — its
     // watchdog does, and records the run as stopped from outside.
     result = await runBounded({ file: executable, args: run.args, cwd: run.cwd, stdio: streams.stdio,
-      timeoutMs: run.timeout_seconds * 1000, onStart: started => { child = started; }, guard: { dir } });
+      timeoutMs: run.timeout_seconds * 1000, onStart: started, guard: { dir, startedAt } });
   } finally {
     streams.close();
     for (const [signal, handler] of handlers) process.off(signal, handler);

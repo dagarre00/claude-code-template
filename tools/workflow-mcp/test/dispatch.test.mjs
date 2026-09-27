@@ -724,6 +724,23 @@ test('a runner killed outright leaves no worker behind and no dispatch stuck run
   } finally { cleanup(root); }
 });
 
+// On Windows the worker's pid is free for reuse the moment it exits, so its
+// watchdog has to learn of that exit from the record, not from the pid
+// (test/watchdog.test.mjs). That the watchdog is handed its own attempt is covered
+// by the two runner-killed tests below: a watchdog that cannot find its attempt
+// records nothing.
+test('the runner records its worker\'s exit before its finish', () => {
+  withRepo(root => {
+    const built = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude',
+      workspace: resolve(root, '.worktrees/x'), task_id: 'exits' });
+    const result = runAs(built, process.execPath, ['-e', '0']);
+    assert.equal(result.status, 0, result.stderr);
+    const outcome = JSON.parse(readFileSync(resolve(dirname(built.report_file), 'outcome.json'), 'utf8'));
+    assert.ok(outcome.worker_exited_at, 'the worker\'s exit is not recorded');
+    assert.ok(Date.parse(outcome.worker_exited_at) <= Date.parse(outcome.finished_at), 'recorded after the finish');
+  });
+});
+
 // The worker's exit is not the end of the run: the runner still extracts the
 // report and only then records the finish. A watchdog that stopped when the
 // worker exited left that stretch unguarded, and a runner killed inside it left
