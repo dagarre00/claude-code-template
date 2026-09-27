@@ -1,0 +1,41 @@
+# Attaches the template's release zip to every GitHub release as it is
+# published: scripts/release.mjs builds it from the release's tag, minus what
+# only the template uses (its test suite, its CI, its scripts and its README).
+# GitHub's own "Source code" archives stay the whole repository, for anyone who
+# wants the template itself.
+#
+# Publishing the release stays a human act (`gh release create <tag>` or the
+# web UI); this only adds the zip. Re-running it replaces the zip.
+name: release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  zip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # every tag, so the release's own tag resolves
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # The tag goes through env, never ${{ }} inside the script: a tag name is
+      # user input. release.mjs refuses one that is not a plain name.
+      - name: Build the release zip
+        run: node scripts/release.mjs "$TAG" --out dist
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+
+      - name: Attach it to the release
+        run: gh release upload "$TAG" dist/*.zip --clobber --repo "$GITHUB_REPOSITORY"
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          GH_TOKEN: ${{ github.token }}

@@ -4,14 +4,15 @@ From a fresh template (or an adopted project) to a first shipped feature, plus w
 
 ## Setup
 
-**New project** — no code or history yet:
+**New project** — no code or history yet. Start from the template's latest release, whose `claude-code-template-<version>.zip` leaves out what only the template uses (its test suite, CI and scripts):
 
 ```bash
-git clone <this-template> my-project
-cd my-project
-rm -rf .git        # the template's history is not your project's; /project:init starts a fresh one
-claude
+gh release download --repo dagarre00/claude-code-template --pattern '*.zip'   # or from the release page
+unzip claude-code-template-*.zip && mv claude-code-template-*/ my-project
+cd my-project      # then follow its README.md: install, name the plugin, /project:init
 ```
+
+A clone of the template with `.git` removed works too, but carries all of that.
 
 **Existing project** — never touch its `.git`. From a template checkout, run `bash scripts/adopt.sh /path/to/project`: it copies `.agents/` and `tools/workflow-mcp/`, installs the server's dependencies, writes `.mcp.json` and the per-project plugin marketplace, registers the server with `codex`/`agy` if installed, and prints anything left to merge by hand. Then start your CLI in the project.
 
