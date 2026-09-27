@@ -31,6 +31,27 @@ test('on POSIX a process group that is gone is left alone, never retried as a ba
   assert.deepEqual(calls, [-2147483645]);
 });
 
+// Node closes its handle on a child the moment the child exits, and from then
+// on Windows may give the pid to any new process. taskkill /T could not find the
+// exited child's tree anyway (it walks from a live parent), so all a late kill
+// can reach is a stranger. The bystander holds the exited child's pid, to
+// simulate that reuse.
+test('an exited child is left alone on Windows, since its pid may already be someone else\'s',
+  { skip: process.platform !== 'win32' && 'a POSIX group id is not reused while any member remains' }, async () => {
+    const tree = await import('../process-tree.mjs');
+    assert.equal(typeof tree.killChildTree, 'function', 'nothing stops a child\'s tree knowing whether the child has exited');
+    const bystander = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 15000)'], { stdio: 'ignore' });
+    try {
+      tree.killChildTree({ pid: bystander.pid, exitCode: 0, signalCode: null });
+      await sleep(500);
+      assert.equal(bystander.exitCode, null, `a process holding an exited child's pid was stopped (exit ${bystander.exitCode})`);
+      const live = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 15000)'], { stdio: 'ignore' });
+      const stopped = new Promise(done => live.once('exit', code => done(code)));
+      tree.killChildTree(live);
+      assert.notEqual(await stopped, 0, 'a child that is still running is stopped');
+    } finally { bystander.kill(); }
+  });
+
 test('a timeout stops the process and everything it started', async () => {
   const dir = mkdtempSync(resolve(tmpdir(), 'workflow-mcp-tree-'));
   try {
