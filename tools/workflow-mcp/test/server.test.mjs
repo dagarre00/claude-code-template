@@ -55,6 +55,17 @@ test('build_worker_prompt advertises every parameter it cannot run without as re
   });
 });
 
+// A description is all a conductor learns about a parameter before using it; an
+// undescribed one is guessed from its name. `thinking_budget` read as a token
+// count when it was an effort level, and `cli_engine` never said it has no fallback.
+test('every build_worker_prompt parameter says what it does', () => {
+  withRepo(root => {
+    const { inputSchema } = createServer(root, 'claude')._registeredTools.build_worker_prompt;
+    const undescribed = Object.entries(inputSchema.shape).filter(([, schema]) => !schema.description).map(([key]) => key);
+    assert.deepEqual(undescribed, []);
+  });
+});
+
 test('an unknown conductor engine is refused at construction', () => {
   withRepo(root => {
     assert.throws(() => createServer(root, 'gemini'), /gemini/);

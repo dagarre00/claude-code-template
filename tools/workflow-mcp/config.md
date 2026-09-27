@@ -57,7 +57,7 @@ Model names change often, and **nothing in `config.json` updates itself**: an id
 
 The built-in lists (`knownModels` in `tools/workflow-mcp/engines/<engine>.mjs`) are only the offline fallback. The editor cannot check a Claude full id, because there is nothing to ask — confirm it against Anthropic's model list.
 
-A single dispatch can override all of this without touching the file: `build_worker_prompt` accepts `cli_engine`, `model_override` and `thinking_budget`.
+A single dispatch can override all of this without touching the file: `build_worker_prompt` accepts `cli_engine`, `model_override` and `effort`.
 
 ## Reference: every setting
 
