@@ -443,6 +443,20 @@ test('a per-role engine beats the inherited default', () => {
   });
 });
 
+// A per-dispatch effort is a level the engine takes, not a token budget: it
+// replaces the profile default for that one dispatch, and one the engine does
+// not accept is refused before anything is written.
+test('a per-dispatch effort reaches the engine in place of the profile default', () => {
+  withRepo(root => {
+    const input = { ...base, cli_engine: 'claude', conductorEngine: 'claude', workspace: resolve(root, '.worktrees/x') };
+    const result = prepareDispatch(root, { ...input, effort: 'low' });
+    assert.equal(result.effort, 'low');
+    const { args } = readRun(result);
+    assert.equal(args[args.indexOf('--effort') + 1], 'low');
+    assert.throws(() => prepareDispatch(root, { ...input, effort: '8000' }), /effort "8000"/);
+  });
+});
+
 test('reports the prompt size so the conductor can see what it is paying for', () => {
   withRepo(root => {
     const result = prepareDispatch(root, { ...base, command: 'work', conductorEngine: 'claude',

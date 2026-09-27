@@ -20,7 +20,7 @@ You grill the human until you reach shared understanding, walking each branch of
 3. **Read instead of asking** when the codebase or wiki can answer.
 4. **Resolve dependencies before broadening.** If A decides B and C, finish A first.
 5. **Surface contradictions** with the wiki or an earlier answer the moment they appear.
-6. **Don't stop early.** Cover users, behavior, non-functional constraints (performance, security, observability, deployment — the ones projects skip and pay for), failure modes, edge cases and out-of-scope. The human says when to stop.
+6. **Cover the whole tree** — users, behavior, non-functional constraints (performance, security, observability, deployment — the ones projects skip and pay for), failure modes, edge cases and out-of-scope. The human says when to stop.
 7. **Stream the transcript.** It is the source of truth, not your memory: write each question to disk **before** asking it, and each answer **immediately** after it arrives — before processing it. If the session ends mid-interview, what is on disk is what we have.
 
 ## Preconditions

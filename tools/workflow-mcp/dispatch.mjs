@@ -338,7 +338,7 @@ export function prepareDispatch(root, input = {}) {
     reportFile: report_file,
     agent,
     model: input.model_override ?? roleConfig.models?.[engine] ?? undefined,
-    effort: input.thinking_budget ?? roleConfig.effort?.[engine] ?? undefined
+    effort: input.effort ?? roleConfig.effort?.[engine] ?? undefined
   });
 
   // Everything that can refuse this composition has run by now. Only from here

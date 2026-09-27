@@ -14,7 +14,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { resolve } from 'node:path';
-import { engineNames } from './engines/index.mjs';
+import { ENGINES, engineNames } from './engines/index.mjs';
 import { makeTools } from './tools.mjs';
 
 export function createServer(root, conductorEngine) {
@@ -66,9 +66,12 @@ export function createServer(root, conductorEngine) {
       task_id: z.string().describe('The id prepare_worktree was given. Composing again into a task whose last attempt already ran archives that attempt and counts this one as a retry.'),
       retry_of: z.string().optional().describe('task_id of an attempt in another worktree that this dispatch replaces, so retries are counted per engine and role.'),
       abandon_running: z.boolean().optional().describe('Composing into a task whose attempt started and never finished is refused, because a live process would finish into the new attempt. Pass true only when that process is gone; the attempt is archived as abandoned.'),
-      cli_engine: z.enum([...engineNames]).optional(),
+      cli_engine: z.enum([...engineNames]).optional().describe('Run this one dispatch on this engine instead of walking the role\'s chain — for an engine that hit a usage limit, or a role check lists under capability_gaps. '
+        + 'There is no fallback: if the engine is not installed the response warns and the command will fail to start. The role\'s model and effort pins for that engine apply.'),
       model_override: z.string().optional().describe('A model for this one dispatch. It must be one the engine this dispatch resolves to runs — if the role\'s chain falls through to another engine the override is refused, so pass cli_engine with it to name the engine it is for.'),
-      thinking_budget: z.string().optional()
+      effort: z.string().optional().describe('An effort level for this one dispatch, in place of the role\'s and profile\'s — a level, not a token count. '
+        + `It must be one the engine this dispatch resolves to accepts (${engineNames.map(name => `${name}: ${ENGINES[name].efforts.join('/')}`).join('; ')}); `
+        + 'anything else is refused, so pass cli_engine with it when the role\'s chain could fall through.')
     },
     input => api.build_worker_prompt(input));
 
