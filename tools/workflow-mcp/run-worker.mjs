@@ -25,13 +25,14 @@
 // Usage: node run-worker.mjs <dispatchDir>
 // Exit:  the engine's own exit code, or the extraction's when the engine exited
 //        0 and extraction found a failure; 124 on timeout; 127 when the
-//        executable is not installed; 128+n when a signal stopped the runner.
+//        executable is not installed or the worker could not be started;
+//        128+n when a signal stopped the runner.
 import { spawnSync } from 'node:child_process';
 import { closeSync, existsSync, openSync, readFileSync, writeFileSync } from 'node:fs';
 import { constants } from 'node:os';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { findExecutable } from './availability.mjs';
+import { locateExecutable, shimProblem } from './availability.mjs';
 import { killTree, runBounded } from './process-tree.mjs';
 import { recordFinish, recordStart } from './record-outcome.mjs';
 
@@ -65,14 +66,24 @@ const note = (path, text) => {
 export async function runWorker(dir) {
   const run = readJson(resolve(dir, 'run.json'));
   recordStart(dir);
-  const executable = findExecutable(run.executable);
+  const { path: executable, shim } = locateExecutable(run.executable);
   if (!executable) {
-    writeFileSync(run.report_file, `The ${run.engine} executable "${run.executable}" was not found on PATH, so no worker `
-      + 'ran. Install it, fix engines.<engine>.executable, or dispatch with another cli_engine.\n');
+    writeFileSync(run.report_file, shim ? `${shimProblem(run.engine, shim)} No worker ran.\n`
+      : `The ${run.engine} executable "${run.executable}" was not found on PATH, so no worker `
+        + 'ran. Install it, fix engines.<engine>.executable, or dispatch with another cli_engine.\n');
     return recordFinish(dir, { processCode: 127 });
   }
 
-  const streams = openStreams(run);
+  // The start is already recorded, so a failure here has to be recorded too:
+  // otherwise the dispatch reads `running` forever and its task refuses a
+  // re-compose until the conductor abandons it by hand.
+  let streams;
+  try { streams = openStreams(run); } catch (error) {
+    const reason = `The worker could not be started: ${error.message}`;
+    process.stderr.write(`${reason}\n`);
+    try { note(run.report_file, reason); } catch { /* the report file may be what could not be opened */ }
+    return recordFinish(dir, { processCode: 127 });
+  }
   let child = null;
   let stoppedBy = null;
   // Something stopping the runner — a conductor interrupting it — stops the

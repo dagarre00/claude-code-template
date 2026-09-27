@@ -63,7 +63,7 @@ export function createServer(root, conductorEngine) {
       test_paths: z.array(z.string()).optional().describe('For a developer: the paths (inside owned_paths) that hold its tests. The response then carries red_check_command, and inspect_dispatch stays `incomplete` until you run it — it reverts every other changed file to the base commit and the tests must fail.'),
       test_command: z.string().max(500).optional().describe('The exact command that runs the tests — required with test_paths.'),
       workspace: z.string().describe('Worktree path from prepare_worktree. Required: the command that starts a worker begins by entering its checkout.'),
-      task_id: z.string().optional().describe('The id prepare_worktree was given. Composing again into a task whose last attempt already ran archives that attempt and counts this one as a retry.'),
+      task_id: z.string().describe('The id prepare_worktree was given. Composing again into a task whose last attempt already ran archives that attempt and counts this one as a retry.'),
       retry_of: z.string().optional().describe('task_id of an attempt in another worktree that this dispatch replaces, so retries are counted per engine and role.'),
       abandon_running: z.boolean().optional().describe('Composing into a task whose attempt started and never finished is refused, because a live process would finish into the new attempt. Pass true only when that process is gone; the attempt is archived as abandoned.'),
       cli_engine: z.enum([...engineNames]).optional(),
@@ -73,7 +73,7 @@ export function createServer(root, conductorEngine) {
     input => api.build_worker_prompt(input));
 
   register('prepare_worktree',
-    'Create an isolated checkout at committed HEAD on its own worker/<id> branch. Requires a clean checkout. Not a security sandbox — it prevents collisions, not malice. '
+    'Create an isolated checkout at committed HEAD (or `at` a given commit) on its own worker/<id> branch. Requires a clean checkout. Not a security sandbox — it prevents collisions, not malice. '
     + 'Pass `reuse: <task id>` to hand a finished task\'s worktree to this one instead — a new branch at HEAD in the same directory, '
     + 'its installed dependencies intact — for the next case of a cycle. Refused unless that worktree is clean, merged, free of violations '
     + 'and its dispatch decided. '
@@ -81,7 +81,9 @@ export function createServer(root, conductorEngine) {
     + 'workspace under workerTimeoutSeconds, stops at the first failure and prints only its output. Run it before dispatching, and treat a '
     + 'failure as a blocker; never paste `setup_commands` into your shell one by one. On a reused worktree it is quick, and still needed '
     + 'if the last case changed a dependency.',
-    { task_id: z.string(), reuse: z.string().optional().describe('task_id of a finished task whose worktree this one takes over.') },
+    { task_id: z.string(), reuse: z.string().optional().describe('task_id of a finished task whose worktree this one takes over.'),
+      at: z.string().optional().describe('A commit to start from instead of HEAD. For a review whose diff_range ends before HEAD, '
+        + 'pass that end, so the files the reviewer reads are the ones the diff produced; build_worker_prompt warns when they are not.') },
     input => api.prepare_worktree(input), false);
 
   register('inspect_dispatch',

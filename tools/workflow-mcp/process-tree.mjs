@@ -35,14 +35,16 @@ function startWatchdog(childPid, dir) {
   } catch { return null; }
 }
 
-export function killTree(pid, { platform = process.platform, signal = 'SIGKILL' } = {}) {
+export function killTree(pid, { platform = process.platform, signal = 'SIGKILL', kill = process.kill.bind(process) } = {}) {
   if (!pid) return;
   if (platform === 'win32') {
     spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
     return;
   }
-  try { process.kill(-pid, signal); }
-  catch { try { process.kill(pid, signal); } catch { /* already gone */ } }
+  // A group leader, always: runBounded detaches its child on POSIX. So a failed
+  // group kill means the group is gone, and signalling the bare pid instead
+  // could reach an unrelated process that has since been given that pid.
+  try { kill(-pid, signal); } catch { /* the group is gone */ }
 }
 
 // Keeps the last `limit` bytes of a stream without holding the whole of it.
@@ -115,7 +117,9 @@ export function runBounded({ file, args = [], command, cwd, env = process.env, t
     });
     child.on('close', finish);
     const watchdog = guard && child.pid ? startWatchdog(child.pid, guard?.dir) : null;
-    child.on('close', () => { try { watchdog?.kill(); } catch { /* already gone */ } });
+    // A dispatch's watchdog outlives the worker, until the runner has recorded
+    // the finish, and then exits on its own (watchdog.mjs).
+    if (!guard?.dir) child.on('close', () => { try { watchdog?.kill(); } catch { /* already gone */ } });
     onStart?.(child);
   });
 }

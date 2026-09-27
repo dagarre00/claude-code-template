@@ -120,16 +120,25 @@ function exclude(root) {
   writeFileSync(path, current + (current && !current.endsWith('\n') ? '\n' : '') + entry + '\n');
 }
 
-// Whether two paths name the same directory. realpathSync.native, not the JS
-// realpath: measured on GitHub's Windows runner, the temp directory is an 8.3
+// A path in the one form two paths can be compared in. realpathSync.native, not
+// the JS realpath: measured on GitHub's Windows runner, the temp directory is an 8.3
 // short name (RUNNER~1) that only the native call expands, while git reports the
 // long one; and on macOS /var is a symlink to /private/var, which git resolves
 // and resolve() does not. Case never matters on Windows.
+const located = path => {
+  let real;
+  try { real = realpathSync.native(path); } catch { real = resolve(path); }
+  const norm = real.replaceAll('\\', '/').replace(/\/+$/, '');
+  return process.platform === 'win32' ? norm.toLowerCase() : norm;
+};
+
+// Whether two paths name the same directory.
 export function sameLocation(a, b) {
-  const real = path => { try { return realpathSync.native(path); } catch { return resolve(path); } };
-  const norm = path => real(path).replaceAll('\\', '/').replace(/\/+$/, '');
-  return process.platform === 'win32' ? norm(a).toLowerCase() === norm(b).toLowerCase() : norm(a) === norm(b);
+  return located(a) === located(b);
 }
+
+// Whether `path` lies inside `dir`.
+const within = (path, dir) => located(path).startsWith(`${located(dir)}/`);
 
 const readRecord = (root, task_id, name) => {
   const path = resolve(root, WORKSPACES, '.dispatch', task_id, name);
@@ -147,7 +156,7 @@ export const workspaceOf = (root, task_id) => readRecord(root, task_id, 'worktre
 // nothing (clean, every commit merged, no violations, its dispatch decided) can
 // be handed to the next task instead: a new worker/<task> branch at the current
 // HEAD, in the same directory, with its ignored environment intact.
-function reuseWorktree(root, task_id, reuse) {
+function reuseWorktree(root, task_id, reuse, base_sha) {
   taskDir(root, reuse);
   if (readRecord(root, task_id, 'worktree.json')) throw new Error(`Task "${task_id}" is already prepared`);
   const previous = listWorktrees(root).find(entry => entry.task_id === reuse);
@@ -163,7 +172,6 @@ function reuseWorktree(root, task_id, reuse) {
     throw new Error(`Task "${reuse}" has a dispatch with no recorded decision; decide on it before reusing its worktree`);
   }
   const branch = `worker/${task_id}`;
-  const base_sha = git(root, ['rev-parse', 'HEAD']);
   git(root, ['branch', branch, base_sha]);
   git(previous.workspace, ['checkout', '-q', branch]);
   // -d, never -D: merged was checked above, and a refusal here still loses nothing.
@@ -179,11 +187,28 @@ function reuseWorktree(root, task_id, reuse) {
   return { workspace: previousRecord?.workspace ?? resolve(previous.workspace), branch, base_sha, reused_from: reuse };
 }
 
-export function prepareWorktree(root, { task_id, reuse } = {}) {
+// One revision, and nothing that could be read as a flag or a range.
+const REVISION = /^[A-Za-z0-9_][A-Za-z0-9._/@{}~^-]{0,199}$/;
+
+// The commit a worktree starts from: HEAD, or `at` — for a review whose
+// diff_range ends before HEAD, that end, so the files the reviewer reads are
+// the ones the diff produced (measured: a reviewer given HEAD instead refused
+// to review at all).
+function startingCommit(root, at) {
+  if (at == null) return git(root, ['rev-parse', 'HEAD']);
+  const sha = typeof at === 'string' && REVISION.test(at) && !at.includes('..')
+    ? git(root, ['rev-parse', '--verify', '--quiet', `${at}^{commit}`], { allowFailure: true })
+    : null;
+  if (!sha) throw new Error(`at: ${JSON.stringify(at)} is not a revision of this repository; pass a commit, branch or tag`);
+  return sha;
+}
+
+export function prepareWorktree(root, { task_id, reuse, at } = {}) {
   taskDir(root, task_id);
   if (!sameLocation(git(root, ['rev-parse', '--show-toplevel']), root)) {
     throw new Error('Root must be the top level of a Git worktree');
   }
+  const base_sha = startingCommit(root, at);
   exclude(root);
   // Checked after exclude(), so the freshly created .worktrees/ is not itself
   // the reason the tree looks dirty.
@@ -191,12 +216,11 @@ export function prepareWorktree(root, { task_id, reuse } = {}) {
     throw new Error('Checkout is dirty; commit or set aside your changes before dispatching a worker');
   }
   let prepared;
-  if (reuse != null) prepared = reuseWorktree(root, task_id, reuse);
+  if (reuse != null) prepared = reuseWorktree(root, task_id, reuse, base_sha);
   else {
     const workspace = taskDir(root, task_id);
     if (existsSync(workspace)) throw new Error(`Workspace already exists: ${workspace}`);
     const branch = `worker/${task_id}`;
-    const base_sha = git(root, ['rev-parse', 'HEAD']);
     git(root, [...LONG_PATHS, 'worktree', 'add', '-b', branch, workspace, base_sha]);
     prepared = { workspace, branch, base_sha };
   }
@@ -232,11 +256,16 @@ export function listWorktrees(root) {
   // HEAD leaves nothing to compare against, and an unanswerable question is
   // reported as unanswered rather than as "no".
   const integration = git(root, ['symbolic-ref', '--quiet', '--short', 'HEAD'], { allowFailure: true });
+  // git lists every worktree of the repository, and a parallel conductor's own
+  // checkout is usually one of them, with worker/* branches of its own. Its
+  // dispatch records live in its checkout, not here, so only this checkout's
+  // .worktrees/ is ours to list, reuse or remove.
+  const home = resolve(root, WORKSPACES);
 
   return raw.split(/\n\n+/).map(entry => {
     const path = /^worktree (.+)$/m.exec(entry)?.[1];
     const branch = /^branch refs\/heads\/(.+)$/m.exec(entry)?.[1];
-    if (!path || !branch?.startsWith('worker/')) return null;
+    if (!path || !branch?.startsWith('worker/') || !within(path, home)) return null;
     const task_id = branch.slice('worker/'.length);
     const record = dispatchRecord(root, task_id);
     const changed = existsSync(path) ? changedPaths(path) : [];

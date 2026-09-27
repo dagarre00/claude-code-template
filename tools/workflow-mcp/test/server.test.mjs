@@ -40,6 +40,21 @@ test('every tool the implementation exposes is registered on the server', () => 
   });
 });
 
+// The schema is what a conductor's tool list shows. A parameter the
+// implementation refuses to go without, advertised as optional, is learned from
+// an error instead (adversary R1-F2 on PR #40).
+test('build_worker_prompt advertises every parameter it cannot run without as required', () => {
+  withRepo(root => {
+    const { inputSchema } = createServer(root, 'claude')._registeredTools.build_worker_prompt;
+    const complete = { role: 'developer', workspace: 'w', task_id: 't' };
+    assert.equal(inputSchema.safeParse(complete).success, true);
+    for (const key of Object.keys(complete)) {
+      const { [key]: _, ...missing } = complete;
+      assert.equal(inputSchema.safeParse(missing).success, false, `${key} is advertised as optional`);
+    }
+  });
+});
+
 test('an unknown conductor engine is refused at construction', () => {
   withRepo(root => {
     assert.throws(() => createServer(root, 'gemini'), /gemini/);

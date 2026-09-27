@@ -1,10 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { loadConfig } from '../config.mjs';
-import { prepareDispatch as preparePrepared, shellArg } from '../dispatch.mjs';
+import { commandPortability, prepareDispatch as preparePrepared, shellArg } from '../dispatch.mjs';
 import { RUN_WORKER, cleanup, composeIn, fixture, readRun, runAs, stubWorktree } from './helpers.mjs';
 
 const prepareDispatch = composeIn(preparePrepared);
@@ -132,6 +132,28 @@ test('the command reads the same in every shell, spaces in the path included', (
     const result = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude', workspace });
     assert.doesNotMatch(result.command, /\\/, 'no backslash for a POSIX shell to eat');
   });
+});
+
+// No quoting reads the same in all four shells: cmd has only double quotes,
+// inside which bash and PowerShell expand `$` and interactive bash expands `!`,
+// and cmd expands %NAME% quoted or not. A path like that gets the POSIX form,
+// and the dispatch says which shells cannot run it instead of letting the worker
+// never start (adversary R2-F1 on PR #40).
+test('a path no quoting carries everywhere is named, with the shells that cannot run it', () => {
+  assert.equal(shellArg('/tmp/a,b/x'), '"/tmp/a,b/x"', 'PowerShell reads an unquoted comma as an array');
+  assert.equal(commandPortability(['/tmp/plain/x', '/home/me/My Projects/x']), null);
+  assert.match(commandPortability(['/tmp/release!candidate/x']), /cannot run in cmd:/);
+  assert.match(commandPortability(["/odd/it's $x"]), /cannot run in cmd or PowerShell:.*Run them from bash or zsh\./);
+  assert.match(commandPortability(['/tmp/%TEMP%/x']), /cannot run in cmd:.*%TEMP%/);
+
+  const plain = fixture({ '.agents/config.json': JSON.stringify(CONFIG) });
+  const root = `${plain}-release!candidate`;
+  renameSync(plain, root);
+  try {
+    const result = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude',
+      workspace: resolve(root, '.worktrees/x') });
+    assert.ok(result.warnings.some(w => /cmd/.test(w) && w.includes(root.replaceAll('\\', '/'))), result.warnings.join('\n'));
+  } finally { cleanup(root); }
 });
 
 // The conductor decides whether an engine is appropriate for a task, and it can
@@ -332,6 +354,23 @@ test('an engine that is not installed is reported as such, exit 127, with nothin
     const outcome = runAs(built, 'definitely-not-an-installed-engine');
     assert.equal(outcome.status, 127);
     assert.match(outcome.stdout, /was not found on PATH/);
+  });
+});
+
+// The start is recorded before the streams are opened, so a failure opening
+// them used to leave a dispatch that reads `running` forever, and composing
+// into its task again was refused (adversary R2-F2 on PR #40).
+test('a worker whose streams cannot be opened is recorded as finished, with the reason', () => {
+  withRepo(root => {
+    const built = prepareDispatch(root, { ...base, cli_engine: 'codex', conductorEngine: 'claude',
+      workspace: resolve(root, '.worktrees/x') });
+    const missing = resolve(dirname(built.report_file), 'no-such-stdin.txt');
+    const outcome = runAs(built, process.execPath, ['-e', '0'], { run: { stdin_file: missing } });
+    assert.notEqual(outcome.status, 0);
+    const recorded = JSON.parse(readFileSync(resolve(dirname(built.report_file), 'outcome.json'), 'utf8'));
+    assert.ok(recorded.finished_at, 'the dispatch still reads as running');
+    assert.notEqual(recorded.exit_code, 0);
+    assert.match(`${outcome.stdout}${outcome.stderr}`, /could not be started.*no-such-stdin/s);
   });
 });
 
@@ -668,5 +707,29 @@ test('a runner killed outright leaves no worker behind and no dispatch stuck run
     assert.ok(outcome.finished_at, 'the run is recorded as ended, not left running');
     assert.equal(outcome.runner_stopped, true);
     assert.equal(outcome.exit_code, 137);
+  } finally { cleanup(root); }
+});
+
+// The worker's exit is not the end of the run: the runner still extracts the
+// report and only then records the finish. A watchdog that stopped when the
+// worker exited left that stretch unguarded, and a runner killed inside it left
+// the dispatch `running` (adversary R5-F2 on PR #40).
+test('a runner killed after its worker exits, before the finish is recorded, is still recorded as stopped', async () => {
+  const root = fixture({ '.agents/config.json': JSON.stringify(CONFIG) });
+  try {
+    const built = prepareDispatch(root, { ...base, cli_engine: 'claude', conductorEngine: 'claude',
+      workspace: resolve(root, '.worktrees/x'), task_id: 'killed-extracting' });
+    const dir = dirname(built.report_file);
+    const slowExtract = resolve(root, 'slow-extract.mjs');
+    writeFileSync(slowExtract, 'setTimeout(() => {}, 6000);\n');
+    writeFileSync(resolve(dir, 'run.json'), JSON.stringify({ ...readRun(built), stdout: 'report', stderr: 'inherit',
+      extract: slowExtract, executable: process.execPath, args: ['-e', '0'] }));
+    const runner = spawn(process.execPath, [RUN_WORKER, dir], { stdio: 'ignore' });
+    await new Promise(done => setTimeout(done, 2500));
+    runner.kill('SIGKILL');
+    await new Promise(done => setTimeout(done, 3500));
+    const outcome = JSON.parse(readFileSync(resolve(dir, 'outcome.json'), 'utf8'));
+    assert.ok(outcome.finished_at, 'the dispatch was left running');
+    assert.equal(outcome.runner_stopped, true);
   } finally { cleanup(root); }
 });
