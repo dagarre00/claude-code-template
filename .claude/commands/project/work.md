@@ -1,6 +1,6 @@
 ---
 description: The core development loop — pick the top todo (or a batch sharing context), branch feat/* from develop, plan complex work, put the brief through the plan-adversary, run the developer Red→Green→refactor→wiki one Behavior case at a time, review the diff on complex cycles, and open a PR to develop once the entity is done.
-argument-hint: '[todo, entity, or scope — e.g. "the login endpoint" | "batch the auth todos"]'
+argument-hint: '[fast | handoff] [todo, entity, or scope — e.g. "the login endpoint" | "fast batch the auth todos"]'
 disable-model-invocation: true
 ---
 
@@ -14,7 +14,7 @@ The argument **selects the work**, overriding step 1's default of the top todo:
 - **Asks for a batch** (`batch the auth todos`, `next 3`) → batch those todos on one branch, subject to the batching rule in `feature-branching`.
 - **Adds a constraint** (`skip the planner`, `skip the pre-flight`, `tests only`) → honour it and note the deviation in the report.
 
-It never bypasses the preconditions, the Red phase or the entity-page check. Empty → the top todo.
+A leading `fast` or `handoff` is the **dispatch mode**, stripped before the rest is read (`subagent-dispatch` § Dispatch mode). It never bypasses the preconditions, the Red phase or the entity-page check. Empty → the top todo.
 
 ## State at invocation
 
@@ -28,7 +28,7 @@ You orchestrate one TDD cycle (or a small batch). You write no tests or producti
 
 ## How you dispatch
 
-Every dispatch follows the `subagent-dispatch` skill — load it before the cycle's first dispatch. On top of it:
+Every dispatch follows the `subagent-dispatch` skill — load it before the cycle's first dispatch; it runs each one natively or as a handoff file, per the dispatch mode. On top of it:
 
 - **Each role already carries its own skills** and model; the brief carries only the task.
 - **Inputs are paths in this checkout or text in the brief.** The plan travels as `.handoff/<slug>-plan.md`; nothing is pasted that a role can read.
@@ -103,13 +103,13 @@ You commit and push after each proven case, and the plan review's record before 
 
 8. **Log, commit and push** per [`log-and-commit.md`](../../skills/feature-branching/log-and-commit.md) — complete the `work` entry step 4a opened (open it now if the argument skipped step 4a): kind `work`, fields `TODO(s)`, `Cases: B1, B2`, `Branch: feat/<slug>`, `Plan review: <N> findings — <A> applied, <E> escalated, <R> rejected` followed by one line per finding (the log is that review's only committed record), and `Adversary: <N> findings — <Fi> filed, <Fx> fixed, <R> rejected` (omit it if step 7a did not run). Stage `docs/wiki/log.md` alone; subject `docs(<slug>): log cycle`. With step 4a's, these are the commits `/project:work` makes on its own account — the cases and review records are already committed.
 
-   Delete `.handoff/<slug>-plan.md`. Confirm `git status --porcelain` is empty and `git log --oneline develop..HEAD` reads as one commit per case, plus the review and log records.
+   Delete `.handoff/<slug>-plan.md`, and any handoff pair the cycle left behind (`dispatch-handoff` step 8). Confirm `git status --porcelain` is empty and `git log --oneline develop..HEAD` reads as one commit per case, plus the review and log records.
 
 9. **Feature complete?** Re-read the entity's `## Behavior`. All `[x]` → step 10. Otherwise → step 11, no PR yet.
 
 10. **Open the PR** — the `pr-create` skill: its pre-PR checks, the body, the PR against `develop`, the `pr` log entry, and the return to `develop`.
 
-11. **Report.** What was done and what is next. Lead with anything step 4a escalated, then any `critical`/`major` from step 7a that was filed rather than fixed. Then run the **maintenance cadence check** — the only place the periodic commands are surfaced, so run it even after a perfect cycle:
+11. **Report.** What was done and what is next. Lead with the checkpoint that ended a fast-mode run and the defaults it took (`human-checkpoint` § Fast mode), then anything step 4a escalated, then any `critical`/`major` from step 7a that was filed rather than fixed. Then run the **maintenance cadence check** — the only place the periodic commands are surfaced, so run it even after a perfect cycle:
 
     ```bash
     # Each counter resets at the last entry of its own kind.

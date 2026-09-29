@@ -1,6 +1,6 @@
 ---
 description: Point a read-only second model at the current change — dispatch the adversary over the diff with none of the author's context, dispose of every numbered finding in writing, and re-review only what was fixed. Per-change; /project:review is the periodic whole-repo audit.
-argument-hint: '[base ref or lens — e.g. "develop" | "against main" | "concurrency only"]'
+argument-hint: '[fast | handoff] [base ref or lens — e.g. "develop" | "against main" | "fast concurrency only"]'
 disable-model-invocation: true
 ---
 
@@ -13,7 +13,7 @@ The argument **sets what gets reviewed** (step 1):
 - **A base ref** (`develop`, `against main`, `HEAD~3`) → review `<ref>...HEAD`. With a ref, a clean tree is reviewable.
 - **A lens** (`concurrency only`, `error handling`) → an emphasis on top of the full category sweep, never a narrowing of it: a sweep the author can shrink is one the author can steer. Pass it only as a category to weight — never as intent, rationale or a summary of what the change is for — and say in the report that a lens was applied.
 
-Empty → the standard sweep over the unshipped change.
+A leading `fast` or `handoff` is the **dispatch mode**, stripped before the rest is read (`subagent-dispatch` § Dispatch mode). Empty → the standard sweep over the unshipped change.
 
 ## State at invocation
 

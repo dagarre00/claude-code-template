@@ -70,7 +70,7 @@ The reviewers' own procedures are `plan-review` and `adversarial-review`; they r
 
 ## Record the yield — every round
 
-The counts in the round commit and the log entry are the only measure of whether a review role earns its tokens: raised per severity, and acted on per disposition. Keep them exact — they are the evidence for keeping the plan-adversary on simple todos, or for moving a role to another model (`subagent-dispatch` § Changing a role's model or effort).
+The counts in the round commit and the log entry are the only measure of whether a review role earns its tokens: raised per severity, and acted on per disposition. Keep them exact — they are the evidence for keeping the plan-adversary on simple todos, or for moving a role to another model (`subagent-dispatch` § Changing a role's model or effort). A reviewer run through a handoff (`dispatch-handoff`) names its harness and model in the round commit and the log entry: its counts are not evidence about the role's pinned model.
 
 ## Anti-patterns
 

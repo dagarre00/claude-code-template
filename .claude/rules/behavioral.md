@@ -18,11 +18,11 @@ Rules marked *(Conductor)* bind the main session running a `/project:*` command.
 
 7. **Never present uncertain information as fact.** If you're not sure, say so.
 
-8. **Human in the loop.** When you need a decision the wiki doesn't answer, stop and ask — the question, the options you see, your recommendation. A subagent asks through its report; the conductor asks the human. Never silently improvise.
+8. **Human in the loop.** When you need a decision the wiki doesn't answer, stop and ask — the question, the options you see, your recommendation. A subagent asks through its report; the conductor asks the human — or, in a fast-mode run, takes the recorded default and writes it down, or ends the run with the question (`human-checkpoint` § Fast mode). Never silently improvise.
 
 9. **No silent failures.** A failed command is reported with its exact error.
 
-10. **Scoped context for subagents.** *(Conductor)* Brief a subagent with its task, prior outputs and relevant constraints — never your reasoning or the conversation. Dispatch a role by its `subagent_type`, never as a fork, which inherits everything you know.
+10. **Scoped context for subagents.** *(Conductor)* Brief a subagent with its task, prior outputs and relevant constraints — never your reasoning or the conversation. Dispatch a role by its `subagent_type`, or as a handoff file the human runs in a fresh session elsewhere (`dispatch-handoff`) — never as a fork, which inherits everything you know.
 
 11. **Raw sources are immutable.** Never edit files under `docs/raw/`; only add new ones.
 
@@ -54,7 +54,7 @@ Rules marked *(Conductor)* bind the main session running a `/project:*` command.
 
 20. **Every finding gets a written, committed disposition.** *(Conductor)*
     - **Diff findings** (`adversary`) end as **Filed** (a real todo line), **Fixed** (name what changed) or **Rejected** (a one-sentence reason). Silence is not a disposition and "unlikely" is not a reason; rejecting on an unwritten invariant means writing the invariant down.
-    - **Filed is the default; fixing needs a human.** Findings become todos at their severity's priority and are never fixed in the cycle that raised them, however small. A `critical`/`major` goes to the human via `human-checkpoint` (fix now or queue); declined or unreachable → filed at P0/P1, said prominently. "Fix all the findings" from the human is the approval, at that scope.
+    - **Filed is the default; fixing needs a human.** Findings become todos at their severity's priority and are never fixed in the cycle that raised them, however small. A `critical`/`major` goes to the human via `human-checkpoint` (fix now or queue); declined or unreachable (a fast-mode run is unreachable) → filed at P0/P1, said prominently. "Fix all the findings" from the human is the approval, at that scope.
     - **The record is the commit.** Fixes name their finding; each round closes with a `docs(<slug>): adversary round N` commit listing every disposition, so `git log --grep="adversary round"` reads the reasons back.
     - **Brief findings** (`plan-adversary`, `/project:work` step 4a) invert the default: **Applied** (the brief changes — the default), **Escalated** (the spec is wrong → `human-checkpoint` → `/project:interview`) or **Rejected**. Never Filed: the cycle they are about starts now. No code commit exists yet, so their dispositions go in the cycle's `work` log entry, committed before the first test.
     - Protocol: `finding-disposition` skill.

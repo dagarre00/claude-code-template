@@ -1,6 +1,6 @@
 ---
 description: Periodic whole-repo audit of the code against the wiki by the reviewer, in a fresh context with no developer baggage — critical issues, drift, missing tests, security and performance. Run about every 5 todos, before a release, or on suspected drift; never inside /project:work.
-argument-hint: '[scope — e.g. "the auth module" | "security only" | "src/api/"]'
+argument-hint: '[fast | handoff] [scope — e.g. "the auth module" | "security only" | "handoff src/api/"]'
 disable-model-invocation: true
 ---
 
@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 **Argument:** `$ARGUMENTS`
 
-The argument **pins the scope** — an area (`the auth module`, `src/api/`), a lens (`security only`, `test coverage`), or both — and is passed verbatim to the reviewer. Empty → the whole repository.
+The argument **pins the scope** — an area (`the auth module`, `src/api/`), a lens (`security only`, `test coverage`), or both — and is passed verbatim to the reviewer. A leading `fast` or `handoff` is the **dispatch mode** instead, stripped first and never passed on (`subagent-dispatch` § Dispatch mode). Empty → the whole repository.
 
 ## State at invocation
 

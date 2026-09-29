@@ -1,6 +1,6 @@
 ---
 description: Wiki operations, both run by the wiki-maintainer so the conductor never reads a source or the findings backlog itself. With an argument, ingest one source (a file path, or "search for <topic>" to research first); with none, the periodic health pass — wiki-todos queue, reconciliation, lint, orphans, broken links and the filed-findings backlog.
-argument-hint: '[path/to/file | search for <topic>] — empty runs the periodic health pass'
+argument-hint: '[fast | handoff] [path/to/file | search for <topic>] — empty runs the periodic health pass'
 disable-model-invocation: true
 ---
 
@@ -16,6 +16,8 @@ The argument **picks the mode**:
 - **A narrowing phrase that names no source** (`entities/ only`, `broken links`, `archive the log`) → a health pass with that focus; the maintainer skips the checks outside it.
 
 If you cannot tell whether it names a source or narrows a pass, ask: guessing wrong either skips a pass the human wanted or invents a summary from a lint instruction.
+
+A leading `fast` or `handoff` is the **dispatch mode**, stripped before any of this is read (`subagent-dispatch` § Dispatch mode) — `/project:wiki fast` is a health pass.
 
 ## State at invocation
 

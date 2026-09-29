@@ -1,7 +1,7 @@
 ---
 name: human-checkpoint
-description: Conductor-only. When and how to pause for the human — a clear ask, the options, and a recommendation. Use for a decision the wiki doesn't answer, a two-strike pivot, or risky or irreversible state.
-when_to_use: Trigger on "ask the human", "stop and ask", "human checkpoint", "need decision", "risky operation".
+description: Conductor-only. When and how to pause for the human — a clear ask, the options, and a recommendation — and, in a fast-mode run, which checkpoints take a recorded default and which end the run. Use for a decision the wiki doesn't answer, a two-strike pivot, or risky or irreversible state.
+when_to_use: Trigger on "ask the human", "stop and ask", "human checkpoint", "need decision", "risky operation", "fast mode".
 user-invocable: false
 ---
 
@@ -55,3 +55,21 @@ Three bullets of context, then the question — never a wall of text, never "wha
 ## After the answer
 
 Echo the chosen path in one line. If it implies a new rule, add it to `.claude/rules/behavioral.md` (a discipline issue) or `docs/wiki/gotchas.md` (a project trap); if it implies a new pattern, queue it in `docs/wiki/wiki-todos.md`. Then resume.
+
+## Fast mode
+
+A command whose argument starts with `fast` (`subagent-dispatch` § Dispatch mode) never waits on the human. Every checkpoint in the run — this skill's table, a command's `human-checkpoint`, any step that says to ask — resolves one of two ways. No rule relaxes: Red first, the read-only checks, rule 21 and the two-strike tag all hold.
+
+**Take the default** where one is recorded, or where an ordinary commit undoes the choice:
+
+| Checkpoint | Default |
+| --- | --- |
+| A `critical`/`major` adversary finding | Filed at P0/P1 — rule 20's unreachable path. |
+| A plan-adversary `blocker` you disagree with | Applied. |
+| A design fork the wiki doesn't pre-decide, or a role's question with a recommendation | That recommendation; an ADR where `decision-recording` calls for one. |
+| A batch that is not obvious | No batch — the one todo. |
+| Steering off a saturated P0, or P0 saturated after filing | What the argument asked; the count leads the report. |
+
+**End the run** everywhere else — wherever a guess could lose work or decide the spec: a two-strike pivot (tag `checkpoint-<stamp>` first), changes in the tree you did not make, unclear branch state, a failed `--ff-only` or a rejected push, a deletion, force-push or third-party call beyond the workflow's routine, a spec that is wrong or a test that seems to be, a missing skill or page, ambiguous test output, pre-existing failures, a Red the developer cannot confirm, a second partial result, an argument you cannot read. Leave committed work pushed and everything else where it is — never stash, reset or restore to tidy up (rule 21) — and open the report with the checkpoint, in the How to ask format.
+
+**Record every default taken** — one line each (`P2 blocker — Applied over disagreement: <why>`) in a `Fast mode:` field of the command's log entry, in the round commit when findings were involved, and at the top of the report. A default the human cannot find afterwards is a silent improvisation (rule 8).

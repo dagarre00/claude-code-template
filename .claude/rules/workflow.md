@@ -10,17 +10,18 @@ The wiki (`docs/wiki/`) is the application spec, and the workflow is plain Claud
 
 ## Delegating work
 
-The main session is the **conductor**: it runs the `/project:*` commands and owns branches, commits, pushes and pull requests. It dispatches a role with the Agent tool and `subagent_type: <role>` — the procedure is the `subagent-dispatch` skill. Each role's file pins its model, effort, tools, permission mode and preloaded skills, so the dispatch carries only the brief.
+The main session is the **conductor**: it runs the `/project:*` commands and owns branches, commits, pushes and pull requests. It dispatches a role with the Agent tool and `subagent_type: <role>`, or writes it a handoff file the human runs in another harness — the procedure is the `subagent-dispatch` skill. Each role's file pins its model, effort, tools, permission mode and preloaded skills, so the dispatch carries only the brief.
 
 - A subagent sees none of the conversation: its brief, its role file, these rules and its preloaded skills are its whole context. That is what makes a reviewer independent — never dispatch a role as a fork or through `general-purpose`, both of which carry the conductor's context.
 - Roles run in this checkout, one writer at a time, starting from a clean tree. The conductor verifies what each one changed before committing it.
 - A subagent is a leaf: no role has the Agent tool.
+- **Dispatch mode.** By default the conductor asks at each dispatch whether to run the role natively or write a handoff file for a fresh Claude Code session, Antigravity or any other harness (`dispatch-handoff`). A leading `fast` in a dispatching command's argument runs every role natively and never waits on the human: each checkpoint takes its recorded default or ends the run (`human-checkpoint` § Fast mode). A leading `handoff` writes every dispatch as a file.
 
 Dispatched subagents: this map is the conductor's. Your terms are the `subagent-contract` skill preloaded into you.
 
 ## Commands
 
-Each takes free-text context as its argument; it scopes the command and never bypasses a precondition, the Red phase or a human checkpoint.
+Each takes free-text context as its argument; it scopes the command and never bypasses a precondition, the Red phase or a human checkpoint. In `work`, `adversary`, `review` and `wiki`, a leading `fast` or `handoff` sets the dispatch mode instead — `fast` answers each checkpoint with its recorded default, and ends the run where there is none.
 
 | Command | Purpose | Dispatches |
 | --- | --- | --- |
@@ -49,7 +50,7 @@ Read-only roles have no edit tools and run in `dontAsk` mode: any command not al
 
 ## Skills
 
-Each is `.claude/skills/<name>/SKILL.md`. **Conductor:** `subagent-dispatch`, `finding-disposition`, `feature-branching`, `pr-create`, `git-recovery`, `human-checkpoint`, `update-toolkit`. **Preloaded into roles:** `subagent-contract` (all), `plan-writing` and `spec-writing` (planner), `plan-review` (plan-adversary), `tdd-loop`, `clean-architecture`, `gotcha-recording` and `decision-recording` (developer), `adversarial-review` (adversary), `wiki-update` (wiki-maintainer). `design-system-check` joins the developer's list on projects with a UI surface.
+Each is `.claude/skills/<name>/SKILL.md`. **Conductor:** `subagent-dispatch`, `dispatch-handoff`, `finding-disposition`, `feature-branching`, `pr-create`, `git-recovery`, `human-checkpoint`, `update-toolkit`. **Preloaded into roles:** `subagent-contract` (all), `plan-writing` and `spec-writing` (planner), `plan-review` (plan-adversary), `tdd-loop`, `clean-architecture`, `gotcha-recording` and `decision-recording` (developer), `adversarial-review` (adversary), `wiki-update` (wiki-maintainer). `design-system-check` joins the developer's list on projects with a UI surface.
 
 ## Wiki map
 

@@ -12,6 +12,11 @@ Thumbs.db
 # deletes it when the cycle ends. Only that name matches — a suffixed one
 # (`auth-plan-v2.md`) shows up as untracked and fails the clean-tree check.
 .handoff/*-plan.md
+# Handoff scratch: the dispatch-handoff skill writes `<slug>-<role>-handoff.md`
+# and the role's `<slug>-<role>-report.md`, and deletes both once the result
+# is decided. The same rule: only these names match.
+.handoff/*-handoff.md
+.handoff/*-report.md
 
 # Obsidian per-user vault config
 docs/.obsidian/

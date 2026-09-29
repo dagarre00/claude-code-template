@@ -1,7 +1,7 @@
 ---
 name: subagent-dispatch
-description: Conductor-only. How to dispatch one role as a Claude Code subagent and decide whether to accept its result — brief it, wait for it, check what it touched, prove and commit a developer case (Green, architecture, Red), send it back, resume a partial run. Use for every dispatch a /project:* command makes.
-when_to_use: Trigger on "dispatch", "run the developer", "run the planner", "run the adversary", "red check", "prove Red", "accept the report", "send it back", "partial result", "resume the subagent", "change a role's model".
+description: Conductor-only. How to dispatch one role and decide whether to accept its result — the run's dispatch mode (native subagent, handoff file, or fast), brief it, wait for it, check what it touched, prove and commit a developer case (Green, architecture, Red), send it back, resume a partial run. Use for every dispatch a /project:* command makes.
+when_to_use: Trigger on "dispatch", "run the developer", "run the planner", "run the adversary", "dispatch mode", "fast mode", "native or handoff", "red check", "prove Red", "accept the report", "send it back", "partial result", "resume the subagent", "change a role's model".
 user-invocable: false
 ---
 
@@ -14,9 +14,20 @@ One procedure for every dispatch. The command decides which role gets what brief
 - **The role exists.** The Agent tool lists every role in `.claude/agents/`. One missing means the session started before its file did — subagents load at session start, so ask the human to restart.
 - **The roles can run the project's commands.** Read-only roles, the planner and the wiki-maintainer run in `dontAsk` mode: a command not allowlisted in `.claude/settings.json` is denied, not prompted. The test command and the architecture check from `docs/wiki/commands.md` belong there in both forms, `Bash(<command>)` and `PowerShell(<command>)` (`/project:init` step 5a). Missing → add them before dispatching, in the cycle's first commit.
 
+## Dispatch mode
+
+A dispatch runs **native** — the Agent tool, as below — or as a **handoff**: a file the human runs in another harness (a fresh Claude Code session, Antigravity), written and taken back per `dispatch-handoff`. The brief, the baseline, the checks and the case proof are the same either way.
+
+The command's argument sets the mode for the whole run. Its leading word is the mode, stripped before the command reads the rest:
+
+- **`fast`** → native, every dispatch, and nothing waits on the human. Load `human-checkpoint` now: its § Fast mode answers every checkpoint in the run.
+- **`handoff`** → a handoff file, every dispatch.
+- **Neither** → ask before each dispatch — one question for a set of read-only roles about to run in parallel — with `AskUserQuestion`: `Native (Recommended)`, `Handoff file`, `Native for the rest of this run`, `Handoff for the rest of this run`. The last two stand until the command ends.
+
 ## Brief
 
-- **Dispatch with the Agent tool and `subagent_type: <role>`.** The role file sets the model, effort, tools, permission mode and preloaded skills. Never a fork and never `general-purpose`: both carry your context, which is what a scoped brief exists to keep out (rule 10) and what makes a second opinion worthless.
+- **Native: dispatch with the Agent tool and `subagent_type: <role>`.** The role file sets the model, effort, tools, permission mode and preloaded skills. Never a fork and never `general-purpose`: both carry your context, which is what a scoped brief exists to keep out (rule 10) and what makes a second opinion worthless.
+- **Handoff: the same brief goes in the file** — `dispatch-handoff` wraps it with what the other harness does not load on its own.
 - **The brief is the subagent's whole view of the task** — it sees none of this conversation. Give it, in this order:
 
   ```
@@ -32,9 +43,9 @@ One procedure for every dispatch. The command decides which role gets what brief
 
 ## Wait, then check what it touched
 
-A subagent may run in the background; its result arrives as a notification. Do nothing to the checkout until it does.
+A subagent may run in the background; its result arrives as a notification. A handoff's arrives when the human says it is done (`dispatch-handoff` step 5). Do nothing to the checkout until it does.
 
-1. **Partial result** — the role hit its `maxTurns`. Continue it once with `SendMessage` to the same agent; its context is intact. Partial again → `human-checkpoint`.
+1. **Partial result** — the role hit its `maxTurns`. Continue it once with `SendMessage` to the same agent; its context is intact. A handoff: the human tells its session to continue. Partial again → `human-checkpoint`.
 2. **Compare with the baseline:**
    - **Read-only role** — `HEAD` and every tracked file unchanged. Anything else voids the round: report it, restore after accounting for every path (rule 21), re-dispatch. New untracked files a test run produced are residue: they need a `.gitignore` line (a todo), never a commit.
    - **Write role** — `HEAD` unchanged (it committed → reject), and changes only inside the brief's scope. A path outside it is a defect: read it before deciding, and never widen the scope after the fact.
@@ -68,7 +79,7 @@ Stage exactly the paths it reported, plus the `Follow-ups:` lines you append to 
 
 ## Send back, reject, two strikes
 
-- **Send back with notes, once** — `SendMessage` to the same agent with the deciding output tail. If that agent is gone (a new session), re-dispatch with the notes and "these files are the previous attempt" in the brief.
+- **Send back with notes, once** — `SendMessage` to the same agent with the deciding output tail; a handoff's go to the human (`dispatch-handoff` step 6). If that agent is gone (a new session), re-dispatch with the notes and "these files are the previous attempt" in the brief.
 - **Never re-send an unchanged brief** — the same inputs fail the same way. Fix the cause first: a narrower scope, a missing input, a command it could not run.
 - **Discarding an attempt** — restore the tracked paths it changed (`git restore --source=HEAD --staged --worktree -- <paths>`) and delete the files it created, both read from its report and from `git status`; nothing else in the tree is yours to touch (rule 21).
 - **Two failures on one mechanism**, or two rejections for one cause → rule 5.
