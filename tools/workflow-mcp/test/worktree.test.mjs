@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, mkdtempSync, writeFileSync, readFileSync } from 
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { listWorktrees, prepareWorktree, removeWorktree, trustWorktree } from '../worktree.mjs';
+import { prepareDispatch } from '../dispatch.mjs';
 import { cleanup, fixture } from './helpers.mjs';
 
 const git = (root, ...args) => spawnSync('git', ['-C', root, ...args], { encoding: 'utf8' });
@@ -53,6 +54,29 @@ test('creates an isolated checkout at committed HEAD on its own branch', () => {
     // The canonical source must be present, or the worker cannot run the tests
     // it is dispatched under.
     assert.ok(existsSync(resolve(wt.workspace, '.agents/rules.md')));
+  });
+});
+
+// A review of a range that ends before HEAD needs the files that range
+// produced: measured on PR #40's post-merge review, a reviewer handed a checkout
+// at HEAD refused to review at all, because its files did not match the diff.
+test('a worktree can be prepared at an earlier revision instead of HEAD', () => {
+  repo(root => {
+    const first = git(root, 'rev-parse', 'HEAD').stdout.trim();
+    writeFileSync(resolve(root, 'later.txt'), 'later\n');
+    git(root, 'add', 'later.txt'); git(root, 'commit', '-qm', 'later');
+
+    const wt = prepareWorktree(root, { task_id: 'earlier', at: first });
+    assert.equal(wt.base_sha, first);
+    assert.equal(git(wt.workspace, 'rev-parse', 'HEAD').stdout.trim(), first);
+    assert.equal(existsSync(resolve(wt.workspace, 'later.txt')), false, 'the later commit is not in the checkout');
+    assert.equal(listWorktrees(root)[0].merged, true, 'an ancestor of the integration branch holds nothing unique');
+
+    for (const at of ['-x', 'no-such-revision', `${first}..HEAD`]) {
+      assert.throws(() => prepareWorktree(root, { task_id: `bad-${listWorktrees(root).length}`, at }), /revision/,
+        `${at} was accepted`);
+    }
+    assert.deepEqual(listWorktrees(root).map(entry => entry.task_id), ['earlier'], 'a refusal creates nothing');
   });
 });
 
@@ -291,6 +315,21 @@ test('a task id that is not a plain slug is refused before touching git', () => 
   });
 });
 
+// Enough engine config for a dispatch to compose, so a refusal is the only thing
+// that can stop one.
+const DISPATCH_CONFIG = {
+  version: 1, defaultEngine: 'inherit', workerTimeoutSeconds: 1800, workerCommands: ['npm test'],
+  roles: { developer: {} },
+  engines: {
+    claude: { executable: 'claude', models: { reasoning: 'opus', balanced: 'sonnet', fast: 'haiku' },
+      effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } },
+    codex: { executable: 'codex', models: { reasoning: null, balanced: null, fast: null },
+      effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } },
+    antigravity: { executable: 'agy', models: { reasoning: 'gemini-3.8-pro', balanced: 'inherit', fast: 'gemini-3.8-flash' },
+      effort: { reasoning: 'high', balanced: 'medium', fast: 'low' } }
+  }
+};
+
 // A fresh worktree per Behavior case meant a fresh dependency install per case.
 // A finished task's worktree is handed to the next one only when it provably
 // holds nothing: clean, merged, no violations, its dispatch decided.
@@ -304,7 +343,8 @@ const integrate = (root, wt, file) => {
 test('a finished worktree is reused for the next task: new branch at HEAD, same directory, environment intact', () => {
   repo(root => {
     writeFileSync(resolve(root, '.gitignore'), 'node_modules/\n');
-    git(root, 'add', '.gitignore'); git(root, 'commit', '-qm', 'ignore deps');
+    writeFileSync(resolve(root, '.agents/config.json'), JSON.stringify(DISPATCH_CONFIG));
+    git(root, 'add', '.gitignore', '.agents/config.json'); git(root, 'commit', '-qm', 'ignore deps');
     const first = prepareWorktree(root, { task_id: 'case-b1' });
     mkdirSync(resolve(first.workspace, 'node_modules'));
     writeFileSync(resolve(first.workspace, 'node_modules/installed.txt'), 'deps\n');
@@ -321,9 +361,41 @@ test('a finished worktree is reused for the next task: new branch at HEAD, same 
     assert.equal(git(root, 'rev-parse', '--verify', '--quiet', 'worker/case-b1').status, 1, 'the merged branch is gone');
 
     assert.throws(() => removeWorktree(root, 'case-b1'), /reused it/, 'removing the old task never touches the new checkout');
+    // Retrying the old task by composing into it again would run its worker in
+    // the new task's checkout, with no branch of its own left to inspect it
+    // against (adversary R4-F1 on PR #40).
+    assert.throws(() => prepareDispatch(root, { role: 'developer', instructions: 'Retry.', owned_paths: ['src'],
+      task_id: 'case-b1', workspace: first.workspace, conductorEngine: 'claude' }),
+    /task "case-b2" reused it/, 'composing into the old task never lands in the new checkout');
     assert.ok(existsSync(second.workspace));
     removeWorktree(root, 'case-b2');
     assert.equal(existsSync(second.workspace), false);
+  });
+});
+
+// Rule 21 gives a parallel conductor a checkout of its own, which is usually a
+// linked worktree of the same repository: one git store, one branch namespace,
+// but dispatch records local to each checkout. A worker of the other conductor's
+// listed here was reusable without its decision gate and removable outright
+// (adversary R4-F2 on PR #40).
+test('another conductor\'s worker worktrees are not this checkout\'s to list, reuse or remove', () => {
+  repo(root => {
+    const other = mkdtempSync(resolve(tmpdir(), 'workflow-mcp-conductor-b-'));
+    const theirs = resolve(other, 'b');
+    try {
+      assert.equal(git(root, 'worktree', 'add', '-q', '-b', 'conductor-b', theirs).status, 0);
+      const running = prepareWorktree(theirs, { task_id: 'their-review' });
+      assert.deepEqual(listWorktrees(theirs).map(entry => entry.task_id), ['their-review']);
+
+      assert.deepEqual(listWorktrees(root), [], 'the other conductor\'s worker is listed here');
+      assert.throws(() => prepareWorktree(root, { task_id: 'mine', reuse: 'their-review' }), /No worktree/);
+      assert.throws(() => removeWorktree(root, 'their-review'), /No such workspace/);
+      assert.ok(existsSync(running.workspace), 'the other conductor\'s checkout survived');
+    } finally {
+      git(root, 'worktree', 'remove', '--force', resolve(theirs, '.worktrees', 'their-review'));
+      git(root, 'worktree', 'remove', '--force', theirs);
+      cleanup(other);
+    }
   });
 });
 

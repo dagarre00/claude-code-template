@@ -24,10 +24,12 @@ const WATCHDOG = fileURLToPath(new URL('./watchdog.mjs', import.meta.url));
 
 // Starts watchdog.mjs for a child: detached from this process, so it outlives
 // it, and killing the child's tree if this process dies first. `dir` names a
-// dispatch whose outcome it then marks as stopped from outside.
-function startWatchdog(childPid, dir) {
+// dispatch whose outcome it then marks as stopped from outside, and `startedAt`
+// the attempt in that directory it guards.
+function startWatchdog(childPid, dir, startedAt) {
   try {
-    const watchdog = spawn(process.execPath, [WATCHDOG, String(process.pid), String(childPid), ...(dir ? [dir] : [])],
+    const watchdog = spawn(process.execPath,
+      [WATCHDOG, String(process.pid), String(childPid), ...(dir ? [dir, startedAt] : [])],
       { detached: true, stdio: 'ignore', windowsHide: true });
     watchdog.on('error', () => {});
     watchdog.unref();
@@ -35,14 +37,27 @@ function startWatchdog(childPid, dir) {
   } catch { return null; }
 }
 
-export function killTree(pid, { platform = process.platform, signal = 'SIGKILL' } = {}) {
+export function killTree(pid, { platform = process.platform, signal = 'SIGKILL', kill = process.kill.bind(process) } = {}) {
   if (!pid) return;
   if (platform === 'win32') {
     spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true, stdio: 'ignore' });
     return;
   }
-  try { process.kill(-pid, signal); }
-  catch { try { process.kill(pid, signal); } catch { /* already gone */ } }
+  // A group leader, always: runBounded detaches its child on POSIX. So a failed
+  // group kill means the group is gone, and signalling the bare pid instead
+  // could reach an unrelated process that has since been given that pid.
+  try { kill(-pid, signal); } catch { /* the group is gone */ }
+}
+
+// killTree for a ChildProcess this process started. Node closes its handle on a
+// child the moment the child exits, and Windows may then give the pid to any new
+// process. taskkill /T could not have found the exited child's tree anyway (it
+// walks from a live parent), so there an exited child is left alone. A POSIX
+// group id is not reused while any member remains, so the group is still stopped.
+export function killChildTree(child, { platform = process.platform, ...options } = {}) {
+  if (!child?.pid) return;
+  if (platform === 'win32' && (child.exitCode !== null || child.signalCode !== null)) return;
+  killTree(child.pid, { platform, ...options });
 }
 
 // Keeps the last `limit` bytes of a stream without holding the whole of it.
@@ -68,8 +83,8 @@ function tailCollector(limit) {
 //
 // stdio: an array as for spawn (file descriptors, 'ignore', 'inherit'); any
 // 'pipe' stream is collected, and only its last `tailBytes` bytes are kept.
-// guard: true, or { dir } for a dispatch — a watchdog kills the tree if this
-// process is itself stopped before the child ends (watchdog.mjs).
+// guard: true, or { dir, startedAt } for a dispatch attempt — a watchdog kills
+// the tree if this process is itself stopped before the child ends (watchdog.mjs).
 export function runBounded({ file, args = [], command, cwd, env = process.env, timeoutMs,
   stdio = ['ignore', 'pipe', 'pipe'], tailBytes = 64 * 1024, onStart, guard = false } = {}) {
   return new Promise(resolvePromise => {
@@ -91,7 +106,7 @@ export function runBounded({ file, args = [], command, cwd, env = process.env, t
     let escalate = null;
     const timer = timeoutMs ? setTimeout(() => {
       timed_out = true;
-      if (!posix) { killTree(child.pid); return; }
+      if (!posix) { killChildTree(child); return; }
       killTree(child.pid, { signal: 'SIGTERM' });
       escalate = setTimeout(() => killTree(child.pid), KILL_GRACE_MS);
     }, timeoutMs) : null;
@@ -114,8 +129,10 @@ export function runBounded({ file, args = [], command, cwd, env = process.env, t
       if (child.pid === undefined) finish(null, null);
     });
     child.on('close', finish);
-    const watchdog = guard && child.pid ? startWatchdog(child.pid, guard?.dir) : null;
-    child.on('close', () => { try { watchdog?.kill(); } catch { /* already gone */ } });
+    const watchdog = guard && child.pid ? startWatchdog(child.pid, guard?.dir, guard?.startedAt) : null;
+    // A dispatch's watchdog outlives the worker, until the runner has recorded
+    // the finish, and then exits on its own (watchdog.mjs).
+    if (!guard?.dir) child.on('close', () => { try { watchdog?.kill(); } catch { /* already gone */ } });
     onStart?.(child);
   });
 }

@@ -4,14 +4,15 @@ From a fresh template (or an adopted project) to a first shipped feature, plus w
 
 ## Setup
 
-**New project** — no code or history yet:
+**New project** — no code or history yet. Start from the template's latest release, whose `claude-code-template-<version>.zip` leaves out what only the template uses (its test suite, CI and scripts):
 
 ```bash
-git clone <this-template> my-project
-cd my-project
-rm -rf .git        # the template's history is not your project's; /project:init starts a fresh one
-claude
+gh release download --repo dagarre00/claude-code-template --pattern '*.zip'   # or from the release page
+unzip claude-code-template-*.zip && mv claude-code-template-*/ my-project
+cd my-project      # then follow its README.md: install, name the plugin, /project:init
 ```
+
+A clone of the template with `.git` removed works too, but carries all of that.
 
 **Existing project** — never touch its `.git`. From a template checkout, run `bash scripts/adopt.sh /path/to/project`: it copies `.agents/` and `tools/workflow-mcp/`, installs the server's dependencies, writes `.mcp.json` and the per-project plugin marketplace, registers the server with `codex`/`agy` if installed, and prints anything left to merge by hand. Then start your CLI in the project.
 
@@ -64,7 +65,7 @@ Two failures on the same approach trigger the **two-strike rule**: the agent tag
 | An agy worker exits 0 with an empty report | A command grant is missing: call `grant_antigravity_setup` ([engine-setup.md](engine-setup.md)). |
 | A worker is stopped at `workerTimeoutSeconds` (exit 124, `inspect_dispatch` names it) | The runner stops every engine, and every process it started, at the limit. Narrow the brief first; raise the limit only for a task that genuinely needs longer. |
 | The conductor's shell tool returns before the worker finishes | The worker is still running: its record says `running` until the runner exits. Run dispatches in the background and wait for completion; never compose into the task meanwhile. |
-| A dispatch's runner was stopped from outside (a task stop, a killed shell) | Its watchdog stops the worker and everything it started within seconds, and `inspect_dispatch` rejects the run as stopped from outside — nothing is left running and the task is not stuck `running`. Re-dispatch in the background. The red check, worktree setup and `bounded.mjs` are guarded the same way. |
+| A dispatch's runner was stopped from outside (a task stop, a killed shell) | Its watchdog stops the worker and everything it started within seconds, and `inspect_dispatch` rejects the run as stopped from outside — nothing is left running and the task is not stuck `running`. Re-dispatch in the background. The red check, worktree setup and `bounded.mjs` are guarded the same way. One gap, on Windows only: a process whose own parent in the tree had already exited cannot be found (`taskkill /T` walks live parents), so it can outlive the run; on Linux and macOS the whole process group goes. |
 | A test suite, install or other long command you ran yourself is still running after your shell gave up on it | It ran raw. Stop it (on Windows, stopping the shell does not stop its children — check for the process by name), and run such commands through `node tools/workflow-mcp/bounded.mjs -- "<command>"` from then on. |
 | The adversary says only "looks good" | An unexplained pass is a failed review: re-dispatch demanding the `Checked:` line. |
 | Review rounds keep producing findings | Three rounds is the cap; after it, criticals and majors are filed and the range is split next time. |

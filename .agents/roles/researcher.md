@@ -14,9 +14,8 @@ You find, fetch and synthesize, and write one structured, citable raw document. 
 ## Procedure
 
 1. **Read the query** and any constraints in your instructions: scope, recency, sources to prefer or avoid, length.
-2. **Plan 2–4 searches** covering different angles. A comparison ("best X for Y") → search each candidate separately; a survey ("what APIs exist for X") → broad first, then drill into the top results.
-3. **Search, then fetch the 3–8 most relevant pages** — official docs over blog posts, primary sources over aggregators, recent over stale (check the dates).
-4. **Write `docs/raw/research/<slug>.md`** (kebab-case slug from the topic):
+2. **Search and fetch until the question is answered from sources you would cite** — official docs over blog posts, primary sources over aggregators, recent over stale (check the dates). A comparison gives every candidate its own evidence.
+3. **Write `docs/raw/research/<slug>.md`** (kebab-case slug from the topic):
 
    ```markdown
    # <Topic Title>
@@ -46,7 +45,7 @@ You find, fetch and synthesize, and write one structured, citable raw document. 
    Per-source notes: specific claims, numbers, quotes.
    ```
 
-5. **Report** the path, a one-paragraph summary, and the top 2–3 findings or recommendations.
+4. **Report** the path, a one-paragraph summary, and the top 2–3 findings or recommendations.
 
 ## Constraints
 

@@ -10,14 +10,15 @@ A template for building software with an LLM agent as the developer, across Clau
 
 ## Quick start
 
-**New project** — no code or history yet:
+**New project** — no code or history yet. Start from the latest [release](https://github.com/dagarre00/claude-code-template/releases/latest): its `claude-code-template-<version>.zip` is the template without what only the template uses ([§ Releases](#releases)).
 
 ```bash
-git clone <this-template> my-project
-cd my-project
-rm -rf .git    # drop the template's history — /project:init starts your own
-claude
+gh release download --repo dagarre00/claude-code-template --pattern '*.zip'   # or from the release page
+unzip claude-code-template-*.zip && mv claude-code-template-*/ my-project
+cd my-project  # then follow its README.md: install, name the plugin, /project:init
 ```
+
+A clone with `.git` removed works too, but carries the template's own test suite, CI and scripts.
 
 **Existing project** — never touch its `.git`. From a checkout of this template:
 
@@ -81,7 +82,7 @@ The conductor — usually Claude Code — delegates through the workflow MCP ser
 
 ```
 check                # drift, installed engines, missing agy grants, capability gaps, architecture enforcement
-prepare_worktree     # isolated checkout at committed HEAD on worker/<id>, plus setup_commands to run in it
+prepare_worktree     # isolated checkout at committed HEAD (or `at` a commit) on worker/<id>, plus setup_commands to run in it
 build_worker_prompt  # role + rules + contract + the role's skills -> { command, prompt_file, report_file, … }
 inspect_dispatch     # after the run: exit code, report, worktree changes, audit, and a verdict (pass / reject / incomplete)
 record_decision      # accepted or rejected, with the reason (and finding counts for a review)
@@ -89,7 +90,7 @@ dispatch_stats       # per engine and role: acceptance, retries, durations, toke
 list_worktrees / remove_worktree / list_roles / sync / grant_antigravity_setup
 ```
 
-The server never spawns, commits, merges or pushes — the conductor keeps all of that. The command it hands back is one line, `node tools/workflow-mcp/run-worker.mjs <dispatch dir>`, the same in bash, zsh, PowerShell or cmd on Linux, macOS or Windows: the runner launches the engine from the argv recorded in `run.json` (no shell in between), stops it and everything it started at `workerTimeoutSeconds` — or, through a watchdog, the moment the runner itself is stopped from outside — records the outcome and prints the report. The red check, worktree setup and `bounded.mjs` (for the conductor's own long commands, such as the test suite) run under the same guard, so no workflow command outlives its run. The full procedure is the `worker-dispatch` skill. Whatever the engine, the run leaves only the worker's final report in `report_file`; the raw codex/agy transcript, which reached 6.9 MB on one real health pass, goes to a separate `raw_file`. `npm --prefix tools/workflow-mcp run e2e -- --engine <antigravity|codex|claude>` runs one small real cycle on an engine — run it after upgrading an engine CLI or before moving a role onto one.
+The server never spawns, commits, merges or pushes — the conductor keeps all of that. The command it hands back is one line, `node tools/workflow-mcp/run-worker.mjs <dispatch dir>`, the same in bash, zsh, PowerShell or cmd on Linux, macOS or Windows (unless the checkout path holds `$`, `!`, a backtick, a quote or a `%NAME%` pair, which no quoting carries into all four; `build_worker_prompt` then warns which shells cannot run it): the runner launches the engine from the argv recorded in `run.json` (no shell in between), stops it and everything it started at `workerTimeoutSeconds` — or, through a watchdog, the moment the runner itself is stopped from outside — records the outcome and prints the report. The red check, worktree setup and `bounded.mjs` (for the conductor's own long commands, such as the test suite) run under the same guard, so no workflow command outlives its run. The full procedure is the `worker-dispatch` skill. Whatever the engine, the run leaves only the worker's final report in `report_file`; the raw codex/agy transcript, which reached 6.9 MB on one real health pass, goes to a separate `raw_file`. `npm --prefix tools/workflow-mcp run e2e -- --engine <antigravity|codex|claude>` runs one small real cycle on an engine — run it after upgrading an engine CLI or before moving a role onto one.
 
 **Which model runs which role.** `.agents/config.json` is the only place: a role declares a `profile` (`reasoning` / `balanced` / `fast`), `engines.<engine>.models.<profile>` sets each CLI's default, and `roles.<role>` can pin an engine chain, model and effort. As shipped, four roles have their own engine chain and the rest (`researcher`, `reviewer`, `triage`, `wiki-maintainer`) run on `defaultEngine`, which ships as `antigravity` — set it to `inherit` to have them follow the conducting CLI instead:
 
@@ -134,6 +135,7 @@ Conductor-only rules (branch, commit, push, open a PR) are withheld from workers
 ├── worker-contract.md, config.json, project.md
 └── .claude-plugin/  # makes this directory a Claude Code plugin named "project"
 tools/workflow-mcp/  # the MCP: composes worker prompts, prepares worktrees, verifies, generates the root files
+scripts/             # template-side, never in a release: adopt.sh, release.mjs
 docs/
 ├── raw/             # immutable sources (interviews, research, documents)
 └── wiki/            # the agent-maintained knowledge base (requirements, architecture, entities, decisions, log, …)
@@ -142,6 +144,18 @@ CLAUDE.md            # generated from .agents/ — imports AGENTS.md
 ```
 
 Claude Code loads `.agents/` as a plugin (skills and commands, not roles) via `.claude/settings.json`; Codex reads `.agents/skills/` natively plus `AGENTS.md`; Antigravity reads no repository files and runs purely on the composed prompt.
+
+## Releases
+
+A release is what a new project starts from: the tagged tree as `claude-code-template-<version>.zip`, without what only the template uses — `tools/workflow-mcp/test/` and its `test` npm script, `.github/workflows/`, `scripts/`, and this README, which becomes a starter ([`scripts/release-readme.md`](scripts/release-readme.md)). `docs/`, `.agents/`, the MCP and its guides all ship. The list, with the reason for each entry, is `TEMPLATE_ONLY` in [`scripts/release.mjs`](scripts/release.mjs).
+
+To cut one, merge `develop` into `main`, then publish a release whose tag is the version:
+
+```bash
+gh release create 0.2.0 --target main --generate-notes
+```
+
+[`.github/workflows/release.yml`](.github/workflows/release.yml) builds the zip from that tag and attaches it to the release; GitHub's own "Source code" archives stay the whole repository. To see what a release would contain before tagging, `node scripts/release.mjs <version> --ref HEAD` writes one and prints its path.
 
 ## Philosophy
 

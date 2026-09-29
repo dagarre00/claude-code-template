@@ -139,7 +139,7 @@ Hard constraints from real failures. They override default inclinations.
 
 13. **Progressive disclosure.** Don't preload domain knowledge; skills load when their `description` matches the task. A needed procedure with no skill is a gap to name — a worker in its report, the conductor by adding the skill — never text stuffed into an agent prompt.
 
-14. **Skills are how-to, not what-is.** A skill body is a procedure: read these pages, do these steps, update these pages. Never explain what the model already knows.
+14. **Skills are how-to, not what-is.** A skill body is a procedure: read these pages, do these steps, update these pages. Never explain what the model already knows. <!-- conductor-only -->
 
 15. **One agent owns the TDD loop.** The `developer` writes the failing test, confirms Red itself and implements — no tester/implementer split. The only upstream split is the read-only `planner`, whose plan reaches the developer as text in its instructions, never as a path: worktrees share no scratch. (Conductor: pass the saved plan as `instructions_file`, which is read in your checkout and inlined, or paste it into `instructions`.)
 
@@ -170,7 +170,7 @@ Hard constraints from real failures. They override default inclinations.
 
 21. **A dirty tree you did not dirty belongs to someone else.** Agents run concurrently on one checkout, so "clean working tree" means "clean **and mine**". Never `stash`, `reset --hard`, `checkout --` or `clean` over changes you can't account for — stop and ask the human, naming the paths. Before any tree-wide destructive git operation, run `git status --porcelain` and account for every line. Two conductors in one checkout also block each other — every dispatch needs it clean — so a parallel conducting session gets a checkout of its own.
 
-22. **A filed backlog needs a consumer.** Filing is the default, so `minor` findings accumulate by design (`nit`s are tallied, never filed). `FINDINGS_MAX` caps the open `[adversary]` backlog (`docs/wiki/todos.md § Filed-findings backlog`), and every `/project:wiki` health pass re-triages it — re-grading, merging duplicates, closing what later work fixed. A finding that sits unread through five cycles had the wrong severity. <!-- conductor-only -->
+22. **A filed backlog needs a consumer.** Filing is the default, so `minor` findings accumulate by design (`nit`s are tallied, never filed). `FINDINGS_MAX` caps the open `[adversary]` backlog (`docs/wiki/todos.md § Filed-findings backlog`), and every `/project:wiki` health pass re-triages it — re-grading, merging duplicates, closing what later work fixed. A finding untouched through two health passes had the wrong severity. <!-- conductor-only -->
 
 23. **Dependencies point inward.** Every source file belongs to the layer `docs/wiki/architecture.md § Layers` assigns it, and an inner layer never imports an outer one — it reaches the outside through a port it owns. The architecture check is part of green. Changing a layer, an allowed dependency or the check's rules is a human decision recorded as an ADR, never a side effect of making a test pass.
 
