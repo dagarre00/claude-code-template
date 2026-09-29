@@ -16,5 +16,5 @@ updated: 2026-09-24
 > The dated whole-repository audits `/project:review` saves, verbatim, one per run — a record of what the reviewer found at that commit, not a decision.
 
 - **Naming:** `review-YYYY-MM-DD.md`, `type: reference`, linked from its `review` entry in the log.
-- **What happens to the findings:** the command distributes them — Critical, Warnings and recommended todos to `todos.md`, Drift to `wiki-todos.md`, missing ADRs to a todo. The report itself is not edited afterwards.
+- **What happens to the findings:** the command distributes them — Critical, Warnings and recommended todos to `todos.md`, Drift to `wiki-todos.md`, missing ADRs to a todo — and removes the todos it names to close, once their evidence checks out. The report itself is not edited afterwards.
 - **Not decisions:** an ADR lives in [[decisions/README|decisions/]]; a review may recommend one.

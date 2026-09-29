@@ -29,6 +29,7 @@ Seconds on a new project; it matters on a project adopted into an existing codeb
 - `.claude/agents/` holds the eight roles (`planner`, `plan-adversary`, `developer`, `adversary`, `triage`, `reviewer`, `wiki-maintainer`, `researcher`), `.claude/commands/project/` the seven commands, `.claude/rules/` `behavioral.md` and `workflow.md`, and `.claude/skills/` one directory per skill named in `workflow.md § Skills`.
 - **The Agent tool lists the eight roles.** A missing one arrived after this session started — subagents load at session start, so ask the human to restart Claude Code, then re-run this command.
 - `.claude/settings.json` has the template's `Edit(/.handoff/**)` and `Edit(/docs/wiki/**)` allow rules — an adopted project with its own settings merges them in. Without them the planner and the wiki-maintainer, which run in `dontAsk` mode, cannot write.
+- `.gitignore` carries the template's workflow lines: `.claude/settings.local.json`, `.claude/tmp/`, `.claude/worktrees/`, `.handoff/*-plan.md`, `.handoff/*-handoff.md`, `.handoff/*-report.md`, `docs/.obsidian/`. An adopted project appends the missing ones (committed in step 8) — without them the plan and handoff scratch shows as untracked and fails every clean-tree check.
 
 Report it in one line ("roles loaded, wiring intact"). A failure here is a hard stop (`human-checkpoint`): nothing past it can dispatch a role.
 
@@ -73,18 +74,18 @@ Follow `/project:interview`'s **Operating rules** as written (`.claude/commands/
 7. **Data** — where state lives.
 8. **External services** — APIs, auth providers, infrastructure.
 9. **Deployment** — CI, target environment, release process.
-10. **Non-functional** — performance, security, observability, compliance.
+10. **Non-functional** — performance, security (what is protected, from whom, where input becomes trusted — or that there is no security surface), observability, compliance.
 11. **Design intention** — **only with a UI surface** (web, mobile, desktop, TUI): three adjectives it should feel like, what it must never feel like, and any design system or component library to adopt. Token work waits for `/project:interview the design system`.
 12. **Architecture** — recommend the four layers of `architecture.md § Layers` (`domain`, `application`, `adapters`, `infrastructure`) mapped to this stack's directories; ask only the directory per layer, the composition root, and whether a small project should merge a layer (a CLI may fold `adapters` into `infrastructure`). A deviation is an ADR. On an existing codebase, propose the mapping from the scan and ask how to treat current violations (step 5b.4).
 
-The transcript is `docs/raw/interviews/YYYY-MM-DD-init.md`, opened before the first question; skip it only if nothing was left to ask. Stop when the human says so, or when every page in step 5 has concrete answers and the first entity has Behavior cases sharp enough to test.
+The transcript is `docs/raw/interviews/YYYY-MM-DD-init.md` (`-init-2` if a same-day run left one), opened before the first question; skip it only if nothing was left to ask. Stop when the human says so, or when every page in step 5 has concrete answers and the first entity has Behavior cases sharp enough to test.
 
 ### 5. Scaffold the wiki
 
 Create any missing directory: `docs/raw/interviews/`, `docs/wiki/entities/`, `concepts/`, `decisions/`, `summaries/`, `reviews/`. Fill these with **real answers** — `<TBD>` only for a topic genuinely not discussed:
 
 - `requirements.md` — `## Vision`, `## Users`, `## User stories` (`- As a <user type>, I want <capability>, so that <benefit>.` with Acceptance and `Maps to:`), `## Functional requirements`, `## Non-functional requirements`, `## Out of scope`, `## Open questions`.
-- `architecture.md` — `## Stack`, `## Layout`, `## Layers` (topic 12; or step 5b), `## Data`, `## External services`, `## Testing strategy`, `## Conventions`, `## Deployment`.
+- `architecture.md` — `## Stack`, `## Layout`, `## Layers` (topic 12; or step 5b), `## Data`, `## External services`, `## Security` (topic 10 — the adversary and reviewer check against it), `## Testing strategy`, `## Conventions`, `## Observability`, `## Deployment`, `## Environments` (topics 9–10).
 - `git-conventions.md` — default branch, branch prefixes, commit format.
 - `commands.md` — the detected or confirmed commands.
 - `todos.md` — seeded with the first work items.
@@ -172,7 +173,7 @@ Append to `docs/wiki/log.md` (stamp from `date -u +'%Y-%m-%d %H:%M'`):
 ```bash
 # plus any step 5a skeleton (manifest, lockfile), the architecture rule files, the CI workflow,
 # and each .claude/agents/<role>.md that step 0a or step 5 changed
-git add docs/ CLAUDE.md .claude/settings.json .gitattributes <skeleton-paths> <architecture-rule-files> <ci-workflow> <changed-role-files>
+git add docs/ CLAUDE.md .claude/settings.json .gitattributes .gitignore <skeleton-paths> <architecture-rule-files> <ci-workflow> <changed-role-files>
 git commit -m "chore(init): scaffold the wiki, a runnable test command and the project facts"
 git push -u origin main   # no remote → skip and say so
 ```

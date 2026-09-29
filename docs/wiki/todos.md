@@ -19,7 +19,6 @@ updated: 2026-09-23
 
 - `[complex]` — decompose with the `planner` before implementing.
 - `[infra]` — deployment, CI, environment or configuration work, backed by a `docs/wiki/concepts/<slug>.md` page instead of an entity; otherwise an ordinary cycle, tests included.
-- `[wiki]` — wiki cleanup for `/project:wiki`, never `/project:work`.
 - `[adversary]` — filed by an adversarial review:
 
   ```markdown
@@ -27,6 +26,8 @@ updated: 2026-09-23
   ```
 
   Severity picks the section: `critical` → P0, `major` → P1, `minor` → P2. `nit` findings are never filed. The reasoning is in the round commit (`git log --grep="adversary round"`). Otherwise ordinary todos, worked in priority order.
+
+Wiki cleanup is never a todo here: it is a line in `wiki-todos.md`, the queue `/project:wiki` works.
 
 ## P0 saturation threshold
 
@@ -62,4 +63,4 @@ _(Empty.)_
 
 ## Backlog
 
-_(Empty — the long tail, pruned during `/project:review`.)_
+_(Empty — the long tail; `/project:review` closes what the code already did or the wiki dropped.)_

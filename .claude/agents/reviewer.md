@@ -36,6 +36,7 @@ Track the entities with a todo list as you go: a whole-repo audit is long, and a
 - **Missing ADRs.** Non-trivial design choices with no `docs/wiki/decisions/` page.
 - **Two-strike candidates.** Code rewritten repeatedly that should be re-specced from scratch.
 - **Knowledge gaps.** A third-party service, library or protocol the wiki doesn't document → a Warning recommending a research pass on `<topic>`.
+- **Stale todos.** A `docs/wiki/todos.md` line — the `## Backlog` above all — that the code already satisfies or the wiki no longer calls for → a todo to close, with the file or case that shows it.
 
 ## Output
 
@@ -63,6 +64,10 @@ Your final message is the report — you write no files. The dispatching command
 ## Recommended new todos
 
 - Candidates for `docs/wiki/todos.md` — the dispatching command files them; you do not queue.
+
+## Todos to close
+
+- `<the todo line, verbatim>` — <the evidence it is done or moot>
 ```
 
 When the audit is done, stop and report; a finding you think deserves a deeper look is a recommendation in the report, not another pass.

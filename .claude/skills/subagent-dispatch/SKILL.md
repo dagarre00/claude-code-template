@@ -12,7 +12,7 @@ One procedure for every dispatch. The command decides which role gets what brief
 ## Before the cycle's first dispatch
 
 - **The role exists.** The Agent tool lists every role in `.claude/agents/`. One missing means the session started before its file did — subagents load at session start, so ask the human to restart.
-- **The roles can run the project's commands.** Read-only roles, the planner and the wiki-maintainer run in `dontAsk` mode: a command not allowlisted in `.claude/settings.json` is denied, not prompted. The test command and the architecture check from `docs/wiki/commands.md` belong there in both forms, `Bash(<command>)` and `PowerShell(<command>)` (`/project:init` step 5a). Missing → add them before dispatching, in the cycle's first commit.
+- **The roles can run the project's commands.** Read-only roles, the planner and the wiki-maintainer run in `dontAsk` mode: a command not allowlisted in `.claude/settings.json` is denied, not prompted. The test command and the architecture check from `docs/wiki/commands.md` belong there in both forms, `Bash(<command>)` and `PowerShell(<command>)` (`/project:init` step 5a). Missing → add them and commit `.claude/settings.json` on its own before the first dispatch, per [`log-and-commit.md`](../feature-branching/log-and-commit.md) — kind `chore`, subject `chore(workflow): allowlist <command> for the roles` — on the current branch (rule 19 lets `.claude/` ride it or land on `develop`).
 
 ## Dispatch mode
 

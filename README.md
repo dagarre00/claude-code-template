@@ -31,7 +31,7 @@ cp -r <template>/.claude/commands/project .claude/commands/
 cp -rn <template>/docs .                  # only the starter pages you don't have
 ```
 
-Then by hand: merge `"permissions": { "allow": ["Edit(/.handoff/**)", "Edit(/docs/wiki/**)"] }` into `.claude/settings.json`; add `.handoff/*-plan.md` to `.gitignore` and `docs/wiki/log.md merge=union` to `.gitattributes`; and put the template's `# Project` block at the top of your `CLAUDE.md` (or copy its `CLAUDE.md` if you have none). Start Claude Code afterwards — roles load at session start.
+Then by hand: merge `"permissions": { "allow": ["Edit(/.handoff/**)", "Edit(/docs/wiki/**)"] }` into `.claude/settings.json`; add the template's workflow lines to `.gitignore` (`.claude/settings.local.json`, `.claude/tmp/`, `.claude/worktrees/`, `.handoff/*-plan.md`, `.handoff/*-handoff.md`, `.handoff/*-report.md`, `docs/.obsidian/`) and `docs/wiki/log.md merge=union` to `.gitattributes`; and put the template's `# Project` block at the top of your `CLAUDE.md` (or copy its `CLAUDE.md` if you have none). Start Claude Code afterwards — roles load at session start.
 
 Then, inside Claude Code:
 

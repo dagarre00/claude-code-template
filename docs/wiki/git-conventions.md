@@ -38,13 +38,13 @@ Conventional commits, present tense:
 ## Cadence
 
 - **One commit per Behavior case** — its test, minimal implementation and entity-page tick, committed and pushed before the next case starts. The developer runs no git; the **conductor** commits each case. A commit spanning several cases is a defect: it breaks `git bisect`, makes a case unrevertable, and bloats the review diff past converging.
-- Refactor commits are separate from feature commits. No half-green commits.
+- A case's Refactor step ships in that case's commit: the suite is green on both sides of it, the refactored code sits in the same files as the implementation, and the Red proof covers the whole commit. No half-green commits.
 - Adversary findings are filed by default; an approved fix is its own `fix(<slug>): … — adversary F<N>` commit, and each round closes with `docs(<slug>): adversary round N` listing every disposition (`git log --grep="adversary round"`; protocol: the `finding-disposition` skill).
 - **Push after every commit** (`git push -u origin <branch>`) — an unpushed commit is lost when the container recycles. No remote (`git remote get-url origin` fails) → every push is skipped and noted in the report.
 
 ## PRs
 
-- From `<type>/<slug>` to `develop`, opened by `/project:work` (`pr-create` skill) once every Behavior case is `[x]`. Title mirrors the lead commit; the body cites the entity page and its cases.
+- From `<type>/<slug>` to `develop`, opened by `/project:work` (`pr-create` skill) once every Behavior case is `[x]`, or by `/project:adversary` for a release review's `fix/*`. Title mirrors the lead commit; the body cites the entity page and its cases.
 - **Merge commit, not squash** (`gh pr merge --merge --delete-branch`): the Red → Green → Refactor sequence is the evidence the loop ran. Squash only a branch with no TDD trace — a typo fix, a revert, all-`wip:` history.
 - Delete the branch on merge, locally and remotely. Merging is always the human's call.
 

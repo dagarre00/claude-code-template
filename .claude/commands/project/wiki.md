@@ -41,7 +41,7 @@ Any other dirt → `human-checkpoint` (rule 21). Then **sync develop** with the 
 
 One source in, one `summaries/` page out, cross-linked. No lint work — that is the health pass.
 
-1. **Get the source committed under `docs/raw/`, unread.** Raw sources are an append-only record, and committing the source alone keeps the ingest commit about the wiki. A file → copy it into `docs/raw/` if it lives elsewhere (keep its name), and commit that path alone, `docs(raw): add <name>` (step 4's log entry covers it). Research → dispatch the `researcher` with the query; it writes `docs/raw/research/<slug>.md`, which you commit alone, `docs(raw): research <slug>`. Nothing returned, or every source unreachable → report and stop; never synthesize a summary from nothing.
+1. **Get the source committed under `docs/raw/`, unread.** Raw sources are an append-only record, and committing the source alone keeps the ingest commit about the wiki. A file → copy it into `docs/raw/` if it lives elsewhere (keep its name), and commit that path alone, `docs(raw): add <name>` (step 4's log entry covers it). Research → dispatch the `researcher` with the query; it writes one new file under `docs/raw/research/` and reports its path, which you commit alone, `docs(raw): research <slug>`. Nothing returned, or every source unreachable → report and stop; never synthesize a summary from nothing.
 
 2. **Dispatch the `wiki-maintainer`** with the source path, "ingest this source", and the scope `docs/wiki/`. Its role and the `wiki-update` skill carry the procedure: read it fully, run the placement check, write `summaries/<slug>.md` from the skill's summary template, cross-link, and flag contradictions on both pages.
 
@@ -55,14 +55,17 @@ One source in, one `summaries/` page out, cross-linked. No lint work — that is
 
 Periodic, not every cycle. Due when any fires: `wiki-todos.md` has 10 or more open entries; open `[adversary]` todos reach `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`); 5 or more work cycles since the last pass; `/project:review` flagged drift; a batch of raw sources landed.
 
-1. **Count — and read nothing else:**
+1. **Count and list — and read nothing else:**
 
    ```bash
    grep -c "^## \[" docs/wiki/log.md 2>/dev/null || true                      # archive at >= 100
    grep -c '^- \[ \] .*\[adversary\]' docs/wiki/todos.md 2>/dev/null || true  # against FINDINGS_MAX
+   find docs/raw -type f ! -name README.md ! -path 'docs/raw/interviews/*' | while IFS= read -r f; do grep -rqF -- "$f" docs/wiki/summaries/ 2>/dev/null || echo "$f"; done   # raw files no summary's sources cite
    ```
 
-2. **Dispatch the `wiki-maintainer`** for a health pass, with the focus (if any), both counts, the raw files that have no matching summary, and the scope `docs/wiki/` — including `wiki-todos.md`, the `todos.md` re-triage and, for archiving only, `log.md`. Never the backlog's contents: it reads them itself. Its role defines the pass.
+   Interview transcripts are left out: `/project:interview` turns each into the structured pages as it ends, and one gets a summary only when named (`/project:wiki <file>`). The folder READMEs are guides, not sources.
+
+2. **Dispatch the `wiki-maintainer`** for a health pass, with the focus (if any), both counts, the raw files step 1 listed, and the scope `docs/wiki/` — including `wiki-todos.md`, the `todos.md` re-triage and, for archiving only, `log.md`. Never the backlog's contents: it reads them itself. Its role defines the pass.
 
 3. **Expect back:** resolved `wiki-todos` lines removed; every re-triage disposition (Closed / Re-graded / Kept) with its one-line reason; summaries for stragglers; cross-links making every new page reachable; `status: stub` pages for missing prerequisites, never invented content; migrated pages with facts moved, not rewritten; archive files if a threshold was hit; and the fields for the log entry.
 

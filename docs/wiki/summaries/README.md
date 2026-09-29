@@ -15,4 +15,4 @@ updated: 2026-09-23
 > [!abstract] Essence
 > One digest per ingested `docs/raw/` source. The rest of the wiki links the summary; the immutable raw file stays the source of truth, cited where accuracy matters.
 
-`/project:wiki <source>` writes them one at a time, and its argument-free health pass catches raw files that never got one. Both run the placement check first, so a concept that already has a page is updated rather than duplicated. Template: `.claude/skills/wiki-update/summary-template.md`.
+`/project:wiki <source>` writes them one at a time, and its argument-free health pass catches raw files that never got one — interview transcripts aside, which `/project:interview` ingests into the structured pages itself. Both run the placement check first, so a concept that already has a page is updated rather than duplicated. Template: `.claude/skills/wiki-update/summary-template.md`.

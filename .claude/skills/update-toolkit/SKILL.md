@@ -17,6 +17,8 @@ user-invocable: false
 
 Read 2–3 existing files of the kind first and match their tone, length and structure. Every paragraph is paid for on every load — a role's body on every dispatch, a preloaded skill in every subagent that carries it, a command on every run, a rule in every session and subagent — so keep bodies short, and lift any procedure a command *teaches* into a skill.
 
+Every add, modify and retire below is one commit carrying a `chore` log entry, with the subject its step names — [`log-and-commit.md`](../feature-branching/log-and-commit.md), rule 19 — then pushed.
+
 ## Skills
 
 **Add:**
@@ -28,7 +30,7 @@ Read 2–3 existing files of the kind first and match their tone, length and str
 6. List it in `.claude/rules/workflow.md § Skills`. A wiki page it cites that doesn't exist → a `wiki-todos.md` line. Commit `feat: add <name> skill — <reason>`.
 
 **Modify:** read it whole; change `description` first if the trigger changes; confirm the pages it cites exist. `refactor: <name> skill — <reason>`.
-**Retire:** grep `.claude/` and `docs/wiki/` for references (every role's `skills:` list included), delete the directory, log it, `chore: retire <name> skill`.
+**Retire:** grep `.claude/` and `docs/wiki/` for references (every role's `skills:` list included), delete the directory, `chore: retire <name> skill`.
 
 Skills reload live. A skill or command whose frontmatter does not parse still loads, with no fields set, and a role needs its `name` and `description` to load at all — so read the frontmatter back after every edit, and quote any value that contains `: ` or ` #`, or starts with `[`, `{` or a quote. `claude plugin validate` is lenient and has passed malformed YAML; don't rely on it alone.
 
@@ -42,7 +44,7 @@ Skills reload live. A skill or command whose frontmatter does not parse still lo
 5. Add it to `.claude/rules/workflow.md § Commands`, update `docs/wiki/commands.md` if the human can run shell pieces of it, and commit `feat: add /project:<name> — <reason>`.
 
 **Modify:** re-read it; if its contract changes, update `description` and the workflow map. A changed argument meaning updates `argument-hint`, the `**Argument:**` block and the consuming step together. `refactor: /project:<name> — <reason>`.
-**Retire:** grep `.claude/` for references, delete the file, drop its row from the map, log it, `chore: retire /project:<name>`.
+**Retire:** grep `.claude/` for references, delete the file, drop its row from the map, `chore: retire /project:<name>`.
 
 ## Roles
 
@@ -63,7 +65,7 @@ Skills reload live. A skill or command whose frontmatter does not parse still lo
 5. Commit `feat: add <name> role`, citing the requirement that justified it.
 
 **Modify:** read it end to end; change `description` first if the role changes; update "What you do NOT do" when invariants shift. A model or effort change follows `subagent-dispatch` § Changing a role's model or effort. `refactor: <name> role — <reason>`.
-**Retire:** confirm no command dispatches it, delete the file, drop its row from the map, log it, `chore: retire <name> role`.
+**Retire:** confirm no command dispatches it, delete the file, drop its row from the map, `chore: retire <name> role`.
 
 ## Anti-patterns
 

@@ -40,7 +40,7 @@ A clean working tree — the transcript and wiki updates land as tracked files. 
 
 2. **Frame the scope.** Read `docs/wiki/requirements.md` and the relevant entity pages, state the scope in one line, and confirm it. Slug it (`the auth flow` → `auth-flow`).
 
-3. **Open the transcript before the first question:** `docs/raw/interviews/YYYY-MM-DD-<slug>.md`, with this frontmatter and a one-paragraph framing:
+3. **Open the transcript before the first question:** `docs/raw/interviews/YYYY-MM-DD-<slug>.md` — a new file; if a same-day session on this scope already wrote one, `-2`, `-3` — with this frontmatter and a one-paragraph framing:
 
    ```yaml
    ---
@@ -69,9 +69,9 @@ A clean working tree — the transcript and wiki updates land as tracked files. 
    - **Where** state lives, and durability → architecture `## Data`
    - **External services** → architecture `## External services`
    - **How it fails** — recoverable or not, what the user sees → non-functional Reliability, entity failure cases
-   - **Security, compliance, observability** → the matching non-functional items
+   - **Security, compliance, observability** → the matching non-functional items, and architecture `## Security` (threat model, trust boundaries, secrets) and `## Observability`
    - **The smallest first slice** → the first todos
-   - **Test framework, test command, deployment target** → architecture `## Testing strategy`, `## Deployment`
+   - **Test framework, test command, deployment target** → architecture `## Testing strategy`, `## Deployment`, `## Environments`
 
 5. **Stop** when the human says so, every branch has a concrete answer, and an entity has Behavior cases sharp enough to test (`spec-writing` skill).
 

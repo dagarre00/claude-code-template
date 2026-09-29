@@ -45,7 +45,7 @@ Only while green. One structural change at a time, re-running the tests after ea
 
 1. Tick the case `[~]` → `[x]` and update the entity page's `## Implementation` and `## Tests` sections.
 2. Leave everything as plain files — you run no git. The conductor stages exactly the paths you report and commits them as one case.
-3. Report, for this case: **test paths**, **implementation paths**, any wiki paths, the Red assertion, and the final suite result. Call out a refactor separately so it can be committed separately.
+3. Report, for this case: **test paths**, **implementation paths**, any wiki paths, the Red assertion, and the final suite result. Name any refactor in one line: it ships in this case's commit, so the conductor describes it there.
 
 The next case starts at Red again — in its own dispatch when the conductor runs the loop.
 

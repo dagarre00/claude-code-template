@@ -67,4 +67,4 @@ Nits: 3 (naming ×2, stale comment ×1)
 
 Nothing above `nit` → say so explicitly, with the `Checked:` lines. A gotcha or ADR a finding implies is named inside that finding.
 
-**Re-review round:** you are given the range of the fix commits only. Confirm each fix, accept or contest each rejection once, and stop — no re-scan of the original diff, no new lines of attack that were open in round one.
+**Re-review round:** you are given the range of the fix commits only, and the previous round's findings with their dispositions. Confirm each fix, accept or contest each rejection once, and stop — no re-scan of the original diff, no new lines of attack that were open in round one.

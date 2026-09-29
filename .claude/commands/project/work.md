@@ -58,8 +58,8 @@ You commit and push after each proven case, and the plan review's record before 
 ## Steps
 
 1. **Pick the work.**
-   - **Fetch first**, so the pick is not already shipped: `git fetch origin develop`. If the candidate's entity page on `origin/develop` has its cases ticked, or `git log origin/develop --oneline --grep='<slug>'` shows it shipped, remove the stale todo line and take the next one. (Read-only; step 2 does the merge.)
-   - Take the top item of `docs/wiki/todos.md`, or what the argument named. Skip `[wiki]` lines — they belong to `/project:wiki`.
+   - **Fetch first**, so the pick is not already shipped: `git fetch origin develop`. Treat a todo as shipped only on evidence: its line is gone from `git show origin/develop:docs/wiki/todos.md` (a cycle's last case commit removes it — step 7), or you can name the commit on `origin/develop` that did its work. Then drop the stale line and take the next one. An entity with every case ticked is no evidence on its own: filed findings and review todos target shipped entities. (Read-only; step 2 does the merge.)
+   - Take the top item of `docs/wiki/todos.md`, or what the argument named.
    - **Steered off P0?** When the argument selects work outside `## Now (P0 — next)`, count the open P0 items (`docs/wiki/todos.md § P0 saturation threshold`). At or above `P0_MAX`, `human-checkpoint` first — the count, the oldest P0 entries, and what the argument asked for: skipping a saturated P0 is the human's call. The default path drains P0 and needs no check.
    - If the next 1–3 todos share an entity and context, propose a batch; `human-checkpoint` if the batch is not obvious.
    - Find the matching `docs/wiki/entities/<slug>.md`. Missing → stop and recommend `/project:interview`.
@@ -68,6 +68,7 @@ You commit and push after each proven case, and the plan review's record before 
 2. **Fetch and branch.** Run the "Starting work" blocks of the `feature-branching` skill with `<type>/<slug>` = `feat/<slug>`. Any `--ff-only` failure or a diverged `origin/feat/<slug>` → stop and `human-checkpoint`; never rebase or force-push over it. No remote → the skill's guard skips fetch and merge, and every push in this command is skipped and noted in the report.
 
 3. **Verify the Behavior cases.** Read `## Behavior` on the entity page (or the `[infra]` concept page). Its unimplemented `[ ]` cases are the test target. Empty or vague → stop: `/project:interview` or the `spec-writing` skill defines them first. **Config and deploy changes are behavior** — middleware, an auth header, a CORS rule each takes a failing test first like any other case.
+   - **A todo with no open case to work** — a filed `[adversary]` finding, a `/project:review` todo or a bug against an entity whose cases are all `[x]` — gets its case before anything else: append the next `B<N>` from the finding's failure scenario (`spec-writing`), stated as the behavior the code must show, then commit the entity page alone (`docs(<slug>): specify B<N> — <todo>`) and push. The plan-adversary reviews it with the brief in step 4a. A finding that disagrees with an existing case is a spec question → `/project:interview`.
 
 4. **Plan, if complex or batched.** A `[complex]` todo or a batch of 2+ → dispatch the `planner` with the entity slug(s), the batch contents, this cycle's case IDs, the test command from `docs/wiki/commands.md`, and the path to write: `.handoff/<slug>-plan.md` (gitignored scratch). Read the plan it wrote and sanity-check it: the steps cover the listed cases and the scope has not drifted. Wrong → send it back once; a second failure means re-spec via `/project:interview`. A single simple todo skips this step.
 

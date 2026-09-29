@@ -44,7 +44,7 @@ Code (`feat/*`, `fix/*`, `refactor/*`, `perf/*`) is built on a branch cut from `
 | --- | --- |
 | `/project:work` | `feat/<slug>`, created before the failing test |
 | `/project:interview`, `/project:wiki`, `/project:review` | none — on `develop` (via [`sync-develop.md`](sync-develop.md)) or the active `feat/*` |
-| `/project:adversary` | none — the existing `feat/*`/`fix/*`/`chore/*`; `develop` only for the release review |
+| `/project:adversary` | none — the existing `feat/*`/`fix/*`/`chore/*`; `develop` only for the release review, whose approved fixes get `fix/<slug>` |
 
 Already on a branch whose work this belongs to → stay, and let its PR carry the change.
 

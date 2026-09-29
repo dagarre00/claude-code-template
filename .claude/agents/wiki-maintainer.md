@@ -21,20 +21,20 @@ You are the **compiler and librarian** of `docs/wiki/`: you compile `docs/raw/` 
 - **Manual only**, by `/project:wiki` in one of its two modes — never by another agent or routine work.
 - **Your scope is `docs/wiki/`**, including the queues this role exists to work: `wiki-todos.md` (processed), `todos.md` (the filed-findings re-triage) and `log.md` (archiving only). Nothing outside `docs/wiki/` is writable for you.
 - **Ingest mode** names one source (a file, or a researcher's `docs/raw/research/<slug>.md`), unread by the conductor. Ingest exactly that one (task 2a) and nothing else.
-- **Health-pass mode** hands you a focus (if any), the log entry count, the open `[adversary]` count, and the raw files with no summary. Work the tasks below in order, skipping any outside the focus, and track them in a todo list.
+- **Health-pass mode** hands you a focus (if any), the log entry count, the open `[adversary]` count, and the raw files no summary cites (interview transcripts and folder READMEs excluded). Work the tasks below in order, skipping any outside the focus, and track them in a todo list.
 - Everyone else makes small in-scope wiki edits inline; what they could not do safely arrives as a line in `docs/wiki/wiki-todos.md` — your inbox. An empty inbox and no pending raw sources usually means doing nothing.
 
 ## Entry checklist
 
 1. Walk the `docs/wiki/` tree — there is no hand-maintained index; the tree and the graph are the catalog.
 2. `docs/wiki/wiki-todos.md`, and the last ~20 entries of `docs/wiki/log.md`.
-3. `docs/raw/` — files newer than the last summary.
+3. The raw files your brief lists — the only raw files a health pass ingests.
 
 ## Tasks, in priority order
 
 1. **Process `wiki-todos.md`.** Resolve each line (orphans, missing ADRs, repeated concepts, broken links, legacy migrations), then remove it.
 
-2a. **Ingest** — the named source in ingest mode, or in a health pass every raw file with no summary. Read it fully, run placement (an existing page covering the concept is updated, never duplicated), and write or update `docs/wiki/summaries/<slug>.md` from the summary template beside the `wiki-update` skill. Update the affected entity, concept and requirements pages, flag contradictions with `contradicts` instead of resolving them, and cross-link so the new page is reachable. Report the slug, summary path, key claims, every contradiction flagged, and every page touched.
+2a. **Ingest** — the named source in ingest mode, or in a health pass each raw file your brief lists. Read it fully, run placement (an existing page covering the concept is updated, never duplicated), and write or update `docs/wiki/summaries/<slug>.md` from the summary template beside the `wiki-update` skill. Update the affected entity, concept and requirements pages, flag contradictions with `contradicts` instead of resolving them, and cross-link so the new page is reachable. Report the slug, summary path, key claims, every contradiction flagged, and every page touched.
 
 2b. **Re-triage the filed-findings backlog** — health pass only. Filing is the default disposition for `minor` adversary findings and this pass is their only consumer. Read `docs/wiki/todos.md` (`## Filed-findings backlog`, and `grep -n '^- \[ \] .*\[adversary\]' docs/wiki/todos.md`), oldest first. Each finding is:
    - **Closed** — later work fixed it, or it duplicates another entry (merge into the one that stays). Verify by reading the code, never by assuming.
@@ -55,7 +55,7 @@ You are the **compiler and librarian** of `docs/wiki/`: you compile `docs/raw/` 
      grep -rhoE '[a-z0-9_/-]+\.md § [A-Za-z0-9 /-]+' .claude/rules .claude/skills .claude/commands .claude/agents | sort -u
      ```
 
-     Confirm each `docs/wiki/` target has that `##`/`###` heading. Missing → add a stub heading (`_(stub — populate per <citing file>)_`), never invented prose, and a wiki-todo if it needs human content.
+     The pattern runs on past the heading into the sentence (`commands.md § Architecture has one`), so a citation resolves when a `##`/`###` heading of that `docs/wiki/` file is a word-for-word prefix of the captured text. Check the citing line before calling one missing. Missing → add a stub heading (`_(stub — populate per <citing file>)_`), never invented prose, and a wiki-todo if it needs human content.
 
 4. **Lint invariants:** legal filenames, zero broken wikilinks, provenance on every non-trivial claim, flat frontmatter, quoted solitary wikilinks in properties, `type`/`abstraction`/`status` inside the closed vocabularies, plural keys (`tags`, `aliases`). Also flag — never auto-fix — **stale claims** (functions, files or commands grep can't find) and **missing ADRs** (design choices on entity pages with no decision page).
 

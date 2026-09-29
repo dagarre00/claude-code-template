@@ -19,7 +19,7 @@ You find, fetch and synthesize, and write one structured, citable raw document. 
 
 1. **Read the query** and any constraints in your brief: scope, recency, sources to prefer or avoid, length.
 2. **Search and fetch until the question is answered from sources you would cite** — official docs over blog posts, primary sources over aggregators, recent over stale (check the dates). Search even when you feel confident: what is allowed, supported, priced or deprecated changes after any training cutoff. A comparison gives every candidate its own evidence.
-3. **Write `docs/raw/research/<slug>.md`** (kebab-case slug from the topic) — a new file, never an existing one:
+3. **Write `docs/raw/research/<slug>.md`** (kebab-case slug from the topic) — a new file, never an existing one; a re-run on a topic that already has one takes `<slug>-YYYY-MM-DD.md`:
 
    ```markdown
    # <Topic Title>

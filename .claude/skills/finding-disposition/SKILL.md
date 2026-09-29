@@ -41,7 +41,7 @@ The reviewers' own procedures are `plan-review` and `adversarial-review`; they r
 ## Diff round — after the cases land (`adversary`)
 
 1. **Scope small.** A commit range covering one case or a few closely related ones (`<sha-before>..HEAD`). Nothing landed → skip and say so.
-2. **Send only** the commit range, the entity slug(s), the case IDs, the test command. **Never** the plan file, your reasoning, or what the change "is supposed to do". Check `git diff --stat <range>` first: an empty range is nothing to review.
+2. **Send only** the commit range, the entity slug(s), the case IDs, the test command — plus, on a re-review, the previous round's findings (step 9). **Never** the plan file, your reasoning, or what the change "is supposed to do". Check `git diff --stat <range>` first: an empty range is nothing to review.
 3. **Check independence.** A report that cites the plan, `.handoff/` or the cycle's `work` log entry read author material — say so if you use its findings. `HEAD` and the tree must be unchanged when it returns (`subagent-dispatch`).
 4. **Triage.** Optionally dispatch `triage` with the same range, slug, case IDs and the findings verbatim. It recommends; you own severity and disposition. Never accept a severity downgrade on the sole ground that a failure was not reproduced live.
 5. **Dispose — Filed is the default**, because fixing mid-cycle skips Red-first and reorders the queue:
@@ -66,7 +66,7 @@ The reviewers' own procedures are `plan-review` and `adversarial-review`; they r
 
    `--allow-empty` when every finding was rejected. `git log --grep="adversary round"` is the audit.
 8. **P0 saturation.** After staging todo lines, count open P0 items (`docs/wiki/todos.md § P0 saturation threshold`). At or above `P0_MAX` → `human-checkpoint` with the count, the `[adversary]` share, the three oldest entries, and a recommendation (drain P0, re-grade, or pause adversarial review).
-9. **Re-review only if something was fixed**, over the fix commits only. **Three rounds, then stop.** Findings still open at the cap: file the `critical`/`major` ones per step 5 (the human gate in step 6 still applies) and list the `minor`/`nit` ones in the round commit as unfiled, reason "round cap" — never open a fourth round. A unit still generating findings at round three was too big; split it before the *next* review.
+9. **Re-review only if something was fixed**, over the fix commits only. The brief adds the previous round's findings verbatim, each with its disposition line from the round commit: the Fixed ones for the adversary to confirm, the Rejected ones with their reasons for it to accept or contest once. A round with no fix ends there — its rejections stand, and the report names any the human might dispute. **Three rounds, then stop.** Findings still open at the cap: file the `critical`/`major` ones per step 5 (the human gate in step 6 still applies) and list the `minor`/`nit` ones in the round commit as unfiled, reason "round cap" — never open a fourth round. A unit still generating findings at round three was too big; split it before the *next* review.
 
 ## Record the yield — every round
 

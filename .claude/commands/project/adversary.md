@@ -30,7 +30,7 @@ You run one adversarial review: the adversary raises findings and never edits; y
 ## Preconditions
 
 - A diff exists: a dirty tree (committed before review — step 1), unreviewed commits on this branch, or a base ref. None of the three → say there is nothing to review and stop.
-- On a `feat`/`fix`/`chore` branch — an approved fix has to land somewhere, and never on `main`. **`develop` only for the release review** (`against main`), which is read-only by construction: an approved `critical`/`major` from it gets a `fix/*` branch, while the round's todo and log lines may land on `develop` directly (rule 19).
+- On a `feat`/`fix`/`chore` branch — an approved fix has to land somewhere, and never on `main`. **`develop` only for the release review** (`against main`), which is read-only by construction: an approved `critical`/`major` from it moves the round to a `fix/*` branch (step 3); a round with none commits its todo and log lines on `develop` directly (rule 19).
 
 ## Steps
 
@@ -44,6 +44,7 @@ You run one adversarial review: the adversary raises findings and never edits; y
 2. **Dispatch the `adversary`** per `subagent-dispatch`, with the commit range, the entity slug(s), case IDs, the test command from `docs/wiki/commands.md`, and the lens if any. **Nothing else** — no plan, rationale or summary of intent. Confirm `git diff --stat <range>` is non-empty before dispatching, and that `HEAD` and the tree are unchanged when it returns.
 
 3. **Dispose of every finding** per the skill: **Filed** by default, **Fixed** only for a human-approved `critical`/`major` (one `human-checkpoint` covering all of them) through the normal loop — failing test first, spec first if the finding contradicts the entity page — or **Rejected** with a reason. `triage` gives a second opinion; you decide.
+   - **An approved fix from the release review** never lands on `develop`. Cut `fix/<slug>` first (`feature-branching` § Starting work, `<type>` = `fix`), and run the rest of the review there: each fix a `developer` dispatch, proven and committed per `subagent-dispatch` § Prove and commit a developer case; the re-review; the round commit. Then open its PR to `develop` with `pr-create`. A release review with no approved fix commits its round on `develop`.
 
 4. **Re-review only if a fix landed**, over the fix commits alone — re-reading the original range is what keeps rounds from converging. Three rounds maximum; the skill says what happens at the cap.
 
@@ -63,4 +64,4 @@ You run one adversarial review: the adversary raises findings and never edits; y
 - **No adversary edits** — findings only.
 - **No author context in the dispatch.** The case IDs are the brief.
 - **No whole-repo audit.** Out-of-diff problems go in the report's `## Out of scope` list and, if they matter, a todo for `/project:review`.
-- **No merging, no PR** — `/project:work` owns the PR.
+- **No merging, and no PR but a release review's `fix/*` (step 3)** — `/project:work` owns every other PR.

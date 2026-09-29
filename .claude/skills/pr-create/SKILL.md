@@ -1,13 +1,13 @@
 ---
 name: pr-create
-description: Conductor-only. How to draft and open a pull request, log it, and return to develop — run by /project:work once every Behavior case on the entity is [x], or when the human asks for a PR.
+description: Conductor-only. How to draft and open a pull request, log it, and return to develop — run by /project:work once every Behavior case on the entity is [x], by /project:adversary once a release review's fix/* branch holds its fixes, or when the human asks for a PR.
 when_to_use: Trigger on "open PR", "create pull request", "PR template", "PR body", "draft PR", "feature complete", "all cases ticked".
 user-invocable: false
 ---
 
 # PR Creation
 
-`/project:work` runs this without waiting to be asked once every case is `[x]`. Merging is always the human's call.
+`/project:work` runs this without waiting to be asked once every case is `[x]`, and `/project:adversary` once a release review's `fix/*` branch holds its approved fixes. Merging is always the human's call.
 
 ## Preconditions
 
@@ -19,13 +19,13 @@ CI runs the suite; these are the workflow's own checks, which nothing else runs.
 
 - The test command and the architecture check from `docs/wiki/commands.md` pass on the branch head.
 - **Wiki ships with code:** every commit in `git log develop..HEAD` that changes source also changes the entity page it implements (rule 1), or carries a `Wiki-Update: none (<reason>)` footer.
-- **Log ships with change:** the branch's `work` entries in `docs/wiki/log.md` cover its cycles, and the log's stamps run oldest-first.
+- **Log ships with change:** the branch's `work` entries in `docs/wiki/log.md` cover its cycles (on a release-review `fix/*`, its `adversary` entry covers the round), and the log's stamps run oldest-first.
 - **No broken wikilinks** in the pages the branch changed: every `[[target]]` resolves to a file under `docs/wiki/`, and every `#anchor` to a real heading.
 - **A rule file changed** (one `architecture.md § Layers` names under Enforced by) → an ADR on the same branch (rule 23).
 
 ## Steps
 
-1. **Gather:** `docs/wiki/git-conventions.md` (its PR conventions override the skeleton below), the entity page's ticked cases, this branch's `work` entries in `docs/wiki/log.md`, and `git log develop..HEAD --oneline`.
+1. **Gather:** `docs/wiki/git-conventions.md` (its PR conventions override the skeleton below), the entity page's ticked cases, this branch's `work` (or `adversary`) entries in `docs/wiki/log.md`, and `git log develop..HEAD --oneline`.
 2. **Draft the body** — observable behavior, not the TDD trace:
 
    ```markdown
@@ -60,7 +60,7 @@ CI runs the suite; these are the workflow's own checks, which nothing else runs.
    ```markdown
    ## [YYYY-MM-DD HH:MM] pr — <slug>
 
-   - Branch: feat/<slug>
+   - Branch: <feat|fix>/<slug>
    - PR: <url>
    ```
 
