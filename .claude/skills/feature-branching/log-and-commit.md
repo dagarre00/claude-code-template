@@ -14,7 +14,7 @@ To `docs/wiki/log.md`, newest at the bottom:
 
 Take the stamp from `date -u +'%Y-%m-%d %H:%M'` — **UTC**, so entries stay in order whatever zone a session ran in (the log is kept oldest-first). Drop `— <slug>` when there is none (`init`, `review`).
 
-**The kind names the mutation, not the command**, from a closed vocabulary — anything else fails lint:
+**The kind names the mutation, not the command**, from a closed vocabulary — `/project:work`'s maintenance counters match these words exactly, so any other kind silently drops out of them:
 
 | kind | written by |
 | --- | --- |

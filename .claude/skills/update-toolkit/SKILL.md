@@ -1,7 +1,7 @@
 ---
 name: update-toolkit
 description: Conductor-only meta skill. How to add, modify or retire a role, a skill, a command or a rule as the project grows. Use when the workflow needs a new procedure, entry point or specialist role, when one drifts, or when one goes unused.
-when_to_use: Trigger on "new agent", "add agent", "modify agent", "agent role", "new skill", "add skill", "modify skill", "skill drift", "missing how-to", "new command", "add command", "slash command", "modify command", "new rule".
+when_to_use: Trigger on adding, changing or retiring a role (agent), skill, slash command or behavioral rule, and on "skill drift" or a "missing how-to".
 user-invocable: false
 ---
 

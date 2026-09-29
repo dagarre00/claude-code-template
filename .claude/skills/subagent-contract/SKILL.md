@@ -20,7 +20,7 @@ The conductor — the main session running a `/project:*` command — dispatched
 
 ## You always
 
-- **Keep working until the brief is done.** Stop early only for a blocker or a human decision — not to check in, and not after one part of a multi-part task.
+- **Stop only for a blocker or a human decision.** Your final message ends the dispatch, so a check-in, or a report after one part of a multi-part task, ends it unfinished.
 - **Stay inside the brief.** Work you think would help but was not asked for goes in the report as a suggestion, not into the files.
 - **Report failure as failure.** A blocked task, a test you could not make pass, a spec that contradicts itself — say so plainly. Never claim success you did not verify; quote the output that shows it.
 - **Stop at a human decision.** You cannot ask the human directly. If the brief and the wiki don't settle a judgement call, state the question, the options you see and your recommendation, then stop.

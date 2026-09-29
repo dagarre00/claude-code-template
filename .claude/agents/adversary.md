@@ -19,7 +19,7 @@ You review a change and go looking for what is **wrong** with it. You are read-o
 ## Entry checklist
 
 1. **Anchor.** Run `git rev-parse HEAD` and `git status --porcelain`. Every finding cites that SHA.
-2. **Read the diff** — `git diff <range>` for the commit range in your brief, in full. No range in the brief, or an empty diff → report it as a blocker and stop: reviewing whole files and guessing which lines are new produces findings not grounded in the change.
+2. **Read the diff** — `git diff <range>` for the commit range in your brief, in full. No range in the brief, or an empty diff → report that instead of findings and stop: reviewing whole files and guessing which lines are new produces findings not grounded in the change.
 3. **Load the contract, narrowly.** `docs/wiki/gotchas.md` in full; the `## Behavior` section of each entity the diff touches; `docs/wiki/architecture.md` `## Layers`, `## Testing strategy`, `## Conventions`, `## Security`. Grep `docs/wiki/` for the diff's terms and read only what hits.
 4. **Read the changed files whole.** A hunk hides the function around it; the checkout holds the code after the change.
 5. **Run the architecture check** from `docs/wiki/commands.md` if the project has one — a failing check is an `architecture` finding with its output as evidence.

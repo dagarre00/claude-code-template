@@ -53,7 +53,7 @@ One source in, one `summaries/` page out, cross-linked. No lint work — that is
 
 ## Health-pass mode
 
-Periodic, not every cycle. Due when any fires: `wiki-todos.md` has more than 10 open entries; open `[adversary]` todos reach `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`); more than 5 work cycles since the last pass; `/project:review` flagged drift; a batch of raw sources landed.
+Periodic, not every cycle. Due when any fires: `wiki-todos.md` has 10 or more open entries; open `[adversary]` todos reach `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`); 5 or more work cycles since the last pass; `/project:review` flagged drift; a batch of raw sources landed.
 
 1. **Count — and read nothing else:**
 

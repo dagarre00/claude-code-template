@@ -1,7 +1,7 @@
 ---
 name: subagent-dispatch
 description: Conductor-only. How to dispatch one role and decide whether to accept its result — the run's dispatch mode (native subagent, handoff file, or fast), brief it, wait for it, check what it touched, prove and commit a developer case (Green, architecture, Red), send it back, resume a partial run. Use for every dispatch a /project:* command makes.
-when_to_use: Trigger on "dispatch", "run the developer", "run the planner", "run the adversary", "dispatch mode", "fast mode", "native or handoff", "red check", "prove Red", "accept the report", "send it back", "partial result", "resume the subagent", "change a role's model".
+when_to_use: Trigger on dispatching or re-dispatching any role, choosing native, handoff or fast mode, proving a developer case's Red, accepting, resuming or sending back a role's result, and changing a role's model or effort.
 user-invocable: false
 ---
 

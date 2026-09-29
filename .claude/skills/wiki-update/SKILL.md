@@ -15,7 +15,7 @@ The single source of truth for the wiki standard; its invariants are also the "O
 2. Look for it under another name: walk the tree and `grep -r "aliases:" -A3 docs/wiki/`.
 3. **It exists** → update that page: merge the new material into the right section, add the new name to `aliases`, extend `sources`, bump `updated`.
 4. **It doesn't** → create it from a template below. Filename = the canonical concept name, with none of `* " \ / < > : | ? # ^ [ ]`; symbol-bearing variants go in `aliases`.
-5. **Link a page that doesn't exist yet → stub it** in the same change (template frontmatter, `status: stub`, a one-line placeholder) — a broken wikilink fails CI. A stub outside the paths you may edit means no link: record a wiki-todo instead.
+5. **Link a page that doesn't exist yet → stub it** in the same change (template frontmatter, `status: stub`, a one-line placeholder) — a broken wikilink is a bug (rule 18), and `pr-create`'s pre-PR checks reject it. A stub outside the paths you may edit means no link: record a wiki-todo instead.
 6. **Merge** two pages on one concept into the more canonical filename, keeping the union of links and provenance and the discarded name in `aliases` — ask the human first if the contents are ambiguous. **Split** a page covering two concepts and rewire its links.
 
 ## Canonical page template
