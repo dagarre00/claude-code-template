@@ -1,59 +1,61 @@
 ---
 name: pr-create
-description: How to draft and open a pull request for this project. Loads when a feature branch is finished — all Behavior cases [x] via /project:work, or the human asks for a PR. Trigger on "open PR", "create pull request", "PR template", "PR body", "draft PR", "feature complete", "all cases ticked".
-type: skill
+description: Conductor-only. How to draft and open a pull request, log it, and return to develop — run by /project:work once every Behavior case on the entity is [x], or when the human asks for a PR.
+when_to_use: Trigger on "open PR", "create pull request", "PR template", "PR body", "draft PR", "feature complete", "all cases ticked".
+user-invocable: false
 ---
 
 # PR Creation
 
-Use this when wrapping up a `feat/*` or `fix/*` branch once the feature is complete. This skill is **automatically invoked by `/project:work`** at the end of a cycle where all Behavior cases are `[x]`. Do not wait for an explicit PR request from the human.
+`/project:work` runs this without waiting to be asked once every case is `[x]`. Merging is always the human's call.
 
-## Read first
+## Preconditions
 
-- `docs/wiki/git-conventions.md` — the project's PR template and labeling conventions.
-- `docs/wiki/todos.md` — the open queue; the todo(s) this branch closed were removed from it (see the branch's commits / `git log develop..HEAD` for what shipped).
-- `docs/wiki/log.md` — the `## [stamp] work — <slug>` entries for this cycle.
-- The entity page `docs/wiki/entities/<slug>.md` — the Behavior cases that were ticked.
-- `git log develop..HEAD --oneline` — the commits on this branch.
+A `feat/*` or `fix/*` branch, a clean tree, every commit pushed (`git push -u origin <branch>`), and the pre-PR checks below passing.
 
-## Drafting the PR body
+## Pre-PR checks
 
-Compose the body from the artefacts above. Default skeleton (override with whatever `git-conventions.md` specifies):
+CI runs the suite; these are the workflow's own checks, which nothing else runs. Fix every failure before step 1.
 
-```markdown
-## Summary
-
-<1–3 bullets: what shipped, in observable terms — pull from the entity page Goal / Behavior>
-
-## Behavior cases closed
-
-[[entities/<slug>]] — B1, B2
-
-(Link the **page**, list the case IDs as text. Behavior cases are list items, not headings, so `[[entities/<slug>#B1]]` resolves to nothing in Obsidian — it is a broken wikilink, which behavioral rule 18 forbids.)
-
-## Related TODOs
-
-- Closed: <todo(s) this branch shipped — from the work log entries / commits>
-- Follow-ups queued: <list from todos.md or wiki-todos.md>
-
-## Test plan
-
-- [ ] `<test command from docs/wiki/commands.md>`
-- [ ] Manual: <if any non-automated check applies>
-
-## Notes
-
-<any ADR filed this cycle (link), any non-obvious decision, any wiki-todos appended>
-```
+- The test command and the architecture check from `docs/wiki/commands.md` pass on the branch head.
+- **Wiki ships with code:** every commit in `git log develop..HEAD` that changes source also changes the entity page it implements (rule 1), or carries a `Wiki-Update: none (<reason>)` footer.
+- **Log ships with change:** the branch's `work` entries in `docs/wiki/log.md` cover its cycles, and the log's stamps run oldest-first.
+- **No broken wikilinks** in the pages the branch changed: every `[[target]]` resolves to a file under `docs/wiki/`, and every `#anchor` to a real heading.
+- **A rule file changed** (one `architecture.md § Layers` names under Enforced by) → an ADR on the same branch (rule 23).
 
 ## Steps
 
-1. **Confirm preconditions.** Branch is `feat/*` or `fix/*`. Working tree clean. All commits pushed (`git push -u origin <branch>`).
-2. **Gather the inputs.** Read the files above.
-3. **Draft the body** following the skeleton.
-4. **Show the drafted PR body to the human** (a brief preview in the conversation), then open the PR immediately — no confirmation needed. Use `mcp__github__create_pull_request` targeting `develop` with the title in conventional-commit form (matching the lead commit on the branch). If the MCP tool is not available in the environment, fall back to `gh pr create --base develop --title "<title>" --body-file <path>`.
-5. **Tell the human:** "Feature `<slug>` is complete. PR #N is open targeting `develop` — please review and merge when ready."
-6. **Log it — and commit the entry.** The cycle's commits were already made and pushed before the PR existed, so this entry has nothing to ride along with. Append it, then commit and push it on its own; otherwise the entry is lost and step 7 runs against a dirty tree.
+1. **Gather:** `docs/wiki/git-conventions.md` (its PR conventions override the skeleton below), the entity page's ticked cases, this branch's `work` entries in `docs/wiki/log.md`, and `git log develop..HEAD --oneline`.
+2. **Draft the body** — observable behavior, not the TDD trace:
+
+   ```markdown
+   ## Summary
+
+   <1–3 bullets: what shipped, in observable terms>
+
+   ## Behavior cases closed
+
+   [[entities/<slug>]] — B1, B2
+
+   ## Related TODOs
+
+   - Closed: <the todo(s) this branch shipped>
+   - Follow-ups queued: <from todos.md or wiki-todos.md>
+
+   ## Test plan
+
+   - [ ] `<test command from docs/wiki/commands.md>`
+   - [ ] Manual: <any non-automated check>
+
+   ## Notes
+
+   <ADRs filed this cycle (linked), non-obvious decisions, wiki-todos appended>
+   ```
+
+   Link the entity **page** and list case IDs as text — cases are list items, not headings, so `[[entities/<slug>#B1]]` would be a broken wikilink.
+3. **Open it** after showing the human a short preview (no confirmation needed): `gh pr create --base develop --title "<title>" --body-file <path>`, with the body in a file outside the repository — an untracked file inside it fails the clean-tree check. The title is a conventional commit in the imperative, matching the branch's lead commit (`feat(<scope>): <one-liner>`). If `gh` is missing or not authenticated, hand the human the body and say the PR is theirs to open — no other route.
+4. **Tell the human:** "Feature `<slug>` is complete. PR #N targets `develop` — please review and merge when ready."
+5. **Log it and commit the entry on its own** — the cycle's commits predate the PR:
 
    ```markdown
    ## [YYYY-MM-DD HH:MM] pr — <slug>
@@ -68,20 +70,9 @@ Compose the body from the artefacts above. Default skeleton (override with whate
    git push
    ```
 
-7. **Return to develop** once `git status --porcelain` is empty:
-
-   ```bash
-   git checkout develop
-   ```
+6. **Return to `develop`** once `git status --porcelain` is empty: `git checkout develop`.
 
 ## What you do NOT do
 
-- **No merging.** Merging is always the human's call.
-- **No force-push.** If you need to rebase or squash, ask first.
-- **No editing the PR template** to fit the changes — fit the changes to the template, or update `docs/wiki/git-conventions.md` first (via a separate cycle) if the template is genuinely wrong.
-
-## Anti-patterns
-
-- **Dumping `git log` into the body.** The reader wants observable behavior, not the TDD trace.
-- **Omitting the Behavior-case references.** The wiki-link to each case is the reviewer's anchor for "what does this PR claim to do".
-- **PR title in past tense or marketing voice.** Conventional commits: `feat(<scope>): <imperative one-liner>`.
+- **No merging, no force-push.** A needed rebase or squash is asked for first.
+- **No bending the template.** Fit the PR to `git-conventions.md`, or change that page first in its own cycle.

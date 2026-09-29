@@ -1,64 +1,112 @@
-# Agentic Development Template
+# Agentic Development Template — Claude Code edition
 
-A Claude Code template for building software with an LLM agent as the developer. Wiki-driven, spec + TDD, progressive disclosure.
+A template for building software with Claude Code as the developer: wiki-driven, spec + TDD, progressive disclosure. This edition runs the whole workflow on Claude Code's own subagents, skills and commands — no MCP server, no other CLI, nothing to install.
 
-## Two ideas
+## Three ideas
 
-1. **The wiki is the spec.** `docs/wiki/` is the source of truth for what the project does and how it's built. Code that disagrees with the wiki is the bug.
-2. **Progressive disclosure beats specialized agents.** A single `developer` agent runs the whole TDD cycle, loading task-specific skills on demand. Skills are short, procedural, project-specific — never abstract explanations.
+1. **The wiki is the spec.** `docs/wiki/` is the source of truth for what the project does and how it is built. Code that disagrees with the wiki is the bug.
+2. **Progressive disclosure beats specialized agents.** One `developer` runs the whole TDD cycle, loading short, procedural, project-specific skills on demand.
+3. **A second model reads the brief before any code exists**, and on risky cycles the diff after it lands — with none of the author's context. Reviewers raise findings; they never fix them, and every finding gets a written disposition.
 
 ## Quick start
 
+Needs a recent Claude Code (built against v2.1.284): the roles use subagent `effort`, `skills`, `permissionMode` and `maxTurns` frontmatter.
+
+**New project** — no code or history yet:
+
 ```bash
-git clone <this-template> my-project
+git clone --branch cc-template-legacy --single-branch https://github.com/dagarre00/claude-code-template.git my-project
 cd my-project
-rm -rf .git    # drop the template's history — /project:init re-inits git for your project
+rm -rf .git      # the template's history is not your project's; /project:init starts a fresh one
 claude
 ```
 
-Inside Claude Code:
+**Existing project** — copy the workflow in; never touch its `.git`:
 
-```
-/project:init        # detect state, scaffold docs/wiki, base docs
-/project:interview   # grill yourself on requirements; populate the wiki
-/project:work        # pick the top todo, branch, run TDD (Red → Green → Refactor → wiki)
-/project:adversary   # point a read-only second model at the diff; findings only
-/project:review      # periodic audit in a fresh session context
-/project:wiki-lint   # periodic wiki health check
-/project:wiki-ingest # direct ingest of a file or research query into wiki
-/project:agent-scout # survey and recommend stack/domain skills and agents
-/project:handoff     # package a todo as a self-contained brief for an external LLM
+```bash
+cd my-existing-project
+mkdir -p .claude/commands
+cp -r <template>/.claude/agents <template>/.claude/skills <template>/.claude/rules .claude/
+cp -r <template>/.claude/commands/project .claude/commands/
+cp -rn <template>/docs .                  # only the starter pages you don't have
 ```
 
-Open `docs/wiki/` in Obsidian on the side. That's your view of the agent's knowledge.
+Then by hand: merge `"permissions": { "allow": ["Edit(/.handoff/**)", "Edit(/docs/wiki/**)"] }` into `.claude/settings.json`; add `.handoff/*-plan.md` to `.gitignore` and `docs/wiki/log.md merge=union` to `.gitattributes`; and put the template's `# Project` block at the top of your `CLAUDE.md` (or copy its `CLAUDE.md` if you have none). Start Claude Code afterwards — roles load at session start.
 
-For a worked walkthrough — `/project:init` → `/project:interview` → `/project:work` end-to-end with explanations — see [`docs/getting-started.md`](docs/getting-started.md).
+Then, inside Claude Code:
+
+```
+/project:init            # check the wiring, review role models, interview, scaffold docs/wiki, runnable tests, CI
+/project:interview       # grill yourself on a feature; populate the spec
+/project:work            # top todo → branch → TDD one Behavior case at a time → PR
+/project:adversary       # a read-only second model on the diff; findings only
+/project:review          # periodic whole-repo audit in a fresh context
+/project:wiki [source]   # ingest a source, or (no argument) the wiki health pass
+/project:sync-template   # adopted projects: pull template fixes
+```
+
+Each takes free-text context (`/project:work the login endpoint`, `/project:review security only`) that scopes it without bypassing a precondition, the Red phase or a human checkpoint. On an existing codebase `/project:init` detects the stack rather than assuming a blank slate; old docs are folded in one source at a time with `/project:wiki <path>`. Open `docs/wiki/` in Obsidian to watch the agent's knowledge.
+
+## Roles and models
+
+The main session is the **conductor**: it runs the commands, dispatches the roles and owns every commit. Each role is a subagent in `.claude/agents/` that pins its own model, effort, tools and preloaded skills.
+
+| Role | Model · effort | Access | Dispatched by |
+| --- | --- | --- | --- |
+| `planner` | opus · xhigh | writes only its plan file | `/project:work`, complex or batched todos |
+| `plan-adversary` | sonnet · high | read-only | `/project:work`, every cycle |
+| `developer` | sonnet · medium | writes the case's code, tests and wiki page | `/project:work`, one Behavior case per dispatch |
+| `adversary` | opus · high | read-only | `/project:work` on complex cycles, `/project:adversary` |
+| `triage` | sonnet · high | read-only | the conductor, while disposing of findings |
+| `reviewer` | opus · high | read-only | `/project:review` |
+| `wiki-maintainer` | sonnet · medium | writes `docs/wiki/` | `/project:wiki` |
+| `researcher` | sonnet · medium | writes one `docs/raw/research/` file, web | `/project:wiki search for …` |
+
+**Why these.** Opus goes where a role runs rarely and a miss costs a cycle: decomposing complex work, hunting defects in a diff, the periodic audit. Sonnet runs what happens every cycle. Effort follows the task: `xhigh` for the planner, whose decisions shape every case after it; `high` where edge cases and verification decide the outcome; `medium` for well-specified execution — the developer's one case is the most frequent dispatch, and the conductor's Red check backs it. The two reviews that bracket the developer run on a different model from it, so a second reader is a second model, not just a second context.
+
+**Changing one:** edit `model`/`effort` in `.claude/agents/<role>.md` and restart the session. `/project:init` asks once. On Amazon Bedrock, Google Cloud or Microsoft Foundry the `opus`/`sonnet` aliases can resolve to older models, where `xhigh` may not exist.
+
+## What is enforced, not just asked for
+
+| Practice | Mechanism |
+| --- | --- |
+| Reviewers never edit | The read-only roles have no edit tools and run in `permissionMode: dontAsk`: a command not allowlisted in `.claude/settings.json` — a git write, an install, a delete — is denied, not prompted. The conductor also checks that `HEAD` and the tree are unchanged after each. |
+| Writers stay in scope | The planner and the wiki-maintainer also run in `dontAsk`, and the only writes allowed to them are `Edit(/.handoff/**)` and `Edit(/docs/wiki/**)`. |
+| Subagents are leaves | No role has the Agent tool. |
+| A reviewer holds none of the author's context | Roles are dispatched by `subagent_type`, never as a fork, so they see none of the conversation — only a brief that the procedure keeps to IDs and paths. |
+| Tests fail before the implementation, pass after | The conductor proves each developer case: the full suite passes, the case is committed, then everything but its tests is restored from the parent commit and the tests must fail. Only then is it pushed. |
+| Clean architecture | `docs/wiki/architecture.md § Layers` declares the dependency rule; `/project:init` installs a stack-specific check (dependency-cruiser, import-linter, ArchUnit, …), proves it fails on a planted violation, and allowlists it for every role. |
+
+What stays discipline: the conductor itself (nothing stops it writing code directly or skipping a step), a reviewer choosing not to open `.handoff/` in the shared checkout, and the wiki-with-code and log checks in the `pr-create` skill, which only CI you write can back.
+
+## What the agent decides alone
+
+It reads the wiki before changing code, writes the failing test first, commits one Behavior case at a time (test, implementation and wiki tick together, so `git bisect` works and any case reverts alone), and opens a PR once every case on the entity page is `[x]`.
+
+It stops and asks before: merging a PR, pushing to `develop` or `main` directly, force-pushing or rewriting published history, choosing between two reasonable designs, resetting after a two-strike failure, or fixing a `critical`/`major` review finding. Review findings become todos by default — nothing is fixed on a reviewer's say-so. `/project:review` never runs inside `/project:work`, and the wiki health pass runs only when you ask.
 
 ## What's in the box
 
 ```
 .claude/
-├── agents/          # planner (opus), developer, adversary (opus), reviewer, wiki-maintainer, researcher
-├── skills/          # process skills (TDD, branching, plan-writing, adversarial-review, wiki-update, …) + update-toolkit meta skill
-├── commands/        # /project:init, /project:interview, /project:work, /project:adversary, /project:review, /project:wiki-lint, /project:wiki-ingest, /project:agent-scout, /project:handoff
-├── settings.json    # harness settings
-└── rules/           # behavioral constraints
+├── agents/            # the eight roles — model, effort, tools, permission mode, preloaded skills
+├── commands/project/  # the seven /project:* commands
+├── skills/            # procedures (TDD, branching, plan-writing, reviews, wiki-update, …) + update-toolkit
+├── rules/             # behavioral.md (the numbered rules) and workflow.md (the map) — loaded every session
+└── settings.json      # the allow rules the roles run under
 docs/
-├── raw/             # immutable source documents (interviews, articles, transcripts)
-└── wiki/            # LLM-owned knowledge base (entities, concepts, decisions, summaries, log, …)
-CLAUDE.md            # the schema — read first
-HUMAN.md             # the human's-eye view of how this works
+├── raw/               # immutable sources (interviews, research, documents)
+└── wiki/              # the agent-maintained knowledge base (requirements, architecture, entities, decisions, log, …)
+CLAUDE.md              # this project's facts only; /project:init fills them
 ```
 
 ## Philosophy
 
-- **Skills are how-to, not what-is.** No skill explains "what TDD is" — they explain "how this project does TDD."
-- **Spec → Test → Code.** Entity Behavior cases → failing tests → minimal implementation.
-- **Wiki ships with code.** Code edits and wiki edits happen in the same commit.
-- **A second model reads the diff.** Risky cycles get an `adversary` on Opus with none of the author's context, told to find what's wrong. It raises findings; it never fixes them. Every finding gets a written disposition.
-- **Human in the loop.** When the agent can't decide from the wiki, it stops and asks — never silently improvises.
-- **Dynamic config.** The `update-toolkit` meta skill lets the agent evolve its own agents, skills, and commands as the project grows.
+- **Skills are how-to, not what-is** — not "what TDD is", but how this project does it.
+- **Spec → test → code**: entity Behavior cases → failing tests → minimal implementation, with the wiki updated in the same commit.
+- **Human in the loop** — when the wiki can't decide, the agent stops and asks.
+- **The toolkit evolves** — the `update-toolkit` skill lets the agent add roles, skills and commands as the project grows.
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE). Use it. Fork it. Bend it.
+MIT — see [`LICENSE`](LICENSE).

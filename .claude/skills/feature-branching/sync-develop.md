@@ -1,6 +1,6 @@
 # Guarded develop sync — canonical block
 
-The maintenance commands (`/project:interview`, `/project:review`, `/project:wiki-lint`, `/project:wiki-ingest`, `/project:agent-scout`, `/project:handoff`) run this before doing anything else. **Already on a `feat/*`/`fix/*` branch?** Stay there — living wiki edits ride the active branch (behavioral rule 19) — and skip this block.
+`/project:interview`, `/project:review` and `/project:wiki` run this first. **On a `feat/*`/`fix/*` branch?** Stay there — living wiki edits ride the active branch (rule 19) — and skip it.
 
 ```bash
 if [ "$(git branch --show-current)" = "main" ]; then
@@ -14,8 +14,9 @@ if [ "$branch" = "develop" ] && git remote get-url origin >/dev/null 2>&1; then
 fi
 ```
 
-Stop conditions — all go to `human-checkpoint`, never proceed past them:
+Every failure goes to `human-checkpoint`, never past it:
 
-- **Any checkout failure.** Most likely a fresh clone whose only branch is `main`, but a conflicting uncommitted file hits the same message. `main` is the release branch — never work from it.
-- **`merge --ff-only` fails.** `develop` has diverged from origin in a non-fast-forward way. Committing on a stale `develop` and failing the push is the unpushed-commit loss behavioral rule 19 exists to prevent.
-- No remote is fine: the fetch and merge are both skipped and the block works off local `develop`.
+- **A checkout failure** — most likely a fresh clone whose only branch is `main` (the release branch; never work from it), or a conflicting uncommitted file.
+- **`merge --ff-only` fails** — `develop` diverged from origin. Committing on a stale `develop` and failing the push is the lost-commit case rule 19 prevents.
+
+No remote is fine: the fetch and merge are skipped and the block works off local `develop`.

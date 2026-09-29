@@ -7,7 +7,7 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-07-21
+updated: 2026-09-14
 ---
 
 # Commands
@@ -25,7 +25,13 @@ updated: 2026-07-21
 
 ## Test
 
-> Required for `/project:work` — `/project:work` precondition checks fail if this is `<TBD>`.
+> Required for `/project:work` — `/project:work` precondition checks fail if this is `<TBD>`. Keep it one plain command line: it is allowlisted verbatim in `.claude/settings.json`, which is what lets every role run it (`/project:init` step 5a).
+
+`<TBD>`
+
+## Architecture
+
+> The command that fails when an import breaks [[architecture#Layers]]. Must be one plain command line — it is allowlisted verbatim in `.claude/settings.json`, which is what lets every role run it. Prove it fires before trusting it (`/project:init` step 5b).
 
 `<TBD>`
 
