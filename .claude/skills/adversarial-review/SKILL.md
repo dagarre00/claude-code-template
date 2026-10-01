@@ -21,7 +21,8 @@ Work them in order, at full depth. Correctness is where most findings are; concu
 | 4 | **security** | Unvalidated input crossing a trust boundary, injection (SQL/shell/template), a secret in code or log, missing authz on a new path, unsafe deserialization |
 | 5 | **architecture** | An import pointing outward across `architecture.md § Layers` (domain or application reaching an adapter, infrastructure, or a framework type); business rules in a controller, handler or repository; a concrete dependency constructed outside the composition root; a change to the architecture rules or their check |
 | 6 | **test-integrity** | A test asserting nothing, a tautology, a mock so wide the real boundary is untested, a test that would pass without the implementation, a `[x]` case with no test |
-| 7 | **other** | Dead code, a stale wiki claim in the same diff, a misleading name, a comment contradicting the code |
+| 7 | **complexity** | Code the cases do not force: dead code, an abstraction with one implementation (a port `§ Layers` requires excepted), a hand-rolled standard-library or platform feature, a new dependency a few lines would replace, a helper duplicating one already in the repo, a `shortcut:` comment with no revisit trigger. Prefix the claim `delete:`, `stdlib:`, `native:`, `yagni:` or `shrink:` and name the replacement |
+| 8 | **other** | A stale wiki claim in the same diff, a misleading name, a comment contradicting the code |
 
 Verify before asserting: read the test before claiming it asserts nothing; grep for callers before claiming a path is unreachable. An unverified finding is `confidence: low` or dropped. Score against the spec and the declared layers, never against taste.
 
@@ -38,6 +39,7 @@ Severity has procedural consequences — `critical`/`major` interrupt the human 
 
 - The floor governs **write-up, never depth of sweep**. A `critical` in a category you skipped is a failed review.
 - Unsure between `critical` and `major` → `major`, saying why it might be higher. Unsure whether something is a `nit` → it is a `minor`.
+- A `complexity` finding is `minor` at most. If the extra code also produces a wrong result, that is a `correctness` finding, graded as one.
 - Don't pad the count; two honest findings beat twelve.
 
 ## Report format

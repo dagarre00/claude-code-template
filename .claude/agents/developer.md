@@ -9,6 +9,7 @@ permissionMode: acceptEdits
 skills:
   - subagent-contract
   - tdd-loop
+  - simplicity-ladder
   - clean-architecture
   - gotcha-recording
   - decision-recording

@@ -32,7 +32,7 @@ The conductor re-proves the case after you finish: your tests must pass with you
 
 ## Green
 
-1. Write the **smallest** code that makes the test pass. No future-proofing, no helpers or abstractions the test does not force.
+1. Write the **smallest** code that makes the test pass, picked by climbing `simplicity-ladder` first. No future-proofing, no helpers or abstractions the test does not force.
 2. Place it in the layer `architecture.md § Layers` assigns, and depend only in the allowed direction.
 3. Re-run the test command (and the architecture check, if the project has one). The new test passes; nothing else breaks.
 4. Broke another test → you over-reached. Narrow the change and retry.

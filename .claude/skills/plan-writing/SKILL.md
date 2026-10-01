@@ -75,3 +75,4 @@ When re-dispatched after a failed developer attempt, **overwrite the plan with a
 - **Cross-entity batching without a precedent.** A batch crossing architectural boundaries with no prior cycle doing so → stop and report.
 - **Skipping the risks section.** "No risks" on a complex todo usually means it should not have been flagged `[complex]` — say which.
 - **Far more steps than cases.** Usually scope creep; re-check `## Out of scope`.
+- **Over-building.** A new file, abstraction or dependency no case forces. Before planning one, check the codebase, the standard library, the platform and the installed dependencies, and say in `## Approach` which one the plan reuses, or why none fits. A port `§ Layers` requires is not over-building.

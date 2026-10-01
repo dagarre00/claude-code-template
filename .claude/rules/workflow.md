@@ -50,7 +50,7 @@ Read-only roles have no edit tools and run in `dontAsk` mode: any command not al
 
 ## Skills
 
-Each is `.claude/skills/<name>/SKILL.md`. **Conductor:** `subagent-dispatch`, `dispatch-handoff`, `finding-disposition`, `feature-branching`, `pr-create`, `git-recovery`, `human-checkpoint`, `update-toolkit`. **Preloaded into roles:** `subagent-contract` (all), `plan-writing` and `spec-writing` (planner), `plan-review` (plan-adversary), `tdd-loop`, `clean-architecture`, `gotcha-recording` and `decision-recording` (developer), `adversarial-review` (adversary), `wiki-update` (wiki-maintainer). `design-system-check` joins the developer's list on projects with a UI surface.
+Each is `.claude/skills/<name>/SKILL.md`. **Conductor:** `subagent-dispatch`, `dispatch-handoff`, `finding-disposition`, `feature-branching`, `pr-create`, `git-recovery`, `human-checkpoint`, `update-toolkit`. **Preloaded into roles:** `subagent-contract` (all), `plan-writing` and `spec-writing` (planner), `plan-review` (plan-adversary), `tdd-loop`, `simplicity-ladder`, `clean-architecture`, `gotcha-recording` and `decision-recording` (developer), `adversarial-review` (adversary), `wiki-update` (wiki-maintainer). `design-system-check` joins the developer's list on projects with a UI surface.
 
 ## Wiki map
 

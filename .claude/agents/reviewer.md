@@ -32,6 +32,8 @@ Track the entities with a todo list as you go: a whole-repo audit is long, and a
 - **Test quality.** Real boundaries or mocks of everything? Behavior or implementation details?
 - **Architecture.** Every import respects `architecture.md § Layers`; the check covers every source directory and would fail on a violation (one watching the wrong paths passes forever); no business logic in adapters, controllers or repositories; no framework types in the domain.
 - **Security and correctness.** OWASP-class issues, injection, missing input validation, unhandled error paths, races.
+- **Over-engineering.** Code no case forces: dead code, abstractions with one implementation (ports `§ Layers` requires excepted), hand-rolled standard-library or platform features, dependencies a few lines would replace, duplicated helpers. Each is a Warning prefixed `delete:`, `stdlib:`, `native:`, `yagni:` or `shrink:`, naming the replacement.
+- **Shortcut ledger.** Grep the source for `shortcut:` comments. One whose revisit trigger has already happened, or that names no trigger, is a recommended todo.
 - **Stale claims.** Wiki references to functions, files or commands that no longer exist — grep to verify.
 - **Missing ADRs.** Non-trivial design choices with no `docs/wiki/decisions/` page.
 - **Two-strike candidates.** Code rewritten repeatedly that should be re-specced from scratch.

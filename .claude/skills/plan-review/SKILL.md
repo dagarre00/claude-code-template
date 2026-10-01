@@ -18,7 +18,7 @@ Work them in order. 1–3 are where re-work comes from; 4–6 are where the surp
 | 1 | **spec fidelity** | A named Behavior case with no step; a step no case asks for; a plan that restates a case instead of decomposing it |
 | 2 | **testability** | A step with no observable outcome to assert; a step that cannot fail Red on its own; "add validation" with no stated input that must be rejected |
 | 3 | **sequencing** | A step depending on a later one; a hidden prerequisite (migration, fixture, config, seeded data); two steps that must land together but are listed apart |
-| 4 | **scope** | Creep past the todo; files outside the entity; a case needing work no step mentions |
+| 4 | **scope** | Creep past the todo; files outside the entity; a case needing work no step mentions; over-building — a new file, abstraction or dependency no case forces, or one the codebase, standard library or platform already provides (a port `§ Layers` requires excepted) |
 | 5 | **known traps** | Walks into a `gotchas.md` entry, contradicts an ADR, breaks `architecture.md § Conventions`, or places code in the wrong layer / adds a dependency `§ Layers` forbids |
 | 6 | **ambiguity** | A step whose "done" is not decidable; a todo with two readings; scope that rests on an unstated assumption. **This category escalates to the human** |
 
