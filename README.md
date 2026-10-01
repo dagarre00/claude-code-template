@@ -45,7 +45,7 @@ Then, inside Claude Code:
 /project:sync-template   # adopted projects: pull template fixes
 ```
 
-Each takes free-text context (`/project:work the login endpoint`, `/project:review security only`) that scopes it without bypassing a precondition, the Red phase or a human checkpoint. On an existing codebase `/project:init` detects the stack rather than assuming a blank slate; old docs are folded in one source at a time with `/project:wiki <path>`. Open `docs/wiki/` in Obsidian to watch the agent's knowledge.
+Each takes free-text context (`/project:work the login endpoint`, `/project:review security only`) that scopes it without bypassing a precondition, the Red phase or a human checkpoint. On an existing codebase `/project:init` detects the stack rather than assuming a blank slate; old docs are folded in one source at a time with `/project:wiki <path>`. Open `docs/wiki/` in Obsidian to watch the agent's knowledge. For complete example sessions of `init`, `interview` and `work` (default, `fast` and `handoff` modes), see [`WORKFLOW-EXAMPLES.md`](WORKFLOW-EXAMPLES.md).
 
 ## Roles and models
 
