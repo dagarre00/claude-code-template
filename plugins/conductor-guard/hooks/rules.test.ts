@@ -29,7 +29,7 @@ describe('rule 11: raw sources', () => {
 describe('rule 21: destructive git', () => {
   test('names each operation that discards working-tree changes', () => {
     expect(destructiveGit('git stash')).toBe('git stash')
-    expect(destructiveGit('git stash push -m wip')).toBe('git stash')
+    expect(destructiveGit('git stash push --include-untracked')).toBe('git stash')
     expect(destructiveGit('git reset --hard HEAD~1')).toBe('git reset --hard')
     expect(destructiveGit('git checkout -- src/a.ts')).toBe('git checkout --')
     expect(destructiveGit('git checkout .')).toBe('git checkout .')
@@ -46,6 +46,15 @@ describe('rule 21: destructive git', () => {
     expect(destructiveGit('git checkout develop')).toBeUndefined()
     expect(destructiveGit('git clean -n')).toBeUndefined()
     expect(destructiveGit('echo git reset --hard is forbidden')).toBeUndefined()
+  })
+
+  test("passes the workflow's own forms: the Red check's restores and the tagged stash", () => {
+    expect(destructiveGit("git restore --source=HEAD~1 --staged --worktree -- . ':(exclude)test'")).toBeUndefined()
+    expect(destructiveGit('git restore --source=HEAD --staged --worktree -- .')).toBeUndefined()
+    expect(destructiveGit('git stash push -u -m "wip: tag"')).toBeUndefined()
+    expect(destructiveGit('git stash apply 1a2b3c')).toBeUndefined()
+    expect(destructiveGit('git stash push -u')).toBe('git stash')
+    expect(destructiveGit('git stash pop')).toBe('git stash')
   })
 })
 

@@ -17,11 +17,18 @@ export function destructiveGit(command: string): string | undefined {
     const [sub, ...args] = words.slice(words[1] === '-C' ? 3 : 1)
     const has = (...flags: string[]) => args.some(a => flags.includes(a))
 
-    if (sub === 'stash' && !['list', 'show'].includes(args[0] ?? '')) return 'git stash'
+    // The workflow's own forms pass, each run after its skill accounts for the
+    // tree: the tagged stash and `stash apply <sha>` (feature-branching), and a
+    // restore from a named commit (subagent-dispatch's Red check).
+    const isTaggedStash = has('-m', '--message') || ['list', 'show', 'apply'].includes(args[0] ?? '')
+    const isStagedOnly = has('--staged', '-S') && !has('--worktree', '-W')
+    const hasSource = args.some(a => a === '-s' || a.startsWith('--source'))
+
+    if (sub === 'stash' && !isTaggedStash) return 'git stash'
     if (sub === 'reset' && has('--hard')) return 'git reset --hard'
     if (sub === 'checkout' && has('--')) return 'git checkout --'
     if (sub === 'checkout' && has('.')) return 'git checkout .'
-    if (sub === 'restore' && !(has('--staged', '-S') && !has('--worktree', '-W'))) return 'git restore'
+    if (sub === 'restore' && !isStagedOnly && !hasSource) return 'git restore'
     if (sub === 'clean' && args.some(a => a === '--force' || /^-[a-z]*f/.test(a)) && !has('-n', '--dry-run')) {
       return 'git clean'
     }
