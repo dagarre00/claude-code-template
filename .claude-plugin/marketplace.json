@@ -1,0 +1,11 @@
+{
+  "name": "claude-code-template",
+  "owner": { "name": "dagarre00" },
+  "plugins": [
+    {
+      "name": "conductor-guard",
+      "source": "./plugins/conductor-guard",
+      "description": "Enforces the template's behavioral rules on tool calls and shows the cycle's state above the prompt."
+    }
+  ]
+}

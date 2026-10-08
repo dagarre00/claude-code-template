@@ -76,8 +76,27 @@ The main session is the **conductor**: it runs the commands, dispatches the role
 | A reviewer holds none of the author's context | Roles are dispatched by `subagent_type`, never as a fork, so they see none of the conversation — only a brief that the procedure keeps to IDs and paths. |
 | Tests fail before the implementation, pass after | The conductor proves each developer case: the full suite passes, the case is committed, then everything but its tests is restored from the parent commit and the tests must fail. Only then is it pushed. |
 | Clean architecture | `docs/wiki/architecture.md § Layers` declares the dependency rule; `/project:init` installs a stack-specific check (dependency-cruiser, import-linter, ArchUnit, …), proves it fails on a planted violation, and allowlists it for every role. |
+| Raw sources, a shared tree, role dispatch | The `conductor-guard` plugin (below) refuses an edit to an existing `docs/raw/` file (rule 11), `git stash`/`reset --hard`/`checkout --`/`restore`/`clean -f` over a dirty tree, naming the paths (rule 21) — the workflow's own `restore --source=<commit>` (the Red check) and tagged `stash push -m` pass — and an Agent call as a fork or through `general-purpose` (rule 10). A refusal the human overrides, such as rule 5's approved `reset --hard`, they run themselves with `! <command>`. |
 
-What stays discipline: the conductor itself (nothing stops it writing code directly or skipping a step), a reviewer choosing not to open `.handoff/` in the shared checkout, and the wiki-with-code and log checks in the `pr-create` skill, which only CI you write can back.
+What stays discipline: the conductor itself (nothing stops it writing code directly or skipping a step), a reviewer choosing not to open `.handoff/` in the shared checkout, and the wiki-with-code and log checks in the `pr-create` skill, which only CI you write can back — the plugin only raises a toast when a commit carries no `docs/wiki/log.md` entry (rule 19).
+
+## The conductor-guard plugin
+
+`plugins/conductor-guard/` is a Claude Code plugin that turns the rules above into checks on every tool call, and shows a band above the prompt with the cycle's state:
+
+```
+feat/auth-login · auth-login 2/5 cases · 1 unpushed · 3 changed · 4 P0 todos · backlog 12/40
+```
+
+— the branch, the Behavior cases ticked on the entity the branch builds, commits not yet pushed, changed files, the open todos in the highest priority that has any, and the open `[adversary]` backlog against `FINDINGS_MAX`. The log toast stays quiet until `/project:init` has filled `CLAUDE.md`.
+
+Install it once per machine from a terminal session:
+
+```
+/plugin install conductor-guard --marketplace dagarre00/claude-code-template
+```
+
+or, from a checkout, load it for one session with `claude --plugin-dir plugins/conductor-guard`. Its tests run with `claude plugin test plugins/conductor-guard`.
 
 ## What the agent decides alone
 
@@ -98,6 +117,7 @@ docs/
 ├── raw/               # immutable sources (interviews, research, documents)
 └── wiki/              # the agent-maintained knowledge base (requirements, architecture, entities, decisions, log, …)
 CLAUDE.md              # this project's facts only; /project:init fills them
+plugins/conductor-guard/  # rule checks on tool calls and the cycle band (.claude-plugin/marketplace.json lists it)
 ```
 
 ## Philosophy
