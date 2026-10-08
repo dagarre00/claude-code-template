@@ -85,10 +85,10 @@ What stays discipline: the conductor itself (nothing stops it writing code direc
 `plugins/conductor-guard/` is a Claude Code plugin that turns the rules above into checks on every tool call, and shows a band above the prompt with the cycle's state:
 
 ```
-feat/auth-login · auth-login 2/5 cases · 1 unpushed · 3 changed · backlog 12/40
+feat/auth-login · auth-login 2/5 cases · 1 unpushed · 3 changed · 4 P0 todos · backlog 12/40
 ```
 
-— the branch, the Behavior cases ticked on the entity the branch builds, commits not yet pushed, changed files, and the open `[adversary]` backlog against `FINDINGS_MAX`. The log toast stays quiet until `/project:init` has filled `CLAUDE.md`.
+— the branch, the Behavior cases ticked on the entity the branch builds, commits not yet pushed, changed files, the open todos in the highest priority that has any, and the open `[adversary]` backlog against `FINDINGS_MAX`. The log toast stays quiet until `/project:init` has filled `CLAUDE.md`.
 
 Install it once per machine from a terminal session:
 

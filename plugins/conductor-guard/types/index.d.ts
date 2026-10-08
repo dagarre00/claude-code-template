@@ -4,6 +4,7 @@ export type Band = {
   unpushed: number | null
   dirty: number
   cases: { slug: string; done: number; total: number } | null
+  todos: { priority: string; open: number } | null
   backlog: { open: number; max: number } | null
 }
 

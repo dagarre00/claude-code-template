@@ -55,12 +55,25 @@ export function countBacklog(todos: string): { open: number; max: number } {
   return { open, max }
 }
 
+// todos.md: each queue section names its priority in its heading, `## Now
+// (P0 — next)`; the band counts the open items of the first that has any.
+export function topTodos(todos: string): { priority: string; open: number } | null {
+  for (const section of todos.split(/^(?=## )/m)) {
+    const priority = /^## [^\n(]*\((P\d)\b/.exec(section)?.[1]
+    if (priority === undefined) continue
+    const open = section.match(/^- \[ \] /gm)?.length ?? 0
+    if (open > 0) return { priority, open }
+  }
+  return null
+}
+
 export function bandText(band: Band): string {
   const parts = [band.branch]
   if (band.cases) parts.push(`${band.cases.slug} ${band.cases.done}/${band.cases.total} cases`)
   if (band.unpushed === null) parts.push('no upstream')
   else if (band.unpushed > 0) parts.push(`${band.unpushed} unpushed`)
   parts.push(band.dirty > 0 ? `${band.dirty} changed` : 'clean')
+  if (band.todos) parts.push(`${band.todos.open} ${band.todos.priority} todos`)
   if (band.backlog) parts.push(`backlog ${band.backlog.open}/${band.backlog.max}`)
   return parts.join(' · ')
 }

@@ -34,7 +34,7 @@ function repo(on: On, git: Record<string, string>, files: Record<string, string>
 const GIT = { 'rev-parse': 'feat/auth\n', 'rev-list': '1\n', 'status --porcelain': ' M src/a.ts\n' }
 const FILES = {
   'docs/wiki/entities/auth.md': '- [x] B1: When a, b.\n- [ ] B2: When c, d.\n',
-  'docs/wiki/todos.md': '`FINDINGS_MAX = 40`\n- [ ] P2 x [adversary]\n',
+  'docs/wiki/todos.md': '`FINDINGS_MAX = 40`\n## Now (P0 — next)\n_(Empty.)_\n## Later (P2)\n- [ ] P2 x [adversary]\n',
 }
 
 for (const surface of ['terminal', 'desktop'] as const) {
@@ -44,7 +44,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
 
     const ui = await $.ui.mount({ plugin: 'conductor-guard', surface, component: 'AbovePrompt', props: PROPS })
 
-    expect(await ui.find({ text: 'feat/auth · auth 1/2 cases · 1 unpushed · 1 changed · backlog 1/40' })).toBeDefined()
+    expect(await ui.find({ text: 'feat/auth · auth 1/2 cases · 1 unpushed · 1 changed · 1 P2 todos · backlog 1/40' })).toBeDefined()
   })
 }
 

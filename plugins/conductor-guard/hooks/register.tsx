@@ -11,6 +11,7 @@ import {
   isCommit,
   isForbiddenDispatch,
   isRawSource,
+  topTodos,
 } from './rules'
 
 const band = atom({ plugin: 'conductor-guard', key: 'band' } as const, null)
@@ -37,6 +38,7 @@ async function readBand($: EngineInterface): Promise<Band | null> {
     unpushed: unpushed === undefined ? null : Number(unpushed),
     dirty: porcelain === '' ? 0 : porcelain.split('\n').length,
     cases: slug !== undefined && page !== undefined ? { slug, ...countCases(page) } : null,
+    todos: todos === undefined ? null : topTodos(todos),
     backlog: todos === undefined ? null : countBacklog(todos),
   }
 }

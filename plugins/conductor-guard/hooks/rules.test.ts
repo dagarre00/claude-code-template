@@ -9,6 +9,7 @@ import {
   isCommit,
   isForbiddenDispatch,
   isRawSource,
+  topTodos,
 } from './rules'
 
 describe('rule 11: raw sources', () => {
@@ -100,6 +101,15 @@ describe('band', () => {
     expect(countBacklog(todos)).toEqual({ open: 2, max: 25 })
   })
 
+  test('the top todos are the open items of the highest priority that has any', () => {
+    const todos = (p0: string, p1: string) =>
+      ['## P0 saturation threshold', '- [ ] not a todo', '## Now (P0 — next)', p0, '## Next (P1)', p1, '## Later (P2)', '- [ ] P2 c'].join('\n')
+    expect(topTodos(todos('- [ ] a\n- [x] done\n- [ ] [adversary] b', '- [ ] c'))).toEqual({ priority: 'P0', open: 2 })
+    expect(topTodos(todos('_(Empty.)_', '- [ ] c'))).toEqual({ priority: 'P1', open: 1 })
+    expect(topTodos(todos('_(Empty.)_', '_(Empty.)_'))).toEqual({ priority: 'P2', open: 1 })
+    expect(topTodos('## Now (P0 — next)\n_(Empty.)_')).toBeNull()
+  })
+
   test('the text joins what is known and drops what is not', () => {
     expect(
       bandText({
@@ -107,12 +117,13 @@ describe('band', () => {
         unpushed: 2,
         dirty: 3,
         cases: { slug: 'auth', done: 1, total: 4 },
+        todos: { priority: 'P0', open: 3 },
         backlog: { open: 12, max: 40 },
       }),
-    ).toBe('feat/auth · auth 1/4 cases · 2 unpushed · 3 changed · backlog 12/40')
+    ).toBe('feat/auth · auth 1/4 cases · 2 unpushed · 3 changed · 3 P0 todos · backlog 12/40')
 
     expect(
-      bandText({ branch: 'develop', unpushed: null, dirty: 0, cases: null, backlog: null }),
+      bandText({ branch: 'develop', unpushed: null, dirty: 0, cases: null, todos: null, backlog: null }),
     ).toBe('develop · no upstream · clean')
   })
 })
