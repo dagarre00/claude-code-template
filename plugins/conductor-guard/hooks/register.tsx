@@ -12,13 +12,16 @@ import {
   isForbiddenDispatch,
   isRawSource,
   openTodos,
+  readUsage,
   topTodos,
+  usageParts,
 } from './rules'
 import { SPEC_PAGES, entityLabel, isEntityPage, pageBody, pageTitle, todosLabel } from './nav'
 
 const band = atom({ plugin: 'conductor-guard', key: 'band' } as const, null)
 const page = atom({ plugin: 'conductor-guard', key: 'page' } as const, null)
 const menu = atom({ plugin: 'conductor-guard', key: 'menu' } as const, null)
+const usage = atom({ plugin: 'conductor-guard', key: 'usage' } as const, null)
 const PANE = 'wiki-nav'
 const MENU = 'workflow'
 const WIKI = 'docs/wiki'
@@ -202,7 +205,17 @@ export const register: Register = on => {
     } catch {}
     const started = await next(e)
     void refresh($)
+    // The figures so far; each later move arrives as session.measure.
+    void $.session
+      .usage()
+      .then(now => update($, usage, () => readUsage(now.context, now.rateLimits)))
+      .catch(() => {})
     return started
+  })
+
+  on('session.measure', async ($, e, next) => {
+    await update($, usage, () => readUsage(e.context, e.rateLimits)).catch(() => {})
+    return next(e)
   })
 
   on('command.run', { command: 'wiki-nav' }, async $ => {
@@ -296,7 +309,8 @@ export const register: Register = on => {
     if (shown === null || e.props.hasSurvey) return next(e)
 
     const { Box, Text, Button } = $.ui.resolve(e)
-    const [branch, ...rest] = bandParts(shown)
+    const measured = await read($, usage)
+    const [branch, ...rest] = [...bandParts(shown), ...(measured === null ? [] : usageParts(measured))]
     return (
       <Box flexDirection="row" gap={1}>
         <Text bold color={branch!.color} backgroundColor="claude">{` ${branch!.text} `}</Text>

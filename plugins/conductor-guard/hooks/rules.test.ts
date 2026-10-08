@@ -12,6 +12,8 @@ import {
   isRawSource,
   openTodos,
   topTodos,
+  readUsage,
+  usageParts,
 } from './rules'
 
 describe('rule 11: raw sources', () => {
@@ -176,5 +178,36 @@ describe('band', () => {
         backlog: { open: 40, max: 40 },
       }),
     ).toEqual(['inverseText', 'success', 'success', 'error', 'error'])
+  })
+})
+
+describe('usage', () => {
+  test('the context fill and the 5h window read from the measured figures', () => {
+    expect(readUsage({ window: 200000, tokens: 84000, percent: 42 }, [
+      { kind: 'seven_day', percentUsed: 9 },
+      { kind: 'five_hour', percentUsed: 17.5 },
+    ])).toEqual({ context: 42, fiveHour: 17.5 })
+
+    // A fresh window has no fill yet, and off a subscription there is no 5h window.
+    expect(readUsage({ window: 200000 }, [])).toEqual({ context: null, fiveHour: null })
+  })
+
+  test('each figure is a six-cell bar with its percentage', () => {
+    expect(usageParts({ context: 42, fiveHour: 17.5 }).map(p => p.text)).toEqual([
+      'ctx ███░░░ 42%',
+      '5h █░░░░░ 18%',
+    ])
+    expect(usageParts({ context: 0, fiveHour: 100 }).map(p => p.text)).toEqual([
+      'ctx ░░░░░░ 0%',
+      '5h ██████ 100%',
+    ])
+    // Past 100 on an exceeded limit the bar stays full.
+    expect(usageParts({ context: null, fiveHour: 104 }).map(p => p.text)).toEqual(['5h ██████ 104%'])
+    expect(usageParts({ context: null, fiveHour: null })).toEqual([])
+  })
+
+  test('a bar turns warning from 70% and error from 90%', () => {
+    expect(usageParts({ context: 69, fiveHour: 70 }).map(p => p.color)).toEqual(['subtle', 'warning'])
+    expect(usageParts({ context: 89.9, fiveHour: 90 }).map(p => p.color)).toEqual(['warning', 'error'])
   })
 })

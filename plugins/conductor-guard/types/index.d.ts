@@ -16,9 +16,16 @@ export type Menu = {
   unpushed: string[]
 }
 
+// The session's usage the band draws as bars: whole or one-decimal percentages,
+// null until the engine has a reading.
+export type Usage = {
+  context: number | null
+  fiveHour: number | null
+}
+
 declare module 'claude-code' {
   interface PluginState {
     // `page`: the wiki navigator's open page, a repository path; null shows the list.
-    'conductor-guard': { band: Band | null; page: string | null; menu: Menu | null }
+    'conductor-guard': { band: Band | null; page: string | null; menu: Menu | null; usage: Usage | null }
   }
 }

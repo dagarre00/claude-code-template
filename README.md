@@ -86,10 +86,10 @@ What stays discipline: the conductor itself (nothing stops it writing code direc
 `plugins/conductor-guard/` is a Claude Code plugin that turns the rules above into checks on every tool call, and shows a band above the prompt with the cycle's state:
 
 ```
-feat/auth-login · auth-login 2/5 cases · 1 unpushed · 3 changed · 4 P0 todos · backlog 12/40
+feat/auth-login · auth-login 2/5 cases · 1 unpushed · 3 changed · 4 P0 todos · backlog 12/40 · ctx ███░░░ 42% · 5h █░░░░░ 18%
 ```
 
-— the branch, the Behavior cases ticked on the entity the branch builds, commits not yet pushed, changed files, the open todos in the highest priority that has any, and the open `[adversary]` backlog against `FINDINGS_MAX`. The log toast stays quiet until `/project:init` has filled `CLAUDE.md`.
+— the branch, the Behavior cases ticked on the entity the branch builds, commits not yet pushed, changed files, the open todos in the highest priority that has any, the open `[adversary]` backlog against `FINDINGS_MAX`, then the context window's fill and the five-hour usage window as bars that turn yellow from 70% and red from 90% (each shows once the session has a reading; off a subscription there is no 5h bar). The log toast stays quiet until `/project:init` has filled `CLAUDE.md`.
 
 `/wiki-nav` opens a pane that lists the spec — requirements, architecture, todos (with the top priority's count), gotchas, commands, git conventions — then every entity with its cases ticked and every decision by title. Press one to read it, `b` to go back. It reads the wiki each time it draws, so it is never stale; editing and search stay in your editor or Obsidian.
 
