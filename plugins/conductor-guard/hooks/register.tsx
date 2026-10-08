@@ -27,7 +27,13 @@ const git = async ($: EngineInterface, ...args: string[]) => {
 
 const text = ($: EngineInterface, path: string) => $.fs.read(path).then(t => String(t), () => undefined)
 
+// Installed for every repository, the plugin acts only where the workflow
+// lives: its rules file marks a project built from the template.
+const isWorkflowProject = ($: EngineInterface) =>
+  $.fs.exists('.claude/rules/behavioral.md').catch(() => false)
+
 async function readBand($: EngineInterface): Promise<Band | null> {
+  if (!(await isWorkflowProject($))) return null
   const branch = await git($, 'rev-parse', '--abbrev-ref', 'HEAD')
   if (branch === undefined) return null
 
@@ -47,8 +53,6 @@ async function readBand($: EngineInterface): Promise<Band | null> {
   }
 }
 
-// Runs unawaited after the hook returns, so it never rejects: a band that
-// cannot be read, or a module unloaded meanwhile, leaves the band as it was.
 type NavGroup = { heading: string; items: { path: string; label: string }[] }
 
 // The navigator's list, read fresh at each draw: the spec's fixed pages, then
@@ -80,6 +84,8 @@ async function wikiIndex($: EngineInterface): Promise<NavGroup[]> {
   return groups.filter(group => group.items.length > 0)
 }
 
+// Runs unawaited after the hook returns, so it never rejects: a band that
+// cannot be read, or a module unloaded meanwhile, leaves the band as it was.
 const refresh = async ($: EngineInterface) => {
   try {
     const next = await readBand($).catch(() => null)
@@ -90,6 +96,7 @@ const refresh = async ($: EngineInterface) => {
 // Rule 19 applies once /project:init has filled CLAUDE.md: the template
 // itself keeps no log entries.
 async function missesLogEntry($: EngineInterface): Promise<boolean> {
+  if (!(await isWorkflowProject($))) return false
   const claudeMd = await text($, 'CLAUDE.md')
   if (claudeMd === undefined || claudeMd.includes('<set during project initialization>')) return false
   if (!(await $.fs.exists('docs/wiki/log.md'))) return false
@@ -98,8 +105,8 @@ async function missesLogEntry($: EngineInterface): Promise<boolean> {
 }
 
 export const register: Register = on => {
-  on('tool.call', { tool: 'Edit' }, ($, e, next) =>
-    isRawSource(e.file_path)
+  on('tool.call', { tool: 'Edit' }, async ($, e, next) =>
+    isRawSource(e.file_path) && (await isWorkflowProject($))
       ? { deny: `conductor-guard: ${e.file_path} is a raw source; add a new file instead (rule 11).` }
       : next(e),
   ).catch(($, e, next) =>
@@ -107,15 +114,15 @@ export const register: Register = on => {
   )
 
   on('tool.call', { tool: 'Write' }, async ($, e, next) =>
-    isRawSource(e.file_path) && (await $.fs.exists(e.file_path))
+    isRawSource(e.file_path) && (await $.fs.exists(e.file_path)) && (await isWorkflowProject($))
       ? { deny: `conductor-guard: ${e.file_path} is a raw source; add a new file instead (rule 11).` }
       : next(e),
   ).catch(($, e, next) =>
     next.called ? next(e) : { deny: 'conductor-guard: its raw-source check failed (rule 11).' },
   )
 
-  on('tool.call', { tool: 'Agent' }, ($, e, next) =>
-    isForbiddenDispatch(e.subagent_type)
+  on('tool.call', { tool: 'Agent' }, async ($, e, next) =>
+    isForbiddenDispatch(e.subagent_type) && (await isWorkflowProject($))
       ? {
           deny:
             `conductor-guard: subagent_type ${e.subagent_type ?? '(none: general-purpose)'} carries the ` +
@@ -128,7 +135,7 @@ export const register: Register = on => {
 
   on('tool.call', { tool: ['Bash', 'PowerShell'] }, async ($, e, next) => {
     const operation = destructiveGit(e.command)
-    if (operation !== undefined) {
+    if (operation !== undefined && (await isWorkflowProject($))) {
       const porcelain = (await git($, 'status', '--porcelain')) ?? ''
       if (porcelain !== '') {
         return {
@@ -155,7 +162,9 @@ export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     // A refused registration costs the navigator's command, never the band.
     try {
-      await $.command.register({ name: 'wiki-nav', description: 'Browse the wiki spec in a pane' })
+      if (await isWorkflowProject($)) {
+        await $.command.register({ name: 'wiki-nav', description: 'Browse the wiki spec in a pane' })
+      }
     } catch {}
     const started = await next(e)
     void refresh($)

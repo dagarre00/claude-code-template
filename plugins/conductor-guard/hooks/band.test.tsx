@@ -18,11 +18,13 @@ function repo(on: On, git: Record<string, string>, files: Record<string, string>
     const key = Object.keys(git).find(k => sub.startsWith(k))
     return { value: key === undefined ? { ...OK, exitCode: 128, stdout: '' } : { ...OK, stdout: git[key]! } }
   })
+  const named = (path: string) => Object.keys(files).find(n => path.replaceAll('\\', '/').endsWith(n))
   on('fs.read', ($, e) => {
-    const name = Object.keys(files).find(n => e.path.replaceAll('\\', '/').endsWith(n))
+    const name = named(e.path)
     if (name === undefined) throw new Error(`ENOENT ${e.path}`)
     return { value: files[name]! }
   })
+  on('fs.exists', ($, e) => ({ value: named(e.path) !== undefined }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   // The engine's own band beneath the plugin: an empty box.
   on('ui.render', ($, e) => {
@@ -33,6 +35,7 @@ function repo(on: On, git: Record<string, string>, files: Record<string, string>
 
 const GIT = { 'rev-parse': 'feat/auth\n', 'rev-list': '1\n', 'status --porcelain': ' M src/a.ts\n' }
 const FILES = {
+  '.claude/rules/behavioral.md': '# Rules',
   'docs/wiki/entities/auth.md': '- [x] B1: When a, b.\n- [ ] B2: When c, d.\n',
   'docs/wiki/todos.md': '`FINDINGS_MAX = 40`\n## Now (P0 — next)\n_(Empty.)_\n## Later (P2)\n- [ ] P2 x [adversary]\n',
 }
@@ -55,4 +58,14 @@ test('outside a repository the band stays empty', async ($, on) => {
   const ui = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'AbovePrompt', props: PROPS })
 
   expect(await ui.find({ text: /cases|changed|clean/ })).toBeUndefined()
+})
+
+test('a repository without the workflow shows no band', async ($, on) => {
+  const { '.claude/rules/behavioral.md': _, ...plain } = FILES
+  repo(on, GIT, plain)
+  await $.session.start({ cwd: '/p', surface: 'terminal', isInteractive: true })
+
+  const ui = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'AbovePrompt', props: PROPS })
+
+  expect(await ui.find({ text: /feat\/auth/ })).toBeUndefined()
 })

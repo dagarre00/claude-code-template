@@ -29,9 +29,10 @@ Seconds on a new project; it matters on a project adopted into an existing codeb
 - `.claude/agents/` holds the eight roles (`planner`, `plan-adversary`, `developer`, `adversary`, `triage`, `reviewer`, `wiki-maintainer`, `researcher`), `.claude/commands/project/` the seven commands, `.claude/rules/` `behavioral.md` and `workflow.md`, and `.claude/skills/` one directory per skill named in `workflow.md § Skills`.
 - **The Agent tool lists the eight roles.** A missing one arrived after this session started — subagents load at session start, so ask the human to restart Claude Code, then re-run this command.
 - `.claude/settings.json` has the template's `Edit(/.handoff/**)` and `Edit(/docs/wiki/**)` allow rules — an adopted project with its own settings merges them in. Without them the planner and the wiki-maintainer, which run in `dontAsk` mode, cannot write.
+- `.claude/settings.json` declares the `conductor-guard` plugin: the `claude-code-template` entry under `extraKnownMarketplaces` and `"conductor-guard@claude-code-template": true` under `enabledPlugins` — an adopted project merges them in. Claude Code then offers the install when a session trusts the folder; `claude plugin list` shows whether it is enabled. It enforces rules 10, 11 and 21 on tool calls and draws the cycle band and `/wiki-nav`. Missing or declined is **not** a hard stop: report it and go on, since the rules still bind without it.
 - `.gitignore` carries the template's workflow lines: `.claude/settings.local.json`, `.claude/tmp/`, `.claude/worktrees/`, `.handoff/*-plan.md`, `.handoff/*-handoff.md`, `.handoff/*-report.md`, `docs/.obsidian/`. An adopted project appends the missing ones (committed in step 8) — without them the plan and handoff scratch shows as untracked and fails every clean-tree check.
 
-Report it in one line ("roles loaded, wiring intact"). A failure here is a hard stop (`human-checkpoint`): nothing past it can dispatch a role.
+Report it in one line ("roles loaded, wiring intact, conductor-guard enabled"). A failure here is a hard stop (`human-checkpoint`): nothing past it can dispatch a role.
 
 ### 0a. Review the role models
 
