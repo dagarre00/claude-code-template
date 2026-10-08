@@ -21,8 +21,10 @@ const FILES: Record<string, string> = {
 const slashed = (path: string) => path.replaceAll('\\', '/')
 const named = (path: string) => Object.keys(FILES).find(n => slashed(path).endsWith(n))
 
-// A wiki on disk, and nothing beneath the plugin's own drawing.
+// A wiki on disk, and nothing beneath the plugin's own drawing; opened panes
+// are recorded.
 function wiki(on: On) {
+  const opened: { id: string; title?: string; focus?: true; closeOnEscape?: true }[] = []
   on('fs.read', ($, e) => {
     const name = named(e.path)
     if (name === undefined) throw new Error(`ENOENT ${e.path}`)
@@ -36,10 +38,15 @@ function wiki(on: On) {
       .map(n => ({ name: n.slice(n.lastIndexOf('/') + 1), kind: 'file' as const, size: 1, mtimeMs: 0, isLink: false }))
     return { value }
   })
+  on('ui.open', ($, e) => {
+    opened.push(e)
+    return { value: { isPlaced: true } }
+  })
   on('ui.render', ($, e) => {
     const { Box } = $.ui.resolve(e)
     return <Box key="engine" />
   })
+  return { opened }
 }
 
 for (const surface of ['terminal', 'desktop'] as const) {
@@ -55,17 +62,15 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(await ui.find({ text: /README/ })).toBeUndefined()
   })
 
-  test(`pressing a page shows it without its frontmatter, and back returns on ${surface}`, async ($, on) => {
-    wiki(on)
+  test(`pressing a page shows it in the wiki pane without its frontmatter on ${surface}`, async ($, on) => {
+    const w = wiki(on)
     const ui = await $.ui.mount({ plugin: 'conductor-guard', surface, component: 'Pane', requestId: 'wiki-nav', props: PROPS })
 
     await ui.press({ key: 'docs/wiki/requirements.md' })
+
     const page = await ui.find({ type: 'Markdown' })
     expect(page?.text).toMatch(/R1: links are saved/)
     expect(page?.text).not.toMatch(/type: reference/)
-
-    await ui.press({ key: 'back' })
-    expect(await ui.find({ type: 'Markdown' })).toBeUndefined()
-    expect(await ui.find({ text: 'Todos — 2 P0' })).toBeDefined()
+    expect(w.opened).toEqual([])
   })
 }

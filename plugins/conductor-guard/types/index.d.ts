@@ -25,7 +25,12 @@ export type Usage = {
 
 declare module 'claude-code' {
   interface PluginState {
-    // `page`: the wiki navigator's open page, a repository path; null shows the list.
-    'conductor-guard': { band: Band | null; page: string | null; menu: Menu | null; usage: Usage | null }
+    // `page`: the page the wiki pane shows, a repository path; null shows its index.
+    'conductor-guard': {
+      band: Band | null
+      page: string | null
+      menu: Menu | null
+      usage: Usage | null
+    }
   }
 }

@@ -16,14 +16,24 @@ import {
   topTodos,
   usageParts,
 } from './rules'
-import { SPEC_PAGES, entityLabel, isEntityPage, pageBody, pageTitle, todosLabel } from './nav'
+import {
+  MENU_PANE,
+  SPEC_PAGES,
+  WIKI_PANE,
+  closeAction,
+  entityLabel,
+  isEntityPage,
+  pageBody,
+  pageTitle,
+  todosLabel,
+} from './nav'
 
 const band = atom({ plugin: 'conductor-guard', key: 'band' } as const, null)
 const page = atom({ plugin: 'conductor-guard', key: 'page' } as const, null)
 const menu = atom({ plugin: 'conductor-guard', key: 'menu' } as const, null)
 const usage = atom({ plugin: 'conductor-guard', key: 'usage' } as const, null)
-const PANE = 'wiki-nav'
-const MENU = 'workflow'
+const PANE = WIKI_PANE
+const MENU = MENU_PANE
 const WIKI = 'docs/wiki'
 const TODOS = `${WIKI}/todos.md`
 
@@ -33,6 +43,12 @@ const git = async ($: EngineInterface, ...args: string[]) => {
 }
 
 const text = ($: EngineInterface, path: string) => $.fs.read(path).then(t => String(t), () => undefined)
+
+// Shows a page in the wiki pane, opened and focused from another pane.
+const openPage = async ($: EngineInterface, path: string) => {
+  await update($, page, () => path)
+  await $.ui.open({ id: PANE, title: 'Wiki', focus: true, closeOnEscape: true })
+}
 
 // Installed for every repository, the plugin acts only where the workflow
 // lives: its rules file marks a project built from the template.
@@ -219,8 +235,20 @@ export const register: Register = on => {
   })
 
   on('command.run', { command: 'wiki-nav' }, async $ => {
-    await $.ui.open({ id: PANE, title: 'Wiki', focus: true })
+    await $.ui.open({ id: PANE, title: 'Wiki', focus: true, closeOnEscape: true })
     return { text: 'Wiki navigator opened.' }
+  })
+
+  // The two panes are not closed by the person: closing a wiki page goes back
+  // to the index, and closing the index or the workflow pane hides both.
+  on('ui.close', async ($, e, next) => {
+    const action = closeAction(e.id, e.origin.kind, await read($, page))
+    if (action === 'back') {
+      await update($, page, () => null)
+      return { value: undefined }
+    }
+    if (action === 'hide') await $.ui.close({ id: e.id === PANE ? MENU : PANE }).catch(() => {})
+    return next(e)
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
@@ -231,7 +259,7 @@ export const register: Register = on => {
       const body = await text($, open)
       return (
         <Box flexDirection="column">
-          <Button key="back" label="← Back" hotkey="b" onPress={() => update($, page, () => null)} />
+          <Text dimColor>Esc or ✕: back to the index</Text>
           {body === undefined ? (
             <Text dimColor>{open} is gone.</Text>
           ) : (
@@ -266,10 +294,7 @@ export const register: Register = on => {
     if (shown === null) return <Text dimColor>Reading the repository…</Text>
     const { branches, todos, changed, unpushed } = shown
 
-    const openTodosPage = async () => {
-      await update($, page, () => TODOS)
-      await $.ui.open({ id: PANE, title: 'Wiki', focus: true })
-    }
+    const openTodosPage = () => openPage($, TODOS)
 
     return (
       <Box flexDirection="column">
@@ -321,8 +346,10 @@ export const register: Register = on => {
           key="menu"
           label="≡"
           plain
-          onPress={() => {
-            void $.ui.open({ id: MENU, title: 'Workflow', focus: true })
+          onPress={async () => {
+            // The wiki opens as a tab beside the workflow pane, which keeps the focus.
+            await $.ui.open({ id: PANE, title: 'Wiki', closeOnEscape: true }).catch(() => {})
+            void $.ui.open({ id: MENU, title: 'Workflow', focus: true, closeOnEscape: true })
             void refresh($)
           }}
         />
