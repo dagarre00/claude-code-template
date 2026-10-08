@@ -12,6 +12,7 @@ import {
   isForbiddenDispatch,
   isRawSource,
   openTodos,
+  parseBranches,
   readUsage,
   topTodos,
   usageParts,
@@ -109,23 +110,35 @@ async function wikiIndex($: EngineInterface): Promise<NavGroup[]> {
 
 // Runs unawaited after the hook returns, so it never rejects: a band that
 // cannot be read, or a module unloaded meanwhile, leaves the band as it was.
+// Reads overlap, so each writes only while no later one has started: a read
+// begun before a switch would otherwise land after it and show the old branch.
+let reads = 0
 const refresh = async ($: EngineInterface) => {
+  const read = ++reads
   try {
     const next = await readBand($).catch(() => null)
+    if (read !== reads) return
     await update($, band, () => next)
     const listed = next === null ? null : await readMenu($).catch(() => null)
+    if (read !== reads) return
     await update($, menu, () => listed)
   } catch {}
+}
+
+// Opening the menu brings in the remote's branches, and drops the deleted
+// ones, before reading again; with no remote or no network it reads as it is.
+const fetchThenRefresh = async ($: EngineInterface) => {
+  await git($, 'fetch', '--prune').catch(() => undefined)
+  await refresh($)
 }
 
 const lines = (out: string | undefined) => (out ?? '').split('\n').filter(line => line.trim() !== '')
 
 async function readMenu($: EngineInterface): Promise<Menu> {
   return {
-    branches: lines(await git($, 'branch', '--format=%(HEAD) %(refname:short)')).map(line => ({
-      name: line.slice(2),
-      isCurrent: line.startsWith('*'),
-    })),
+    branches: parseBranches(
+      (await git($, 'for-each-ref', '--format=%(HEAD) %(refname)', 'refs/heads', 'refs/remotes')) ?? '',
+    ),
     todos: openTodos((await text($, TODOS)) ?? ''),
     changed: lines(await git($, 'status', '--porcelain')),
     unpushed: lines(await git($, 'log', '--oneline', '@{u}..HEAD')),
@@ -302,7 +315,7 @@ export const register: Register = on => {
         {branches.map(b => (
           <Button
             key={`branch:${b.name}`}
-            label={`${b.isCurrent ? '●' : ' '} ${b.name}`}
+            label={`${b.isCurrent ? '●' : ' '} ${b.name}${b.isRemote ? ' (remote)' : ''}`}
             plain
             onPress={() => (b.isCurrent ? undefined : void switchBranch($, b.name))}
           />
@@ -350,7 +363,7 @@ export const register: Register = on => {
             // The wiki opens as a tab beside the workflow pane, which keeps the focus.
             await $.ui.open({ id: PANE, title: 'Wiki', closeOnEscape: true }).catch(() => {})
             void $.ui.open({ id: MENU, title: 'Workflow', focus: true, closeOnEscape: true })
-            void refresh($)
+            void fetchThenRefresh($)
           }}
         />
       </Box>

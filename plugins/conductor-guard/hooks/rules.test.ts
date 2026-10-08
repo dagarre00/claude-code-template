@@ -11,6 +11,7 @@ import {
   isForbiddenDispatch,
   isRawSource,
   openTodos,
+  parseBranches,
   topTodos,
   readUsage,
   usageParts,
@@ -209,5 +210,28 @@ describe('usage', () => {
   test('a bar turns warning from 70% and error from 90%', () => {
     expect(usageParts({ context: 69, fiveHour: 70 }).map(p => p.color)).toEqual(['subtle', 'warning'])
     expect(usageParts({ context: 89.9, fiveHour: 90 }).map(p => p.color)).toEqual(['warning', 'error'])
+  })
+})
+
+describe('workflow pane: branches', () => {
+  test('lists local branches, then remote ones with no local copy, without the remote HEAD', () => {
+    const out = [
+      '  refs/heads/develop',
+      '* refs/heads/feat/login',
+      '  refs/remotes/origin/HEAD',
+      '  refs/remotes/origin/develop',
+      '  refs/remotes/origin/feat/remote-only',
+      '',
+    ].join('\n')
+    expect(parseBranches(out)).toEqual([
+      { name: 'develop', isCurrent: false, isRemote: false },
+      { name: 'feat/login', isCurrent: true, isRemote: false },
+      { name: 'feat/remote-only', isCurrent: false, isRemote: true },
+    ])
+  })
+
+  test('reads CRLF output and nothing at all', () => {
+    expect(parseBranches('* refs/heads/main\r\n')).toEqual([{ name: 'main', isCurrent: true, isRemote: false }])
+    expect(parseBranches('')).toEqual([])
   })
 })
