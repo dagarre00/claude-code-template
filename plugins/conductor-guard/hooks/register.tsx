@@ -16,14 +16,14 @@ import {
   topTodos,
   usageParts,
 } from './rules'
-import { SPEC_PAGES, entityLabel, isEntityPage, pageBody, pageRows, pageTitle, scrolledTo, todosLabel } from './nav'
+import { SPEC_PAGES, entityLabel, isEntityPage, pageBody, pageTitle, todosLabel } from './nav'
 
 const band = atom({ plugin: 'conductor-guard', key: 'band' } as const, null)
 const page = atom({ plugin: 'conductor-guard', key: 'page' } as const, null)
-const scroll = atom({ plugin: 'conductor-guard', key: 'scroll' } as const, 0)
 const menu = atom({ plugin: 'conductor-guard', key: 'menu' } as const, null)
 const usage = atom({ plugin: 'conductor-guard', key: 'usage' } as const, null)
 const PANE = 'wiki-nav'
+const PAGE_PANE = 'wiki-page'
 const MENU = 'workflow'
 const WIKI = 'docs/wiki'
 const TODOS = `${WIKI}/todos.md`
@@ -35,16 +35,12 @@ const git = async ($: EngineInterface, ...args: string[]) => {
 
 const text = ($: EngineInterface, path: string) => $.fs.read(path).then(t => String(t), () => undefined)
 
-// The wiki navigator's open page, null for the list; each page opens at its top.
-const openPage = async ($: EngineInterface, path: string | null) => {
-  await update($, scroll, () => 0)
+// A wiki page opens in a tab of its own beside the navigator's index, so the
+// engine scrolls it natively and going back is the Wiki tab (or Esc).
+const openPage = async ($: EngineInterface, path: string) => {
   await update($, page, () => path)
+  await $.ui.open({ id: PAGE_PANE, title: path.slice(path.lastIndexOf('/') + 1), focus: true, closeOnEscape: true })
 }
-
-// A page's window: the pane's rows under the back row. Its width, which the
-// scroll hook is not told, is kept from the last draw.
-const windowRows = (bodyRows: number) => Math.max(1, bodyRows - 1)
-let pageColumns = 80
 
 // Installed for every repository, the plugin acts only where the workflow
 // lives: its rules file marks a project built from the template.
@@ -230,46 +226,21 @@ export const register: Register = on => {
     return next(e)
   })
 
-  // The wheel and scroll keys over an open page move it inside its window.
-  on('ui.scroll', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
-    const open = await read($, page)
-    if (open === null) return next(e)
-    const rows = pageRows(pageBody((await text($, open)) ?? ''), pageColumns)
-    await update($, scroll, at => scrolledTo(at, e.by, rows, windowRows(e.bodyRows)))
-    return {}
-  })
-
   on('command.run', { command: 'wiki-nav' }, async $ => {
     await $.ui.open({ id: PANE, title: 'Wiki', focus: true })
     return { text: 'Wiki navigator opened.' }
   })
 
-  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text, Button, Markdown } = $.ui.resolve(e)
+  on('ui.render', { component: 'Pane', requestId: PAGE_PANE }, async ($, e) => {
+    const { Text, Markdown } = $.ui.resolve(e)
     const open = await read($, page)
+    if (open === null) return <Text dimColor>No page open.</Text>
+    const body = await text($, open)
+    return body === undefined ? <Text dimColor>{open} is gone.</Text> : <Markdown text={pageBody(body).slice(0, 100000)} />
+  })
 
-    if (open !== null) {
-      const body = await text($, open)
-      const offset = await read($, scroll)
-      pageColumns = e.props.bodyColumns
-      // The tree is exactly the pane's height, so the engine has nothing to
-      // scroll and the back row never moves: the page scrolls inside its window.
-      return (
-        <Box flexDirection="column">
-          <Button key="back" label="← Back" hotkey="b" onPress={() => openPage($, null)} />
-          <Box key="page-window" height={windowRows(e.props.scroll.bodyRows)} overflow="hidden" flexDirection="column">
-            <Box key="page-body" marginTop={0 - offset} flexDirection="column">
-              {body === undefined ? (
-                <Text dimColor>{open} is gone.</Text>
-              ) : (
-                <Markdown text={pageBody(body).slice(0, 100000)} />
-              )}
-            </Box>
-          </Box>
-        </Box>
-      )
-    }
-
+  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
+    const { Box, Text, Button } = $.ui.resolve(e)
     const groups = await wikiIndex($)
     return (
       <Box flexDirection="column">
@@ -295,10 +266,7 @@ export const register: Register = on => {
     if (shown === null) return <Text dimColor>Reading the repository…</Text>
     const { branches, todos, changed, unpushed } = shown
 
-    const openTodosPage = async () => {
-      await openPage($, TODOS)
-      await $.ui.open({ id: PANE, title: 'Wiki', focus: true })
-    }
+    const openTodosPage = () => openPage($, TODOS)
 
     return (
       <Box flexDirection="column">

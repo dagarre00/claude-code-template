@@ -142,14 +142,15 @@ test('picking the current branch does nothing', async ($, on) => {
   expect(w.ran.some(r => r.startsWith('switch'))).toBe(false)
 })
 
-test('pressing a todo opens todos.md in the wiki navigator', async ($, on) => {
+test('pressing a todo opens todos.md in the wiki page tab', async ($, on) => {
   const w = repo(on)
   const ui = await mountPane($)
 
   await ui.press({ key: 'todo:0' })
 
-  expect(w.opened).toContain('wiki-nav')
-  const nav = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'wiki-nav', props: PANE })
+  expect(w.opened).toContain('wiki-page')
+  expect(w.focused).toContain('wiki-page')
+  const nav = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'wiki-page', props: PANE })
   expect((await nav.find({ type: 'Markdown' }))?.text).toMatch(/Login lockout/)
 })
 
