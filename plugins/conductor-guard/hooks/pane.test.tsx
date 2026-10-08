@@ -16,6 +16,7 @@ const FILES: Record<string, string> = {
   'docs/wiki/entities/README.md': '# Entities',
   'docs/wiki/entities/auth.md': '# Auth\n- [x] B1: When a, b.\n- [ ] B2: When c, d.\n',
   'docs/wiki/decisions/0001-sqlite.md': '# Use SQLite',
+  'docs/wiki/gotchas.md': Array.from({ length: 60 }, (_, i) => `line ${i}`).join('\n'),
 }
 
 const slashed = (path: string) => path.replaceAll('\\', '/')
@@ -40,6 +41,8 @@ function wiki(on: On) {
     const { Box } = $.ui.resolve(e)
     return <Box key="engine" />
   })
+  // The engine beneath answers a scroll the plugin passes on, moving nothing.
+  on('ui.scroll', () => ({}))
 }
 
 for (const surface of ['terminal', 'desktop'] as const) {
@@ -70,17 +73,29 @@ for (const surface of ['terminal', 'desktop'] as const) {
   })
 }
 
-test('on a scrolled page the back bar is pinned to the top of the window', async ($, on) => {
+test('a page scrolls inside a window under a back row that stays put', async ($, on) => {
   wiki(on)
-  const at = (offset: number) => ({ ...PROPS, scroll: { offset, bodyRows: 30 } })
-  const top = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'wiki-nav', props: at(0) })
-  await top.press({ key: 'docs/wiki/requirements.md' })
-  expect(await top.find({ key: 'back-bar' })).toMatchObject({ props: { position: 'absolute', top: 0 } })
-  await top.unmount()
+  const ui = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'wiki-nav', props: PROPS })
+  await ui.press({ key: 'docs/wiki/gotchas.md' })
 
-  const scrolled = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'wiki-nav', props: at(12) })
+  // The tree is the pane's height: the back row and a window of the 29 rows left.
+  expect(await ui.find({ key: 'page-window' })).toMatchObject({ props: { height: 29, overflow: 'hidden' } })
+  expect(await ui.find({ key: 'page-body' })).toMatchObject({ props: { marginTop: 0 } })
 
-  expect(await scrolled.find({ key: 'back-bar' })).toMatchObject({ props: { position: 'absolute', top: 12 } })
-  await scrolled.press({ key: 'back' })
-  expect(await scrolled.find({ type: 'Markdown' })).toBeUndefined()
+  // The person's wheel and keys, as the engine raises them over the pane.
+  const wheel = (by: number) =>
+    $.ui.scroll({ component: 'Pane', requestId: 'wiki-nav', offset: 0, by, bodyRows: 30, contentRows: 30, origin: { kind: 'person' } } as never)
+  await wheel(3)
+  expect(await ui.find({ key: 'page-body' })).toMatchObject({ props: { marginTop: -3 } })
+  await wheel(-10)
+  expect(await ui.find({ key: 'page-body' })).toMatchObject({ props: { marginTop: 0 } })
+  await wheel(1000)
+
+  // 60 lines plus the margin in a 29-row window: the last window starts at row 33.
+  expect(await ui.find({ key: 'page-body' })).toMatchObject({ props: { marginTop: -33 } })
+  expect(await ui.find({ key: 'back' })).toBeDefined()
+
+  await ui.press({ key: 'back' })
+  await ui.press({ key: 'docs/wiki/gotchas.md' })
+  expect(await ui.find({ key: 'page-body' })).toMatchObject({ props: { marginTop: 0 } })
 })

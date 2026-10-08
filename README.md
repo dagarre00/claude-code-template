@@ -91,7 +91,7 @@ feat/auth-login · auth-login 2/5 cases · 1 unpushed · 3 changed · 4 P0 todos
 
 — the branch, the Behavior cases ticked on the entity the branch builds, commits not yet pushed, changed files, the open todos in the highest priority that has any, the open `[adversary]` backlog against `FINDINGS_MAX`, then the context window's fill and the five-hour usage window as bars that turn yellow from 70% and red from 90% (each shows once the session has a reading; off a subscription there is no 5h bar). The log toast stays quiet until `/project:init` has filled `CLAUDE.md`.
 
-`/wiki-nav` opens a pane that lists the spec — requirements, architecture, todos (with the top priority's count), gotchas, commands, git conventions — then every entity with its cases ticked and every decision by title. Press one to read it, `b` or the Back bar — pinned to the top while you scroll — to go back. It reads the wiki each time it draws, so it is never stale; editing and search stay in your editor or Obsidian.
+`/wiki-nav` opens a pane that lists the spec — requirements, architecture, todos (with the top priority's count), gotchas, commands, git conventions — then every entity with its cases ticked and every decision by title. Press one to read it, `b` or the Back row to go back; the page scrolls beneath that row, which stays put. It reads the wiki each time it draws, so it is never stale; editing and search stay in your editor or Obsidian.
 
 The band's `≡` opens the wiki navigator and the Workflow pane as two tabs, the Workflow one focused: the branches to switch to (refused over a dirty tree, rule 21), the open todos (each opens `todos.md`), and what is changed or unpushed.
 

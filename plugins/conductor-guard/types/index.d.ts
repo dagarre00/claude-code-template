@@ -26,6 +26,13 @@ export type Usage = {
 declare module 'claude-code' {
   interface PluginState {
     // `page`: the wiki navigator's open page, a repository path; null shows the list.
-    'conductor-guard': { band: Band | null; page: string | null; menu: Menu | null; usage: Usage | null }
+    'conductor-guard': {
+      band: Band | null
+      page: string | null
+      // `scroll`: the first row of the open page its window shows.
+      scroll: number
+      menu: Menu | null
+      usage: Usage | null
+    }
   }
 }

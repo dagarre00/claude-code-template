@@ -16,10 +16,11 @@ import {
   topTodos,
   usageParts,
 } from './rules'
-import { SPEC_PAGES, entityLabel, isEntityPage, pageBody, pageTitle, todosLabel } from './nav'
+import { SPEC_PAGES, entityLabel, isEntityPage, pageBody, pageRows, pageTitle, scrolledTo, todosLabel } from './nav'
 
 const band = atom({ plugin: 'conductor-guard', key: 'band' } as const, null)
 const page = atom({ plugin: 'conductor-guard', key: 'page' } as const, null)
+const scroll = atom({ plugin: 'conductor-guard', key: 'scroll' } as const, 0)
 const menu = atom({ plugin: 'conductor-guard', key: 'menu' } as const, null)
 const usage = atom({ plugin: 'conductor-guard', key: 'usage' } as const, null)
 const PANE = 'wiki-nav'
@@ -33,6 +34,17 @@ const git = async ($: EngineInterface, ...args: string[]) => {
 }
 
 const text = ($: EngineInterface, path: string) => $.fs.read(path).then(t => String(t), () => undefined)
+
+// The wiki navigator's open page, null for the list; each page opens at its top.
+const openPage = async ($: EngineInterface, path: string | null) => {
+  await update($, scroll, () => 0)
+  await update($, page, () => path)
+}
+
+// A page's window: the pane's rows under the back row. Its width, which the
+// scroll hook is not told, is kept from the last draw.
+const windowRows = (bodyRows: number) => Math.max(1, bodyRows - 1)
+let pageColumns = 80
 
 // Installed for every repository, the plugin acts only where the workflow
 // lives: its rules file marks a project built from the template.
@@ -218,6 +230,15 @@ export const register: Register = on => {
     return next(e)
   })
 
+  // The wheel and scroll keys over an open page move it inside its window.
+  on('ui.scroll', { component: 'Pane', requestId: PANE }, async ($, e, next) => {
+    const open = await read($, page)
+    if (open === null) return next(e)
+    const rows = pageRows(pageBody((await text($, open)) ?? ''), pageColumns)
+    await update($, scroll, at => scrolledTo(at, e.by, rows, windowRows(e.bodyRows)))
+    return {}
+  })
+
   on('command.run', { command: 'wiki-nav' }, async $ => {
     await $.ui.open({ id: PANE, title: 'Wiki', focus: true })
     return { text: 'Wiki navigator opened.' }
@@ -229,21 +250,21 @@ export const register: Register = on => {
 
     if (open !== null) {
       const body = await text($, open)
-      const back = '← Back'
-      // The bar is drawn last, over the page, at the window's top row, and padded
-      // to the pane's width so the line it covers does not show through.
+      const offset = await read($, scroll)
+      pageColumns = e.props.bodyColumns
+      // The tree is exactly the pane's height, so the engine has nothing to
+      // scroll and the back row never moves: the page scrolls inside its window.
       return (
         <Box flexDirection="column">
-          <Box marginTop={1} flexDirection="column">
-            {body === undefined ? (
-              <Text dimColor>{open} is gone.</Text>
-            ) : (
-              <Markdown text={pageBody(body).slice(0, 100000)} />
-            )}
-          </Box>
-          <Box key="back-bar" position="absolute" top={e.props.scroll.offset} left={0} flexDirection="row">
-            <Button key="back" label={back} hotkey="b" onPress={() => update($, page, () => null)} />
-            <Text>{' '.repeat(Math.max(0, e.props.bodyColumns - back.length - 4))}</Text>
+          <Button key="back" label="← Back" hotkey="b" onPress={() => openPage($, null)} />
+          <Box key="page-window" height={windowRows(e.props.scroll.bodyRows)} overflow="hidden" flexDirection="column">
+            <Box key="page-body" marginTop={0 - offset} flexDirection="column">
+              {body === undefined ? (
+                <Text dimColor>{open} is gone.</Text>
+              ) : (
+                <Markdown text={pageBody(body).slice(0, 100000)} />
+              )}
+            </Box>
           </Box>
         </Box>
       )
@@ -257,7 +278,7 @@ export const register: Register = on => {
           <Box key={group.heading} flexDirection="column">
             <Text bold>{group.heading}</Text>
             {group.items.map(item => (
-              <Button key={item.path} label={item.label} plain onPress={() => update($, page, () => item.path)} />
+              <Button key={item.path} label={item.label} plain onPress={() => openPage($, item.path)} />
             ))}
           </Box>
         ))}
@@ -275,7 +296,7 @@ export const register: Register = on => {
     const { branches, todos, changed, unpushed } = shown
 
     const openTodosPage = async () => {
-      await update($, page, () => TODOS)
+      await openPage($, TODOS)
       await $.ui.open({ id: PANE, title: 'Wiki', focus: true })
     }
 
