@@ -6,12 +6,17 @@
       "Edit(/docs/wiki/**)"
     ]
   },
-  "extraKnownMarketplaces": {
-    "claude-code-template": {
-      "source": { "source": "github", "repo": "dagarre00/claude-code-template", "ref": "develop" }
-    }
-  },
   "enabledPlugins": {
     "conductor-guard@claude-code-template": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-code-template": {
+      "source": {
+        "source": "github",
+        "repo": "dagarre00/claude-code-template",
+        "ref": "develop"
+      },
+      "autoUpdate": true
+    }
   }
 }
