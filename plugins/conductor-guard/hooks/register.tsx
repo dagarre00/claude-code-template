@@ -229,14 +229,22 @@ export const register: Register = on => {
 
     if (open !== null) {
       const body = await text($, open)
+      const back = '← Back'
+      // The bar is drawn last, over the page, at the window's top row, and padded
+      // to the pane's width so the line it covers does not show through.
       return (
         <Box flexDirection="column">
-          <Button key="back" label="← Back" hotkey="b" onPress={() => update($, page, () => null)} />
-          {body === undefined ? (
-            <Text dimColor>{open} is gone.</Text>
-          ) : (
-            <Markdown text={pageBody(body).slice(0, 100000)} />
-          )}
+          <Box marginTop={1} flexDirection="column">
+            {body === undefined ? (
+              <Text dimColor>{open} is gone.</Text>
+            ) : (
+              <Markdown text={pageBody(body).slice(0, 100000)} />
+            )}
+          </Box>
+          <Box key="back-bar" position="absolute" top={e.props.scroll.offset} left={0} flexDirection="row">
+            <Button key="back" label={back} hotkey="b" onPress={() => update($, page, () => null)} />
+            <Text>{' '.repeat(Math.max(0, e.props.bodyColumns - back.length - 4))}</Text>
+          </Box>
         </Box>
       )
     }

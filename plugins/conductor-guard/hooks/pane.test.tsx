@@ -69,3 +69,18 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(await ui.find({ text: 'Todos — 2 P0' })).toBeDefined()
   })
 }
+
+test('on a scrolled page the back bar is pinned to the top of the window', async ($, on) => {
+  wiki(on)
+  const at = (offset: number) => ({ ...PROPS, scroll: { offset, bodyRows: 30 } })
+  const top = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'wiki-nav', props: at(0) })
+  await top.press({ key: 'docs/wiki/requirements.md' })
+  expect(await top.find({ key: 'back-bar' })).toMatchObject({ props: { position: 'absolute', top: 0 } })
+  await top.unmount()
+
+  const scrolled = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'wiki-nav', props: at(12) })
+
+  expect(await scrolled.find({ key: 'back-bar' })).toMatchObject({ props: { position: 'absolute', top: 12 } })
+  await scrolled.press({ key: 'back' })
+  expect(await scrolled.find({ type: 'Markdown' })).toBeUndefined()
+})
