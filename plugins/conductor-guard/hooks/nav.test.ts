@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { entityLabel, isEntityPage, pageBody, todosLabel } from './nav'
+import { closeAction, entityLabel, isEntityPage, pageBody, todosLabel } from './nav'
 
 describe('wiki navigator', () => {
   test('a page body drops the frontmatter and keeps the rest', () => {
@@ -22,5 +22,22 @@ describe('wiki navigator', () => {
   test('todos are labelled by the top priority that has open items', () => {
     expect(todosLabel('## Now (P0 — next)\n- [ ] a\n- [ ] b')).toBe('Todos — 2 P0')
     expect(todosLabel('## Now (P0 — next)\n_(Empty.)_')).toBe('Todos — empty')
+  })
+})
+
+describe('closing the panes', () => {
+  test('the person closing the wiki pane on a page goes back to its index', () => {
+    expect(closeAction('wiki-nav', 'person', 'docs/wiki/todos.md')).toBe('back')
+  })
+
+  test('the person closing the wiki index or the workflow pane hides both', () => {
+    expect(closeAction('wiki-nav', 'person', null)).toBe('hide')
+    expect(closeAction('workflow', 'person', 'docs/wiki/todos.md')).toBe('hide')
+  })
+
+  test('a close the plugin or the engine makes, or of another pane, goes through', () => {
+    expect(closeAction('wiki-nav', 'plugin', 'docs/wiki/todos.md')).toBe('close')
+    expect(closeAction('workflow', 'unload', null)).toBe('close')
+    expect(closeAction('other', 'person', null)).toBe('close')
   })
 })

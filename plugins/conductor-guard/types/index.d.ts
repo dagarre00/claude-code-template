@@ -25,7 +25,7 @@ export type Usage = {
 
 declare module 'claude-code' {
   interface PluginState {
-    // `page`: the page the wiki-page tab shows, a repository path; null before one is opened.
+    // `page`: the page the wiki pane shows, a repository path; null shows its index.
     'conductor-guard': {
       band: Band | null
       page: string | null

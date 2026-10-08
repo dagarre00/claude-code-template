@@ -62,32 +62,15 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(await ui.find({ text: /README/ })).toBeUndefined()
   })
 
-  test(`pressing a page opens it in a tab of its own, the index staying, on ${surface}`, async ($, on) => {
+  test(`pressing a page shows it in the wiki pane without its frontmatter on ${surface}`, async ($, on) => {
     const w = wiki(on)
     const ui = await $.ui.mount({ plugin: 'conductor-guard', surface, component: 'Pane', requestId: 'wiki-nav', props: PROPS })
 
     await ui.press({ key: 'docs/wiki/requirements.md' })
 
-    expect(w.opened).toEqual([{ id: 'wiki-page', title: 'requirements.md', focus: true, closeOnEscape: true }])
-    expect(await ui.find({ type: 'Markdown' })).toBeUndefined()
-    expect(await ui.find({ text: 'Todos — 2 P0' })).toBeDefined()
-
-    const tab = await $.ui.mount({ plugin: 'conductor-guard', surface, component: 'Pane', requestId: 'wiki-page', props: { ...PROPS, title: 'requirements.md' } })
-    const page = await tab.find({ type: 'Markdown' })
+    const page = await ui.find({ type: 'Markdown' })
     expect(page?.text).toMatch(/R1: links are saved/)
     expect(page?.text).not.toMatch(/type: reference/)
-    expect(await tab.find({ key: 'back' })).toBeUndefined()
+    expect(w.opened).toEqual([])
   })
 }
-
-test('the page tab follows the last page pressed', async ($, on) => {
-  const w = wiki(on)
-  const ui = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'wiki-nav', props: PROPS })
-  const tab = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'wiki-page', props: PROPS })
-
-  await ui.press({ key: 'docs/wiki/requirements.md' })
-  await ui.press({ key: 'docs/wiki/entities/auth.md' })
-
-  expect(w.opened.map(o => o.title)).toEqual(['requirements.md', 'auth.md'])
-  expect((await tab.find({ type: 'Markdown' }))?.text).toMatch(/B1: When a, b/)
-})

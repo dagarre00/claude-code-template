@@ -32,3 +32,16 @@ export function todosLabel(text: string): string {
 // A decision is named by its first heading, else by its file.
 export const pageTitle = (text: string, file: string): string =>
   /^# (.+)$/m.exec(pageBody(text))?.[1]?.trim() ?? file.replace(/\.md$/, '')
+
+// The navigator's pane and the workflow pane the band's menu opens with it.
+export const WIKI_PANE = 'wiki-nav'
+export const MENU_PANE = 'workflow'
+
+// What a pane's close does. The person's close mark or Esc on a wiki page goes
+// back to the index; on the index or the workflow pane it hides both, which the
+// band's menu brings back. Any other close goes through.
+export function closeAction(id: string, origin: string, page: string | null): 'back' | 'hide' | 'close' {
+  if (origin !== 'person') return 'close'
+  if (id === WIKI_PANE && page !== null) return 'back'
+  return id === WIKI_PANE || id === MENU_PANE ? 'hide' : 'close'
+}

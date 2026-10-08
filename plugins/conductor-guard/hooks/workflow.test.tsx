@@ -31,6 +31,7 @@ function repo(on: On, { porcelain = '' } = {}) {
   const toasts: string[] = []
   const opened: string[] = []
   const focused: string[] = []
+  const escapable: string[] = []
   const git: Record<string, string> = {
     'rev-parse': 'feat/login\n',
     'rev-list': '1\n',
@@ -60,6 +61,7 @@ function repo(on: On, { porcelain = '' } = {}) {
   on('ui.open', ($, e) => {
     opened.push(e.id)
     if (e.focus) focused.push(e.id)
+    if (e.closeOnEscape) escapable.push(e.id)
     return { value: { isPlaced: true } }
   })
   on('session.start', ($, e) => ({ cwd: e.cwd }))
@@ -67,7 +69,7 @@ function repo(on: On, { porcelain = '' } = {}) {
     const { Box } = $.ui.resolve(e)
     return <Box key="engine" />
   })
-  return { ran, toasts, opened, focused }
+  return { ran, toasts, opened, focused, escapable }
 }
 
 type Kit = Parameters<Parameters<typeof test>[1]>[0]
@@ -100,6 +102,8 @@ test('the band carries a menu button that opens the wiki and workflow panes, the
 
   expect(w.opened).toEqual(['wiki-nav', 'workflow'])
   expect(w.focused).toEqual(['workflow'])
+  // Esc on either goes the way their close mark does.
+  expect(w.escapable).toEqual(['wiki-nav', 'workflow'])
 })
 
 test('the workflow pane lists branches, open todos and the status', async ($, on) => {
@@ -142,15 +146,15 @@ test('picking the current branch does nothing', async ($, on) => {
   expect(w.ran.some(r => r.startsWith('switch'))).toBe(false)
 })
 
-test('pressing a todo opens todos.md in the wiki page tab', async ($, on) => {
+test('pressing a todo opens todos.md in the wiki pane', async ($, on) => {
   const w = repo(on)
   const ui = await mountPane($)
 
   await ui.press({ key: 'todo:0' })
 
-  expect(w.opened).toContain('wiki-page')
-  expect(w.focused).toContain('wiki-page')
-  const nav = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'wiki-page', props: PANE })
+  expect(w.focused).toEqual(['wiki-nav'])
+  expect(w.escapable).toEqual(['wiki-nav'])
+  const nav = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'wiki-nav', props: PANE })
   expect((await nav.find({ type: 'Markdown' }))?.text).toMatch(/Login lockout/)
 })
 
