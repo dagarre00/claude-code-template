@@ -47,9 +47,21 @@ for (const surface of ['terminal', 'desktop'] as const) {
 
     const ui = await $.ui.mount({ plugin: 'conductor-guard', surface, component: 'AbovePrompt', props: PROPS })
 
-    expect(await ui.find({ text: 'feat/auth · auth 1/2 cases · 1 unpushed · 1 changed · 1 P2 todos · backlog 1/40' })).toBeDefined()
+    const shown = (await ui.findAll({ type: 'Text' })).map(t => t.text).join(' ')
+    expect(shown).toBe(' feat/auth  auth 1/2 cases · 1 unpushed · 1 changed · 1 P2 todos · backlog 1/40')
   })
 }
+
+test('the branch sits on a colored chip and each part keeps its own color', async ($, on) => {
+  repo(on, GIT, FILES)
+  await $.session.start({ cwd: '/p', surface: 'terminal', isInteractive: true })
+
+  const ui = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'AbovePrompt', props: PROPS })
+
+  // find matches by inclusion, outermost first: anchor to reach the part itself.
+  expect(await ui.find({ type: 'Text', text: /^ feat\/auth $/ })).toMatchObject({ props: { backgroundColor: 'claude', color: 'inverseText' } })
+  expect(await ui.find({ type: 'Text', text: /^· 1 changed$/ })).toMatchObject({ props: { color: 'warning' } })
+})
 
 test('outside a repository the band stays empty', async ($, on) => {
   repo(on, {}, {})

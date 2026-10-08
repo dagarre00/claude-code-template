@@ -74,13 +74,44 @@ export function topTodos(todos: string): { priority: string; open: number } | nu
   return null
 }
 
-export function bandText(band: Band): string {
-  const parts = [band.branch]
-  if (band.cases) parts.push(`${band.cases.slug} ${band.cases.done}/${band.cases.total} cases`)
-  if (band.unpushed === null) parts.push('no upstream')
-  else if (band.unpushed > 0) parts.push(`${band.unpushed} unpushed`)
-  parts.push(band.dirty > 0 ? `${band.dirty} changed` : 'clean')
-  if (band.todos) parts.push(`${band.todos.open} ${band.todos.priority} todos`)
-  if (band.backlog) parts.push(`backlog ${band.backlog.open}/${band.backlog.max}`)
-  return parts.join(' · ')
+// todos.md: every open item of the priority sections, in queue order.
+export function openTodos(todos: string): { priority: string; text: string }[] {
+  const items = []
+  for (const section of todos.split(/^(?=## )/m)) {
+    const priority = /^## [^\n(]*\((P\d)\b/.exec(section)?.[1]
+    if (priority === undefined) continue
+    for (const m of section.matchAll(/^- \[ \] (.+?)\r?$/gm)) items.push({ priority, text: m[1]! })
+  }
+  return items
 }
+
+// One part of the band: its text, a theme color (so it follows light and dark
+// themes) and a key the drawing gives its element. The branch comes first and
+// is drawn on a chip; the rest color by whether they need attention.
+export type BandPart = { key: string; text: string; color: string }
+
+export function bandParts(band: Band): BandPart[] {
+  const parts: BandPart[] = [{ key: 'branch', text: band.branch, color: 'inverseText' }]
+  if (band.cases) {
+    const { slug, done, total } = band.cases
+    parts.push({ key: 'cases', text: `${slug} ${done}/${total} cases`, color: done === total && total > 0 ? 'success' : 'suggestion' })
+  }
+  if (band.unpushed === null) parts.push({ key: 'unpushed', text: 'no upstream', color: 'warning' })
+  else if (band.unpushed > 0) parts.push({ key: 'unpushed', text: `${band.unpushed} unpushed`, color: 'warning' })
+  parts.push(
+    band.dirty > 0
+      ? { key: 'changed', text: `${band.dirty} changed`, color: 'warning' }
+      : { key: 'changed', text: 'clean', color: 'success' },
+  )
+  if (band.todos) {
+    const { priority, open } = band.todos
+    parts.push({ key: 'todos', text: `${open} ${priority} todos`, color: priority === 'P0' ? 'error' : 'permission' })
+  }
+  if (band.backlog) {
+    const { open, max } = band.backlog
+    parts.push({ key: 'backlog', text: `backlog ${open}/${max}`, color: open >= max ? 'error' : 'subtle' })
+  }
+  return parts
+}
+
+export const bandText = (band: Band): string => bandParts(band).map(p => p.text).join(' · ')
