@@ -13,7 +13,7 @@ updated: 2026-09-14
 # Commands
 
 > [!abstract] Essence
-> The exact shell commands that work in this repo — install, run, test, lint, build. The `developer` agent reads this file (specifically the `## Test` section) to know how to run the suite. Keep entries copy-pasteable.
+> The exact shell commands that work in this repo — install, run, test, lint, build. Keep entries copy-pasteable.
 
 ## Install
 

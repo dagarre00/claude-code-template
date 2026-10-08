@@ -12,4 +12,7 @@ updated: 2026-09-23
 
 # Log
 
+> [!abstract] Essence
+> The project's timeline: one dated entry per change to tracked files, which the rest of the wiki cites as evidence.
+
 > Append-only, oldest first. Every change to tracked files adds an entry in the same commit, headed `## [YYYY-MM-DD HH:MM] <kind>` (UTC) with kind `init`, `interview`, `work`, `pr`, `adversary`, `review`, `wiki-ingest`, `wiki-maintenance` or `chore` — see [log-and-commit](../../.claude/skills/feature-branching/log-and-commit.md). `/project:wiki` archives this file once it passes ~100 entries.
