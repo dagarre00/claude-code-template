@@ -90,6 +90,8 @@ feat/auth-login · auth-login 2/5 cases · 1 unpushed · 3 changed · 4 P0 todos
 
 — the branch, the Behavior cases ticked on the entity the branch builds, commits not yet pushed, changed files, the open todos in the highest priority that has any, and the open `[adversary]` backlog against `FINDINGS_MAX`. The log toast stays quiet until `/project:init` has filled `CLAUDE.md`.
 
+`/wiki-nav` opens a pane that lists the spec — requirements, architecture, todos (with the top priority's count), gotchas, commands, git conventions — then every entity with its cases ticked and every decision by title. Press one to read it, `b` to go back. It reads the wiki each time it draws, so it is never stale; editing and search stay in your editor or Obsidian.
+
 Install it once per machine from a terminal session:
 
 ```

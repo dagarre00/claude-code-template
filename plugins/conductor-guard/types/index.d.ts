@@ -10,6 +10,7 @@ export type Band = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'conductor-guard': { band: Band | null }
+    // `page`: the wiki navigator's open page, a repository path; null shows the list.
+    'conductor-guard': { band: Band | null; page: string | null }
   }
 }
