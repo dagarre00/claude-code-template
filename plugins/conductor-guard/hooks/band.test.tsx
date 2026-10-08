@@ -1,0 +1,58 @@
+import type { On } from 'claude-code'
+import { expect, test } from 'claude-code/testing'
+
+const OK = { exitCode: 0, stderr: '', isStdoutTruncated: false, isStderrTruncated: false }
+const PROPS = {
+  hasSurvey: false,
+  isWorking: false,
+  maxRows: 10,
+  bodyColumns: 80,
+  scroll: { offset: 0, bodyRows: 10 },
+  view: {},
+}
+
+// A repository on feat/auth with one unpushed commit and one changed file.
+function repo(on: On, git: Record<string, string>, files: Record<string, string>) {
+  on('process.run', ($, e) => {
+    const sub = e.argv.slice(1).join(' ')
+    const key = Object.keys(git).find(k => sub.startsWith(k))
+    return { value: key === undefined ? { ...OK, exitCode: 128, stdout: '' } : { ...OK, stdout: git[key]! } }
+  })
+  on('fs.read', ($, e) => {
+    const name = Object.keys(files).find(n => e.path.replaceAll('\\', '/').endsWith(n))
+    if (name === undefined) throw new Error(`ENOENT ${e.path}`)
+    return { value: files[name]! }
+  })
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  // The engine's own band beneath the plugin: an empty box.
+  on('ui.render', ($, e) => {
+    const { Box } = $.ui.resolve(e)
+    return <Box key="engine" />
+  })
+}
+
+const GIT = { 'rev-parse': 'feat/auth\n', 'rev-list': '1\n', 'status --porcelain': ' M src/a.ts\n' }
+const FILES = {
+  'docs/wiki/entities/auth.md': '- [x] B1: When a, b.\n- [ ] B2: When c, d.\n',
+  'docs/wiki/todos.md': '`FINDINGS_MAX = 40`\n- [ ] P2 x [adversary]\n',
+}
+
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`the band shows the cycle's state on ${surface}`, async ($, on) => {
+    repo(on, GIT, FILES)
+    await $.session.start({ cwd: '/p', surface, isInteractive: true })
+
+    const ui = await $.ui.mount({ plugin: 'conductor-guard', surface, component: 'AbovePrompt', props: PROPS })
+
+    expect(await ui.find({ text: 'feat/auth · auth 1/2 cases · 1 unpushed · 1 changed · backlog 1/40' })).toBeDefined()
+  })
+}
+
+test('outside a repository the band stays empty', async ($, on) => {
+  repo(on, {}, {})
+  await $.session.start({ cwd: '/p', surface: 'terminal', isInteractive: true })
+
+  const ui = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'AbovePrompt', props: PROPS })
+
+  expect(await ui.find({ text: /cases|changed|clean/ })).toBeUndefined()
+})
