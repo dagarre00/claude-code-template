@@ -1,53 +1,42 @@
-# Agentic Development Template
+# Agentic Development Template — Claude Code edition
 
-A template for building software with an LLM agent as the developer, across Claude Code, Codex and Antigravity: wiki-driven, spec + TDD, progressive disclosure.
+A template for building software with Claude Code as the developer: wiki-driven, spec + TDD, progressive disclosure. This edition runs the whole workflow on Claude Code's own subagents, skills and commands — no MCP server, no other CLI, nothing to install.
 
 ## Three ideas
 
 1. **The wiki is the spec.** `docs/wiki/` is the source of truth for what the project does and how it is built. Code that disagrees with the wiki is the bug.
 2. **Progressive disclosure beats specialized agents.** One `developer` runs the whole TDD cycle, loading short, procedural, project-specific skills on demand.
-3. **One canonical source, no copies.** The workflow lives in `.agents/` and every CLI reads it there. Workers get one composed prompt and no ambient project context, so the workflow behaves the same whichever CLI runs it.
+3. **A second model reads the brief before any code exists**, and on risky cycles the diff after it lands — with none of the author's context. Reviewers raise findings; they never fix them, and every finding gets a written disposition.
 
 ## Quick start
 
-**New project** — no code or history yet. Start from the latest [release](https://github.com/dagarre00/claude-code-template/releases/latest): its `claude-code-template-<version>.zip` is the template without what only the template uses ([§ Releases](#releases)).
+Needs a recent Claude Code (built against v2.1.284): the roles use subagent `effort`, `skills`, `permissionMode` and `maxTurns` frontmatter.
+
+**New project** — no code or history yet:
 
 ```bash
-gh release download --repo dagarre00/claude-code-template --pattern '*.zip'   # or from the release page
-unzip claude-code-template-*.zip && mv claude-code-template-*/ my-project
-cd my-project  # then follow its README.md: install, name the plugin, /project:init
+git clone --branch develop --single-branch https://github.com/dagarre00/claude-code-template.git my-project
+cd my-project
+rm -rf .git      # the template's history is not your project's; /project:init starts a fresh one
+claude
 ```
 
-A clone with `.git` removed works too, but carries the template's own test suite, CI and scripts.
-
-**Existing project** — never touch its `.git`. From a checkout of this template:
-
-```bash
-bash scripts/adopt.sh /path/to/my-existing-project
-```
-
-It copies `.agents/` and `tools/workflow-mcp/` (without `node_modules/` or the template-only `test/` suite), installs the server's dependencies, writes `.mcp.json` and a per-project plugin marketplace, registers the server with `codex`/`agy` if installed, and creates `.claude/settings.json` — or, if one exists, prints the three keys to merge by hand. Then start your CLI in the project. By hand, without the script:
+**Existing project** — copy the workflow in; never touch its `.git`:
 
 ```bash
 cd my-existing-project
-cp -r <template>/.agents .
-cp -r <template>/tools/workflow-mcp tools/workflow-mcp   # skip node_modules
-rm -rf tools/workflow-mcp/test                            # template-only; also drop the "test" script from its package.json
-cp <template>/.mcp.json .
-mkdir -p .claude-plugin && cp <template>/.claude-plugin/marketplace.json .claude-plugin/
-#   set "name": "workflow-<your-dir-name>" (lowercase, non-alphanumerics → "-") — one marketplace per name per machine
-# merge into .claude/settings.json, with the same name:
-#   "extraKnownMarketplaces": {"workflow-<your-dir-name>": {"source": {"source": "directory", "path": "."}}}
-#   "enabledPlugins": {"project@workflow-<your-dir-name>": true}
-#   "claudeMdExcludes": ["**/.worktrees/**/CLAUDE.md", "**/.worktrees/**/AGENTS.md"]   # worker checkouts
-cd tools/workflow-mcp && npm ci && cd ../..
-claude
+mkdir -p .claude/commands
+cp -r <template>/.claude/agents <template>/.claude/skills <template>/.claude/rules .claude/
+cp -r <template>/.claude/commands/project .claude/commands/
+cp -rn <template>/docs .                  # only the starter pages you don't have
 ```
+
+Then by hand: merge `"permissions": { "allow": ["Edit(/.handoff/**)", "Edit(/docs/wiki/**)"] }` into `.claude/settings.json`; add the template's workflow lines to `.gitignore` (`.claude/settings.local.json`, `.claude/tmp/`, `.claude/worktrees/`, `.handoff/*-plan.md`, `.handoff/*-handoff.md`, `.handoff/*-report.md`, `docs/.obsidian/`) and `docs/wiki/log.md merge=union` to `.gitattributes`; and put the template's `# Project` block at the top of your `CLAUDE.md` (or copy its `CLAUDE.md` if you have none). Start Claude Code afterwards — roles load at session start.
 
 Then, inside Claude Code:
 
 ```
-/project:init            # verify wiring, pick models, interview, scaffold docs/wiki, runnable tests, CI
+/project:init            # check the wiring, review role models, interview, scaffold docs/wiki, runnable tests, CI
 /project:interview       # grill yourself on a feature; populate the spec
 /project:work            # top todo → branch → TDD one Behavior case at a time → PR
 /project:adversary       # a read-only second model on the diff; findings only
@@ -56,114 +45,67 @@ Then, inside Claude Code:
 /project:sync-template   # adopted projects: pull template fixes
 ```
 
-The generated [`AGENTS.md`](AGENTS.md) catalog is where they are described; [`tools/workflow-mcp/getting-started.md`](tools/workflow-mcp/getting-started.md) walks through a cycle and has the troubleshooting table. On an existing codebase `/project:init` detects the stack rather than assuming a blank slate; old docs are folded in one source at a time with `/project:wiki <path>`. Open `docs/wiki/` in Obsidian to watch the agent's knowledge.
+Each takes free-text context (`/project:work the login endpoint`, `/project:review security only`) that scopes it without bypassing a precondition, the Red phase or a human checkpoint. On an existing codebase `/project:init` detects the stack rather than assuming a blank slate; old docs are folded in one source at a time with `/project:wiki <path>`. Open `docs/wiki/` in Obsidian to watch the agent's knowledge. For complete example sessions of `init`, `interview` and `work` (default, `fast` and `handoff` modes), see [`WORKFLOW-EXAMPLES.md`](WORKFLOW-EXAMPLES.md).
 
-## What the agent decides alone
+## Roles and models
 
-It reads the wiki before changing code, writes the failing test first, commits one Behavior case at a time (test, implementation and wiki tick together, so `git bisect` works and any case reverts alone), and opens a PR once every case on the entity page is `[x]`.
+The main session is the **conductor**: it runs the commands, dispatches the roles and owns every commit. Each role is a subagent in `.claude/agents/` that pins its own model, effort, tools and preloaded skills.
 
-It stops and asks before: merging a PR, pushing to `develop` or `main` directly, force-pushing or rewriting published history, choosing between two reasonable designs, resetting after a two-strike failure, or fixing a `critical`/`major` review finding. Review findings become todos by default — nothing is fixed on a reviewer's say-so. Review roles never edit code, `/project:review` never runs inside `/project:work`, and the wiki health pass runs only when you ask.
+| Role | Model · effort | Access | Dispatched by |
+| --- | --- | --- | --- |
+| `planner` | opus · xhigh | writes only its plan file | `/project:work`, complex or batched todos |
+| `plan-adversary` | sonnet · high | read-only | `/project:work`, every cycle |
+| `developer` | sonnet · medium | writes the case's code, tests and wiki page | `/project:work`, one Behavior case per dispatch |
+| `adversary` | opus · high | read-only | `/project:work` on complex cycles, `/project:adversary` |
+| `triage` | sonnet · high | read-only | the conductor, while disposing of findings |
+| `reviewer` | opus · high | read-only | `/project:review` |
+| `wiki-maintainer` | sonnet · medium | writes `docs/wiki/` | `/project:wiki` |
+| `researcher` | sonnet · medium | writes one `docs/raw/research/` file, web | `/project:wiki search for …` |
+
+**Why these.** Opus goes where a role runs rarely and a miss costs a cycle: decomposing complex work, hunting defects in a diff, the periodic audit. Sonnet runs what happens every cycle. Effort follows the task: `xhigh` for the planner, whose decisions shape every case after it; `high` where edge cases and verification decide the outcome; `medium` for well-specified execution — the developer's one case is the most frequent dispatch, and the conductor's Red check backs it. The two reviews that bracket the developer run on a different model from it, so a second reader is a second model, not just a second context.
+
+**Changing one:** edit `model`/`effort` in `.claude/agents/<role>.md` and restart the session. `/project:init` asks once. On Amazon Bedrock, Google Cloud or Microsoft Foundry the `opus`/`sonnet` aliases can resolve to older models, where `xhigh` may not exist.
 
 ## What is enforced, not just asked for
 
 | Practice | Mechanism |
 | --- | --- |
-| Tests fail before implementation, pass after | Every developer dispatch declares `test_paths`; `red-check.mjs` runs the tests with the developer's changes (they must pass), the architecture check, then reverts every other changed file to the base commit (the tests must now fail). Until it runs, `inspect_dispatch` is `incomplete`; if any phase fails, the case is rejected. A time limit stops the whole process tree on every OS. |
-| Workers stay in scope | Worktrees, `owned_paths`, read-only sandboxes, no subagent tools, and a transcript audit on agy and codex. |
-| Clean architecture | `docs/wiki/architecture.md § Layers` declares the dependency rule; `/project:init` installs a stack-specific check (dependency-cruiser, import-linter, ArchUnit, …), proves it fails on a planted violation, grants it to every worker and protects its rule files — no worker can loosen them, and `verify.mjs` fails a branch that changes them without an ADR. |
-| Wiki ships with code, log ships with change | `tools/workflow-mcp/verify.mjs --base <branch>` in CI — plus generated-file drift, wikilinks and log order. |
-| Review yield is measured | Finding counts are recorded with each review decision; `dispatch_stats` reports findings raised vs. acted on, and findings against each developer engine. |
+| Reviewers never edit | The read-only roles have no edit tools and run in `permissionMode: dontAsk`: a command not allowlisted in `.claude/settings.json` — a git write, an install, a delete — is denied, not prompted. The conductor also checks that `HEAD` and the tree are unchanged after each. |
+| Writers stay in scope | The planner and the wiki-maintainer also run in `dontAsk`, and the only writes allowed to them are `Edit(/.handoff/**)` and `Edit(/docs/wiki/**)`. |
+| Subagents are leaves | No role has the Agent tool. |
+| A reviewer holds none of the author's context | Roles are dispatched by `subagent_type`, never as a fork, so they see none of the conversation — only a brief that the procedure keeps to IDs and paths. |
+| Tests fail before the implementation, pass after | The conductor proves each developer case: the full suite passes, the case is committed, then everything but its tests is restored from the parent commit and the tests must fail. Only then is it pushed. |
+| Clean architecture | `docs/wiki/architecture.md § Layers` declares the dependency rule; `/project:init` installs a stack-specific check (dependency-cruiser, import-linter, ArchUnit, …), proves it fails on a planted violation, and allowlists it for every role. |
 
-What stays discipline is the conductor itself: nothing stops it writing code directly or skipping a step between CI runs. CI is the backstop.
+What stays discipline: the conductor itself (nothing stops it writing code directly or skipping a step), a reviewer choosing not to open `.handoff/` in the shared checkout, and the wiki-with-code and log checks in the `pr-create` skill, which only CI you write can back.
 
-## Running work on another CLI
+## What the agent decides alone
 
-The conductor — usually Claude Code — delegates through the workflow MCP server in `tools/workflow-mcp`. It is a prompt factory, not a supervisor: it composes the worker's prompt from `.agents/` and hands back a command you run.
+It reads the wiki before changing code, writes the failing test first, commits one Behavior case at a time (test, implementation and wiki tick together, so `git bisect` works and any case reverts alone), and opens a PR once every case on the entity page is `[x]`.
 
-```
-check                # drift, installed engines, missing agy grants, capability gaps, architecture enforcement
-prepare_worktree     # isolated checkout at committed HEAD (or `at` a commit) on worker/<id>, plus setup_commands to run in it
-build_worker_prompt  # role + rules + contract + the role's skills -> { command, prompt_file, report_file, … }
-inspect_dispatch     # after the run: exit code, report, worktree changes, audit, and a verdict (pass / reject / incomplete)
-record_decision      # accepted or rejected, with the reason (and finding counts for a review)
-dispatch_stats       # per engine and role: acceptance, retries, durations, tokens, review yield
-list_worktrees / remove_worktree / list_roles / sync / grant_antigravity_setup
-```
-
-The server never spawns, commits, merges or pushes — the conductor keeps all of that. The command it hands back is one line, `node tools/workflow-mcp/run-worker.mjs <dispatch dir>`, the same in bash, zsh, PowerShell or cmd on Linux, macOS or Windows (unless the checkout path holds `$`, `!`, a backtick, a quote or a `%NAME%` pair, which no quoting carries into all four; `build_worker_prompt` then warns which shells cannot run it): the runner launches the engine from the argv recorded in `run.json` (no shell in between), stops it and everything it started at `workerTimeoutSeconds` — or, through a watchdog, the moment the runner itself is stopped from outside — records the outcome and prints the report. The red check, worktree setup and `bounded.mjs` (for the conductor's own long commands, such as the test suite) run under the same guard, so no workflow command outlives its run. The full procedure is the `worker-dispatch` skill. Whatever the engine, the run leaves only the worker's final report in `report_file`; the raw codex/agy transcript, which reached 6.9 MB on one real health pass, goes to a separate `raw_file`. `npm --prefix tools/workflow-mcp run e2e -- --engine <antigravity|codex|claude>` runs one small real cycle on an engine — run it after upgrading an engine CLI or before moving a role onto one.
-
-**Which model runs which role.** `.agents/config.json` is the only place: a role declares a `profile` (`reasoning` / `balanced` / `fast`), `engines.<engine>.models.<profile>` sets each CLI's default, and `roles.<role>` can pin an engine chain, model and effort. As shipped, four roles have their own engine chain and the rest (`researcher`, `reviewer`, `triage`, `wiki-maintainer`) run on `defaultEngine`, which ships as `antigravity` — set it to `inherit` to have them follow the conducting CLI instead:
-
-| Role | Engine chain | Pinned model | Effort |
-| --- | --- | --- | --- |
-| `planner` | claude → codex | `claude-opus-5` on claude | high |
-| `developer` | agy → codex → claude | profile default (`gemini-3.8-flash` on agy) | profile default |
-| `plan-adversary` | agy → codex → claude | `gemini-3.8-flash` on agy | high |
-| `adversary` | codex → agy → claude | `gpt-6-astra` on codex | medium |
-
-These are the maintainer's working defaults; `/project:init` asks you per role. To change them without reading JSON, `node tools/workflow-mcp/config-ui.mjs` opens a local page that explains every setting, shows what each role will actually run, and saves only a config the loader accepts ([`tools/workflow-mcp/config.md`](tools/workflow-mcp/config.md) is the guide). Changes apply to the next dispatch. Pinning roles to agy needs a one-time user-global permission grant ([`tools/workflow-mcp/engine-setup.md`](tools/workflow-mcp/engine-setup.md)).
-
-**Workers get no ambient context.** Each engine runs with project-file discovery off, so the composed prompt is everything a worker sees. Verified by the same self-test on all three:
-
-| | rule 1 quoted | skills received | AGENTS.md loaded |
-| --- | --- | --- | --- |
-| claude (`--safe-mode`) | ✅ | `tdd-loop` only | no |
-| codex (`project_doc_max_bytes=0`) | ✅ | `tdd-loop` only | no |
-| agy (reads no repo files) | ✅ | `tdd-loop` only | no |
-
-Conductor-only rules (branch, commit, push, open a PR) are withheld from workers, since the worker contract forbids git; 17 of the 23 rules reach a worker, renumbered — so ask a worker for a rule by what it says, never by number. A test composes every worker prompt the commands can produce and fails if one names a skill that worker is not sent, tells it to run a repo-changing git command, or points it outside its worktree. A worker's own account of its context is unreliable: test with questions only the real thing could answer.
-
-**What each engine enforces, and what it only promises:**
-
-| | leaf worker | read-only | running commands | clean report |
-| --- | --- | --- | --- | --- |
-| claude | process (`--disallowedTools Agent,Task`) | process (no approval surface for edits) | allowlisted from `workerCommands` | `report_file`, extracted from its JSON result, with tokens, cost and denied tool calls |
-| codex | process (`agents.enabled=false`) | process (OS sandbox) | free inside the sandbox | `report_file`, via `-o` |
-| agy | process (custom agent with no subagent tools) | process (custom agent with no write tools) | allowlisted; needs a one-time user-global grant | `report_file`, extracted by the runner, plus an audit of reads outside the workspace |
-
-`build_worker_prompt` warns per dispatch about any box an engine cannot back. A worktree is not a read boundary on agy or codex (measured), which is why `inspect_dispatch` audits their transcripts for outside reads and for skills a worker opened without being sent them. Details: [`tools/workflow-mcp/engine-setup.md`](tools/workflow-mcp/engine-setup.md).
+It stops and asks before: merging a PR, pushing to `develop` or `main` directly, force-pushing or rewriting published history, choosing between two reasonable designs, resetting after a two-strike failure, or fixing a `critical`/`major` review finding. Review findings become todos by default — nothing is fixed on a reviewer's say-so. `/project:review` never runs inside `/project:work`, and the wiki health pass runs only when you ask.
 
 ## What's in the box
 
 ```
-.agents/             # THE canonical source — read by every CLI, never duplicated
-├── roles/           # planner, plan-adversary, developer, adversary, triage, reviewer, wiki-maintainer, researcher
-│                    #   deliberately NOT agents/ — no plugin loader scans it, so roles are dispatched only through the MCP
-├── skills/          # procedures (TDD, branching, plan-writing, reviews, wiki-update, …) + the update-toolkit meta skill
-├── commands/        # the seven /project:* commands
-├── rules.md         # behavioral constraints
-├── worker-contract.md, config.json, project.md
-└── .claude-plugin/  # makes this directory a Claude Code plugin named "project"
-tools/workflow-mcp/  # the MCP: composes worker prompts, prepares worktrees, verifies, generates the root files
-scripts/             # template-side, never in a release: adopt.sh, release.mjs
+.claude/
+├── agents/            # the eight roles — model, effort, tools, permission mode, preloaded skills
+├── commands/project/  # the seven /project:* commands
+├── skills/            # procedures (TDD, branching, plan-writing, reviews, wiki-update, …) + update-toolkit
+├── rules/             # behavioral.md (the numbered rules) and workflow.md (the map) — loaded every session
+└── settings.json      # the allow rules the roles run under
 docs/
-├── raw/             # immutable sources (interviews, research, documents)
-└── wiki/            # the agent-maintained knowledge base (requirements, architecture, entities, decisions, log, …)
-AGENTS.md            # generated from .agents/ — the schema and command catalog, read first
-CLAUDE.md            # generated from .agents/ — imports AGENTS.md
+├── raw/               # immutable sources (interviews, research, documents)
+└── wiki/              # the agent-maintained knowledge base (requirements, architecture, entities, decisions, log, …)
+CLAUDE.md              # this project's facts only; /project:init fills them
 ```
-
-Claude Code loads `.agents/` as a plugin (skills and commands, not roles) via `.claude/settings.json`; Codex reads `.agents/skills/` natively plus `AGENTS.md`; Antigravity reads no repository files and runs purely on the composed prompt.
-
-## Releases
-
-A release is what a new project starts from: the tagged tree as `claude-code-template-<version>.zip`, without what only the template uses — `tools/workflow-mcp/test/` and its `test` npm script, `.github/workflows/`, `scripts/`, and this README, which becomes a starter ([`scripts/release-readme.md`](scripts/release-readme.md)). `docs/`, `.agents/`, the MCP and its guides all ship. The list, with the reason for each entry, is `TEMPLATE_ONLY` in [`scripts/release.mjs`](scripts/release.mjs).
-
-To cut one, merge `develop` into `main`, then publish a release whose tag is the version:
-
-```bash
-gh release create 0.2.0 --target main --generate-notes
-```
-
-[`.github/workflows/release.yml`](.github/workflows/release.yml) builds the zip from that tag and attaches it to the release; GitHub's own "Source code" archives stay the whole repository. To see what a release would contain before tagging, `node scripts/release.mjs <version> --ref HEAD` writes one and prints its path.
 
 ## Philosophy
 
 - **Skills are how-to, not what-is** — not "what TDD is", but how this project does it.
 - **Spec → test → code**: entity Behavior cases → failing tests → minimal implementation, with the wiki updated in the same commit.
-- **A second model reads the brief before any code exists**, and on risky cycles the diff after it lands — with none of the author's context. Reviewers raise findings; they never fix them, and every finding gets a written disposition.
 - **Human in the loop** — when the wiki can't decide, the agent stops and asks.
-- **The toolkit evolves** — `update-toolkit` lets the agent add roles, skills and commands as the project grows.
+- **The toolkit evolves** — the `update-toolkit` skill lets the agent add roles, skills and commands as the project grows.
 
 ## License
 

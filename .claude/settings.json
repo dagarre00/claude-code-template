@@ -1,10 +1,9 @@
 {
-  "extraKnownMarketplaces": {
-    "workflow-claude-code-template": { "source": { "source": "directory", "path": "." } }
-  },
-  "enabledPlugins": { "project@workflow-claude-code-template": true },
-  "claudeMdExcludes": ["**/.worktrees/**/CLAUDE.md", "**/.worktrees/**/AGENTS.md"],
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
-    "allow": ["mcp__workflow"]
+    "allow": [
+      "Edit(/.handoff/**)",
+      "Edit(/docs/wiki/**)"
+    ]
   }
 }
