@@ -1,9 +1,9 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Band } from '../types'
+import type { Band, Menu } from '../types'
 import {
-  bandText,
+  bandParts,
   countBacklog,
   countCases,
   destructiveGit,
@@ -11,14 +11,18 @@ import {
   isCommit,
   isForbiddenDispatch,
   isRawSource,
+  openTodos,
   topTodos,
 } from './rules'
 import { SPEC_PAGES, entityLabel, isEntityPage, pageBody, pageTitle, todosLabel } from './nav'
 
 const band = atom({ plugin: 'conductor-guard', key: 'band' } as const, null)
 const page = atom({ plugin: 'conductor-guard', key: 'page' } as const, null)
+const menu = atom({ plugin: 'conductor-guard', key: 'menu' } as const, null)
 const PANE = 'wiki-nav'
+const MENU = 'workflow'
 const WIKI = 'docs/wiki'
+const TODOS = `${WIKI}/todos.md`
 
 const git = async ($: EngineInterface, ...args: string[]) => {
   const { exitCode, stdout } = await $.process.run(['git', ...args])
@@ -90,7 +94,37 @@ const refresh = async ($: EngineInterface) => {
   try {
     const next = await readBand($).catch(() => null)
     await update($, band, () => next)
+    const listed = next === null ? null : await readMenu($).catch(() => null)
+    await update($, menu, () => listed)
   } catch {}
+}
+
+const lines = (out: string | undefined) => (out ?? '').split('\n').filter(line => line.trim() !== '')
+
+async function readMenu($: EngineInterface): Promise<Menu> {
+  return {
+    branches: lines(await git($, 'branch', '--format=%(HEAD) %(refname:short)')).map(line => ({
+      name: line.slice(2),
+      isCurrent: line.startsWith('*'),
+    })),
+    todos: openTodos((await text($, TODOS)) ?? ''),
+    changed: lines(await git($, 'status', '--porcelain')),
+    unpushed: lines(await git($, 'log', '--oneline', '@{u}..HEAD')),
+  }
+}
+
+// A branch picked in the workflow pane. Switching carries uncommitted changes
+// along, so it is refused over a dirty tree (rule 21), as the guard refuses
+// destructive git; the git command's own error is shown as it came.
+async function switchBranch($: EngineInterface, name: string) {
+  const porcelain = (await git($, 'status', '--porcelain')) ?? ''
+  if (porcelain !== '') {
+    $.ui.toast(`conductor-guard: commit or account for the changed files before switching to ${name} (rule 21).`)
+    return
+  }
+  const { exitCode, stderr } = await $.process.run(['git', 'switch', name])
+  $.ui.toast(exitCode === 0 ? `Switched to ${name}.` : `git switch ${name} failed: ${stderr.trim()}`)
+  await refresh($)
 }
 
 // Rule 19 applies once /project:init has filled CLAUDE.md: the template
@@ -210,6 +244,48 @@ export const register: Register = on => {
     )
   })
 
+  // The workflow pane the band's menu opens: branches to switch to, the open
+  // todos, and what is changed or unpushed. It draws what the last refresh
+  // read and runs no git itself: a redraw aborts a draw still waiting on one.
+  on('ui.render', { component: 'Pane', requestId: MENU }, async ($, e) => {
+    const { Box, Text, Button } = $.ui.resolve(e)
+    const shown = await read($, menu)
+    if (shown === null) return <Text dimColor>Reading the repository…</Text>
+    const { branches, todos, changed, unpushed } = shown
+
+    const openTodosPage = async () => {
+      await update($, page, () => TODOS)
+      await $.ui.open({ id: PANE, title: 'Wiki', focus: true })
+    }
+
+    return (
+      <Box flexDirection="column">
+        <Text bold>Branches</Text>
+        {branches.map(b => (
+          <Button
+            key={`branch:${b.name}`}
+            label={`${b.isCurrent ? '●' : ' '} ${b.name}`}
+            plain
+            onPress={() => (b.isCurrent ? undefined : void switchBranch($, b.name))}
+          />
+        ))}
+        <Text bold>Todos</Text>
+        {todos.length === 0 && <Text dimColor>No open todos.</Text>}
+        {todos.map((todo, i) => (
+          <Button key={`todo:${i}`} label={`${todo.priority}  ${todo.text}`} plain onPress={() => void openTodosPage()} />
+        ))}
+        <Text bold>Status</Text>
+        {changed.length === 0 && unpushed.length === 0 && <Text dimColor>Clean and pushed.</Text>}
+        {changed.map(line => (
+          <Text key={`changed:${line}`} color="warning">{line}</Text>
+        ))}
+        {unpushed.map(line => (
+          <Text key={`unpushed:${line}`} dimColor>{line}</Text>
+        ))}
+      </Box>
+    )
+  })
+
   on('turn.complete', async ($, e, next) => {
     void refresh($)
     return next(e)
@@ -219,10 +295,23 @@ export const register: Register = on => {
     const shown = await read($, band)
     if (shown === null || e.props.hasSurvey) return next(e)
 
-    const { Box, Text } = $.ui.resolve(e)
+    const { Box, Text, Button } = $.ui.resolve(e)
+    const [branch, ...rest] = bandParts(shown)
     return (
-      <Box>
-        <Text dimColor>{bandText(shown)}</Text>
+      <Box flexDirection="row" gap={1}>
+        <Text bold color={branch!.color} backgroundColor="claude">{` ${branch!.text} `}</Text>
+        {rest.map((part, i) => (
+          <Text key={part.key} color={part.color}>{i === 0 ? part.text : `· ${part.text}`}</Text>
+        ))}
+        <Button
+          key="menu"
+          label="≡"
+          plain
+          onPress={() => {
+            void $.ui.open({ id: MENU, title: 'Workflow', focus: true })
+            void refresh($)
+          }}
+        />
       </Box>
     )
   })

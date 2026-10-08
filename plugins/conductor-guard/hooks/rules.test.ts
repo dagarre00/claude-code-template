@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import {
+  bandParts,
   bandText,
   countBacklog,
   countCases,
@@ -9,6 +10,7 @@ import {
   isCommit,
   isForbiddenDispatch,
   isRawSource,
+  openTodos,
   topTodos,
 } from './rules'
 
@@ -134,5 +136,45 @@ describe('band', () => {
     expect(
       bandText({ branch: 'develop', unpushed: null, dirty: 0, cases: null, todos: null, backlog: null }),
     ).toBe('develop · no upstream · clean')
+  })
+
+  test('the open todos are listed with their priority, in queue order', () => {
+    const todos = [
+      '## P0 saturation threshold', '- [ ] not a todo',
+      '## Now (P0 — next)', '- [ ] Login lockout', '- [x] shipped', '_(Empty.)_',
+      '## Next (P1)', '_(Empty.)_',
+      '## Later (P2)', '- [ ] [adversary] timing leak — minor/security',
+      '## Backlog', '- [ ] someday',
+    ].join('\n')
+    expect(openTodos(todos)).toEqual([
+      { priority: 'P0', text: 'Login lockout' },
+      { priority: 'P2', text: '[adversary] timing leak — minor/security' },
+    ])
+    expect(openTodos('## Now (P0 — next)\r\n- [ ] crlf\r\n')).toEqual([{ priority: 'P0', text: 'crlf' }])
+  })
+
+  test('each part takes a theme color that says whether it needs attention', () => {
+    const colors = (band: Parameters<typeof bandParts>[0]) => bandParts(band).map(p => p.color)
+    const base = { branch: 'feat/auth', unpushed: 0, dirty: 0, cases: null, todos: null, backlog: null }
+
+    expect(
+      colors({
+        ...base,
+        unpushed: 2,
+        dirty: 3,
+        cases: { slug: 'auth', done: 1, total: 4 },
+        todos: { priority: 'P1', open: 3 },
+        backlog: { open: 12, max: 40 },
+      }),
+    ).toEqual(['inverseText', 'suggestion', 'warning', 'warning', 'permission', 'subtle'])
+
+    expect(
+      colors({
+        ...base,
+        cases: { slug: 'auth', done: 4, total: 4 },
+        todos: { priority: 'P0', open: 1 },
+        backlog: { open: 40, max: 40 },
+      }),
+    ).toEqual(['inverseText', 'success', 'success', 'error', 'error'])
   })
 })
