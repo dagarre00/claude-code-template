@@ -271,8 +271,14 @@ export const register: Register = on => {
       await $.ui.open({ id: PANE, title: 'Wiki', focus: true })
     }
 
+    const openWiki = async () => {
+      await update($, page, () => null)
+      await $.ui.open({ id: PANE, title: 'Wiki', focus: true })
+    }
+
     return (
       <Box flexDirection="column">
+        <Button key="wiki" label="Wiki (/wiki-nav)" hotkey="w" plain onPress={() => void openWiki()} />
         <Text bold>Branches</Text>
         {branches.map(b => (
           <Button

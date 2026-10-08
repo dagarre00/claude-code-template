@@ -149,3 +149,17 @@ test('pressing a todo opens todos.md in the wiki navigator', async ($, on) => {
   const nav = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'wiki-nav', props: PANE })
   expect((await nav.find({ type: 'Markdown' }))?.text).toMatch(/Login lockout/)
 })
+
+test('the wiki button opens the wiki navigator at its index, even after a todo opened a page', async ($, on) => {
+  const w = repo(on)
+  const ui = await mountPane($)
+  expect(await ui.find({ key: 'wiki' })).toMatchObject({ props: { hotkey: 'w' } })
+
+  await ui.press({ key: 'todo:0' })
+  await ui.press({ key: 'wiki' })
+
+  expect(w.opened.filter(id => id === 'wiki-nav')).toHaveLength(2)
+  const nav = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'wiki-nav', props: PANE })
+  expect(await nav.find({ type: 'Markdown' })).toBeUndefined()
+  expect(await nav.find({ text: /^Spec$/ })).toBeDefined()
+})
