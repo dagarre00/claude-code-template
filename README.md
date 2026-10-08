@@ -93,7 +93,7 @@ feat/auth-login · auth-login 2/5 cases · 1 unpushed · 3 changed · 4 P0 todos
 
 `/wiki-nav` opens a pane that lists the spec — requirements, architecture, todos (with the top priority's count), gotchas, commands, git conventions — then every entity with its cases ticked and every decision by title. Press one to read it, `b` to go back. It reads the wiki each time it draws, so it is never stale; editing and search stay in your editor or Obsidian.
 
-The band's `≡` opens the Workflow pane: a `Wiki` button (hotkey `w`) that opens the navigator at its index, the branches to switch to (refused over a dirty tree, rule 21), the open todos (each opens `todos.md`), and what is changed or unpushed.
+The band's `≡` opens the wiki navigator and the Workflow pane as two tabs, the Workflow one focused: the branches to switch to (refused over a dirty tree, rule 21), the open todos (each opens `todos.md`), and what is changed or unpushed.
 
 **Installing it.** Nothing to run: `.claude/settings.json` names this repository as a marketplace (`extraKnownMarketplaces`, branch `develop`) and enables the plugin (`enabledPlugins`), so Claude Code offers the install the first time a session trusts the project folder. `/project:init` step 0 checks that it is enabled. Declined, or on a machine that skipped the prompt, install it by hand from a terminal session:
 

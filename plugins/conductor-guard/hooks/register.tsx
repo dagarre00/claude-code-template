@@ -271,14 +271,8 @@ export const register: Register = on => {
       await $.ui.open({ id: PANE, title: 'Wiki', focus: true })
     }
 
-    const openWiki = async () => {
-      await update($, page, () => null)
-      await $.ui.open({ id: PANE, title: 'Wiki', focus: true })
-    }
-
     return (
       <Box flexDirection="column">
-        <Button key="wiki" label="Wiki (/wiki-nav)" hotkey="w" plain onPress={() => void openWiki()} />
         <Text bold>Branches</Text>
         {branches.map(b => (
           <Button
@@ -327,7 +321,9 @@ export const register: Register = on => {
           key="menu"
           label="≡"
           plain
-          onPress={() => {
+          onPress={async () => {
+            // The wiki opens as a tab beside the workflow pane, which keeps the focus.
+            await $.ui.open({ id: PANE, title: 'Wiki' }).catch(() => {})
             void $.ui.open({ id: MENU, title: 'Workflow', focus: true })
             void refresh($)
           }}

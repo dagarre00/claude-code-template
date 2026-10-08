@@ -30,6 +30,7 @@ function repo(on: On, { porcelain = '' } = {}) {
   const ran: string[] = []
   const toasts: string[] = []
   const opened: string[] = []
+  const focused: string[] = []
   const git: Record<string, string> = {
     'rev-parse': 'feat/login\n',
     'rev-list': '1\n',
@@ -58,6 +59,7 @@ function repo(on: On, { porcelain = '' } = {}) {
   })
   on('ui.open', ($, e) => {
     opened.push(e.id)
+    if (e.focus) focused.push(e.id)
     return { value: { isPlaced: true } }
   })
   on('session.start', ($, e) => ({ cwd: e.cwd }))
@@ -65,7 +67,7 @@ function repo(on: On, { porcelain = '' } = {}) {
     const { Box } = $.ui.resolve(e)
     return <Box key="engine" />
   })
-  return { ran, toasts, opened }
+  return { ran, toasts, opened, focused }
 }
 
 type Kit = Parameters<Parameters<typeof test>[1]>[0]
@@ -89,14 +91,15 @@ test('drawing the workflow pane runs no git, so a redraw cannot abort one', asyn
   expect(w.ran.slice(before)).toEqual([])
 })
 
-test('the band carries a menu button that opens the workflow pane', async ($, on) => {
+test('the band carries a menu button that opens the wiki and workflow panes, the workflow one focused', async ($, on) => {
   const w = repo(on)
   await $.session.start({ cwd: '/p', surface: 'terminal', isInteractive: true })
   const ui = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'AbovePrompt', props: BAND })
 
   await ui.press({ key: 'menu' })
 
-  expect(w.opened).toContain('workflow')
+  expect(w.opened).toEqual(['wiki-nav', 'workflow'])
+  expect(w.focused).toEqual(['workflow'])
 })
 
 test('the workflow pane lists branches, open todos and the status', async ($, on) => {
@@ -150,16 +153,9 @@ test('pressing a todo opens todos.md in the wiki navigator', async ($, on) => {
   expect((await nav.find({ type: 'Markdown' }))?.text).toMatch(/Login lockout/)
 })
 
-test('the wiki button opens the wiki navigator at its index, even after a todo opened a page', async ($, on) => {
-  const w = repo(on)
+test('the workflow pane has no wiki row: the menu opens the wiki pane beside it', async ($, on) => {
+  repo(on)
   const ui = await mountPane($)
-  expect(await ui.find({ key: 'wiki' })).toMatchObject({ props: { hotkey: 'w' } })
 
-  await ui.press({ key: 'todo:0' })
-  await ui.press({ key: 'wiki' })
-
-  expect(w.opened.filter(id => id === 'wiki-nav')).toHaveLength(2)
-  const nav = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'wiki-nav', props: PANE })
-  expect(await nav.find({ type: 'Markdown' })).toBeUndefined()
-  expect(await nav.find({ text: /^Spec$/ })).toBeDefined()
+  expect(await ui.find({ key: 'wiki' })).toBeUndefined()
 })
