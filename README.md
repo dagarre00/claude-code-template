@@ -15,7 +15,7 @@ Needs a recent Claude Code (built against v2.1.284): the roles use subagent `eff
 **New project** — no code or history yet:
 
 ```bash
-git clone --branch cc-template-legacy --single-branch https://github.com/dagarre00/claude-code-template.git my-project
+git clone --branch develop --single-branch https://github.com/dagarre00/claude-code-template.git my-project
 cd my-project
 rm -rf .git      # the template's history is not your project's; /project:init starts a fresh one
 claude

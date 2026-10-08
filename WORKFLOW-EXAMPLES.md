@@ -65,7 +65,7 @@ A normal project's lifecycle:
 **When to run it:** once, in a fresh copy of the template (after `rm -rf .git`), or to repair a broken layout.
 
 ```
-$ git clone --branch cc-template-legacy --single-branch https://github.com/dagarre00/claude-code-template.git linkshelf
+$ git clone --branch develop --single-branch https://github.com/dagarre00/claude-code-template.git linkshelf
 $ cd linkshelf && rm -rf .git && claude
 ```
 
