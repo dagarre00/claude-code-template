@@ -81,3 +81,44 @@ test('a repository without the workflow shows no band', async ($, on) => {
 
   expect(await ui.find({ text: /feat\/auth/ })).toBeUndefined()
 })
+
+// The session's usage as the engine would answer $.session.usage().
+function usage(on: On, percent: number | undefined, fiveHour: number | undefined) {
+  on('session.usage', () => ({
+    value: {
+      startedAt: 0,
+      context: { window: 200000, ...(percent === undefined ? {} : { tokens: percent * 2000, percent }) },
+      rateLimits: fiveHour === undefined ? [] : [{ kind: 'five_hour', percentUsed: fiveHour }],
+    },
+  }))
+  // The engine's own measure step beneath the plugin echoes what changed.
+  on('session.measure', ($, e) => ({ changed: e.changed }))
+}
+
+test('the band ends with the context and 5h usage bars, read at session start', async ($, on) => {
+  repo(on, GIT, FILES)
+  usage(on, 42, 75)
+  await $.session.start({ cwd: '/p', surface: 'terminal', isInteractive: true })
+
+  const ui = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'AbovePrompt', props: PROPS })
+
+  expect(await ui.find({ type: 'Text', text: /^· ctx ███░░░ 42%$/ })).toMatchObject({ props: { color: 'subtle' } })
+  expect(await ui.find({ type: 'Text', text: /^· 5h █████░ 75%$/ })).toMatchObject({ props: { color: 'warning' } })
+})
+
+test('a measurement moves the bars', async ($, on) => {
+  repo(on, GIT, FILES)
+  usage(on, undefined, undefined)
+  await $.session.start({ cwd: '/p', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'AbovePrompt', props: PROPS })
+  expect(await ui.find({ text: /ctx|5h/ })).toBeUndefined()
+
+  await $.session.measure({
+    context: { window: 200000, tokens: 184000, percent: 92 },
+    rateLimits: [{ kind: 'five_hour', percentUsed: 10 }],
+    changed: ['context', 'rateLimits'],
+  })
+
+  expect(await ui.find({ type: 'Text', text: /^· ctx ██████ 92%$/ })).toMatchObject({ props: { color: 'error' } })
+  expect(await ui.find({ type: 'Text', text: /^· 5h █░░░░░ 10%$/ })).toBeDefined()
+})

@@ -1,6 +1,6 @@
 {
   "name": "conductor-guard",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Enforces the template's behavioral rules on tool calls and shows the cycle's state above the prompt.",
   "author": {
     "name": "dagarre00"

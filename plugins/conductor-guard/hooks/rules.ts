@@ -1,6 +1,8 @@
 // Pure checks behind the hooks: each reads a tool's input or a file's text and
 // answers without touching the engine.
-import type { Band } from '../types'
+import type { SessionContextUsage, SessionRateLimit } from 'claude-code'
+
+import type { Band, Usage } from '../types'
 
 const slashed = (path: string) => path.replaceAll('\\', '/')
 
@@ -115,3 +117,26 @@ export function bandParts(band: Band): BandPart[] {
 }
 
 export const bandText = (band: Band): string => bandParts(band).map(p => p.text).join(' · ')
+
+// The session's figures the band draws: the context window's fill and the
+// five-hour rate-limit window, each null until the engine has a reading.
+export const readUsage = (context: SessionContextUsage, rateLimits: SessionRateLimit[]): Usage => ({
+  context: context.percent ?? null,
+  fiveHour: rateLimits.find(limit => limit.kind === 'five_hour')?.percentUsed ?? null,
+})
+
+const CELLS = 6
+
+function meter(label: string, key: string, percent: number): BandPart {
+  const full = Math.min(CELLS, Math.round((percent / 100) * CELLS))
+  const bar = '█'.repeat(full) + '░'.repeat(CELLS - full)
+  const color = percent >= 90 ? 'error' : percent >= 70 ? 'warning' : 'subtle'
+  return { key, text: `${label} ${bar} ${Math.round(percent)}%`, color }
+}
+
+export function usageParts(usage: Usage): BandPart[] {
+  const parts: BandPart[] = []
+  if (usage.context !== null) parts.push(meter('ctx', 'context', usage.context))
+  if (usage.fiveHour !== null) parts.push(meter('5h', 'five-hour', usage.fiveHour))
+  return parts
+}
