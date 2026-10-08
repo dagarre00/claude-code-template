@@ -18,6 +18,7 @@ Needs a recent Claude Code (built against v2.1.284): the roles use subagent `eff
 git clone --branch develop --single-branch https://github.com/dagarre00/claude-code-template.git my-project
 cd my-project
 rm -rf .git      # the template's history is not your project's; /project:init starts a fresh one
+rm -rf plugins .claude-plugin   # the plugin's source; your settings install it from this repository
 claude
 ```
 
@@ -31,7 +32,7 @@ cp -r <template>/.claude/commands/project .claude/commands/
 cp -rn <template>/docs .                  # only the starter pages you don't have
 ```
 
-Then by hand: merge `"permissions": { "allow": ["Edit(/.handoff/**)", "Edit(/docs/wiki/**)"] }` into `.claude/settings.json`; add the template's workflow lines to `.gitignore` (`.claude/settings.local.json`, `.claude/tmp/`, `.claude/worktrees/`, `.handoff/*-plan.md`, `.handoff/*-handoff.md`, `.handoff/*-report.md`, `docs/.obsidian/`) and `docs/wiki/log.md merge=union` to `.gitattributes`; and put the template's `# Project` block at the top of your `CLAUDE.md` (or copy its `CLAUDE.md` if you have none). Start Claude Code afterwards — roles load at session start.
+Then by hand: merge `"permissions": { "allow": ["Edit(/.handoff/**)", "Edit(/docs/wiki/**)"] }` and the template's `extraKnownMarketplaces` and `enabledPlugins` entries (the conductor-guard plugin, below) into `.claude/settings.json`; add the template's workflow lines to `.gitignore` (`.claude/settings.local.json`, `.claude/tmp/`, `.claude/worktrees/`, `.handoff/*-plan.md`, `.handoff/*-handoff.md`, `.handoff/*-report.md`, `docs/.obsidian/`) and `docs/wiki/log.md merge=union` to `.gitattributes`; and put the template's `# Project` block at the top of your `CLAUDE.md` (or copy its `CLAUDE.md` if you have none). Start Claude Code afterwards — roles load at session start.
 
 Then, inside Claude Code:
 
@@ -90,13 +91,15 @@ feat/auth-login · auth-login 2/5 cases · 1 unpushed · 3 changed · 4 P0 todos
 
 — the branch, the Behavior cases ticked on the entity the branch builds, commits not yet pushed, changed files, the open todos in the highest priority that has any, and the open `[adversary]` backlog against `FINDINGS_MAX`. The log toast stays quiet until `/project:init` has filled `CLAUDE.md`.
 
-Install it once per machine from a terminal session:
+`/wiki-nav` opens a pane that lists the spec — requirements, architecture, todos (with the top priority's count), gotchas, commands, git conventions — then every entity with its cases ticked and every decision by title. Press one to read it, `b` to go back. It reads the wiki each time it draws, so it is never stale; editing and search stay in your editor or Obsidian.
+
+**Installing it.** Nothing to run: `.claude/settings.json` names this repository as a marketplace (`extraKnownMarketplaces`, branch `develop`) and enables the plugin (`enabledPlugins`), so Claude Code offers the install the first time a session trusts the project folder. `/project:init` step 0 checks that it is enabled. Declined, or on a machine that skipped the prompt, install it by hand from a terminal session:
 
 ```
-/plugin install conductor-guard --marketplace dagarre00/claude-code-template
+/plugin install conductor-guard@claude-code-template
 ```
 
-or, from a checkout, load it for one session with `claude --plugin-dir plugins/conductor-guard`. Its tests run with `claude plugin test plugins/conductor-guard`.
+It acts only in a project that has `.claude/rules/behavioral.md`, so installing it for every repository is harmless elsewhere. In this repository, load the working copy for one session with `claude --plugin-dir plugins/conductor-guard`; its tests run with `claude plugin test plugins/conductor-guard`.
 
 ## What the agent decides alone
 

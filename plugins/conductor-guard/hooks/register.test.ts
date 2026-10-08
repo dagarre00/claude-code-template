@@ -9,7 +9,9 @@ const OK = { exitCode: 0, stderr: '', isStdoutTruncated: false, isStderrTruncate
 
 // The world beneath the plugin: git answers by its subcommand, files by path,
 // and every tool that gets through records that it ran.
-function world(on: On, { porcelain = '', files = {} as Record<string, string>, head = '' } = {}) {
+// A workflow project unless `workflow` is false: the rules file is what marks one.
+function world(on: On, { porcelain = '', files: own = {} as Record<string, string>, head = '', workflow = true } = {}) {
+  const files: Record<string, string> = workflow ? { '.claude/rules/behavioral.md': '# Rules', ...own } : own
   const ran: string[] = []
   const toasts: string[] = []
   // Paths reach the hooks resolved against the session's directory.
@@ -114,4 +116,14 @@ test('rule 19: the uninitialised template is quiet', async ($, on) => {
   })
   await $.tool.call({ tool: 'Bash', command: 'git commit -m x' })
   expect(w.toasts).toEqual([])
+})
+
+test('outside a workflow project every guard lets the call through', async ($, on) => {
+  const w = world(on, { workflow: false, porcelain: ' M src/a.ts\n', files: { 'docs/raw/a.md': 'x' } })
+
+  await $.tool.call({ tool: 'Bash', command: 'git stash' })
+  await $.tool.call({ tool: 'Edit', file_path: 'docs/raw/a.md', old_string: 'x', new_string: 'y' })
+  await $.tool.call({ tool: 'Agent', description: 'd', prompt: 'p', subagent_type: 'general-purpose' })
+
+  expect(w.ran).toEqual(['Bash', 'Edit', 'Agent'])
 })
