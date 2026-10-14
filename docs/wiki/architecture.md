@@ -36,7 +36,7 @@ _(Top-level directories and what lives where. Add as the project grows.)_
 
 ## Layers
 
-_(Clean architecture: the dependency rule this project enforces. Every source file belongs to exactly one layer; a layer may import only the layers in its row. `/project:init` fills this from the stack and records the check that enforces it in [[commands#architecture]] and `.agents/config.json` `architecture`. Changing a row is an ADR, never a side effect of making a test pass.)_
+_(Clean architecture: the dependency rule this project enforces. Every source file belongs to exactly one layer; a layer may import only the layers in its row. `/project:init` fills this from the stack, records the check that enforces it in [[commands#architecture]], and allowlists it for the roles in `.claude/settings.json`. Changing a row is an ADR, never a side effect of making a test pass.)_
 
 | Layer | Holds | Lives in | May depend on |
 | --- | --- | --- | --- |

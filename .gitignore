@@ -1,25 +1,22 @@
 # Claude Code
 .claude/settings.local.json
 .claude/tmp/
-
-# Codex project-local MCP registration — machine-specific absolute paths,
-# written by scripts/adopt.sh.
-.codex/config.toml
+# Parallel sessions started with `claude --worktree <name>` (rule 21).
+.claude/worktrees/
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Plan scratch: /project:work saves the planner's report here and deletes it
-# when the cycle ends. Only `<slug>-plan.md` matches — a suffixed name
+# Plan scratch: the planner writes `<slug>-plan.md` here and /project:work
+# deletes it when the cycle ends. Only that name matches — a suffixed one
 # (`auth-plan-v2.md`) shows up as untracked and fails the clean-tree check.
 .handoff/*-plan.md
-
-# Worker worktrees prepared by the workflow MCP — throwaway checkouts, never committed.
-.worktrees/
-
-# Node dependencies (tools/workflow-mcp).
-node_modules/
+# Handoff scratch: the dispatch-handoff skill writes `<slug>-<role>-handoff.md`
+# and the role's `<slug>-<role>-report.md`, and deletes both once the result
+# is decided. The same rule: only these names match.
+.handoff/*-handoff.md
+.handoff/*-report.md
 
 # Obsidian per-user vault config
 docs/.obsidian/

@@ -4,4 +4,4 @@ Source documents the agents ingest into `docs/wiki/`: interview transcripts, res
 
 - **Append only.** Never edit a file here; a wrong source is corrected by a new one.
 - **Two agent writers:** `/project:interview` streams transcripts into `interviews/`, and the `researcher` writes into `research/`. Everything else is dropped in by the human.
-- **One summary per source** in `docs/wiki/summaries/`, written by `/project:wiki <source>`; its health pass catches sources that never got one.
+- **One summary per source** in `docs/wiki/summaries/`, written by `/project:wiki <source>`; its health pass catches sources that never got one. Interview transcripts are the exception: `/project:interview` ingests each into the structured pages itself, so one gets a summary only when named.
