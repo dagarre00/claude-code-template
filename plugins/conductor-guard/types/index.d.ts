@@ -9,8 +9,9 @@ export type Band = {
 }
 
 // What the workflow pane lists, read with the band so drawing runs no git.
+// A remote branch is one with no local copy yet.
 export type Menu = {
-  branches: { name: string; isCurrent: boolean }[]
+  branches: { name: string; isCurrent: boolean; isRemote: boolean }[]
   todos: { priority: string; text: string }[]
   changed: string[]
   unpushed: string[]

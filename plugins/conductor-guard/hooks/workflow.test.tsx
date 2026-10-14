@@ -25,8 +25,10 @@ const FILES: Record<string, string> = {
 }
 
 // A repository on feat/login: git answers by subcommand and records what ran;
-// toasts and opened panes are recorded too.
-function repo(on: On, { porcelain = '' } = {}) {
+// toasts and opened panes are recorded too. With `held`, the first read of the
+// branch answers develop, a read that started before a switch, and is held
+// until the next read has reached its last git call.
+function repo(on: On, { porcelain = '', held = false } = {}) {
   const ran: string[] = []
   const toasts: string[] = []
   const opened: string[] = []
@@ -36,13 +38,29 @@ function repo(on: On, { porcelain = '' } = {}) {
     'rev-parse': 'feat/login\n',
     'rev-list': '1\n',
     'status --porcelain': porcelain,
-    'branch --format': '  develop\n* feat/login\n',
+    'for-each-ref': [
+      '  refs/heads/develop',
+      '* refs/heads/feat/login',
+      '  refs/remotes/origin/HEAD',
+      '  refs/remotes/origin/develop',
+      '  refs/remotes/origin/feat/remote-only',
+      '',
+    ].join('\n'),
     'log --oneline': 'ae8fe1c demo: queue todos\n',
+    'fetch --prune': '',
     switch: '',
   }
-  on('process.run', ($, e) => {
+  let holding = held
+  let release = () => {}
+  on('process.run', async ($, e) => {
     const sub = e.argv.slice(1).join(' ')
     ran.push(sub)
+    if (sub.startsWith('rev-parse') && holding) {
+      holding = false
+      await new Promise<void>(resolve => (release = resolve))
+      return { value: { ...OK, stdout: 'develop\n' } }
+    }
+    if (sub.startsWith('log --oneline')) release()
     const key = Object.keys(git).find(k => sub.startsWith(k))
     return { value: key === undefined ? { ...OK, exitCode: 128, stdout: '' } : { ...OK, stdout: git[key]! } }
   })
@@ -156,6 +174,50 @@ test('pressing a todo opens todos.md in the wiki pane', async ($, on) => {
   expect(w.escapable).toEqual(['wiki-nav'])
   const nav = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'wiki-nav', props: PANE })
   expect((await nav.find({ type: 'Markdown' }))?.text).toMatch(/Login lockout/)
+})
+
+test('a read that started before a switch never overwrites the one after it', async ($, on) => {
+  repo(on, { held: true })
+  on('tool.call', () => ({ result: 'ok' }))
+  // The session start's read is held; the git command's read passes it.
+  await $.session.start({ cwd: '/p', surface: 'terminal', isInteractive: true })
+  await $.tool.call({ tool: 'Bash', command: 'git switch feat/login' })
+  // Time for both reads to finish and write what they read, if they would.
+  await new Promise(resolve => setTimeout(resolve, 200))
+
+  const band = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'AbovePrompt', props: BAND })
+  const pane = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'workflow', props: PANE })
+
+  expect(await band.find({ type: 'Text', text: /^ feat\/login $/ })).toBeDefined()
+  expect(await pane.find({ key: 'branch:feat/login' })).toMatchObject({ text: '● feat/login' })
+})
+
+test('a remote branch with no local copy is listed once, marked remote, and picking it switches to it', async ($, on) => {
+  const w = repo(on)
+  const ui = await mountPane($)
+
+  expect(await ui.find({ key: 'branch:feat/remote-only' })).toMatchObject({ text: '  feat/remote-only (remote)' })
+  expect((await ui.findAll({ key: 'branch:develop' })).length).toBe(1)
+  expect(await ui.find({ key: 'branch:HEAD' })).toBeUndefined()
+
+  await ui.press({ key: 'branch:feat/remote-only' })
+
+  expect(w.ran).toContain('switch feat/remote-only')
+})
+
+test('opening the menu fetches with prune, then reads the branches again', async ($, on) => {
+  const w = repo(on)
+  await $.session.start({ cwd: '/p', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'AbovePrompt', props: BAND })
+  const before = w.ran.length
+
+  await ui.press({ key: 'menu' })
+  await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'Pane', requestId: 'workflow', props: PANE })
+
+  const after = w.ran.slice(before)
+  const fetched = after.indexOf('fetch --prune')
+  expect(fetched).toBeGreaterThanOrEqual(0)
+  expect(after.slice(fetched).some(r => r.startsWith('for-each-ref'))).toBe(true)
 })
 
 test('the workflow pane has no wiki row: the menu opens the wiki pane beside it', async ($, on) => {

@@ -87,6 +87,25 @@ export function openTodos(todos: string): { priority: string; text: string }[] {
   return items
 }
 
+// The branches the workflow pane lists, from `git for-each-ref --format=
+// '%(HEAD) %(refname)' refs/heads refs/remotes`: the local ones, then each
+// remote one with no local copy, which `git switch <name>` creates to track it.
+export function parseBranches(out: string): { name: string; isCurrent: boolean; isRemote: boolean }[] {
+  const local = []
+  const remote = []
+  for (const m of out.matchAll(/^([* ]) refs\/(heads|remotes\/[^/]+)\/(.+?)\r?$/gm)) {
+    if (m[2] === 'heads') local.push({ name: m[3]!, isCurrent: m[1] === '*', isRemote: false })
+    else if (m[3] !== 'HEAD') remote.push(m[3]!)
+  }
+  const names = new Set(local.map(b => b.name))
+  for (const name of remote) {
+    if (names.has(name)) continue
+    names.add(name)
+    local.push({ name, isCurrent: false, isRemote: true })
+  }
+  return local
+}
+
 // One part of the band: its text, a theme color (so it follows light and dark
 // themes) and a key the drawing gives its element. The branch comes first and
 // is drawn on a chip; the rest color by whether they need attention.
