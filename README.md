@@ -32,7 +32,7 @@ cp -r <template>/.claude/commands/project .claude/commands/
 cp -rn <template>/docs .                  # only the starter pages you don't have
 ```
 
-Then by hand: merge `"permissions": { "allow": ["Edit(/.handoff/**)", "Edit(/docs/wiki/**)"] }` and the template's `extraKnownMarketplaces` and `enabledPlugins` entries (the conductor-guard plugin, below) into `.claude/settings.json`; add the template's workflow lines to `.gitignore` (`.claude/settings.local.json`, `.claude/tmp/`, `.claude/worktrees/`, `.handoff/*-plan.md`, `.handoff/*-handoff.md`, `.handoff/*-report.md`, `docs/.obsidian/`) and `docs/wiki/log.md merge=union` to `.gitattributes`; and put the template's `# Project` block at the top of your `CLAUDE.md` (or copy its `CLAUDE.md` if you have none). Start Claude Code afterwards — roles load at session start.
+Then put the template's `# Project` block at the top of your `CLAUDE.md` (or copy its `CLAUDE.md` if you have none) and start Claude Code — `/project:init` step 0 automatically merges the required `.claude/settings.json` allow rules and plugin entries, `.gitignore` workflow lines, and `.gitattributes` `docs/wiki/log.md merge=union` (if `.claude/settings.json` was created or updated, restart the session once so Claude Code loads the plugin and permissions).
 
 Then, inside Claude Code:
 
@@ -72,14 +72,14 @@ The main session is the **conductor**: it runs the commands, dispatches the role
 | Practice | Mechanism |
 | --- | --- |
 | Reviewers never edit | The read-only roles have no edit tools and run in `permissionMode: dontAsk`: a command not allowlisted in `.claude/settings.json` — a git write, an install, a delete — is denied, not prompted. The conductor also checks that `HEAD` and the tree are unchanged after each. |
-| Writers stay in scope | The planner and the wiki-maintainer also run in `dontAsk`, and the only writes allowed to them are `Edit(/.handoff/**)` and `Edit(/docs/wiki/**)`. |
+| Writers stay in scope | The planner, wiki-maintainer, and researcher also run in `dontAsk`, and the only writes allowed to them are `Edit(/.handoff/**)`, `Edit(/docs/wiki/**)`, and `Edit(/docs/raw/research/**)`. |
 | Subagents are leaves | No role has the Agent tool. |
 | A reviewer holds none of the author's context | Roles are dispatched by `subagent_type`, never as a fork, so they see none of the conversation — only a brief that the procedure keeps to IDs and paths. |
 | Tests fail before the implementation, pass after | The conductor proves each developer case: the full suite passes, the case is committed, then everything but its tests is restored from the parent commit and the tests must fail. Only then is it pushed. |
 | Clean architecture | `docs/wiki/architecture.md § Layers` declares the dependency rule; `/project:init` installs a stack-specific check (dependency-cruiser, import-linter, ArchUnit, …), proves it fails on a planted violation, and allowlists it for every role. |
 | Raw sources, a shared tree, role dispatch | The `conductor-guard` plugin (below) refuses an edit to an existing `docs/raw/` file (rule 11), `git stash`/`reset --hard`/`checkout --`/`restore`/`clean -f` over a dirty tree, naming the paths (rule 21) — the workflow's own `restore --source=<commit>` (the Red check) and tagged `stash push -m` pass — and an Agent call as a fork or through `general-purpose` (rule 10). A refusal the human overrides, such as rule 5's approved `reset --hard`, they run themselves with `! <command>`. |
 
-What stays discipline: the conductor itself (nothing stops it writing code directly or skipping a step), a reviewer choosing not to open `.handoff/` in the shared checkout, and the wiki-with-code and log checks in the `pr-create` skill, which only CI you write can back — the plugin only raises a toast when a commit carries no `docs/wiki/log.md` entry (rule 19).
+What stays discipline: the conductor itself (nothing stops it writing code directly or skipping a step), a reviewer choosing not to open `.handoff/` in the shared checkout, and the wiki-with-code and log checks in the `pr-create` skill, which only CI you write can back — the plugin raises a toast when a cycle-closing or `develop` commit carries no `docs/wiki/log.md` entry (rule 19).
 
 ## The conductor-guard plugin
 
@@ -89,9 +89,9 @@ What stays discipline: the conductor itself (nothing stops it writing code direc
 feat/auth-login · auth-login 2/5 cases · 1 unpushed · 3 changed · 4 P0 todos · backlog 12/40 · ctx ███░░░ 42% · 5h █░░░░░ 18%
 ```
 
-— the branch, the Behavior cases ticked on the entity the branch builds, commits not yet pushed, changed files, the open todos in the highest priority that has any, the open `[adversary]` backlog against `FINDINGS_MAX`, then the context window's fill and the five-hour usage window as bars that turn yellow from 70% and red from 90% (each shows once the session has a reading; off a subscription there is no 5h bar). The log toast stays quiet until `/project:init` has filled `CLAUDE.md`.
+— the branch, the Behavior cases ticked on the entity (or `[infra]` concept) the branch builds, commits not yet pushed, changed files, the open todos in the highest priority that has any, the open `[adversary]` backlog against `FINDINGS_MAX`, then the context window's fill and the five-hour usage window as bars that turn yellow from 70% and red from 90% (each shows once the session has a reading; off a subscription there is no 5h bar). The log toast stays quiet until `/project:init` has filled `CLAUDE.md`.
 
-`/wiki-nav` opens a pane that lists the spec — requirements, architecture, todos (with the top priority's count), gotchas, commands, git conventions — then every entity with its cases ticked and every decision by title. Press one to read it in the same pane; Esc or the pane's close mark goes back to the index. It reads the wiki each time it draws, so it is never stale; editing and search stay in your editor or Obsidian.
+`/wiki-nav` opens a pane that lists the spec — requirements, architecture, todos (with the top priority's count), gotchas, commands, git conventions — then every entity with its cases ticked, every concept, and every decision by title. Press one to read it in the same pane; Esc or the pane's close mark goes back to the index. It reads the wiki each time it draws, so it is never stale; editing and search stay in your editor or Obsidian.
 
 The band's `≡` opens the wiki navigator and the Workflow pane as two tabs, the Workflow one focused; closing either (its close mark, or Esc on the index) hides both until `≡` is pressed again. The Workflow pane lists the branches to switch to (refused over a dirty tree, rule 21), the open todos (each opens `todos.md`), and what is changed or unpushed.
 

@@ -22,6 +22,7 @@ import {
   SPEC_PAGES,
   WIKI_PANE,
   closeAction,
+  conceptLabel,
   entityLabel,
   isEntityPage,
   pageBody,
@@ -64,7 +65,10 @@ async function readBand($: EngineInterface): Promise<Band | null> {
   const unpushed = await git($, 'rev-list', '--count', '@{u}..HEAD')
   const porcelain = (await git($, 'status', '--porcelain')) ?? ''
   const slug = entitySlug(branch)
-  const page = slug === undefined ? undefined : await text($, `docs/wiki/entities/${slug}.md`)
+  const page =
+    slug === undefined
+      ? undefined
+      : ((await text($, `docs/wiki/entities/${slug}.md`)) ?? (await text($, `docs/wiki/concepts/${slug}.md`)))
   const todos = await text($, 'docs/wiki/todos.md')
 
   return {
@@ -80,7 +84,7 @@ async function readBand($: EngineInterface): Promise<Band | null> {
 type NavGroup = { heading: string; items: { path: string; label: string }[] }
 
 // The navigator's list, read fresh at each draw: the spec's fixed pages, then
-// every entity and decision. A page or folder the wiki lacks is left out.
+// every entity, concept, and decision. A page or folder the wiki lacks is left out.
 async function wikiIndex($: EngineInterface): Promise<NavGroup[]> {
   const spec: NavGroup = { heading: 'Spec', items: [] }
   for (const [file, label] of SPEC_PAGES) {
@@ -103,6 +107,7 @@ async function wikiIndex($: EngineInterface): Promise<NavGroup[]> {
   const groups = [
     spec,
     { heading: 'Entities', items: await folder('entities', entityLabel) },
+    { heading: 'Concepts', items: await folder('concepts', conceptLabel) },
     { heading: 'Decisions', items: await folder('decisions', (file, body) => pageTitle(body, file)) },
   ]
   return groups.filter(group => group.items.length > 0)
@@ -160,14 +165,15 @@ async function switchBranch($: EngineInterface, name: string) {
 }
 
 // Rule 19 applies once /project:init has filled CLAUDE.md: the template
-// itself keeps no log entries.
+// itself keeps no log entries, and raw-only arrival commits need none.
 async function missesLogEntry($: EngineInterface): Promise<boolean> {
   if (!(await isWorkflowProject($))) return false
   const claudeMd = await text($, 'CLAUDE.md')
   if (claudeMd === undefined || claudeMd.includes('<set during project initialization>')) return false
   if (!(await $.fs.exists('docs/wiki/log.md'))) return false
-  const changed = (await git($, 'show', '--name-only', '--format=', 'HEAD')) ?? ''
-  return !changed.split('\n').includes('docs/wiki/log.md')
+  const files = lines(await git($, 'show', '--name-only', '--format=', 'HEAD'))
+  if (files.length > 0 && files.every(isRawSource)) return false
+  return !files.includes('docs/wiki/log.md')
 }
 
 export const register: Register = on => {

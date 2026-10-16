@@ -3,7 +3,18 @@
   "permissions": {
     "allow": [
       "Edit(/.handoff/**)",
-      "Edit(/docs/wiki/**)"
+      "Edit(/docs/wiki/**)",
+      "Edit(/docs/raw/research/**)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
+      "Bash(git rev-parse*)",
+      "PowerShell(git status*)",
+      "PowerShell(git diff*)",
+      "PowerShell(git log*)",
+      "PowerShell(git show*)",
+      "PowerShell(git rev-parse*)"
     ]
   },
   "enabledPlugins": {

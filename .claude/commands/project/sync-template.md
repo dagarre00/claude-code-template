@@ -8,13 +8,13 @@ disable-model-invocation: true
 
 **Argument:** `$ARGUMENTS`
 
-The argument names **where the template is and how much to take**. A path sets the source for this run. A narrowing phrase (`skills only`, `roles only`) limits step 5 to those rows of the table. Both may appear together. Empty → the source the last sync recorded, taking everything generic. A sync logs kind `chore` with a `Source:` field (step 8), and no other entry carries one, so the last sync is:
+The argument names the **template source path** and optional **scope filter** (`skills only`, `roles only`). Empty → reuse the source path from the last sync's `Source:` line:
 
 ```bash
-grep -h '^- Source: ' docs/wiki/summaries/log-archive-*.md docs/wiki/log.md 2>/dev/null | tail -1   # archives first, so the newest line is last
+grep -h '^- Source: ' docs/wiki/summaries/log-archive-*.md docs/wiki/log.md 2>/dev/null | tail -1
 ```
 
-With no such line, ask via `human-checkpoint` rather than guess a path. Nothing bypasses the overwrite checkpoint (step 4) or the validation (step 6).
+If no prior `Source:` line exists and none was given, ask via `human-checkpoint`.
 
 ## State at invocation
 
@@ -24,52 +24,46 @@ Branch: !`git branch --show-current`
 git status --short
 ```
 
-A one-directional pull: generic files are copied from the template, and nothing is ever written back. Use it when the template has fixes this project lacks, when a finding here turns out to be fixed upstream, or before a large piece of work.
+One-directional pull of generic `.claude/` workflow files from a template checkout into an adopting project.
 
 ## Preconditions
 
-- **This is not the template:** the `# Project` fields in `CLAUDE.md` have been filled in, and the source is not this checkout. Syncing a template into itself corrupts both sides of the comparison.
-- On `develop`, or the active branch mid-cycle (rule 19 — the workflow is living operations).
-- A clean tree, **and clean because you left it so**: every line of the state block accounted for (rule 21).
-- The source is a real checkout of the Claude Code template: it has `.claude/agents/` and `.claude/rules/workflow.md`.
+- **Not the template itself:** `# Project` fields in `CLAUDE.md` are populated and `<source>` is a different checkout containing `.claude/agents/` and `.claude/rules/workflow.md`.
+- On `develop` or the active branch mid-cycle (rule 19).
+- Clean working tree, with all lines accounted for (rule 21).
 
 Any failure → `human-checkpoint`.
 
 ## What is generic and what is yours
 
-This table is the whole decision; getting it wrong either drops the project's configuration or leaves the lag in place.
-
 | Path | Action | Why |
 | --- | --- | --- |
-| `.claude/skills/**` | **Copy**, subject to step 4 | Procedures — usually identical, occasionally diverged on purpose. |
-| `.claude/agents/*.md` | **Copy**, subject to step 4 | The roles. Their `model`, `effort` and `skills:` lines are the likeliest local changes (`/project:init` steps 0a and 5), so expect step 4 to stop on them. |
-| `.claude/commands/project/*.md` | **Copy**, subject to step 4 | The entry points. |
-| `.claude/rules/behavioral.md`, `.claude/rules/workflow.md` | **Copy**, subject to step 4 | Shared discipline and the workflow map. |
-| `.claude/settings.json`, `.claude/settings.local.json` | **Never** — step 7 reports template allow rules missing here | This project's permissions, including its allowlisted commands. |
-| `CLAUDE.md` | **Never** | This project's identity. |
-| `.gitignore`, `.gitattributes` | **Never** — step 7 reports template lines missing here | Project files the workflow relies on. |
-| `docs/**`, source, tests | **Never** | Yours. |
-| Files under `.claude/` that exist only here | **Leave, and report** (step 7) | A project may add its own roles, skills and rules; never delete to make the trees match. |
+| `.claude/skills/**` | **Copy**, subject to step 4 | Generic workflow procedures. |
+| `.claude/agents/*.md` | **Copy**, subject to step 4 | Roles (`model`, `effort`, and `skills:` may have local edits from `/project:init`). |
+| `.claude/commands/project/*.md` | **Copy**, subject to step 4 | Slash commands. |
+| `.claude/rules/behavioral.md`, `.claude/rules/workflow.md` | **Copy**, subject to step 4 | Shared rules and workflow map. |
+| `.claude/settings.json`, `.claude/settings.local.json` | **Never copy** — report missing allow/plugin entries in step 7 | Project-specific permissions. |
+| `CLAUDE.md`, `.gitignore`, `.gitattributes`, `docs/**`, source, tests | **Never copy** — report missing `.gitignore`/`.gitattributes` lines in step 7 | Project-owned files. |
+| Files under `.claude/` existing only in this project | **Keep and report** (step 7) | Project-added roles, skills, or rules. |
 
 ## Steps
 
-1. **Resolve and pin the source.** Record its SHA and branch (`git -C <source> rev-parse --short HEAD`, `git -C <source> branch --show-current`) — the SHA goes in the log entry and is what lets the next run say how far behind this project was. Say so if the source is behind its own remote: a stale checkout syncs old text that looks new.
-2. **Refuse to sync into itself.** Same path as this checkout → stop.
-3. **Classify before copying.** Diff the trees over the **Copy** rows with `diff -rq --strip-trailing-cr` — a Windows checkout is CRLF, and a plain diff flags files that are identical: files that differ, files only upstream, files only here. Report the counts.
-4. **Checkpoint customization.** For each file that differs, compare the project's copy with the template at the SHA the last sync recorded (its `Source:` line, above): `git -C <source> show <sha>:<path> | diff --strip-trailing-cr - <path>`. No difference → the project never changed it: *stale*, safe to overwrite. A difference → *customized*, as is a path absent at that SHA or a SHA the source cannot resolve — nothing proves otherwise. Anything you cannot confidently call stale goes to the human via `human-checkpoint`, with its diff, before it is overwritten; for a role whose only local change is its `model`, `effort` or `skills:` lines, offer to take the template's file and re-apply those lines. An empty argument is not consent — this step still runs.
-5. **Copy, never delete.** Write the classified files (a narrowing argument → those rows alone). A file only here is never deleted.
-6. **Validate before committing.** Read the frontmatter of every changed file: it must parse as YAML — a skill or command whose frontmatter fails loads with no fields set (a command then loses `disable-model-invocation`), and a role needs its `name` and `description` to load at all. `claude plugin validate` is lenient and has passed malformed YAML, so it is not enough on its own. Every name in a role's `skills:` list exists under `.claude/skills/`. A failure is **blocking**: report the file and the error, and stop.
-7. **Report what was left behind:** files only here, and generic files kept customized in step 4 — the reasons the next sync will show drift again. Then name the **project-side setup the new version expects but this project lacks**, since project files are never synced: allow rules in the template's `.claude/settings.json` missing from this one, its `extraKnownMarketplaces` and `enabledPlugins` entries (the `conductor-guard` plugin) missing from this one, `.gitignore` or `.gitattributes` lines the template has and this project lacks, the test or architecture command missing from the allowlist, no `## Layers` in `docs/wiki/architecture.md`. Recommend them — `/project:init` steps 5a–5c cover most — don't do them here. Changed roles load only in a new session: tell the human to restart Claude Code.
-8. **Log, commit and push** per [`log-and-commit.md`](../../skills/feature-branching/log-and-commit.md) — kind `chore`, subject `chore(workflow): sync <scope> from the template`, fields `Source: <path> @ <sha>` (the line the next run looks up — keep the name), `Changed: <N> files`, `Kept local: <list or none>`.
+1. **Resolve and pin `<source>`:** record `git -C <source> rev-parse --short HEAD` and `git -C <source> branch --show-current` (warn if `<source>` is behind its remote).
+2. **Refuse self-sync** if `<source>` resolves to this checkout.
+3. **Classify before copying:** run `diff -rq --strip-trailing-cr` across the **Copy** rows and count files that differ, exist only upstream, or exist only locally.
+4. **Checkpoint customizations:** for each differing file, compare the local file against the template at the previous sync's `<sha>` (`git -C <source> show <sha>:<path> | diff --strip-trailing-cr - <path>`). If unchanged locally since `<sha>`, it is *stale* and safe to overwrite. If modified locally (or `<sha>` is unknown), treat it as *customized* and ask via `human-checkpoint` with the diff before overwriting (for role files where only `model`, `effort`, or `skills:` changed, offer to take the upstream file and re-apply those frontmatter lines).
+5. **Copy (never delete):** write the approved files for the selected rows. Never delete local-only files.
+6. **Validate before committing:** parse the YAML frontmatter of every changed `.claude/` file and verify every skill in each role's `skills:` list exists under `.claude/skills/`. Stop on any error.
+7. **Report what was left behind and missing project setup:** list local-only files, kept customizations, and any missing `.claude/settings.json` allow/plugin entries, `.gitignore`/`.gitattributes` lines, or `architecture.md § Layers` setup (recommend `/project:init` steps 0 or 5a–5c). Remind the human to restart Claude Code if `.claude/agents/` changed.
+8. **Log, commit and push** per [`log-and-commit.md`](../../skills/feature-branching/log-and-commit.md) — kind `chore`, subject `chore(workflow): sync <scope> from the template`, fields `Source: <path> @ <sha>`, `Changed: <N> files`, `Kept local: <list or none>`.
 
 ## Failure modes
 
-- **A customized file silently overwritten** — the expensive one; it surfaces later as "the workflow stopped doing what we set it up to do". Step 4 is the guard; `git diff HEAD~1` on this commit is the recovery.
-- **The old roles still answering** — the session loaded them before the copy. Nothing is wrong on disk; restart the session.
+- **Customized file overwritten without step 4 check** → recover via `git diff HEAD~1`.
+- **Updated roles not active** → restart the Claude Code session.
 
 ## What you do NOT do
 
-- **No writes to the template.** A fix it needs is made there.
-- **No `.claude/settings.json` or `CLAUDE.md`** — not even the parts that look generic.
-- **No deletions to make the trees match.** Report the extras; the human decides.
-- **No wiki work** — drift between this project's wiki and code is `/project:review` and `/project:wiki`.
+- **No writes to the template checkout.**
+- **No overwriting `.claude/settings.json` or `CLAUDE.md`.**
+- **No deleting local-only `.claude/` files** and **no wiki edits.**

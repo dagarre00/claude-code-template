@@ -1,19 +1,17 @@
 ---
 name: feature-branching
 description: Conductor-only. Branching procedure — when and how to branch, batching todos, pausing mid-task, syncing with develop, and cleaning up after a merge. Commit and branch naming live in docs/wiki/git-conventions.md.
-when_to_use: Trigger on "start branch", "feat/", "fix/", "batch todos", "finish feature".
 user-invocable: false
 ---
 
 # Branching
 
-Code (`feat/*`, `fix/*`, `refactor/*`, `perf/*`) is built on a branch cut from `develop` and merged by PR. Living documentation and maintenance (`docs/wiki/`, `docs/raw/`, `.claude/`) commit directly to `develop`, or ride the active branch (rule 19). Naming and commit format: [`docs/wiki/git-conventions.md`](../../../docs/wiki/git-conventions.md).
+Code (`feat/*`, `fix/*`, `refactor/*`, `perf/*`) ships on a branch cut from `develop` and merged via PR. Living documentation and maintenance (`docs/wiki/`, `docs/raw/`, `.claude/`) commit directly to `develop` or ride the active branch (rule 19). Naming and commit format: [`docs/wiki/git-conventions.md`](../../../docs/wiki/git-conventions.md).
 
 ## Starting work
 
-1. **Clean tree:** `git status --porcelain` prints nothing. Dirty → `human-checkpoint` (or see Mid-task pause).
-
-2. **Sync `develop`** — `fetch` + `merge --ff-only`, not `pull`, so a diverged `develop` fails safely:
+1. **Clean tree:** `git status --porcelain` must be empty (else `human-checkpoint` or see `§ Mid-task pause`).
+2. **Sync `develop`** (`fetch` + `merge --ff-only`, never `pull`):
 
    ```bash
    git checkout develop || { echo "could not switch to develop — stop and run human-checkpoint"; exit 1; }
@@ -23,9 +21,8 @@ Code (`feat/*`, `fix/*`, `refactor/*`, `perf/*`) is built on a branch cut from `
    fi
    ```
 
-   A `--ff-only` failure means `develop` diverged → `human-checkpoint`; never force or rebase it. The fetch and merge share one guard, so with no `origin` both are skipped and the block works off local `develop` (a merge outside the guard would fail with `not something we can merge`).
-
-3. **Create or resume** `<type>/<slug>` — `<type>` ∈ `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`:
+   If `--ff-only` fails, `develop` diverged → `human-checkpoint` (never force or rebase). If no `origin` remote exists, both fetch and merge are skipped cleanly.
+3. **Create or resume `<type>/<slug>`** (`<type>` ∈ `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`):
 
    ```bash
    git checkout "<type>/<slug>" 2>/dev/null || git checkout -b "<type>/<slug>"
@@ -34,55 +31,49 @@ Code (`feat/*`, `fix/*`, `refactor/*`, `perf/*`) is built on a branch cut from `
    fi
    ```
 
-   The `rev-parse` guard tells "no remote branch yet" (fine — first push to come) apart from "it exists and diverged" (stop — another session pushed here).
-
-**`<slug>` equals the entity-page slug** — the branch, the entity page, the plan scratch (`.handoff/<slug>-plan.md`) and the test names all key off it. Pick it once.
+**`<slug>` equals the entity-page slug** (or `[infra]` concept slug) — branch, wiki page, `.handoff/<slug>-plan.md`, and test names all key off it.
 
 ## Which command branches
 
 | Command | Branch |
 | --- | --- |
-| `/project:work` | `feat/<slug>`, created before the failing test |
+| `/project:work` | `feat/<slug>` (or `fix/<slug>`), cut before the first failing test |
 | `/project:interview`, `/project:wiki`, `/project:review` | none — on `develop` (via [`sync-develop.md`](sync-develop.md)) or the active `feat/*` |
-| `/project:adversary` | none — the existing `feat/*`/`fix/*`/`chore/*`; `develop` only for the release review, whose approved fixes get `fix/<slug>` |
-
-Already on a branch whose work this belongs to → stay, and let its PR carry the change.
+| `/project:adversary` | none — runs on the active branch (`develop` only for release review, whose approved fixes cut `fix/<slug>`) |
 
 ## Batching todos
 
-Two todos share a branch only when **all** hold: same entity page, the second depends on the first, and splitting them yields a meaningless intermediate PR. A batch shares a branch, a plan and a PR — never a commit — and 2+ todos trigger the `planner`.
+Multiple todos share a branch only when they target the same entity page, depend on each other sequentially, and splitting them would produce a meaningless intermediate PR. A batch shares a branch, plan, and PR (never a single squashed commit), and 2+ todos trigger `planner`.
 
 ## Mid-task pause
 
-Interrupted before a green commit boundary:
+If interrupted before a green commit boundary:
 
-- **Preferred — checkpoint.** Stage your paths explicitly (never `git add -p`: an interactive prompt hangs with no human), commit `wip: <what's in flight>`, and `git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`. On resume, `git reset HEAD~1` and continue.
-- **Fallback — stash**, only for a tiny change resumed within the same session. The stash stack is shared by every worktree and session of this repository, so never a bare `git stash pop`: `git stash push -u -m "wip: <unique tag>"`, note its SHA from `git stash list --format='%H %gs'`, later `git stash apply <sha>`, then drop the entry you find by its tag. Never leave a stash across sessions.
+- **Preferred — checkpoint commit:** Stage paths explicitly (never `git add -p`), commit `wip: <what's in flight>`, and tag `git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`. On resume, `git reset HEAD~1`.
+- **Fallback — named stash** (same-session only): `git stash push -u -m "wip: <unique tag>"`, record its SHA from `git stash list --format='%H %gs'`, and later apply via `git stash apply <sha>` (never bare `git stash pop`).
 
 ## Syncing a long-running branch
-
-Merge `develop` in early and often — the conflict surface only grows:
 
 ```bash
 git fetch origin develop
 git merge origin/develop     # conflicts: git-recovery skill
-<test command>               # a merge can bring breakage — re-verify
+<test command>               # re-verify after merge
 git push
 ```
 
-After it, `docs/wiki/log.md` (merged by union) may be out of order: move each entry back to its place by its `## [YYYY-MM-DD HH:MM]` stamp, oldest first, changing nothing else, and commit the result with the merge. Never rebase a pushed branch as routine sync — sessions share branches concurrently. Rebase + `--force-with-lease` needs explicit human approval; bare `--force`, never.
+If union-merging `docs/wiki/log.md` puts entries out of timestamp order, sort them oldest-first by `## [YYYY-MM-DD HH:MM]` in the merge commit. Never rebase a pushed branch without explicit human approval.
 
 ## After the human merges the PR
 
 ```bash
 git checkout develop
 git fetch origin develop && git merge --ff-only origin/develop
-git branch -d feat/<slug>              # safe delete: refuses if unmerged
+git branch -d feat/<slug>
 git push origin --delete feat/<slug>
 ```
 
 ## Anti-patterns
 
-- **Committing code to `develop` or `main`.** Branch first.
-- **`git commit -a` or `git add -A`.** Stage your own paths explicitly (rule 21).
-- **Squashing to hide the Red→Green trace.** History is the evidence the loop ran.
+- **Committing code to `develop` or `main`.**
+- **`git commit -a` or `git add -A`** (stage explicit paths per rule 21).
+- **Squashing commits to hide the Red→Green trace.**

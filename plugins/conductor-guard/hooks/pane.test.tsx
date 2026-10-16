@@ -15,6 +15,7 @@ const FILES: Record<string, string> = {
   'docs/wiki/todos.md': '## Now (P0 — next)\n- [ ] fix a\n- [ ] fix b\n',
   'docs/wiki/entities/README.md': '# Entities',
   'docs/wiki/entities/auth.md': '# Auth\n- [x] B1: When a, b.\n- [ ] B2: When c, d.\n',
+  'docs/wiki/concepts/error-handling.md': '# Error handling\n\nPattern.',
   'docs/wiki/decisions/0001-sqlite.md': '# Use SQLite',
 }
 
@@ -50,13 +51,14 @@ function wiki(on: On) {
 }
 
 for (const surface of ['terminal', 'desktop'] as const) {
-  test(`the navigator lists the spec, entities and decisions on ${surface}`, async ($, on) => {
+  test(`the navigator lists the spec, entities, concepts and decisions on ${surface}`, async ($, on) => {
     wiki(on)
     const ui = await $.ui.mount({ plugin: 'conductor-guard', surface, component: 'Pane', requestId: 'wiki-nav', props: PROPS })
 
     expect(await ui.find({ text: 'Requirements' })).toBeDefined()
     expect(await ui.find({ text: 'Todos — 2 P0' })).toBeDefined()
     expect(await ui.find({ text: 'auth — 1/2 cases' })).toBeDefined()
+    expect(await ui.find({ text: 'Error handling' })).toBeDefined()
     expect(await ui.find({ text: 'Use SQLite' })).toBeDefined()
     expect(await ui.find({ text: 'Architecture' })).toBeUndefined()
     expect(await ui.find({ text: /README/ })).toBeUndefined()

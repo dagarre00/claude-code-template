@@ -1,47 +1,45 @@
 ---
 name: plan-review
-description: Subagent-side, preloaded into the plan-adversary. How the read-only plan-adversary attacks a brief before any test exists — the six-category sweep, the blocker/risk/note vocabulary and the report format; the conductor's side is finding-disposition.
-when_to_use: Trigger on "review the plan", "pre-implementation review", "plan review", "premortem", "poke holes in the plan", "is this well specified".
+description: Subagent-side, preloaded into the plan-adversary. How the read-only plan-adversary attacks a brief before any test exists — six-category sweep, blocker/risk/note severity vocabulary, and report format; the conductor's side is finding-disposition.
 user-invocable: false
 ---
 
 # Plan Review — the sweep
 
-Your subject is intent — a plan, or a todo line plus the human's instruction — for a cycle that has not started. Every defect caught now costs a paragraph; caught after Red, it costs the cycle.
+Review the pre-implementation brief (plan or simple-cycle todo line) before any test is written.
 
 ## The six-category sweep
 
-Work them in order. 1–3 are where re-work comes from; 4–6 are where the surprises are.
+Sweep all 6 categories in order:
 
 | # | Category | Look for |
 | - | --- | --- |
-| 1 | **spec fidelity** | A named Behavior case with no step; a step no case asks for; a plan that restates a case instead of decomposing it |
-| 2 | **testability** | A step with no observable outcome to assert; a step that cannot fail Red on its own; "add validation" with no stated input that must be rejected |
-| 3 | **sequencing** | A step depending on a later one; a hidden prerequisite (migration, fixture, config, seeded data); two steps that must land together but are listed apart |
-| 4 | **scope** | Creep past the todo; files outside the entity; a case needing work no step mentions; over-building — a new file, abstraction or dependency no case forces, or one the codebase, standard library or platform already provides (a port `§ Layers` requires excepted) |
-| 5 | **known traps** | Walks into a `gotchas.md` entry, contradicts an ADR, breaks `architecture.md § Conventions`, or places code in the wrong layer / adds a dependency `§ Layers` forbids |
-| 6 | **ambiguity** | A step whose "done" is not decidable; a todo with two readings; scope that rests on an unstated assumption. **This category escalates to the human** |
+| 1 | **spec fidelity** | Named Behavior case with no step; step no case asks for; plan restating a case instead of decomposing it |
+| 2 | **testability** | Step with no observable assertion; step that cannot fail Red on its own; "add validation" without specifying rejected inputs |
+| 3 | **sequencing** | Step depending on a later step; hidden prerequisite (migration, fixture, config); coupled steps listed apart |
+| 4 | **scope** | Creep past the todo; files outside the entity; over-building (unforced file, abstraction, or dependency when existing code/stdlib/platform suffices; required `§ Layers` ports excepted) |
+| 5 | **known traps** | Walks into a `gotchas.md` entry, contradicts an ADR, breaks `architecture.md § Conventions`, or violates `§ Layers` |
+| 6 | **ambiguity** | Undecidable "done" criteria; two valid readings of a step or todo; unstated assumption (**escalates to human**) |
 
-Two mechanical checks inside the sweep:
+Always perform two mechanical checks:
+- **Case coverage:** Map every briefed Behavior case ID to its step(s). A case with no step is always a `blocker`.
+- **Red-first viability:** State the failing assertion for each step. If none exists, grade at least `risk`.
 
-- **Case coverage.** List the case IDs your brief names and map each to its step(s). A case with no step is a `blocker`, every time.
-- **Red-first viability.** For each step, state the assertion that would fail before it is implemented. If you cannot, the step is not testable as written — a `risk` at minimum.
-
-Verify before asserting: grep for a helper the plan assumes exists; state both readings of an ambiguous line and what each would produce. An unchecked finding is `confidence: low` or dropped.
+Verify claims before reporting (grep for assumed helpers; state both readings of an ambiguity). Drop or mark `confidence: low` if unverified.
 
 ## Severity (closed)
 
 | Severity | Meaning |
 | --- | --- |
-| `blocker` | The cycle cannot correctly start as briefed — a case with no step, two live readings, a plan contradicting the spec or the layers |
-| `risk` | Implementable, but likely to cause re-work — thin sequencing, a step hard to test first |
-| `note` | Worth knowing, not worth stopping for |
+| `blocker` | Cycle cannot start safely — unmapped case, two live readings, or spec/layer contradiction |
+| `risk` | Implementable, but likely to cause rework — thin sequencing or hard-to-test step |
+| `note` | Minor observation not worth stopping for |
 
-Doubt grades **up**: unsure between `blocker` and `risk` → `blocker`, saying why it might be lower. A false blocker costs a paragraph; a missed one costs the cycle.
+Grade **up** on doubt (`blocker` over `risk`, explaining why).
 
 ## Report format
 
-Number findings `P1`, `P2`, … most severe first.
+Number findings `P1`, `P2`, … most severe first:
 
 ```markdown
 **Subject:** plan | todo — <entity slug(s)>, cases <B1, B2>
@@ -58,6 +56,4 @@ Number findings `P1`, `P2`, … most severe first.
 **Notes:** <tally of `note` items, one clause each>
 ```
 
-`blocker` and `risk` get the full shape; a `note` is one clause in the tally. A round with nothing above `note` still carries the `Checked:` line — an unexplained pass is a failed review.
-
-**Re-dispatched after a re-plan:** read the revised brief only, confirm or contest the changes, and do not reopen lines of attack you had the first time.
+`blocker` and `risk` get full sections; `note` items go in the `Notes:` tally. If nothing exceeds `note`, say so with the `Checked:` lines. On re-dispatch after a re-plan, check only the revised brief without reopening round-one lines of attack.

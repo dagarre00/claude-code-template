@@ -36,7 +36,7 @@ _(Top-level directories and what lives where. Add as the project grows.)_
 
 ## Layers
 
-_(Clean architecture: the dependency rule this project enforces. Every source file belongs to exactly one layer; a layer may import only the layers in its row. `/project:init` fills this from the stack, records the check that enforces it in [[commands#architecture]], and allowlists it for the roles in `.claude/settings.json`. Changing a row is an ADR, never a side effect of making a test pass.)_
+_(Clean architecture: the dependency rule this project enforces. Every source file belongs to exactly one layer; a layer may import only the layers in its row. `/project:init` fills this from the stack, records the check that enforces it in [[commands#Architecture]], and allowlists it for the roles in `.claude/settings.json`. Changing a row is an ADR, never a side effect of making a test pass.)_
 
 | Layer | Holds | Lives in | May depend on |
 | --- | --- | --- | --- |
@@ -46,7 +46,7 @@ _(Clean architecture: the dependency rule this project enforces. Every source fi
 | `infrastructure` | Framework, database, HTTP, queues, SDK clients, configuration. | `<TBD>` | `adapters`, `application`, `domain` |
 
 - **Composition root:** `<TBD>` — the one place concrete adapters are constructed and wired into use cases.
-- **Enforced by:** `<TBD>` (the tool, its rule file, and the command — see [[commands#architecture]]). A check that nothing runs is not enforcement.
+- **Enforced by:** `<TBD>` (the tool, its rule file, and the command — see [[commands#Architecture]]). A check that nothing runs is not enforcement.
 - **Tests per layer:** domain and application are unit-tested with fakes of their ports, never with the real database or network; adapters get integration tests against the real boundary.
 - **Exceptions:** `<TBD>` — each one names its ADR. A project adopting this over existing code lists its baselined violations here, with the todo that retires them.
 
@@ -78,7 +78,7 @@ _(Threat model and trust boundaries. What we're protecting, who from, and how. I
 _(Unit vs integration vs e2e. Test framework. Fixture conventions. Coverage targets.)_
 
 - Test framework: `<TBD>`
-- Test command: see [[commands#test]]
+- Test command: see [[commands#Test]]
 - Fixtures: `<TBD>`
 - Coverage target: `<TBD>`
 

@@ -103,10 +103,17 @@ test('rule 19: a commit without a log entry raises a toast once initialised', as
   expect(w.toasts.join()).toMatch(/log\.md/)
 })
 
-test('rule 19: a commit with its log entry, or in the uninitialised template, is quiet', async ($, on) => {
+test('rule 19: a commit with its log entry, or a per-case TDD commit, is quiet', async ($, on) => {
   const logged = world(on, { files: INITIALISED, head: 'src/a.ts\ndocs/wiki/log.md\n' })
   await $.tool.call({ tool: 'Bash', command: 'git commit -m x' })
+  await $.tool.call({ tool: 'Bash', command: 'git commit -m "feat(auth): B1 login"' })
   expect(logged.toasts).toEqual([])
+})
+
+test('rule 19: a raw-source arrival commit is quiet without a log entry', async ($, on) => {
+  const rawOnly = world(on, { files: INITIALISED, head: 'docs/raw/interviews/2026-04-08.md\n' })
+  await $.tool.call({ tool: 'Bash', command: 'git commit -m "add interview"' })
+  expect(rawOnly.toasts).toEqual([])
 })
 
 test('rule 19: the uninitialised template is quiet', async ($, on) => {
