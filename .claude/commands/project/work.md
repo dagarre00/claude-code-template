@@ -81,10 +81,10 @@ Pushed cases and the step-4a plan review commit survive container recycles. Re-r
 
 7. **Wiki check.** Confirm the entity/concept page has the case ticked (`[x]`) and `## Implementation` / `## Tests` updated. Remove the completed todo from `docs/wiki/todos.md` in the final case's commit.
 
-7a. **Adversarial review — `[complex]` and batched cycles only.** Dispatch `adversary` and run `finding-disposition § Diff round` over `<sha-before-cases>..HEAD`:
+7a. **Adversarial review — `[complex]` and batched cycles only.** Dispatch `adversary` and run `finding-disposition § Diff round` once, over the whole cycle — `<sha-before-cases>..HEAD`, where `<sha-before-cases>` is the `docs(<slug>): plan review` commit (or the commit before the first case when step 4a was skipped) — never per case:
    - Optionally dispatch `triage` for a second opinion. Gate `critical`/`major` findings via one `human-checkpoint`, dispatch `developer` only for human-approved fixes, commit each round's dispositions to `docs/wiki/todos.md` (`docs(<slug>): adversary round N`), and re-review only fix commits (max 3 rounds).
 
-8. **Log, commit and push** per [`log-and-commit.md`](../../skills/feature-branching/log-and-commit.md) — complete the `work` entry opened in step 4a (or open it now if step 4a was skipped): kind `work`, fields `TODO(s)`, `Cases: B1, B2`, `Branch: feat/<slug>`, `Plan review: ...`, and `Adversary: <N> findings — <Fi> filed, <Fx> fixed, <R> rejected` (if step 7a ran). Stage `docs/wiki/log.md` alone; subject `docs(<slug>): log cycle`. Delete `.handoff/<slug>-plan.md` and any `.handoff/<slug>-*-*.md` handoff files, and confirm `git status --porcelain` is empty.
+8. **Log, commit and push** per [`log-and-commit.md`](../../skills/feature-branching/log-and-commit.md) — complete the `work` entry opened in step 4a (or open it now if step 4a was skipped): kind `work`, fields `TODO(s)`, `Cases: B1, B2`, `Branch: feat/<slug>`, `Plan review: ...`, and `Adversary: <N> findings — <Fi> filed, <Fx> fixed, <R> rejected` (if step 7a ran). Stage `docs/wiki/log.md` alone; subject `docs(<slug>): log cycle`. Delete `.handoff/<slug>-plan.md` and any `.handoff/<slug>-*-*.md` handoff files, confirm `git status --porcelain` is empty, and confirm `git log --oneline develop..HEAD` reads as one commit per case plus the review and log records.
 
 9. **Feature complete?** Check `## Behavior` on the entity/concept page. All `[x]` → step 10; otherwise → step 11.
 

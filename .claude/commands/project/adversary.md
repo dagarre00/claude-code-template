@@ -31,19 +31,19 @@ You run an adversarial diff review using `finding-disposition § Diff round`. Th
 
 ## Steps
 
-1. **Scope small:**
+1. **Scope the review to the whole cycle** — one review per cycle, never one per case:
    - **Base ref** → `<ref>...HEAD`.
    - **Dirty tree** → account for every path (rule 21), commit on the current branch (`wip: <what> — for adversary review` if not a finished case), and review `<sha-before>...HEAD`.
-   - **Clean tree with unreviewed commits** → `<sha-before>...HEAD` covering one Behavior case or a tight cluster.
+   - **Clean tree with unreviewed commits** → `<sha-before-cycle>..HEAD`, where `<sha-before-cycle>` is the commit just before the cycle's first case commit (its `docs(<slug>): plan review` commit when there is one).
 
 2. **Dispatch `adversary`** per `subagent-dispatch` with the commit range, entity slug(s), case IDs, test command from `docs/wiki/commands.md`, and optional lens — never the plan, `.handoff/`, or intent summary. Verify `git diff --stat <range>` is non-empty first.
 
-3. **Dispose of every finding** per `finding-disposition § Diff round`: **Filed** by default, **Fixed** only for human-approved `critical`/`major` items (via a single `human-checkpoint` and a `developer` dispatch per fix), or **Rejected** with a one-sentence reason. Optionally dispatch `triage` for a second opinion. Each round commits `docs(<slug>): adversary round N` staging `docs/wiki/todos.md` (`--allow-empty` if all rejected).
+3. **Dispose of every finding** per `finding-disposition § Diff round`: **Filed** by default, **Fixed** only for human-approved `critical`/`major` items (via a single `human-checkpoint` and a `developer` dispatch per fix), or **Rejected** with a one-sentence reason. Optionally dispatch `triage` for a second opinion. Each round commits `docs(<slug>): adversary round N` with `--allow-empty`, staging `docs/wiki/todos.md`.
    - **Release review fix:** never commit code on `develop`. Cut `fix/<slug>` (`feature-branching § Starting work`) before dispatching `developer` for an approved fix, complete the review and round commits there, and open a PR to `develop` via `pr-create`.
 
 4. **Re-review only if a fix landed**, over the fix commits alone (max 3 rounds).
 
-5. **Log, commit and push** per [`log-and-commit.md`](../../skills/feature-branching/log-and-commit.md) — kind `adversary`, fields `Commit reviewed`, `Findings: <N> (<C> critical, <M> major, <m> minor)`, `Disposition: <Fi> filed, <Fx> fixed, <R> rejected`. Stage `docs/wiki/log.md` and commit `docs(<slug>): log adversary review` (or fold `docs/wiki/log.md` into the final round commit when no re-review follows).
+5. **Log, commit and push** per [`log-and-commit.md`](../../skills/feature-branching/log-and-commit.md) — kind `adversary`, fields `Commit reviewed`, `Findings: <N> (<C> critical, <M> major, <m> minor)`, `Disposition: <Fi> filed, <Fx> fixed, <R> rejected`. Stage `docs/wiki/log.md` in the final round's commit (the round no re-review follows), never in an earlier one, so a re-review's range never carries it.
 
 6. **Report** findings by severity (leading with any `critical`/`major` filed rather than fixed), queued todo locations, approved fixes, and rejections with reasons.
 

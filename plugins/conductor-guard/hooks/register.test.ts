@@ -10,7 +10,10 @@ const OK = { exitCode: 0, stderr: '', isStdoutTruncated: false, isStderrTruncate
 // The world beneath the plugin: git answers by its subcommand, files by path,
 // and every tool that gets through records that it ran.
 // A workflow project unless `workflow` is false: the rules file is what marks one.
-function world(on: On, { porcelain = '', files: own = {} as Record<string, string>, head = '', workflow = true } = {}) {
+function world(
+  on: On,
+  { porcelain = '', files: own = {} as Record<string, string>, head = '', branch = 'develop', workflow = true } = {},
+) {
   const files: Record<string, string> = workflow ? { '.claude/rules/behavioral.md': '# Rules', ...own } : own
   const ran: string[] = []
   const toasts: string[] = []
@@ -21,6 +24,7 @@ function world(on: On, { porcelain = '', files: own = {} as Record<string, strin
     const sub = e.argv.slice(1).join(' ')
     if (sub.startsWith('status --porcelain')) return { value: { ...OK, stdout: porcelain } }
     if (sub.startsWith('show --name-only')) return { value: { ...OK, stdout: head } }
+    if (sub.startsWith('rev-parse --abbrev-ref HEAD')) return { value: { ...OK, stdout: `${branch}\n` } }
     return { value: { ...OK, exitCode: 1, stdout: '' } }
   })
   on('fs.exists', ($, e) => ({ value: file(e.path) !== undefined }))
@@ -94,25 +98,39 @@ test('rule 10: a role is never dispatched as a fork or through general-purpose',
 
 const INITIALISED = { 'CLAUDE.md': '- Name: linkshelf', 'docs/wiki/log.md': '# Log' }
 
-test('rule 19: a commit without a log entry raises a toast once initialised', async ($, on) => {
-  const w = world(on, { files: INITIALISED, head: 'src/a.ts\n' })
+for (const branch of ['develop', 'main']) {
+  test(`rule 19: a commit on ${branch} without a log entry raises a toast once initialised`, async ($, on) => {
+    const w = world(on, { files: INITIALISED, head: 'docs/wiki/todos.md\n', branch })
 
+    await $.tool.call({ tool: 'Bash', command: 'git commit -m "docs(wiki): close a todo"' })
+
+    expect(w.ran).toEqual(['Bash'])
+    expect(w.toasts.join()).toMatch(/log\.md/)
+  })
+}
+
+test('rule 19: a direct commit carrying its log entry is quiet', async ($, on) => {
+  const w = world(on, { files: INITIALISED, head: 'docs/wiki/todos.md\ndocs/wiki/log.md\n' })
   await $.tool.call({ tool: 'Bash', command: 'git commit -m x' })
-
-  expect(w.ran).toEqual(['Bash'])
-  expect(w.toasts.join()).toMatch(/log\.md/)
+  expect(w.toasts).toEqual([])
 })
 
-test('rule 19: a commit with its log entry, or a per-case TDD commit, is quiet', async ($, on) => {
-  const logged = world(on, { files: INITIALISED, head: 'src/a.ts\ndocs/wiki/log.md\n' })
-  await $.tool.call({ tool: 'Bash', command: 'git commit -m x' })
-  await $.tool.call({ tool: 'Bash', command: 'git commit -m "feat(auth): B1 login"' })
-  expect(logged.toasts).toEqual([])
+test('rule 19: a code-branch commit is quiet — the cycle and pr entries cover the branch', async ($, on) => {
+  const w = world(on, { files: INITIALISED, head: 'docs/wiki/entities/auth.md\n', branch: 'feat/auth' })
+  await $.tool.call({ tool: 'Bash', command: 'git commit -m "docs(auth): specify B3 — reject empty token"' })
+  await $.tool.call({ tool: 'Bash', command: 'git commit -m "feat(auth): B3 reject an empty token"' })
+  expect(w.toasts).toEqual([])
+})
+
+test('rule 19: an empty commit on develop is quiet', async ($, on) => {
+  const empty = world(on, { files: INITIALISED, head: '' })
+  await $.tool.call({ tool: 'Bash', command: 'git commit --allow-empty -m "docs(auth): adversary round 1"' })
+  expect(empty.toasts).toEqual([])
 })
 
 test('rule 19: a raw-source arrival commit is quiet without a log entry', async ($, on) => {
   const rawOnly = world(on, { files: INITIALISED, head: 'docs/raw/interviews/2026-04-08.md\n' })
-  await $.tool.call({ tool: 'Bash', command: 'git commit -m "add interview"' })
+  await $.tool.call({ tool: 'Bash', command: 'git commit -m "docs(raw): add interview"' })
   expect(rawOnly.toasts).toEqual([])
 })
 

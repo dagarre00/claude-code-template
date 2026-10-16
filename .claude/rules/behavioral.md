@@ -28,7 +28,7 @@ Hard constraints from real failures. Rules marked *(Conductor)* bind the main se
     - **Code** (`feat/*`, `fix/*`, `refactor/*`, `perf/*`) branches from `develop`, commits one Behavior case at a time, and merges via PR.
     - **Living docs & ops** (`docs/wiki/`, `docs/raw/`, `.claude/`) commit directly to `develop` or ride the active branch.
     - **Push every commit** (`git push`; retry network failures; skip and note if no remote).
-    - **Log mutations.** Append `## [YYYY-MM-DD HH:MM] <kind>` (UTC) to `docs/wiki/log.md` (`log-and-commit.md`) on direct commits and cycle/PR milestones.
+    - **Log mutations.** Append `## [YYYY-MM-DD HH:MM] <kind>` (UTC) to `docs/wiki/log.md` (`log-and-commit.md`) in the same commit as any direct commit to `develop`/`main` (a raw-source arrival is logged by the ingest that follows); on a code branch the cycle's `work` entry and the `pr` entry cover its commits.
 20. **Every finding gets a written, committed disposition.** *(Conductor, `finding-disposition`)*
     - **Diff findings** (`adversary`): **Filed** (default; queued in `todos.md` by severity, never fixed in the raising cycle without human approval), **Fixed** (`critical`/`major` approved via `human-checkpoint`), or **Rejected** (one-sentence reason; unwritten invariants must be written to the wiki). Committed in `docs(<slug>): adversary round N`.
     - **Brief findings** (`plan-adversary`, before Red): **Applied** (default; updates plan/brief), **Escalated** (spec defect → `human-checkpoint` → `/project:interview`), or **Rejected**. Never Filed; logged in the cycle's `work` entry before the first test.

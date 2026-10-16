@@ -31,7 +31,7 @@ The conductor re-proves Red after you return by restoring everything except your
 
 1. Climb `simplicity-ladder` and write the **smallest** code that makes the test pass.
 2. Place files in the layer `architecture.md § Layers` assigns, respecting dependency direction.
-3. Run the test command and architecture check until the new test and full suite pass.
+3. Run the test command and architecture check until the new test and full suite pass. Breaking another test means you over-reached: narrow the change and retry.
 
 ## Refactor
 

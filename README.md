@@ -72,14 +72,14 @@ The main session is the **conductor**: it runs the commands, dispatches the role
 | Practice | Mechanism |
 | --- | --- |
 | Reviewers never edit | The read-only roles have no edit tools and run in `permissionMode: dontAsk`: a command not allowlisted in `.claude/settings.json` — a git write, an install, a delete — is denied, not prompted. The conductor also checks that `HEAD` and the tree are unchanged after each. |
-| Writers stay in scope | The planner, wiki-maintainer, and researcher also run in `dontAsk`, and the only writes allowed to them are `Edit(/.handoff/**)`, `Edit(/docs/wiki/**)`, and `Edit(/docs/raw/research/**)`. |
+| Writers stay in scope | The planner, wiki-maintainer, and researcher also run in `dontAsk`, and the only writes allowed to them are `Edit(/.handoff/**)`, `Edit(/docs/wiki/**)`, and `Edit(/docs/raw/research/**)` (the researcher's `WebSearch` and `WebFetch` are allowlisted too). The read-only git allow rules come with a deny on `--output`, so no role writes a file through git. |
 | Subagents are leaves | No role has the Agent tool. |
 | A reviewer holds none of the author's context | Roles are dispatched by `subagent_type`, never as a fork, so they see none of the conversation — only a brief that the procedure keeps to IDs and paths. |
 | Tests fail before the implementation, pass after | The conductor proves each developer case: the full suite passes, the case is committed, then everything but its tests is restored from the parent commit and the tests must fail. Only then is it pushed. |
 | Clean architecture | `docs/wiki/architecture.md § Layers` declares the dependency rule; `/project:init` installs a stack-specific check (dependency-cruiser, import-linter, ArchUnit, …), proves it fails on a planted violation, and allowlists it for every role. |
 | Raw sources, a shared tree, role dispatch | The `conductor-guard` plugin (below) refuses an edit to an existing `docs/raw/` file (rule 11), `git stash`/`reset --hard`/`checkout --`/`restore`/`clean -f` over a dirty tree, naming the paths (rule 21) — the workflow's own `restore --source=<commit>` (the Red check) and tagged `stash push -m` pass — and an Agent call as a fork or through `general-purpose` (rule 10). A refusal the human overrides, such as rule 5's approved `reset --hard`, they run themselves with `! <command>`. |
 
-What stays discipline: the conductor itself (nothing stops it writing code directly or skipping a step), a reviewer choosing not to open `.handoff/` in the shared checkout, and the wiki-with-code and log checks in the `pr-create` skill, which only CI you write can back — the plugin raises a toast when a cycle-closing or `develop` commit carries no `docs/wiki/log.md` entry (rule 19).
+What stays discipline: the conductor itself (nothing stops it writing code directly or skipping a step), a reviewer choosing not to open `.handoff/` in the shared checkout, and the wiki-with-code and log checks in the `pr-create` skill, which only CI you write can back — the plugin raises a toast when a commit on `develop` or `main` changes files without a `docs/wiki/log.md` entry (rule 19); a code branch's commits are covered by its cycle's `work` and `pr` entries, which `pr-create` checks.
 
 ## The conductor-guard plugin
 

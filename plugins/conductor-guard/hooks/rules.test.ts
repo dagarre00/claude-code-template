@@ -77,17 +77,11 @@ describe('rule 10: dispatch', () => {
 })
 
 describe('rule 19: commits', () => {
-  test('a commit that owes a log entry is recognised; dry-run, --allow-empty, per-case TDD, raw, and wip commits are exempt', () => {
+  test('a commit is recognised, a dry run is not', () => {
     expect(isCommit('git commit -m "x"')).toBe(true)
     expect(isCommit('git add . && git commit -qm x')).toBe(true)
-    expect(isCommit('git commit -m "docs(wiki): ingest interview"')).toBe(true)
-    expect(isCommit('git commit -m "docs(auth): complete auth cycle"')).toBe(true)
+    expect(isCommit('git commit --allow-empty -m "docs(auth): adversary round 1"')).toBe(true)
     expect(isCommit('git commit --dry-run')).toBe(false)
-    expect(isCommit('git commit --allow-empty -m "docs(auth): adversary round 1"')).toBe(false)
-    expect(isCommit('git commit -m "feat(auth): B1 login"')).toBe(false)
-    expect(isCommit('git commit -qm "fix(auth): handle null token"')).toBe(false)
-    expect(isCommit('git commit -m "docs(raw): interview-2026-04-08"')).toBe(false)
-    expect(isCommit('git commit -m "wip: handoff checkpoint"')).toBe(false)
     expect(isCommit('git log --oneline')).toBe(false)
   })
 })

@@ -165,14 +165,18 @@ async function switchBranch($: EngineInterface, name: string) {
 }
 
 // Rule 19 applies once /project:init has filled CLAUDE.md: the template
-// itself keeps no log entries, and raw-only arrival commits need none.
+// itself keeps no log entries. A direct commit to develop or main carries its
+// own entry; a code branch's commits are covered by its cycle's work and pr
+// entries (pr-create checks them). Empty commits and raw-only arrivals need none.
 async function missesLogEntry($: EngineInterface): Promise<boolean> {
   if (!(await isWorkflowProject($))) return false
   const claudeMd = await text($, 'CLAUDE.md')
   if (claudeMd === undefined || claudeMd.includes('<set during project initialization>')) return false
   if (!(await $.fs.exists('docs/wiki/log.md'))) return false
+  const branch = (await git($, 'rev-parse', '--abbrev-ref', 'HEAD'))?.trim()
+  if (branch !== 'develop' && branch !== 'main') return false
   const files = lines(await git($, 'show', '--name-only', '--format=', 'HEAD'))
-  if (files.length > 0 && files.every(isRawSource)) return false
+  if (files.length === 0 || files.every(isRawSource)) return false
   return !files.includes('docs/wiki/log.md')
 }
 

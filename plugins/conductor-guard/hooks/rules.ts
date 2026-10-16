@@ -43,14 +43,9 @@ export function destructiveGit(command: string): string | undefined {
 export const isForbiddenDispatch = (type: string | undefined): boolean =>
   type === undefined || type === 'fork' || type === 'general-purpose'
 
-// Rule 19: a commit that owes a docs/wiki/log.md entry. Per-case TDD commits,
-// raw-source arrivals, wip checkpoints, and --allow-empty round commits do not.
+// Rule 19: a commit that changes the repository.
 export const isCommit = (command: string): boolean =>
-  /\bgit\s+commit\b/.test(command) &&
-  !/--(?:dry-run|allow-empty)\b/.test(command) &&
-  !/(?:-[a-z]*m|--message(?:=|\s+))\s*["']?(?:\$\(cat\s+<<'?\w+'?\s*\n\s*)?(?:(?:feat|fix|refactor|perf|test)\([^)]+\)|docs\(raw\)|wip):/i.test(
-    command,
-  )
+  /\bgit\s+commit\b/.test(command) && !/--dry-run\b/.test(command)
 
 // The entity a code branch builds (git-conventions: the slug equals it).
 export const entitySlug = (branch: string): string | undefined =>

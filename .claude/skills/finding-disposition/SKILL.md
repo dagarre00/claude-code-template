@@ -23,7 +23,7 @@ Reviewers use `plan-review` and `adversarial-review`; they receive nothing from 
 
    | Disposition | When | Action |
    | --- | --- | --- |
-   | **Applied** | Valid, and fixable via plan edit, sharper brief, or added case ID | On a planned cycle, edit `.handoff/<slug>-plan.md`. On a simple cycle, pass the refinement in the `developer`'s `Inputs:` brief (and if you update `docs/wiki/todos.md`, stage it with the step-6 commit). |
+   | **Applied** | Valid, and fixable via plan edit, sharper brief, or added case ID | On a planned cycle, edit `.handoff/<slug>-plan.md`. On a simple cycle, pass the refinement in the `developer`'s `Inputs:` brief (and if you update `docs/wiki/todos.md`, stage it in the `docs(<slug>): plan review` commit of step 6 below, so the tree is clean before the developer runs). |
    | **Escalated** | The **spec** is wrong, ambiguous, or missing | `human-checkpoint` recommending `/project:interview`. Stop the cycle. |
    | **Rejected** | Misreads the brief, or outside this cycle's cases | One sentence. Out-of-scope work worth doing becomes an ordinary todo line. |
 
@@ -39,16 +39,16 @@ Reviewers use `plan-review` and `adversarial-review`; they receive nothing from 
 
 ## Diff round — after the cases land (`adversary`)
 
-1. **Scope small:** `<sha-before>..HEAD` covering the cycle's commits. If `git diff --stat <range>` is empty, skip and say so.
+1. **Scope: the whole cycle, once.** `<sha-before-cycle>..HEAD`, where `<sha-before-cycle>` is the commit just before the cycle's first case commit (the `docs(<slug>): plan review` commit when step 4a ran). Never one review per case. Check `git diff --stat <range> -- . ':(exclude)docs/wiki/log.md'`; empty → skip and say so.
 2. **Send only:** commit range, entity slug(s), case IDs, test command — plus previous round findings on re-review (step 9). Never send `.handoff/`, conductor reasoning, or intent prose.
-3. **Check independence:** Flag any report citing `.handoff/` or `log.md`. `HEAD` and tracked files must be unchanged.
+3. **Check independence:** The adversary diffs with `docs/wiki/log.md` excluded; flag any report citing `.handoff/` or `log.md`. `HEAD` and tracked files must be unchanged.
 4. **Triage (optional):** Dispatch `triage` with the range, slug, case IDs, and verbatim findings. Never downgrade severity solely because a failure was not reproduced live.
 5. **Dispose (`Filed` is default):**
    - **Filed:** Add a todo line (`docs/wiki/todos.md § Tags`, tagged `[adversary]`): `critical` → `## Now (P0 — next)`, `major` → `## Next (P1)`, `minor` → `## Later (P2)`. `nit` is never filed.
    - **Fixed:** Only a human-approved `critical`/`major`. Dispatch `developer` for a failing test + fix commit: `fix(<slug>): <what> — adversary F<n>` (include `Wiki-Update: none (adversary fix)` footer if the entity page needs no change).
    - **Rejected:** One sentence citing the invariant, misread, or scope boundary.
-6. **Human gate:** Group all `critical` and `major` findings into **one** `human-checkpoint` (claim, failure scenario, files touched, recommendation). If declined or unreachable in `fast` mode → file at P0/P1 and highlight in the cycle report.
-7. **Commit the round record** (stage `docs/wiki/todos.md` plus any gotcha/ADR from triage; do **not** stage `log.md` here — the cycle's `work` or standalone `adversary` log entry records the final tally once the review finishes):
+6. **Human gate:** Group all `critical` and `major` findings into **one** `human-checkpoint` (claim, failure scenario, files touched, recommendation). If declined or unreachable in `fast` mode → file at P0/P1 and highlight in the cycle report. A human instruction such as "fix all the findings" is the approval, at that scope.
+7. **Commit the round record** (stage `docs/wiki/todos.md` plus any gotcha/ADR from triage; do **not** stage `log.md` in a round a re-review follows — `/project:work` records the tally in step 8's `work` entry, and `/project:adversary` stages its `adversary` entry in the final round's commit):
 
    ```bash
    git add docs/wiki/todos.md   # plus any gotcha or ADR the triage produced

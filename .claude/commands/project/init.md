@@ -27,10 +27,10 @@ On an existing codebase adopting the template, automatically merge any missing c
 
 - Verify `.claude/agents/` has all 8 roles (`planner`, `plan-adversary`, `developer`, `adversary`, `triage`, `reviewer`, `wiki-maintainer`, `researcher`), `.claude/commands/project/` has all 7 commands, `.claude/rules/` has `behavioral.md` and `workflow.md`, and `.claude/skills/` has every skill in `workflow.md § Skills`.
 - **Verify the Agent tool lists all 8 roles.** If a role file exists on disk but is missing from the Agent tool, ask the human to restart Claude Code and re-run `/project:init` (subagents load at session start — this is the only hard stop in step 0).
-- **Merge `.claude/settings.json`:** ensure `permissions.allow` includes `Edit(/.handoff/**)`, `Edit(/docs/wiki/**)`, `Edit(/docs/raw/research/**)`, and the read-only `git` commands (`git status*`, `git diff*`, `git log*`, `git show*`, `git rev-parse*` in `Bash(...)` and `PowerShell(...)`), plus the `conductor-guard` plugin entries (`extraKnownMarketplaces` and `enabledPlugins`).
+- **Merge `.claude/settings.json`:** ensure `permissions.allow` includes `Edit(/.handoff/**)`, `Edit(/docs/wiki/**)`, `Edit(/docs/raw/research/**)`, `WebSearch` and `WebFetch` (the `researcher` runs in `dontAsk`), the read-only `git` commands in exact and ` *` forms (`git status`, `git diff`, `git log`, `git show`, `git rev-parse` in `Bash(...)` and `PowerShell(...)`), and `permissions.deny` includes `Bash(git * --output*)` and `PowerShell(git * --output*)` (so the read-only roles cannot write files through git); plus the `conductor-guard` plugin entries (`extraKnownMarketplaces` and `enabledPlugins`).
 - **Merge `.gitignore` and `.gitattributes`:** ensure `.gitignore` includes `.claude/settings.local.json`, `.claude/tmp/`, `.claude/worktrees/`, `.handoff/*-plan.md`, `.handoff/*-handoff.md`, `.handoff/*-report.md`, `docs/.obsidian/`, and `.gitattributes` includes `docs/wiki/log.md merge=union`.
 
-Report the wiring status in one line (any merged files land in step 8's commit).
+Report the wiring status in one line (any merged files land in step 8's commit). If `.claude/settings.json` changed, ask the human to restart Claude Code before going on: the plugin and the new permissions load at session start. A missing or declined plugin is not a stop — the rules still bind without it.
 
 ### 0a. Review the role models
 
@@ -93,6 +93,8 @@ Ensure `docs/raw/interviews/` and `docs/wiki/{entities,concepts,decisions,summar
 4. Record verified commands in `docs/wiki/commands.md` (`## Install`, `## Test`, …) using self-contained invocations (`npm test`, `uv run pytest`).
 5. **Allowlist for `dontAsk` roles:** add `Bash(<test command>)`, `Bash(<test command> *)`, `PowerShell(<test command>)`, and `PowerShell(<test command> *)` to `permissions.allow` in `.claude/settings.json`.
 
+Declined → leave `## Test` as `<TBD>` and the allowlist unchanged, and say plainly that `/project:work` will refuse to start until a test command runs.
+
 ### 5b. Enforce the architecture
 
 1. Recommend an enforcement mechanism for the stack and confirm with the human:
@@ -112,6 +114,8 @@ Ensure `docs/raw/interviews/` and `docs/wiki/{entities,concepts,decisions,summar
 4. **Existing violations** on adopted codebases: baseline them, list under `§ Layers` (`Exceptions`), and file `[infra]` todos to retire them.
 5. **Allowlist the architecture command** in `.claude/settings.json` (exact and ` *` prefix forms in `Bash` and `PowerShell`).
 6. **File ADR** `decisions/<YYYY-MM-DD>-clean-architecture.md`.
+
+A check that passes the planted violation watches the wrong paths — never record it. Declined → leave `## Architecture` as `<TBD>` and say in the report that layers are enforced by review alone.
 
 ### 5c. Continuous integration
 

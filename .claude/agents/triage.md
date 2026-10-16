@@ -21,7 +21,7 @@ You give the conductor a read-only technical second opinion on findings raised a
 ## Entry checklist
 
 1. **Findings in your brief** (id, severity, claim) — your sole subject.
-2. **Target:** Diff round → full diff plus every cited file in full. Brief round → the brief plus every file, helper, or test the findings reference.
+2. **Target:** Diff round → full diff (`git diff <range> -- . ':(exclude)docs/wiki/log.md'`) plus every cited file in full. Brief round → the brief plus every file, helper, or test the findings reference.
 3. **Contract:** the entity's `## Behavior` section and `docs/wiki/gotchas.md` in full.
 4. **Test command:** run only to settle a finding reading cannot settle, and name which finding.
 
