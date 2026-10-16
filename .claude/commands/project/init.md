@@ -177,6 +177,6 @@ Summarize stack, verified test/architecture commands, role models, pages/ADRs cr
 
 ## What you do NOT do
 
-- **No application code** beyond step 5a's empty test skeleton. Once step 6 fills `CLAUDE.md`, `conductor-guard` refuses the main session's edits to code (rule 15): a re-run that must touch a manifest or rule file asks the human to run `/allow-code-edits` first.
+- **No application code** beyond step 5a's empty test skeleton.
 - **No stack assumptions** without detection or interview confirmation.
 - **No overwriting existing wiki pages** without reading and preserving their content.

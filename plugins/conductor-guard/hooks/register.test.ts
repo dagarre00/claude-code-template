@@ -154,19 +154,21 @@ test('rule 19: the uninitialised template is quiet', async ($, on) => {
   expect(w.toasts).toEqual([])
 })
 
-test('rule 15: once initialised, the conductor cannot edit source or tests itself', async ($, on) => {
+test('rule 15: once initialised, a direct conductor edit to code goes through with a toast, once per file', async ($, on) => {
   const w = world(on, { files: INITIALISED })
 
   const edit = await $.tool.call({ tool: 'Edit', file_path: '/repo/src/a.ts', old_string: 'x', new_string: 'y' })
-  const write = await $.tool.call({ tool: 'Write', file_path: '/repo/tests/a.test.ts', content: 'y' })
+  await $.tool.call({ tool: 'Edit', file_path: '/repo/src/a.ts', old_string: 'y', new_string: 'z' })
+  await $.tool.call({ tool: 'Write', file_path: '/repo/tests/a.test.ts', content: 'y' })
 
-  expect(refusal(edit)).toMatch(/rule 15/)
-  expect(refusal(edit)).toMatch(/developer/)
-  expect(refusal(write)).toMatch(/rule 15/)
-  expect(w.ran).toEqual([])
+  expect(refusal(edit)).toBeUndefined()
+  expect(w.ran).toEqual(['Edit', 'Edit', 'Write'])
+  expect(w.toasts.length).toBe(2)
+  expect(w.toasts[0]).toMatch(/src\/a\.ts.*rule 15/)
+  expect(w.toasts[1]).toMatch(/tests\/a\.test\.ts/)
 })
 
-test('rule 15: the conductor still edits the wiki, the workflow and files outside the repository', async ($, on) => {
+test('rule 15: the wiki, the workflow and files outside the repository are quiet', async ($, on) => {
   const w = world(on, { files: INITIALISED })
 
   await $.tool.call({ tool: 'Edit', file_path: '/repo/docs/wiki/todos.md', old_string: 'x', new_string: 'y' })
@@ -174,30 +176,30 @@ test('rule 15: the conductor still edits the wiki, the workflow and files outsid
   await $.tool.call({ tool: 'Write', file_path: '/tmp/scratch/notes.md', content: 'y' })
 
   expect(w.ran).toEqual(['Edit', 'Write', 'Write'])
+  expect(w.toasts).toEqual([])
 })
 
-test('rule 15: the uninitialised template lets the conductor write the init skeleton', async ($, on) => {
+test('rule 15: the uninitialised template is quiet while init writes its skeleton', async ($, on) => {
   const w = world(on, { files: { 'CLAUDE.md': '- Name: `<set during project initialization>`' } })
   await $.tool.call({ tool: 'Write', file_path: '/repo/src/index.ts', content: '' })
   expect(w.ran).toEqual(['Write'])
+  expect(w.toasts).toEqual([])
 })
 
 for (const ref of ['MERGE_HEAD', 'REBASE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD']) {
-  test(`rule 15: resolving a conflict (${ref}) is the conductor's own edit`, async ($, on) => {
+  test(`rule 15: resolving a conflict (${ref}) is quiet`, async ($, on) => {
     const w = world(on, { files: INITIALISED, inProgress: [ref] })
     await $.tool.call({ tool: 'Edit', file_path: '/repo/src/a.ts', old_string: 'x', new_string: 'y' })
     expect(w.ran).toEqual(['Edit'])
+    expect(w.toasts).toEqual([])
   })
 }
 
-test('rule 15: /allow-code-edits lets the conductor edit code for the rest of the session', async ($, on) => {
+test('rule 15: a subagent editing code is quiet', async ($, on) => {
   const w = world(on, { files: INITIALISED })
-
-  const answer = await $.command.run({ command: 'allow-code-edits', args: '' } as never)
-  await $.tool.call({ tool: 'Edit', file_path: '/repo/src/a.ts', old_string: 'x', new_string: 'y' })
-
-  expect(JSON.stringify(answer)).toMatch(/rule 15/)
+  await $.tool.call({ tool: 'Edit', file_path: '/repo/src/a.ts', old_string: 'x', new_string: 'y', agentId: 'a1' } as never)
   expect(w.ran).toEqual(['Edit'])
+  expect(w.toasts).toEqual([])
 })
 
 test('outside a workflow project every guard lets the call through', async ($, on) => {
@@ -209,10 +211,4 @@ test('outside a workflow project every guard lets the call through', async ($, o
   await $.tool.call({ tool: 'Edit', file_path: '/repo/src/a.ts', old_string: 'x', new_string: 'y' })
 
   expect(w.ran).toEqual(['Bash', 'Edit', 'Agent', 'Edit'])
-})
-
-test('rule 15: a subagent edits code under its own scope', async ($, on) => {
-  const w = world(on, { files: INITIALISED })
-  await $.tool.call({ tool: 'Edit', file_path: '/repo/src/a.ts', old_string: 'x', new_string: 'y', agentId: 'a1' } as never)
-  expect(w.ran).toEqual(['Edit'])
 })
