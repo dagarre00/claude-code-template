@@ -1,31 +1,29 @@
 ---
 name: git-recovery
-description: Conductor-only. This project's rules for emergency and advanced git — undoing commits, recovering lost work, stash, cherry-pick, bisect, history rewrites, deleting branches — and the procedure for resolving merge, rebase and cherry-pick conflicts.
-when_to_use: Trigger on "stash", "cherry-pick", "bisect", "git blame", "lost commit", "undo commit", "recover", "clean up branch", "drop commit", "reflog", "merge conflict", "rebase conflict", "CONFLICT (content)", "<<<<<<", "resolve conflict", "git merge failed", "git rebase failed".
+description: Conductor-only. Emergency and advanced git procedure — undoing commits, recovering lost work (reflog), stash vs checkpoint, cherry-pick, bisect, history rewrites, deleting branches, and resolving merge/rebase/cherry-pick conflicts.
 user-invocable: false
 ---
 
 # Git Recovery
 
-Plain git, with this project's safety rules on top. Before anything destructive, run `git status --porcelain` and account for every line — changes you did not make belong to another session (rule 21).
+Before any destructive git operation, run `git status --porcelain` and account for every line (rule 21).
 
 ## Rules for the risky operations
 
-- **Destructive = ask first.** `git reset --hard`, `git branch -D`, `git clean`, a force-push, or any history rewrite needs the human's approval (`human-checkpoint`) and a checkpoint tag before it runs: `git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`. `git reset --soft` / `git reset` of an unpushed commit keep the changes and need neither.
-- **Checkpoint over stash.** Pause mid-task with a tagged `wip:` commit (`feature-branching` § Mid-task pause). A stash is for a tiny interruption resumed in the same session, and the stash stack is shared by every worktree and session of this repository: push with a unique message (`git stash push -u -m "wip: <unique tag>"`), apply by SHA, then drop the entry you find by that message — never a bare `pop`, which can take another session's entry. Never leave one across sessions — an old stash gets applied, committed, and resumed properly.
-- **Merge, never rebase, to sync.** Sessions share branches concurrently, and a rebase rewrites pushed history another session holds. Rebase + `--force-with-lease` only with explicit approval; bare `--force` never; `develop` and `main` never.
-- **Lost commits** stay in `git reflog` until gc expires them — by default 30 days for a commit no branch reaches: `git checkout -b recover/<stamp> <sha>`.
-- **Sensitive data in history** → human approval, then `git filter-repo --path <file> --invert-paths` (not `filter-branch`), and everyone who cloned must re-clone.
-- **Cherry-pick sparingly** — it duplicates history; merge related branches instead.
-- **Bisect** with the project's test command (`git bisect run <test command>` when it exits non-zero on failure), and always `git bisect reset` when done.
-- **Deleting a merged branch:** `git branch -d` (refuses if unmerged) and `git push origin --delete <branch>`; `-D` only with approval.
+- **Destructive = ask first:** `git reset --hard`, `git branch -D`, `git clean`, force-push, or any history rewrite requires `human-checkpoint` approval and a tag first (`git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)`). `git reset --soft` / `git reset` of an unpushed commit preserves changes and needs neither.
+- **Checkpoint over stash:** Pause mid-task with a tagged `wip:` commit (`feature-branching § Mid-task pause`). Use stash only for a brief same-session pause (`git stash push -u -m "wip: <unique tag>"`, apply by SHA from `git stash list --format='%H %gs'`, never bare `git stash pop`).
+- **Merge, never rebase, to sync:** Rebase + `--force-with-lease` requires explicit human approval; bare `--force` or rebasing `develop`/`main` is forbidden.
+- **Lost commits:** Recover from `git reflog` via `git checkout -b recover/<stamp> <sha>`.
+- **Sensitive data in history:** Requires human approval, then `git filter-repo --path <file> --invert-paths` (never `filter-branch`).
+- **Cherry-pick sparingly** (prefer merging related branches).
+- **Bisect** with `git bisect run <test command>` and always finish with `git bisect reset`.
+- **Deleting a merged branch:** `git branch -d <branch>` and `git push origin --delete <branch>` (`-D` requires approval).
 
 ## Resolving conflicts
 
-When a merge, rebase or cherry-pick reports `CONFLICT (content)`, resolve every block on its merits — each side may hold correct logic, so never take one side wholesale — and complete it only once no marker remains and the **full test suite** passes: `git commit` with the generated merge message, or `rebase`/`cherry-pick --continue` (never a manual commit mid-rebase).
+On `CONFLICT (content)`, resolve every hunk on its merits (never take one side wholesale) and complete the operation (`git commit` or `rebase`/`cherry-pick --continue`) only after no conflict markers remain and the **full test suite** passes.
 
-- **An ambiguous block** → `human-checkpoint`, never a guess.
-- **A failing suite after a correct-looking resolution** means the merge itself may be wrong → `human-checkpoint`.
-- **In doubt with no human available:** abort (`git merge --abort`, or `rebase`/`cherry-pick --abort`), tag a checkpoint, and `human-checkpoint`.
+- **Ambiguous hunk or failing suite after resolution** → `human-checkpoint`.
+- **When in doubt with no human available:** abort (`git merge --abort` / `rebase --abort` / `cherry-pick --abort`), tag a checkpoint, and run `human-checkpoint`.
 
-`docs/wiki/log.md` merges by union and never conflicts, but may come out of order — move entries back into stamp order, oldest first, changing nothing else, and commit that with the merge.
+If union-merging `docs/wiki/log.md` puts entries out of order, sort them oldest-first by `## [YYYY-MM-DD HH:MM]` in the merge commit.

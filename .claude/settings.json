@@ -3,7 +3,34 @@
   "permissions": {
     "allow": [
       "Edit(/.handoff/**)",
-      "Edit(/docs/wiki/**)"
+      "Edit(/docs/wiki/**)",
+      "Edit(/docs/raw/research/**)",
+      "WebSearch",
+      "WebFetch",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git log)",
+      "Bash(git log *)",
+      "Bash(git show)",
+      "Bash(git show *)",
+      "Bash(git rev-parse)",
+      "Bash(git rev-parse *)",
+      "PowerShell(git status)",
+      "PowerShell(git status *)",
+      "PowerShell(git diff)",
+      "PowerShell(git diff *)",
+      "PowerShell(git log)",
+      "PowerShell(git log *)",
+      "PowerShell(git show)",
+      "PowerShell(git show *)",
+      "PowerShell(git rev-parse)",
+      "PowerShell(git rev-parse *)"
+    ],
+    "deny": [
+      "Bash(git * --output*)",
+      "PowerShell(git * --output*)"
     ]
   },
   "enabledPlugins": {

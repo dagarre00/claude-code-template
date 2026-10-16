@@ -10,11 +10,11 @@ disable-model-invocation: true
 
 The argument **selects the work**, overriding step 1's default of the top todo:
 
-- **Names a todo or entity** (`the login endpoint`, `entities/auth`) → work that. Match it against `docs/wiki/todos.md` lines and entity slugs; if nothing matches, say what you looked for and stop — never pick something adjacent.
-- **Asks for a batch** (`batch the auth todos`, `next 3`) → batch those todos on one branch, subject to the batching rule in `feature-branching`.
+- **Names a todo or entity** (`the login endpoint`, `entities/auth`) → match against `docs/wiki/todos.md` lines and entity/concept slugs; if nothing matches, report what you looked for and stop.
+- **Asks for a batch** (`batch the auth todos`, `next 3`) → batch those todos on one branch per `feature-branching § Batching todos`.
 - **Adds a constraint** (`skip the planner`, `skip the pre-flight`, `tests only`) → honour it and note the deviation in the report.
 
-A leading `fast` or `handoff` is the **dispatch mode**, stripped before the rest is read (`subagent-dispatch` § Dispatch mode). It never bypasses the preconditions, the Red phase or the entity-page check. Empty → the top todo.
+A leading `fast` or `handoff` sets the **dispatch mode** (`subagent-dispatch § Dispatch mode`; without one every role runs natively) and is stripped before reading the rest. It never bypasses preconditions, Red, or the entity-page check. Empty → the top todo.
 
 ## State at invocation
 
@@ -24,129 +24,105 @@ Branch: !`git branch --show-current`
 git status --short
 ```
 
-You orchestrate one TDD cycle (or a small batch). You write no tests or production code: you dispatch the `planner` (complex or batched work only), the `plan-adversary`, the `developer` and, on complex cycles, the `adversary`; you verify their output, commit it, log the cycle, and open the PR once the entity is complete.
+You orchestrate one TDD cycle (or batch). You write no tests or production code: you dispatch `planner` (`[complex]`/batched work), `plan-adversary`, `developer`, and (`[complex]`/batched cycles) `adversary`; verify and commit their output; log the cycle; and open the PR once the entity is complete.
 
 ## How you dispatch
 
-Every dispatch follows the `subagent-dispatch` skill — load it before the cycle's first dispatch; it runs each one natively or as a handoff file, per the dispatch mode. On top of it:
+Load and follow `subagent-dispatch` before the first dispatch:
 
-- **Each role already carries its own skills** and model; the brief carries only the task.
-- **Inputs are paths in this checkout or text in the brief.** The plan travels as `.handoff/<slug>-plan.md`; nothing is pasted that a role can read.
-- **A developer case is accepted only after Green, architecture and Red are proven** — the commit-first check in `subagent-dispatch` (step 6).
-- **Roles run no git.** You commit, push, and stage any files a developer reported moved or deleted.
+- **Scoped briefs only:** each role carries its own skills and model; pass files by path (`.handoff/<slug>-plan.md`), never pasted.
+- **Prove every developer case** (focused Green, architecture check, commit, Red proof) per `subagent-dispatch § Prove and commit a developer case`, then **close the loop** (full suite once, push) per `§ Close the case loop`.
+- **Roles run no git:** you stage, commit, and push.
 
 ## Preconditions
 
-**Starting fresh, on `develop`:**
-
-- **Clean working tree — clean *and yours*.** The state block above, every line accounted for. Changes you did not make are another session's live work: never stash, reset or check out over them (rule 21) — `human-checkpoint`, naming the paths.
+**Starting fresh on `develop`:**
+- **Clean working tree:** account for every line in `git status --short` (rule 21 — foreign changes trigger `human-checkpoint`).
 - `docs/wiki/todos.md` has at least one item.
-- `docs/wiki/commands.md § Test` is not `<TBD>` **and actually runs** — execute it once before dispatching anything, with an explicit shell timeout. A command that errors (framework missing, no manifest, no test directory) makes every Red fail for the wrong reason. The fix is `/project:init` step 5a, never a skeleton improvised mid-cycle.
-- The test command (and the architecture check, if any) is allowlisted for the roles — `subagent-dispatch` § Before the cycle's first dispatch.
+- `docs/wiki/commands.md § Test` is not `<TBD>` and **executes cleanly** (run it once with an explicit timeout before dispatching; if missing or broken, run `/project:init` step 5a).
+- The test command and architecture check are allowlisted in `.claude/settings.json` (`subagent-dispatch § Before the cycle's first dispatch`).
 
-Any failure → stop and `human-checkpoint`.
-
-**On a `feat/*` branch:**
-
-- Uncommitted changes, unpushed commits, or entity cases still `[ ]`/`[~]` → stay and continue the feature (step 5). Uncommitted changes first: every dispatch needs a clean tree. Account for every path (rule 21) — a case you verified but had not committed is yours to commit, anything else is a `human-checkpoint` — then push what is unpushed.
-- Every case `[x]` and pushed → first confirm the PR actually merged (`gh pr view <branch> --json state`, or the merge commit on `develop`) — `[x]`-and-pushed is also true of an open PR. Then `git checkout develop`, `git fetch origin develop && git merge --ff-only origin/develop`, and `git branch -d <branch>` (lowercase `-d` refuses an unmerged branch — a second check).
+**On a `feat/*` (or `fix/*`) branch:**
+- Uncommitted changes, unpushed commits, or cases still `[ ]`/`[~]` → account for every path (rule 21), commit any verified case, push unpushed commits, and resume at step 5.
+- Every case `[x]` and pushed → verify the PR merged (`gh pr view <branch> --json state` or merge commit on `develop`), then `git checkout develop && git fetch origin develop && git merge --ff-only origin/develop && git branch -d <branch>`.
 
 ## Resuming an interrupted cycle
 
-You commit and push after each proven case, and the plan review's record before the first one (step 4a), so a recycled container loses at most the case in flight. Re-run `/project:work`: `git fetch origin feat/<slug>` recovers what was pushed, and the cases still `[ ]`/`[~]` on the entity page are the resume point. The plan itself is scratch: if `.handoff/<slug>-plan.md` is gone on a `[complex]` cycle, re-dispatch the `planner` for the remaining cases and re-apply the dispositions the log entry records rather than re-reviewing from scratch. A developer's uncommitted files from an interrupted dispatch: `subagent-dispatch` § Resuming after an interruption.
+Pushed cases and the step-4a plan review commit survive container recycles; case commits not yet pushed at the loop's close do not, so a run that pauses mid-loop pushes them first (`subagent-dispatch § Close the case loop`). Re-run `/project:work`: `git fetch origin feat/<slug>` recovers pushed work, and `[ ]`/`[~]` cases on the entity page mark the resume point. If `.handoff/<slug>-plan.md` is missing on a `[complex]` cycle, re-dispatch `planner` for the remaining cases and re-apply the dispositions recorded in `docs/wiki/log.md`. Handle uncommitted developer files per `subagent-dispatch § Resuming after an interruption`.
 
 ## Steps
 
 1. **Pick the work.**
-   - **Fetch first**, so the pick is not already shipped: `git fetch origin develop`. Treat a todo as shipped only on evidence: its line is gone from `git show origin/develop:docs/wiki/todos.md` (a cycle's last case commit removes it — step 7), or you can name the commit on `origin/develop` that did its work. Then drop the stale line and take the next one. An entity with every case ticked is no evidence on its own: filed findings and review todos target shipped entities. (Read-only; step 2 does the merge.)
-   - Take the top item of `docs/wiki/todos.md`, or what the argument named.
-   - **Steered off P0?** When the argument selects work outside `## Now (P0 — next)`, count the open P0 items (`docs/wiki/todos.md § P0 saturation threshold`). At or above `P0_MAX`, `human-checkpoint` first — the count, the oldest P0 entries, and what the argument asked for: skipping a saturated P0 is the human's call. The default path drains P0 and needs no check.
-   - If the next 1–3 todos share an entity and context, propose a batch; `human-checkpoint` if the batch is not obvious.
-   - Find the matching `docs/wiki/entities/<slug>.md`. Missing → stop and recommend `/project:interview`.
-   - **`[infra]` todos** (deployment, CI, environment, configuration) name a `docs/wiki/concepts/<slug>.md` page instead, whose `## Behavior` holds verifiable operational assertions ("a request without `X-Edge-Secret` gets 403"). Everything else is unchanged — Red first, committed per case, logged.
+   - **Fetch first:** `git fetch origin develop`. If the top todo line is already gone from `git show origin/develop:docs/wiki/todos.md` (or a commit on `origin/develop` shipped it), remove the stale line and pick the next.
+   - Select the top item of `docs/wiki/todos.md`, or what `$ARGUMENTS` named.
+   - **Steered off P0?** If `$ARGUMENTS` selects work outside `## Now (P0 — next)`, count open P0 items (`docs/wiki/todos.md § P0 saturation threshold`). At or above `P0_MAX`, run `human-checkpoint` first.
+   - If the next 1–3 todos share an entity and sequential dependency (`feature-branching § Batching todos`), propose a batch (`human-checkpoint` if non-obvious).
+   - Locate `docs/wiki/entities/<slug>.md` (or `docs/wiki/concepts/<slug>.md` for `[infra]` todos, whose `## Behavior` holds verifiable operational assertions). If missing → stop and recommend `/project:interview`.
 
-2. **Fetch and branch.** Run the "Starting work" blocks of the `feature-branching` skill with `<type>/<slug>` = `feat/<slug>`. Any `--ff-only` failure or a diverged `origin/feat/<slug>` → stop and `human-checkpoint`; never rebase or force-push over it. No remote → the skill's guard skips fetch and merge, and every push in this command is skipped and noted in the report.
+2. **Fetch and branch.** Run `feature-branching § Starting work` for `feat/<slug>` (or `fix/<slug>`). Any `--ff-only` failure or diverged remote branch → `human-checkpoint`.
 
-3. **Verify the Behavior cases.** Read `## Behavior` on the entity page (or the `[infra]` concept page). Its unimplemented `[ ]` cases are the test target. Empty or vague → stop: `/project:interview` or the `spec-writing` skill defines them first. **Config and deploy changes are behavior** — middleware, an auth header, a CORS rule each takes a failing test first like any other case.
-   - **A todo with no open case to work** — a filed `[adversary]` finding, a `/project:review` todo or a bug against an entity whose cases are all `[x]` — gets its case before anything else: append the next `B<N>` from the finding's failure scenario (`spec-writing`), stated as the behavior the code must show, then commit the entity page alone (`docs(<slug>): specify B<N> — <todo>`) and push. The plan-adversary reviews it with the brief in step 4a. A finding that disagrees with an existing case is a spec question → `/project:interview`.
+3. **Verify the Behavior cases.** Read `## Behavior` on the entity/concept page; its `[ ]` cases are the targets (if empty or vague, stop for `/project:interview` or `spec-writing`).
+   - **Todo with no open `[ ]` case** (a filed `[adversary]` finding, `/project:review` item, or bug on an entity whose cases are all `[x]`): append a new `B<N>` case from the failure scenario (`spec-writing`), commit the entity page alone (`docs(<slug>): specify B<N> — <todo>`), and push before step 4. If the finding contradicts an existing case, escalate to `/project:interview`.
 
-4. **Plan, if complex or batched.** A `[complex]` todo or a batch of 2+ → dispatch the `planner` with the entity slug(s), the batch contents, this cycle's case IDs, the test command from `docs/wiki/commands.md`, and the path to write: `.handoff/<slug>-plan.md` (gitignored scratch). Read the plan it wrote and sanity-check it: the steps cover the listed cases and the scope has not drifted. Wrong → send it back once; a second failure means re-spec via `/project:interview`. A single simple todo skips this step.
+4. **Plan, if `[complex]` or batched (2+ todos).** Dispatch `planner` with entity slug(s), todo lines, case IDs, test command, and output path `.handoff/<slug>-plan.md`. Verify the plan covers all listed cases without scope drift (send back once if flawed; second failure → `/project:interview`). Simple single todos skip this step.
 
-4a. **Review the brief — every cycle, before any test.** Dispatch the `plan-adversary` and run the brief round of the `finding-disposition` skill.
-   - The subject is exactly one of: the step 4 plan (by path), or on a simple cycle the todo line plus the `$ARGUMENTS` instruction verbatim. Add the entity slug(s), case IDs, test command and branch name — **nothing else**. Your own reading of the plan is the framing that turns a review into agreement.
-   - Dispose of every finding before the developer runs. **Applied** (the default) edits `.handoff/<slug>-plan.md`, or the todo line. **Escalated** — the spec is what is wrong — is a `human-checkpoint` recommending `/project:interview`, and the cycle stops. **Rejected** takes one sentence. A `blocker` you disagree with is a checkpoint, never a rejection.
-   - Re-dispatch the `planner` only for a structural blocker (wrong decomposition, impossible order), once. Apply everything smaller yourself.
-   - **Commit the record before any test.** Open this cycle's `work` entry in `docs/wiki/log.md` now (`log-and-commit.md`), with `TODO(s)`, `Branch` and the `Plan review` block (step 8's format), and commit it alone on the branch — `docs(<slug>): plan review` — and push. The plan is gitignored scratch and the dispositions exist nowhere else, so a recycled container would otherwise lose them (rule 20). Step 8 completes the same entry.
-   - Unlike step 7a this is not gated on `[complex]`: a one-line todo is where an unstated assumption travels furthest. `skip the pre-flight` turns it off; say so in the report.
+4a. **Review the brief — every cycle, before any test** (unless `$ARGUMENTS` says `skip the pre-flight`). Dispatch `plan-adversary` and run `finding-disposition § Brief round`:
+   - Pass **only** the subject (`.handoff/<slug>-plan.md` or the verbatim todo line + `$ARGUMENTS`), entity slug(s), case IDs, test command, and branch name.
+   - Dispose of every finding: **Applied** (default — edits `.handoff/<slug>-plan.md` on a planned cycle, or on a simple cycle records the refinement to pass in step 5's `Inputs:` brief and updates `docs/wiki/todos.md` if needed), **Escalated** (`human-checkpoint` → `/project:interview`), or **Rejected** (one sentence; contested `blocker` → `human-checkpoint`). Re-dispatch `planner` once only for a structural blocker.
+   - **Commit the record before Red:** open this cycle's `work` entry in `docs/wiki/log.md` with `TODO(s)`, `Branch`, and the `Plan review` block, stage `docs/wiki/log.md` (plus `docs/wiki/todos.md` if edited), commit `docs(<slug>): plan review`, and push.
 
-5. **Dispatch the `developer`, one Behavior case per dispatch,** with:
-   - the entity slug, the branch name, the case ID and the test command;
-   - the plan **as revised in step 4a**, by path, if there is one;
-   - the scope: the case's source and test paths, the entity page, `docs/wiki/gotchas.md` and `docs/wiki/decisions/` (its skills edit those inline). **Never** `todos.md`, `wiki-todos.md` or `log.md` — the developer hands lines for those back under `Follow-ups:` — and never `.claude/` or the architecture rule files;
-   - the instruction to report test paths and implementation paths separately — step 6 re-proves Red from them.
+5. **Dispatch `developer`, one Behavior case per dispatch**, with:
+   - entity slug, branch name, single case ID, and test command;
+   - `.handoff/<slug>-plan.md` (if planned) or any Applied brief refinements from step 4a (if simple);
+   - `Scope:` the case's source and test paths, the entity/concept page, `docs/wiki/gotchas.md`, and `docs/wiki/decisions/` (never `todos.md`, `wiki-todos.md`, `log.md`, `.claude/`, or architecture rule files);
+   - instruction to report **test paths** and **implementation paths** separately, plus the existing test files covering the code it changed (the focused run's other inputs).
 
-   The developer runs Red → Green → refactor → tick and leaves the result as files. **You commit once per case** (`docs/wiki/git-conventions.md` § Cadence), before dispatching the next — that keeps the history per case. Anything changed outside the scope is a defect: read it before deciding, and never widen the scope after the fact.
+6. **Prove and commit the case** per `subagent-dispatch § Prove and commit a developer case` (focused Green → architecture check → commit with any `Follow-ups:` appended to `todos.md`/`wiki-todos.md` → focused Red check with implementation restored to `HEAD~1` → restore `HEAD`). Send back once on failure; two failures on the same mechanism trigger rule 5. Repeat steps 5–6 for the cycle's next case.
 
-6. **Prove and commit the case** — `subagent-dispatch` § Prove and commit a developer case: Green (the full suite), the architecture check, the case commit, then Red against it (everything but the test paths restored from the parent commit; the tests must fail), and only then the push. On a proven case, read the Red output: it must show the missing behavior (an assertion, or the not-yet-written symbol), not a broken fixture.
-   - **Follow-ups** the developer handed back for `todos.md`/`wiki-todos.md` are yours to append in the case commit.
-   - **A case the developer could not verify** is yours to run before the commit claims it done (`subagent-dispatch`). If you cannot run it either, the case stays `[~]` and the report says so.
+6a. **Close the case loop** per `subagent-dispatch § Close the case loop`: the full test suite once over all the cycle's cases, then one push. A failure is bisected to its case and fixed in its own `fix(<slug>): B<N> keep <test> passing` commit before going on.
 
-   Output that doesn't hold up goes back with notes, once; a second failure on the same mechanism is the two-strike rule (Failure modes).
+7. **Wiki check.** Confirm the entity/concept page has the case ticked (`[x]`) and `## Implementation` / `## Tests` updated. Remove the completed todo from `docs/wiki/todos.md` in the final case's commit.
 
-7. **Wiki check.** The entity page has the case ticked (`[~]` → `[x]`) and `## Implementation`/`## Tests` match the files. Remove the finished todo from `docs/wiki/todos.md` yourself, in the last case's commit.
+7a. **Adversarial review — `[complex]` and batched cycles only.** Dispatch `adversary` and run `finding-disposition § Diff round` once, over the whole cycle — `<sha-before-cases>..HEAD`, where `<sha-before-cases>` is the `docs(<slug>): plan review` commit (or the commit before the first case when step 4a was skipped) — never per case:
+   - Optionally dispatch `triage` for a second opinion. Gate `critical`/`major` findings via one `human-checkpoint`, dispatch `developer` only for human-approved fixes, commit each round's dispositions to `docs/wiki/todos.md` (`docs(<slug>): adversary round N`), and re-review only fix commits (max 3 rounds).
 
-7a. **Adversarial review — `[complex]` and batched cycles only.** Dispatch the `adversary` and run the diff round of the `finding-disposition` skill (what to send, triage, dispositions, round commit, re-review, stop conditions).
-   - Pass the commit range for a small unit (one case or a few closely related), with the entity slug(s), case IDs and test command. **Never** the plan file or your reasoning — the independence is the product.
-   - For a second opinion before disposing, dispatch the read-only `triage` role with the same range, slug, case IDs and the findings verbatim — not the `developer`. You own the severity, the `human-checkpoint` for `critical`/`major`, the todo lines and the round commit. The `developer` is dispatched only for a fix the human approved.
-   - The review does not gate the cycle: open filed findings belong to the queue.
+8. **Log, commit and push** per [`log-and-commit.md`](../../skills/feature-branching/log-and-commit.md) — complete the `work` entry opened in step 4a (or open it now if step 4a was skipped): kind `work`, fields `TODO(s)`, `Cases: B1, B2`, `Branch: feat/<slug>`, `Plan review: ...`, and `Adversary: <N> findings — <Fi> filed, <Fx> fixed, <R> rejected` (if step 7a ran). Stage `docs/wiki/log.md` alone; subject `docs(<slug>): log cycle`. Delete `.handoff/<slug>-plan.md` and any `.handoff/<slug>-*-*.md` handoff files, confirm `git status --porcelain` is empty, and confirm `git log --oneline develop..HEAD` reads as one commit per case plus the review and log records.
 
-   A simple single todo skips this step; the human can run `/project:adversary`.
+9. **Feature complete?** Check `## Behavior` on the entity/concept page. All `[x]` → step 10; otherwise → step 11.
 
-8. **Log, commit and push** per [`log-and-commit.md`](../../skills/feature-branching/log-and-commit.md) — complete the `work` entry step 4a opened (open it now if the argument skipped step 4a): kind `work`, fields `TODO(s)`, `Cases: B1, B2`, `Branch: feat/<slug>`, `Plan review: <N> findings — <A> applied, <E> escalated, <R> rejected` followed by one line per finding (the log is that review's only committed record), and `Adversary: <N> findings — <Fi> filed, <Fx> fixed, <R> rejected` (omit it if step 7a did not run). Stage `docs/wiki/log.md` alone; subject `docs(<slug>): log cycle`. With step 4a's, these are the commits `/project:work` makes on its own account — the cases and review records are already committed.
+10. **Open the PR** per `pr-create` (pre-PR checks, PR body against `develop`, `pr` log entry, checkout `develop`).
 
-   Delete `.handoff/<slug>-plan.md`, and any handoff pair the cycle left behind (`dispatch-handoff` step 8). Confirm `git status --porcelain` is empty and `git log --oneline develop..HEAD` reads as one commit per case, plus the review and log records.
-
-9. **Feature complete?** Re-read the entity's `## Behavior`. All `[x]` → step 10. Otherwise → step 11, no PR yet.
-
-10. **Open the PR** — the `pr-create` skill: its pre-PR checks, the body, the PR against `develop`, the `pr` log entry, and the return to `develop`.
-
-11. **Report.** What was done and what is next. Lead with the checkpoint that ended a fast-mode run and the defaults it took (`human-checkpoint` § Fast mode), then anything step 4a escalated, then any `critical`/`major` from step 7a that was filed rather than fixed. Then run the **maintenance cadence check** — the only place the periodic commands are surfaced, so run it even after a perfect cycle:
+11. **Report.** Lead with any `fast`-mode stopping checkpoint and defaults taken (`human-checkpoint § Fast mode`), any step-4a escalation, and any `critical`/`major` finding filed rather than fixed. Then run the **maintenance cadence check**:
 
     ```bash
-    # Each counter resets at the last entry of its own kind.
     awk '/^## \[[^]]*\] review([[:space:]]|$)/{n=0;next} /^## \[[^]]*\] work/{n++} END{print n+0}' docs/wiki/log.md            # work cycles since /project:review
     awk '/^## \[[^]]*\] wiki-maintenance([[:space:]]|$)/{n=0;next} /^## \[[^]]*\] work/{n++} END{print n+0}' docs/wiki/log.md  # work cycles since /project:wiki
     grep -cE '^- \[ \] [0-9]{4}-' docs/wiki/wiki-todos.md 2>/dev/null || true   # maintainer queue depth
     grep -c '^- \[ \] .*\[adversary\]' docs/wiki/todos.md 2>/dev/null || true   # open filed findings
     ```
 
-    Recommend, one line each and naming the number that fired — the human decides:
-    - More todos in this entity → `/project:work` again.
-    - `/project:review` — 5+ `work` entries since the last `review`, or cross-cutting work piling up.
-    - `/project:wiki` — 10+ open `wiki-todos.md` entries, 5+ `work` entries since the last `wiki-maintenance`, or the `[adversary]` count at `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`).
-    - A missing skill — a multi-step procedure you hand-rolled this cycle, or a new service in the stack → the `update-toolkit` skill (rule 17).
-    - A risky next change → `git tag checkpoint-$(date -u +%Y%m%dT%H%M%SZ)` first.
-    - `docs/wiki/commands.md § Architecture` still `<TBD>` while `architecture.md § Layers` is filled → `/project:init` step 5b.
+    Recommend (naming the count that fired):
+    - Remaining todos on this entity → `/project:work`.
+    - `/project:review` — 5+ `work` entries since last `review`.
+    - `/project:wiki` — 10+ open `wiki-todos.md` items, 5+ `work` entries since last `wiki-maintenance`, or `[adversary]` todos at `FINDINGS_MAX`.
+    - Missing skill (`update-toolkit`, rule 17), checkpoint tag before a risky change, or `/project:init` step 5b if `commands.md § Architecture` is still `<TBD>`.
 
 ## Failure modes
 
-- **A role missing from the Agent tool's list**, or the test command not allowlisted for the roles → fix it (`subagent-dispatch` § Before the cycle's first dispatch) before briefing anything.
-- **The planner cannot produce a coherent plan** → the spec is too ambiguous: `/project:interview`.
-- **The plan-adversary raises a `blocker` you think is wrong**, or it and the planner still disagree after a re-plan → `human-checkpoint` with both positions, before Red.
-- **The plan-adversary escalates the spec** → stop the cycle and run `/project:interview`. Never start Red on a case with two live readings.
-- **A read-only reviewer changes anything** (plan-adversary or adversary) → the round is void: report it, restore the tree, re-dispatch.
-- **Adversary findings survive three rounds** → no fourth: file the `critical`/`major` ones (the human gate still applies), list the `minor`/`nit` ones unfiled in the round commit, and `human-checkpoint` any `critical`/`major` you think is wrong, with both positions.
-- **The developer cannot confirm Red** → the cases or the test environment are wrong: `human-checkpoint`.
-- **Green fails, the architecture check fails, or Red is refuted** → roll the case back to uncommitted (`subagent-dispatch`) and send it back with the deciding output tail. The one exception is tests that live inside the source file (Rust `#[cfg(test)]`): brief the test into its own file, or `human-checkpoint` an exception naming that layout.
-- **The architecture check fails** → send it back with the check's output: move the code or add a port. A request to loosen a rule is a `human-checkpoint` and, if approved, an ADR in the same commit as the rule change.
-- **Two failures on one mechanism** → rule 5: tag `checkpoint-<stamp>` and `human-checkpoint` with both attempts; the `git reset --hard` is the human's call, after `git status --porcelain` accounts for every line. On an approved reset, re-spec via `/project:interview`; for complex work, re-dispatch the `planner` for a fundamentally different approach first.
-- **Pre-existing test failures on `develop`** → stop; `human-checkpoint`. Never build on a broken base.
-- **Merge conflicts during a sync** → the `git-recovery` skill; `human-checkpoint` if they are broad or ambiguous.
-- **Work lost to a container recycle** → pushed commits survive (`git fetch origin feat/<slug> && git checkout feat/<slug>`); unpushed work re-runs from the open todo.
+- **Missing role or un-allowlisted command** → fix per `subagent-dispatch § Before the cycle's first dispatch`.
+- **Incoherent plan or escalated spec** → stop and run `/project:interview`.
+- **Contested `plan-adversary` `blocker` or second plan disagreement** → `human-checkpoint` before Red.
+- **Read-only role modified files** → void round, account for paths (rule 21), restore, and re-dispatch.
+- **Adversary findings at round 3 cap** → gate/file `critical`/`major`, record `minor`/`nit` as unfiled (`reason: round cap`), never open round 4.
+- **Developer cannot confirm Red** → `human-checkpoint`.
+- **Green or architecture check fails before commit** → leave working tree intact (do **not** run `git reset HEAD~1`) and send `developer` back with the failure output (`subagent-dispatch`).
+- **Full suite fails at the loop's close** → bisect to the case and dispatch `developer` for a fix commit (`subagent-dispatch § Close the case loop`).
+- **Red refuted after case commit** → `git restore --source=HEAD --staged --worktree -- . && git reset HEAD~1` and send `developer` back (`subagent-dispatch`).
+- **Two failures on one mechanism** → rule 5: tag `checkpoint-<stamp>` and run `human-checkpoint`.
+- **Pre-existing test failures on `develop` or merge conflicts** → `human-checkpoint` / `git-recovery`.
 
 ## What you do NOT do
 
-- **No coding.** You read files and run commands to verify; tests and code come from the `developer`, including fixes for approved findings.
-- **No periodic review.** The `reviewer` runs only under `/project:review`; the in-loop readers are the `plan-adversary` and the `adversary` (rule 12).
-- **No merging.** Merging the PR is always the human's call.
-- **No silent batching.** A batch is named in the branch, the commit scope and the PR.
+- **No coding** (all tests and production code come from `developer`).
+- **No periodic `reviewer` dispatch** inside `/project:work` (rule 12).
+- **No merging PRs** and **no silent batching**.

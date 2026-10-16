@@ -3,6 +3,7 @@ import { describe, expect, test } from 'claude-code/testing'
 import {
   bandParts,
   bandText,
+  conductorMayEdit,
   countBacklog,
   countCases,
   destructiveGit,
@@ -28,6 +29,39 @@ describe('rule 11: raw sources', () => {
     expect(isRawSource('docs/wiki/log.md')).toBe(false)
     expect(isRawSource('docs/rawish/x.md')).toBe(false)
     expect(isRawSource('mydocs/raw/x.md')).toBe(false)
+  })
+})
+
+describe('rule 15: the paths the conductor edits itself', () => {
+  const root = '/repo'
+
+  test('the wiki, the workflow, handoff files, project facts, git and CI config', () => {
+    for (const path of [
+      'docs/wiki/todos.md',
+      '.claude/settings.json',
+      '.handoff/auth-plan.md',
+      'CLAUDE.md',
+      'README.md',
+      '.gitignore',
+      '.gitattributes',
+      '.github/workflows/verify.yml',
+      '.gitlab-ci.yml',
+      '/repo/docs/wiki/log.md',
+      'C:\\repo\\docs\\wiki\\log.md',
+    ]) {
+      expect(conductorMayEdit(path, path.startsWith('C:') ? 'C:\\repo' : root)).toBe(true)
+    }
+  })
+
+  test('a path outside the repository is not the project\'s code', () => {
+    expect(conductorMayEdit('/tmp/scratch/notes.md', root)).toBe(true)
+    expect(conductorMayEdit('/repository/src/a.ts', root)).toBe(true)
+  })
+
+  test('source, tests and manifests belong to the developer', () => {
+    for (const path of ['src/a.ts', '/repo/src/a.ts', './tests/a.test.ts', 'package.json', 'src/README.md', 'docs.ts']) {
+      expect(conductorMayEdit(path, root)).toBe(false)
+    }
   })
 })
 
@@ -80,6 +114,7 @@ describe('rule 19: commits', () => {
   test('a commit is recognised, a dry run is not', () => {
     expect(isCommit('git commit -m "x"')).toBe(true)
     expect(isCommit('git add . && git commit -qm x')).toBe(true)
+    expect(isCommit('git commit --allow-empty -m "docs(auth): adversary round 1"')).toBe(true)
     expect(isCommit('git commit --dry-run')).toBe(false)
     expect(isCommit('git log --oneline')).toBe(false)
   })
