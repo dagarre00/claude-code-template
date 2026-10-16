@@ -4,6 +4,7 @@ import type { EngineInterface, Register } from 'claude-code'
 import type { Band, Menu } from '../types'
 import {
   bandParts,
+  conductorMayEdit,
   countBacklog,
   countCases,
   destructiveGit,
@@ -34,6 +35,7 @@ const band = atom({ plugin: 'conductor-guard', key: 'band' } as const, null)
 const page = atom({ plugin: 'conductor-guard', key: 'page' } as const, null)
 const menu = atom({ plugin: 'conductor-guard', key: 'menu' } as const, null)
 const usage = atom({ plugin: 'conductor-guard', key: 'usage' } as const, null)
+const codeEdits = atom({ plugin: 'conductor-guard', key: 'codeEdits' } as const, false)
 const PANE = WIKI_PANE
 const MENU = MENU_PANE
 const WIKI = 'docs/wiki'
@@ -164,14 +166,37 @@ async function switchBranch($: EngineInterface, name: string) {
   await refresh($)
 }
 
+// /project:init fills CLAUDE.md's project fields; the template itself, and a
+// project mid-init, still carry the placeholder.
+async function isInitialised($: EngineInterface): Promise<boolean> {
+  if (!(await isWorkflowProject($))) return false
+  const claudeMd = await text($, 'CLAUDE.md')
+  return claudeMd !== undefined && !claudeMd.includes('<set during project initialization>')
+}
+
+// Rule 15: the main session (a call with no agentId) dispatches developer for
+// code instead of editing it. Resolving a stopped merge, rebase, cherry-pick or
+// revert is the conductor's own work (git-recovery), and the human can lift the
+// guard for the session with /allow-code-edits.
+async function refusesCodeEdit($: EngineInterface, agentId: string | undefined, path: string) {
+  if (agentId !== undefined || !(await isInitialised($))) return undefined
+  if (conductorMayEdit(path, await $.session.cwd())) return undefined
+  if (await read($, codeEdits)) return undefined
+  for (const ref of ['MERGE_HEAD', 'REBASE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD']) {
+    if ((await git($, 'rev-parse', '-q', '--verify', ref)) !== undefined) return undefined
+  }
+  return (
+    `conductor-guard: ${path} is code; dispatch developer for it rather than editing it from the main ` +
+    'session (rule 15). If the human wants the conductor to edit code directly, they can run /allow-code-edits.'
+  )
+}
+
 // Rule 19 applies once /project:init has filled CLAUDE.md: the template
 // itself keeps no log entries. A direct commit to develop or main carries its
 // own entry; a code branch's commits are covered by its cycle's work and pr
 // entries (pr-create checks them). Empty commits and raw-only arrivals need none.
 async function missesLogEntry($: EngineInterface): Promise<boolean> {
-  if (!(await isWorkflowProject($))) return false
-  const claudeMd = await text($, 'CLAUDE.md')
-  if (claudeMd === undefined || claudeMd.includes('<set during project initialization>')) return false
+  if (!(await isInitialised($))) return false
   if (!(await $.fs.exists('docs/wiki/log.md'))) return false
   const branch = (await git($, 'rev-parse', '--abbrev-ref', 'HEAD'))?.trim()
   if (branch !== 'develop' && branch !== 'main') return false
@@ -181,20 +206,24 @@ async function missesLogEntry($: EngineInterface): Promise<boolean> {
 }
 
 export const register: Register = on => {
-  on('tool.call', { tool: 'Edit' }, async ($, e, next) =>
-    isRawSource(e.file_path) && (await isWorkflowProject($))
-      ? { deny: `conductor-guard: ${e.file_path} is a raw source; add a new file instead (rule 11).` }
-      : next(e),
-  ).catch(($, e, next) =>
-    next.called ? next(e) : { deny: 'conductor-guard: its raw-source check failed (rule 11).' },
+  on('tool.call', { tool: 'Edit' }, async ($, e, next) => {
+    if (isRawSource(e.file_path) && (await isWorkflowProject($))) {
+      return { deny: `conductor-guard: ${e.file_path} is a raw source; add a new file instead (rule 11).` }
+    }
+    const code = await refusesCodeEdit($, e.agentId, e.file_path)
+    return code === undefined ? next(e) : { deny: code }
+  }).catch(($, e, next) =>
+    next.called ? next(e) : { deny: 'conductor-guard: its edit checks failed (rules 11 and 15).' },
   )
 
-  on('tool.call', { tool: 'Write' }, async ($, e, next) =>
-    isRawSource(e.file_path) && (await $.fs.exists(e.file_path)) && (await isWorkflowProject($))
-      ? { deny: `conductor-guard: ${e.file_path} is a raw source; add a new file instead (rule 11).` }
-      : next(e),
-  ).catch(($, e, next) =>
-    next.called ? next(e) : { deny: 'conductor-guard: its raw-source check failed (rule 11).' },
+  on('tool.call', { tool: 'Write' }, async ($, e, next) => {
+    if (isRawSource(e.file_path) && (await $.fs.exists(e.file_path)) && (await isWorkflowProject($))) {
+      return { deny: `conductor-guard: ${e.file_path} is a raw source; add a new file instead (rule 11).` }
+    }
+    const code = await refusesCodeEdit($, e.agentId, e.file_path)
+    return code === undefined ? next(e) : { deny: code }
+  }).catch(($, e, next) =>
+    next.called ? next(e) : { deny: 'conductor-guard: its edit checks failed (rules 11 and 15).' },
   )
 
   on('tool.call', { tool: 'Agent' }, async ($, e, next) =>
@@ -240,6 +269,10 @@ export const register: Register = on => {
     try {
       if (await isWorkflowProject($)) {
         await $.command.register({ name: 'wiki-nav', description: 'Browse the wiki spec in a pane' })
+        await $.command.register({
+          name: 'allow-code-edits',
+          description: 'Let the main session edit code directly for the rest of this session (lifts rule 15)',
+        })
       }
     } catch {}
     const started = await next(e)
@@ -260,6 +293,11 @@ export const register: Register = on => {
   on('command.run', { command: 'wiki-nav' }, async $ => {
     await $.ui.open({ id: PANE, title: 'Wiki', focus: true, closeOnEscape: true })
     return { text: 'Wiki navigator opened.' }
+  })
+
+  on('command.run', { command: 'allow-code-edits' }, async $ => {
+    await update($, codeEdits, () => true)
+    return { text: 'conductor-guard: the main session may edit code directly for the rest of this session (rule 15 lifted).' }
   })
 
   // The two panes are not closed by the person: closing a wiki page goes back

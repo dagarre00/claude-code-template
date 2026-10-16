@@ -26,12 +26,14 @@ export type Usage = {
 
 declare module 'claude-code' {
   interface PluginState {
+    // `codeEdits`: the human ran /allow-code-edits, lifting rule 15 for the session.
     // `page`: the page the wiki pane shows, a repository path; null shows its index.
     'conductor-guard': {
       band: Band | null
       page: string | null
       menu: Menu | null
       usage: Usage | null
+      codeEdits: boolean
     }
   }
 }

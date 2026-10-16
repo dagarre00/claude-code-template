@@ -72,14 +72,14 @@ Follow `/project:interview` **Operating rules** (one question at a time with a r
 9. **Deployment** — CI, target environment, release flow.
 10. **Non-functional** — performance, security (assets, threat model, trust boundaries), observability, compliance.
 11. **Design intention** (*UI projects only*): three adjectives it should feel like, what it must never feel like, and any component/token library.
-12. **Architecture** — recommend the four layers (`domain`, `application`, `adapters`, `infrastructure`) mapped to project directories, composition root, and whether a small project merges a layer (record deviations as an ADR).
+12. **Architecture** — recommend a shape from `clean-architecture § Shapes` by what the project is (`layered` for a domain-rich service, `core/shell` for a CLI, parser, compiler or SDK, `slices` for a frontend or feature-heavy app, `flat` for a script or tiny library), then map its boundaries to project directories and name the composition root.
 
 ### 5. Scaffold the wiki
 
 Ensure `docs/raw/interviews/` and `docs/wiki/{entities,concepts,decisions,summaries,reviews}/` exist. Populate with real answers (`<TBD>` only for undiscussed topics):
 
 - `requirements.md` — `## Vision`, `## Users`, `## User stories`, `## Functional requirements`, `## Non-functional requirements`, `## Out of scope`, `## Open questions`.
-- `architecture.md` — `## Stack`, `## Layout`, `## Layers`, `## Data`, `## External services`, `## Security`, `## Testing strategy`, `## Conventions`, `## Observability`, `## Deployment`, `## Environments`.
+- `architecture.md` — `## Stack`, `## Layout`, `## Layers` (the shape from topic 12 and its boundary table), `## Data`, `## External services`, `## Security`, `## Testing strategy`, `## Conventions`, `## Observability`, `## Deployment`, `## Environments`.
 - `git-conventions.md`, `commands.md`, and `todos.md` (seeded with initial work items).
 - `gotchas.md` and `wiki-todos.md` — create if missing; never overwrite existing entries.
 - `design-system.md` (*UI projects only*, from `wiki-update/design-system-template.md`): fill topic 11, leave token tables `<TBD>` with a todo for `/project:interview the design system`, and add `design-system-check` to `skills:` in `.claude/agents/developer.md`.
@@ -97,6 +97,8 @@ Declined → leave `## Test` as `<TBD>` and the allowlist unchanged, and say pla
 
 ### 5b. Enforce the architecture
 
+**`flat` shape:** skip items 1–5, write `none — flat shape` in `commands.md § Architecture` and in `architecture.md § Layers` (`Enforced by`), and file the item 6 ADR.
+
 1. Recommend an enforcement mechanism for the stack and confirm with the human:
 
    | Stack | Compiler boundary | Tool check |
@@ -110,10 +112,10 @@ Declined → leave `## Test` as `<TBD>` and the allowlist unchanged, and say pla
    | PHP / Ruby | — | `deptrac` / `packwerk` |
 
 2. Configure the rules from `§ Layers`, install the tool, and record the command in `docs/wiki/commands.md § Architecture` and `architecture.md § Layers` (`Enforced by`).
-3. **Prove it fails:** plant a temporary outward import in `domain`, verify the check fails naming that import, then delete the temporary file and verify it passes.
+3. **Prove it fails:** plant a temporary import the table forbids (an inner boundary importing an outer one, or one slice importing another's internals), verify the check fails naming that import, then delete the temporary file and verify it passes.
 4. **Existing violations** on adopted codebases: baseline them, list under `§ Layers` (`Exceptions`), and file `[infra]` todos to retire them.
 5. **Allowlist the architecture command** in `.claude/settings.json` (exact and ` *` prefix forms in `Bash` and `PowerShell`).
-6. **File ADR** `decisions/<YYYY-MM-DD>-clean-architecture.md`.
+6. **File ADR** `decisions/<YYYY-MM-DD>-architecture-shape.md`: the shape chosen, the ones rejected, and why.
 
 A check that passes the planted violation watches the wrong paths — never record it. Declined → leave `## Architecture` as `<TBD>` and say in the report that layers are enforced by review alone.
 
@@ -137,7 +139,7 @@ Append to `docs/wiki/log.md` (`date -u +'%Y-%m-%d %H:%M'`):
 
 - Stack: <stack>
 - Test command: <command>
-- Architecture: <tool and command, proven on a planted violation — or "not enforced">
+- Architecture: <shape>; <tool and command, proven on a planted violation — or "none — flat shape" or "not enforced">
 - CI: <workflow path — or "none">
 - Role models: <"shipped defaults" — or the roles changed>
 - Interview transcript: [YYYY-MM-DD-init](../raw/interviews/YYYY-MM-DD-init.md) (omit if nothing was asked)
@@ -175,6 +177,6 @@ Summarize stack, verified test/architecture commands, role models, pages/ADRs cr
 
 ## What you do NOT do
 
-- **No application code** beyond step 5a's empty test skeleton.
+- **No application code** beyond step 5a's empty test skeleton. Once step 6 fills `CLAUDE.md`, `conductor-guard` refuses the main session's edits to code (rule 15): a re-run that must touch a manifest or rule file asks the human to run `/allow-code-edits` first.
 - **No stack assumptions** without detection or interview confirmation.
 - **No overwriting existing wiki pages** without reading and preserving their content.

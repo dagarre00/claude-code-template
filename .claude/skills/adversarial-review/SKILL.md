@@ -18,7 +18,7 @@ Sweep all 8 categories in order at full depth:
 | 2 | **concurrency** | Shared mutable state, non-atomic read-modify-write, check-then-act, unawaited work, lock ordering, assumed single-threading |
 | 3 | **durability** | Partial write with no rollback, lost update, unbounded retry, non-idempotent handler, migration with no down path, unvalidated write |
 | 4 | **security** | Unvalidated input crossing a trust boundary, injection (SQL/shell/template), secret in code or log, missing authz, unsafe deserialization |
-| 5 | **architecture** | Outward import violating `architecture.md § Layers`; business rules in controller/handler/repository; concrete dependency built outside composition root; change to architecture rules or check |
+| 5 | **architecture** | Import the `architecture.md § Layers` table forbids; business rules in controller/handler/repository; concrete dependency built outside composition root; change to architecture rules or check |
 | 6 | **test-integrity** | Test asserting nothing, tautology, mock hiding the real boundary, test passing without the implementation, `[x]` case lacking a test |
 | 7 | **complexity** | Code not forced by the cases: dead code, single-implementation abstraction (except required ports), hand-rolled stdlib/platform feature, replaceable dependency, duplicate helper, `shortcut:` without revisit trigger. Prefix claim with `delete:`, `stdlib:`, `native:`, `yagni:`, or `shrink:` and name the replacement |
 | 8 | **other** | Stale wiki claim in the diff, misleading name, comment contradicting code |

@@ -7,7 +7,7 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-04-15
-updated: 2026-09-14
+updated: 2026-10-16
 ---
 
 # Commands
@@ -26,6 +26,12 @@ updated: 2026-09-14
 ## Test
 
 > Required for `/project:work` — `/project:work` precondition checks fail if this is `<TBD>`. Keep it one plain command line: it is allowlisted verbatim in `.claude/settings.json`, which is what lets every role run it (`/project:init` step 5a).
+
+`<TBD>`
+
+## Test (focused)
+
+> Runs only the named test files; `<paths>` stands for them. `/project:work` proves each Behavior case with it (Green and Red) and runs the full [[commands#Test]] once when the case loop closes (`subagent-dispatch § Close the case loop`). Leave `<TBD>` while the full suite takes a few seconds: every focused run is then the full suite. Its words before `<paths>` are allowlisted like the test command.
 
 `<TBD>`
 

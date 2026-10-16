@@ -7,7 +7,7 @@
 The main session is the **conductor**: it runs `/project:*` commands, dispatches roles via `subagent-dispatch` (`Agent` tool with `subagent_type: <role>` or `dispatch-handoff`), verifies changes, and owns every branch, commit, push and PR.
 
 - **Fresh context:** subagents see only their brief, role file, rules and preloaded skills — never dispatch via `fork` or `general-purpose` (rule 10). Subagents are leaves (no `Agent` tool) and share this checkout one writer at a time from a clean tree.
-- **Dispatch mode:** default asks native vs handoff per dispatch (`AskUserQuestion`). Leading `fast` runs every role natively (`human-checkpoint` § Fast mode); leading `handoff` writes every dispatch to `.handoff/`.
+- **Dispatch mode:** default runs every role natively without asking; checkpoints still stop for the human. Leading `handoff` writes every dispatch to `.handoff/`; leading `fast` runs natively and answers checkpoints by recorded default (`human-checkpoint` § Fast mode). Naming one role (`hand off the adversary`) hands off that dispatch alone.
 - Dispatched subagents obey the preloaded `subagent-contract` skill.
 
 ## Commands
@@ -16,7 +16,7 @@ Each accepts free-text context (and leading `fast` or `handoff` in dispatching c
 
 - `/project:init` — check wiring and role models, interview, scaffold `docs/wiki/`, bootstrap runnable test/architecture checks and CI, fill `CLAUDE.md`.
 - `/project:interview` — one-question-at-a-time Q&A with recommendations; streams transcript to `docs/raw/interviews/`, then updates `docs/wiki/`.
-- `/project:work` — top todo (or batch) → `feat/<slug>` → `planner` (if `[complex]`/batched) → `plan-adversary` → `developer` (one Behavior case per dispatch, proven Green + architecture + Red) → `adversary` (if `[complex]`/batched) → PR to `develop`.
+- `/project:work` — top todo (or batch) → `feat/<slug>` → `planner` (if `[complex]`/batched) → `plan-adversary` → `developer` (one Behavior case per dispatch, proven focused Green + architecture + Red; full suite and push once the loop closes) → `adversary` (if `[complex]`/batched) → PR to `develop`.
 - `/project:adversary` — read-only diff review (`adversary`, optional `triage`) with committed dispositions.
 - `/project:review` — periodic whole-repo audit (`reviewer`) every ~5 todos or before release; never inside `/project:work`.
 - `/project:wiki` — with an argument, ingest a source (`researcher` if web, then `wiki-maintainer`); empty, run the wiki health pass (`wiki-maintainer`).

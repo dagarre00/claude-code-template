@@ -53,7 +53,7 @@ You are the compiler and librarian of `docs/wiki/`: you compile `docs/raw/` into
 
 7. **Tighten cross-links** so every content page has at least one incoming link.
 
-8. **Archive `log.md`** when entry count ≥ 100: move all but the latest 30 entries (oldest first) into `docs/wiki/summaries/log-archive-YYYY.md`.
+8. **Archive `log.md`** when entry count ≥ 100 (or the brief's focus asks). Keep in `log.md` the latest 30 entries, extended back to the latest `review` entry so `/project:work`'s cadence counters still find it. Move every older entry, oldest first and unedited, to the end of `docs/wiki/summaries/log-archive-<YYYY>.md` for the year in its own stamp, creating that page (`wiki-update` summary frontmatter, `type: reference`, Essence callout, `[[log]]` linked) when it is missing. Report the count moved per year under (e) as `Log archived: <N> entries → <years>`.
 
 ## Escalation & Output
 

@@ -12,7 +12,14 @@ const OK = { exitCode: 0, stderr: '', isStdoutTruncated: false, isStderrTruncate
 // A workflow project unless `workflow` is false: the rules file is what marks one.
 function world(
   on: On,
-  { porcelain = '', files: own = {} as Record<string, string>, head = '', branch = 'develop', workflow = true } = {},
+  {
+    porcelain = '',
+    files: own = {} as Record<string, string>,
+    head = '',
+    branch = 'develop',
+    workflow = true,
+    inProgress = [] as string[],
+  } = {},
 ) {
   const files: Record<string, string> = workflow ? { '.claude/rules/behavioral.md': '# Rules', ...own } : own
   const ran: string[] = []
@@ -25,8 +32,12 @@ function world(
     if (sub.startsWith('status --porcelain')) return { value: { ...OK, stdout: porcelain } }
     if (sub.startsWith('show --name-only')) return { value: { ...OK, stdout: head } }
     if (sub.startsWith('rev-parse --abbrev-ref HEAD')) return { value: { ...OK, stdout: `${branch}\n` } }
+    // A merge, rebase or cherry-pick stopped on a conflict leaves its ref.
+    const ref = /^rev-parse -q --verify (\w+)$/.exec(sub)?.[1]
+    if (ref !== undefined && inProgress.includes(ref)) return { value: { ...OK, stdout: 'abc123\n' } }
     return { value: { ...OK, exitCode: 1, stdout: '' } }
   })
+  on('session.cwd', () => ({ value: '/repo' }))
   on('fs.exists', ($, e) => ({ value: file(e.path) !== undefined }))
   on('fs.read', ($, e) => {
     const name = file(e.path)
@@ -143,12 +154,65 @@ test('rule 19: the uninitialised template is quiet', async ($, on) => {
   expect(w.toasts).toEqual([])
 })
 
+test('rule 15: once initialised, the conductor cannot edit source or tests itself', async ($, on) => {
+  const w = world(on, { files: INITIALISED })
+
+  const edit = await $.tool.call({ tool: 'Edit', file_path: '/repo/src/a.ts', old_string: 'x', new_string: 'y' })
+  const write = await $.tool.call({ tool: 'Write', file_path: '/repo/tests/a.test.ts', content: 'y' })
+
+  expect(refusal(edit)).toMatch(/rule 15/)
+  expect(refusal(edit)).toMatch(/developer/)
+  expect(refusal(write)).toMatch(/rule 15/)
+  expect(w.ran).toEqual([])
+})
+
+test('rule 15: the conductor still edits the wiki, the workflow and files outside the repository', async ($, on) => {
+  const w = world(on, { files: INITIALISED })
+
+  await $.tool.call({ tool: 'Edit', file_path: '/repo/docs/wiki/todos.md', old_string: 'x', new_string: 'y' })
+  await $.tool.call({ tool: 'Write', file_path: '/repo/.handoff/auth-plan.md', content: 'y' })
+  await $.tool.call({ tool: 'Write', file_path: '/tmp/scratch/notes.md', content: 'y' })
+
+  expect(w.ran).toEqual(['Edit', 'Write', 'Write'])
+})
+
+test('rule 15: the uninitialised template lets the conductor write the init skeleton', async ($, on) => {
+  const w = world(on, { files: { 'CLAUDE.md': '- Name: `<set during project initialization>`' } })
+  await $.tool.call({ tool: 'Write', file_path: '/repo/src/index.ts', content: '' })
+  expect(w.ran).toEqual(['Write'])
+})
+
+for (const ref of ['MERGE_HEAD', 'REBASE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD']) {
+  test(`rule 15: resolving a conflict (${ref}) is the conductor's own edit`, async ($, on) => {
+    const w = world(on, { files: INITIALISED, inProgress: [ref] })
+    await $.tool.call({ tool: 'Edit', file_path: '/repo/src/a.ts', old_string: 'x', new_string: 'y' })
+    expect(w.ran).toEqual(['Edit'])
+  })
+}
+
+test('rule 15: /allow-code-edits lets the conductor edit code for the rest of the session', async ($, on) => {
+  const w = world(on, { files: INITIALISED })
+
+  const answer = await $.command.run({ command: 'allow-code-edits', args: '' } as never)
+  await $.tool.call({ tool: 'Edit', file_path: '/repo/src/a.ts', old_string: 'x', new_string: 'y' })
+
+  expect(JSON.stringify(answer)).toMatch(/rule 15/)
+  expect(w.ran).toEqual(['Edit'])
+})
+
 test('outside a workflow project every guard lets the call through', async ($, on) => {
   const w = world(on, { workflow: false, porcelain: ' M src/a.ts\n', files: { 'docs/raw/a.md': 'x' } })
 
   await $.tool.call({ tool: 'Bash', command: 'git stash' })
   await $.tool.call({ tool: 'Edit', file_path: 'docs/raw/a.md', old_string: 'x', new_string: 'y' })
   await $.tool.call({ tool: 'Agent', description: 'd', prompt: 'p', subagent_type: 'general-purpose' })
+  await $.tool.call({ tool: 'Edit', file_path: '/repo/src/a.ts', old_string: 'x', new_string: 'y' })
 
-  expect(w.ran).toEqual(['Bash', 'Edit', 'Agent'])
+  expect(w.ran).toEqual(['Bash', 'Edit', 'Agent', 'Edit'])
+})
+
+test('rule 15: a subagent edits code under its own scope', async ($, on) => {
+  const w = world(on, { files: INITIALISED })
+  await $.tool.call({ tool: 'Edit', file_path: '/repo/src/a.ts', old_string: 'x', new_string: 'y', agentId: 'a1' } as never)
+  expect(w.ran).toEqual(['Edit'])
 })

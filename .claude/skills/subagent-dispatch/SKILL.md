@@ -1,6 +1,6 @@
 ---
 name: subagent-dispatch
-description: Conductor-only. How to dispatch one role and decide whether to accept its result — dispatch mode (native subagent, handoff file, or fast), briefing, baseline checks, proving and committing a developer case (Green, architecture, Red), sending back, resuming, or changing a role's model/effort. Use for every dispatch a /project:* command makes.
+description: Conductor-only. How to dispatch one role and decide whether to accept its result — dispatch mode (native subagent, handoff file, or fast), briefing, baseline checks, proving and committing a developer case (focused Green, architecture, Red), closing the case loop (full suite, push), sending back, resuming, or changing a role's model/effort. Use for every dispatch a /project:* command makes.
 user-invocable: false
 ---
 
@@ -11,15 +11,17 @@ One procedure for every dispatch. The command decides which role gets what brief
 ## Before the cycle's first dispatch
 
 - **Role exists:** The Agent tool lists every role in `.claude/agents/`. If one is missing, ask the human to restart the session (subagents load at session start).
-- **Commands allowlisted:** Read-only roles, `planner`, `researcher`, and `wiki-maintainer` run in `dontAsk` mode (unlisted commands are denied without prompting). Ensure the test command and architecture check from `docs/wiki/commands.md` are in `.claude/settings.json` in both exact and prefix forms (`Bash(<command>)`, `Bash(<command> *)`, `PowerShell(<command>)`, `PowerShell(<command> *)`) so roles can run both the full suite and single test files. If missing, add them and commit `.claude/settings.json` alone per [`log-and-commit.md`](../feature-branching/log-and-commit.md) (`chore(workflow): allowlist <command> for the roles`).
+- **Commands allowlisted:** Read-only roles, `planner`, `researcher`, and `wiki-maintainer` run in `dontAsk` mode (unlisted commands are denied without prompting). Ensure the test command, the focused test command (its words before `<paths>`), and the architecture check from `docs/wiki/commands.md` are in `.claude/settings.json` in both exact and prefix forms (`Bash(<command>)`, `Bash(<command> *)`, `PowerShell(<command>)`, `PowerShell(<command> *)`) so roles can run both the full suite and single test files. If missing, add them and commit `.claude/settings.json` alone per [`log-and-commit.md`](../feature-branching/log-and-commit.md) (`chore(workflow): allowlist <command> for the roles`).
 
 ## Dispatch mode
 
 A dispatch runs **native** (via the Agent tool) or as a **handoff** (a file the human runs in another harness per `dispatch-handoff`). The command's leading argument word sets the mode for the run (stripped before reading the rest):
 
-- **`fast`** → native for every dispatch, no waiting on the human. Load `human-checkpoint` now; its `§ Fast mode` answers every checkpoint in the run.
+- **Neither** → native for every dispatch, without asking. Checkpoints still stop for the human.
 - **`handoff`** → handoff file for every dispatch.
-- **Neither** → ask before each dispatch (once for a parallel read-only batch) via `AskUserQuestion`: `Native (Recommended)`, `Handoff file`, `Native for the rest of this run`, `Handoff for the rest of this run`.
+- **`fast`** → native for every dispatch, and no waiting on the human. Load `human-checkpoint` now; its `§ Fast mode` answers every checkpoint in the run.
+
+The human can hand one role off without a mode word (`hand off the adversary`, in the argument or mid-run): that dispatch alone runs as a handoff, and the run keeps its mode.
 
 ## Brief
 
@@ -50,18 +52,17 @@ Do nothing to the checkout until the subagent notification arrives (or the human
 
 ## Prove and commit a developer case
 
-The case's **test paths** are the tests, fixtures, and helpers the developer reported (prefer the test directory so new helpers stay with the test); everything else changed is the implementation (wiki page included). Run suites with an explicit timeout.
+The case's **test paths** are the tests, fixtures, and helpers the developer reported (prefer the test directory so new helpers stay with the test); everything else changed is the implementation (wiki page included). **Focused** means the focused test command from `docs/wiki/commands.md § Test (focused)` over the case's test paths plus any existing test files the developer reported as covering the code it changed; while that section is `<TBD>`, every focused run is the full test command. Run suites with an explicit timeout.
 
 ```bash
-<test command>                     # 1. Green: full suite passes with the case in place
+<focused test command>             # 1. Green: the case's tests and the tests it touches pass
 <architecture command>             # 2. Architecture check passes (if defined in commands.md)
 git add -- <every path the case changed>          # plus Follow-ups appended to queues
-git commit -m "<the case's commit message>"       # docs/wiki/git-conventions.md; not pushed yet
+git commit -m "<the case's commit message>"       # docs/wiki/git-conventions.md; pushed at loop close
 git restore --source=HEAD~1 --staged --worktree -- . ':(exclude)<test path>' …   # set implementation aside
-<test command>                     # 3. Red: must FAIL on the case's assertion or missing symbol
+<focused test command over the case's test paths>   # 3. Red: must FAIL on the case's assertion or missing symbol
 git restore --source=HEAD --staged --worktree -- .   # restore implementation (including moves/deletions)
 git status --porcelain             # must be empty
-git push
 ```
 
 - **Read the Red output:** A broken fixture, syntax error, or import of a pre-existing module is not Red.
@@ -70,6 +71,18 @@ git push
 - **Interrupted mid-check:** Account for every modified path (rule 21), then run `git restore --source=HEAD --staged --worktree -- .`.
 - **Inline tests** (e.g. Rust `#[cfg(test)]`): Brief the test into a separate file, or accept via a `human-checkpoint` naming the layout.
 - **Unverified by developer** (needs GUI/hardware/credentials only the conductor has): Run the real check yourself before committing; if you cannot run it either, leave the case `[~]` and say so.
+
+## Close the case loop
+
+Once the cycle's last case is committed (and before any `adversary` dispatch, log entry, or PR), run the full suite once and push the cases together:
+
+```bash
+<test command>                     # the full suite, over every case the loop committed
+git push -u origin "$(git branch --show-current)"
+```
+
+- **Full suite fails:** a case broke a test outside its focused run. Find the first failing commit over the loop's range (`git bisect start HEAD <sha-before-cases> && git bisect run <test command>`, then `git bisect reset`), and dispatch `developer` with the failing output, that case's ID and its paths. The failing existing test is the Red, and the fix never edits it (rule 3; a test that encodes the wrong behavior is a `human-checkpoint`). Prove the fix with the full suite Green and the architecture check, commit it alone as `fix(<slug>): B<N> keep <test> passing` (with a `Wiki-Update: none (restores <test>)` footer unless the entity page changes), and close the loop again. A second failure on the same mechanism → rule 5.
+- **Pausing or ending the run mid-loop** (an interruption, a `fast`-mode stop, a checkpoint the human will answer later): push the committed cases first, unproven against the full suite. A pushed feature branch survives a container recycle; the loop's close still runs before the PR.
 
 ## Integrate any other write role
 
@@ -84,7 +97,7 @@ Stage the exact paths it reported (including reported deletions) plus any `Follo
 
 ## Resuming after an interruption
 
-Account for every path in the working tree first (rule 21). Uncommitted developer files are the case in flight (re-dispatch with `"these files are a previous attempt"` or discard as above). Push any committed-but-unpushed case before continuing.
+Account for every path in the working tree first (rule 21). Uncommitted developer files are the case in flight (re-dispatch with `"these files are a previous attempt"` or discard as above). Push any committed-but-unpushed case before continuing; the loop's close still runs the full suite before the PR.
 
 ## Changing a role's model or effort
 
@@ -96,4 +109,4 @@ Edit `model`/`effort` in `.claude/agents/<role>.md` and restart the session. Cit
 - **Leaking conductor context** into a brief.
 - **Two writers in one checkout**, or dispatching onto a dirty tree.
 - **Running `git reset HEAD~1` when no commit was made** (destroys the previous committed case).
-- **Pushing before Red is proven.**
+- **Pushing before Red is proven**, or opening a PR before the loop's full-suite close.

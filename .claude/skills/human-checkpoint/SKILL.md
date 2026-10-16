@@ -67,6 +67,6 @@ When a command argument starts with `fast` (`subagent-dispatch § Dispatch mode`
 | Non-obvious batch | Do not batch — run the single todo. |
 | Saturated P0 queue | Run what the argument asked; lead the report with the P0 count. |
 
-**End the run** everywhere else (two-strike pivot after tagging `checkpoint-<stamp>`, foreign changes in tree, unclear branch state, failed `--ff-only` or rejected push, destructive action, wrong spec/test, missing skill/page, ambiguous/pre-existing test failure, unconfirmable Red, second partial result, unparseable argument). Leave committed work pushed and uncommitted files untouched (rule 21), and open the report with the checkpoint block.
+**End the run** everywhere else (two-strike pivot after tagging `checkpoint-<stamp>`, foreign changes in tree, unclear branch state, failed `--ff-only` or rejected push, destructive action, wrong spec/test, missing skill/page, ambiguous/pre-existing test failure, unconfirmable Red, second partial result, unparseable argument). Leave committed work pushed (cases included, `subagent-dispatch § Close the case loop`) and uncommitted files untouched (rule 21), and open the report with the checkpoint block.
 
 **Record every default taken** under `Fast mode:` in the log entry, in any round commit, and at the top of the report.

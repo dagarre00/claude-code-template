@@ -14,7 +14,7 @@ The argument **selects the work**, overriding step 1's default of the top todo:
 - **Asks for a batch** (`batch the auth todos`, `next 3`) → batch those todos on one branch per `feature-branching § Batching todos`.
 - **Adds a constraint** (`skip the planner`, `skip the pre-flight`, `tests only`) → honour it and note the deviation in the report.
 
-A leading `fast` or `handoff` sets the **dispatch mode** (`subagent-dispatch § Dispatch mode`) and is stripped before reading the rest. It never bypasses preconditions, Red, or the entity-page check. Empty → the top todo.
+A leading `fast` or `handoff` sets the **dispatch mode** (`subagent-dispatch § Dispatch mode`; without one every role runs natively) and is stripped before reading the rest. It never bypasses preconditions, Red, or the entity-page check. Empty → the top todo.
 
 ## State at invocation
 
@@ -31,7 +31,7 @@ You orchestrate one TDD cycle (or batch). You write no tests or production code:
 Load and follow `subagent-dispatch` before the first dispatch:
 
 - **Scoped briefs only:** each role carries its own skills and model; pass files by path (`.handoff/<slug>-plan.md`), never pasted.
-- **Prove every developer case** (Green, architecture check, commit, Red proof, push) per `subagent-dispatch § Prove and commit a developer case`.
+- **Prove every developer case** (focused Green, architecture check, commit, Red proof) per `subagent-dispatch § Prove and commit a developer case`, then **close the loop** (full suite once, push) per `§ Close the case loop`.
 - **Roles run no git:** you stage, commit, and push.
 
 ## Preconditions
@@ -48,7 +48,7 @@ Load and follow `subagent-dispatch` before the first dispatch:
 
 ## Resuming an interrupted cycle
 
-Pushed cases and the step-4a plan review commit survive container recycles. Re-run `/project:work`: `git fetch origin feat/<slug>` recovers pushed work, and `[ ]`/`[~]` cases on the entity page mark the resume point. If `.handoff/<slug>-plan.md` is missing on a `[complex]` cycle, re-dispatch `planner` for the remaining cases and re-apply the dispositions recorded in `docs/wiki/log.md`. Handle uncommitted developer files per `subagent-dispatch § Resuming after an interruption`.
+Pushed cases and the step-4a plan review commit survive container recycles; case commits not yet pushed at the loop's close do not, so a run that pauses mid-loop pushes them first (`subagent-dispatch § Close the case loop`). Re-run `/project:work`: `git fetch origin feat/<slug>` recovers pushed work, and `[ ]`/`[~]` cases on the entity page mark the resume point. If `.handoff/<slug>-plan.md` is missing on a `[complex]` cycle, re-dispatch `planner` for the remaining cases and re-apply the dispositions recorded in `docs/wiki/log.md`. Handle uncommitted developer files per `subagent-dispatch § Resuming after an interruption`.
 
 ## Steps
 
@@ -75,9 +75,11 @@ Pushed cases and the step-4a plan review commit survive container recycles. Re-r
    - entity slug, branch name, single case ID, and test command;
    - `.handoff/<slug>-plan.md` (if planned) or any Applied brief refinements from step 4a (if simple);
    - `Scope:` the case's source and test paths, the entity/concept page, `docs/wiki/gotchas.md`, and `docs/wiki/decisions/` (never `todos.md`, `wiki-todos.md`, `log.md`, `.claude/`, or architecture rule files);
-   - instruction to report **test paths** and **implementation paths** separately.
+   - instruction to report **test paths** and **implementation paths** separately, plus the existing test files covering the code it changed (the focused run's other inputs).
 
-6. **Prove and commit the case** per `subagent-dispatch § Prove and commit a developer case` (Green → architecture check → commit with any `Follow-ups:` appended to `todos.md`/`wiki-todos.md` → Red check with implementation restored to `HEAD~1` → restore `HEAD` → push). Send back once on failure; two failures on the same mechanism trigger rule 5.
+6. **Prove and commit the case** per `subagent-dispatch § Prove and commit a developer case` (focused Green → architecture check → commit with any `Follow-ups:` appended to `todos.md`/`wiki-todos.md` → focused Red check with implementation restored to `HEAD~1` → restore `HEAD`). Send back once on failure; two failures on the same mechanism trigger rule 5. Repeat steps 5–6 for the cycle's next case.
+
+6a. **Close the case loop** per `subagent-dispatch § Close the case loop`: the full test suite once over all the cycle's cases, then one push. A failure is bisected to its case and fixed in its own `fix(<slug>): B<N> keep <test> passing` commit before going on.
 
 7. **Wiki check.** Confirm the entity/concept page has the case ticked (`[x]`) and `## Implementation` / `## Tests` updated. Remove the completed todo from `docs/wiki/todos.md` in the final case's commit.
 
@@ -114,6 +116,7 @@ Pushed cases and the step-4a plan review commit survive container recycles. Re-r
 - **Adversary findings at round 3 cap** → gate/file `critical`/`major`, record `minor`/`nit` as unfiled (`reason: round cap`), never open round 4.
 - **Developer cannot confirm Red** → `human-checkpoint`.
 - **Green or architecture check fails before commit** → leave working tree intact (do **not** run `git reset HEAD~1`) and send `developer` back with the failure output (`subagent-dispatch`).
+- **Full suite fails at the loop's close** → bisect to the case and dispatch `developer` for a fix commit (`subagent-dispatch § Close the case loop`).
 - **Red refuted after case commit** → `git restore --source=HEAD --staged --worktree -- . && git reset HEAD~1` and send `developer` back (`subagent-dispatch`).
 - **Two failures on one mechanism** → rule 5: tag `checkpoint-<stamp>` and run `human-checkpoint`.
 - **Pre-existing test failures on `develop` or merge conflicts** → `human-checkpoint` / `git-recovery`.

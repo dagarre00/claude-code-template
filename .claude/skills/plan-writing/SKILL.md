@@ -58,7 +58,7 @@ Each step must be small enough that **one failing test drives it** (`step N → 
 
 ## Layers
 
-Assign every new file a layer from `architecture.md § Layers`. Route any inner-to-outer need (`domain`/`application` → `adapters`/`infrastructure`) through an inner-layer port and list it under `## New dependencies between layers`. If the task cannot fit the declared layers, stop and report (changing layers requires a human decision and an ADR).
+Assign every new file a boundary from `architecture.md § Layers` (none under the `flat` shape). Route any need the table forbids (an inner boundary reaching an outer one, a slice reaching another's internals) through a port or public API and list it under `## New dependencies between layers`. If the task cannot fit the declared boundaries, stop and report (changing the shape or a boundary requires a human decision and an ADR).
 
 ## Update on retry
 

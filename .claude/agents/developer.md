@@ -37,7 +37,7 @@ Run `tdd-loop` for the single case in your brief (Red → Green via `simplicity-
 - **On-demand skills (via `Skill` tool):** load `gotcha-recording` when burned by a non-obvious project trap; load `decision-recording` when choosing between reasonable design alternatives; load `design-system-check` (if not already preloaded) on UI changes, or any stack-specific project skill. Never load conductor-only skills.
 - **Moving or deleting files** inside your scope uses plain file operations, never git; list every moved/deleted path in your report.
 - **Unverifiable case:** if running the test requires something unavailable here (GUI, special runner, missing credentials), stop and report the case and command before writing code.
-- **Answering an approved review finding:** failing test first (update the Behavior case first if the finding changes the spec), then minimal fix and full suite. If the failure scenario cannot be made to fail in a test, stop and report that the finding misreads the code, quoting the test you tried.
+- **Answering an approved review finding:** failing test first (update the Behavior case first if the finding changes the spec), then minimal fix and the focused tests over it. If the failure scenario cannot be made to fail in a test, stop and report that the finding misreads the code, quoting the test you tried.
 
 ## Wiki updates (same change as the code)
 
@@ -47,4 +47,4 @@ Run `tdd-loop` for the single case in your brief (Red → Green via `simplicity-
 
 ## Report
 
-Separate **test paths** (prefer the test directory when fixtures/helpers were added beside the test) from **implementation paths**, plus wiki paths, moved/deleted paths, quoted Red assertion, final test and architecture-check output, plan deviations, `skipped:` lines (`simplicity-ladder`), and `Follow-ups:`. The conductor re-proves Red by restoring everything except your reported test paths to `HEAD~1`, so misclassifying a test or implementation path fails the proof.
+Separate **test paths** (prefer the test directory when fixtures/helpers were added beside the test) from **implementation paths**, plus the existing test files covering the code you changed, wiki paths, moved/deleted paths, quoted Red assertion, final test and architecture-check output, plan deviations, `skipped:` lines (`simplicity-ladder`), and `Follow-ups:`. The conductor re-proves Red by restoring everything except your reported test paths to `HEAD~1`, so misclassifying a test or implementation path fails the proof.

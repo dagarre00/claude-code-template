@@ -30,7 +30,7 @@ Track entities with `TodoWrite` so none are skipped.
 - **Spec coverage:** every `## Behavior` case has a matching test per `architecture.md`.
 - **Code-vs-wiki drift:** trace at least one case per entity through the code.
 - **Test quality:** real boundaries vs mocks of everything; behavior vs implementation details.
-- **Architecture:** imports obey `architecture.md § Layers`; architecture check covers every source directory and would fail on a violation; no business logic in adapters/controllers/repositories; no framework types in domain.
+- **Architecture:** imports obey the shape and table in `architecture.md § Layers`; architecture check covers every source directory and would fail on a violation (none under `flat`); no business logic in adapters/controllers/repositories; no framework types in an inner boundary; the shape still fits the project (a `flat` project that grew I/O, or ports with one caller under `layered`).
 - **Security & correctness:** OWASP issues, injection, missing validation, unhandled errors, races.
 - **Over-engineering:** code no case forces — dead code, single-implementation abstractions (except ports required by `§ Layers`), hand-rolled stdlib/platform features, replaceable dependencies, duplicated helpers. Prefix Warnings with `delete:`, `stdlib:`, `native:`, `yagni:`, or `shrink:` and name the replacement.
 - **Shortcut ledger:** grep for `shortcut:` comments whose revisit trigger has passed or is missing → recommended todo.
