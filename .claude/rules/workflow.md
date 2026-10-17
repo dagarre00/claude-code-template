@@ -7,7 +7,7 @@
 The main session is the **conductor**: it runs `/project:*` commands, dispatches roles via `subagent-dispatch` (`Agent` tool with `subagent_type: <role>` or `dispatch-handoff`), verifies changes, and owns every branch, commit, push and PR.
 
 - **Fresh context:** subagents see only their brief, role file, rules and preloaded skills — never dispatch via `fork` or `general-purpose` (rule 10). Subagents are leaves (no `Agent` tool) and share this checkout one writer at a time from a clean tree.
-- **Dispatch mode:** default runs every role natively without asking; checkpoints still stop for the human. Leading `handoff` writes every dispatch to `.handoff/`; leading `fast` runs natively and answers checkpoints by recorded default (`human-checkpoint` § Fast mode). Naming one role (`hand off the adversary`) hands off that dispatch alone.
+- **Dispatch mode:** **native is the default** and changes only when the human asks (a leading `handoff`/`fast`, or naming one role); default runs every role natively without asking; checkpoints still stop for the human. Leading `handoff` writes every dispatch to `.handoff/`; leading `fast` runs natively and answers checkpoints by recorded default (`human-checkpoint` § Fast mode). Naming one role (`hand off the adversary`) hands off that dispatch alone.
 - Dispatched subagents obey the preloaded `subagent-contract` skill.
 
 ## Commands
@@ -26,7 +26,7 @@ Each accepts free-text context (and leading `fast` or `handoff` in dispatching c
 
 | Role | Model · effort | Mode & Write Scope | Purpose |
 | --- | --- | --- | --- |
-| `planner` | opus · xhigh | `dontAsk` · `.handoff/<slug>-plan.md` | Stepwise test-driven plan for `[complex]` or batched todos. |
+| `planner` | opus · high | `dontAsk` · `.handoff/<slug>-plan.md` | Stepwise test-driven plan for `[complex]` or batched todos. |
 | `plan-adversary` | sonnet · high | `dontAsk` · read-only | Attacks the brief before any test exists. |
 | `developer` | sonnet · medium | `acceptEdits` · case code, tests, entity/gotchas/decisions | Implements one Behavior case Red → Green → refactor → wiki. |
 | `adversary` | opus · high | `dontAsk` · read-only | Hunts defects in a diff with zero author context. |

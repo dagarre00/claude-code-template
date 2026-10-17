@@ -17,7 +17,7 @@ One procedure for every dispatch. The command decides which role gets what brief
 
 A dispatch runs **native** (via the Agent tool) or as a **handoff** (a file the human runs in another harness per `dispatch-handoff`). The command's leading argument word sets the mode for the run (stripped before reading the rest):
 
-- **Neither** → native for every dispatch, without asking. Checkpoints still stop for the human.
+- **Neither** → native for every dispatch, without asking. Native is the default; never switch mode unless the human asks. Checkpoints still stop for the human.
 - **`handoff`** → handoff file for every dispatch.
 - **`fast`** → native for every dispatch, and no waiting on the human. Load `human-checkpoint` now; its `§ Fast mode` answers every checkpoint in the run.
 
