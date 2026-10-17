@@ -20,3 +20,7 @@ updated: 2026-09-23
 ## [2026-10-17 04:35] chore
 
 Made native dispatch the explicit default in `rules/workflow.md` and `subagent-dispatch`; mode changes only on human request. Role models kept at shipped defaults.
+
+## [2026-10-17 04:36] chore
+
+Set `planner` effort from xhigh to high (`agents/planner.md`, `rules/workflow.md` Roles table).

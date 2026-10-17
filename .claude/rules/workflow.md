@@ -26,7 +26,7 @@ Each accepts free-text context (and leading `fast` or `handoff` in dispatching c
 
 | Role | Model · effort | Mode & Write Scope | Purpose |
 | --- | --- | --- | --- |
-| `planner` | opus · xhigh | `dontAsk` · `.handoff/<slug>-plan.md` | Stepwise test-driven plan for `[complex]` or batched todos. |
+| `planner` | opus · high | `dontAsk` · `.handoff/<slug>-plan.md` | Stepwise test-driven plan for `[complex]` or batched todos. |
 | `plan-adversary` | sonnet · high | `dontAsk` · read-only | Attacks the brief before any test exists. |
 | `developer` | sonnet · medium | `acceptEdits` · case code, tests, entity/gotchas/decisions | Implements one Behavior case Red → Green → refactor → wiki. |
 | `adversary` | opus · high | `dontAsk` · read-only | Hunts defects in a diff with zero author context. |

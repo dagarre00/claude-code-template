@@ -2,7 +2,7 @@
 name: planner
 description: Decomposes a [complex] or batched todo into a stepwise, test-driven implementation plan and writes it to .handoff/<slug>-plan.md for the developer. Dispatched by /project:work step 4 only.
 model: opus
-effort: xhigh
+effort: high
 color: blue
 tools: Read, Grep, Glob, Bash, PowerShell, Write
 permissionMode: dontAsk
