@@ -9,6 +9,31 @@ const slashed = (path: string) => path.replaceAll('\\', '/')
 // Rule 11: docs/raw/ is append-only.
 export const isRawSource = (path: string): boolean => /(^|\/)docs\/raw\//.test(slashed(path))
 
+// Rule 15: the developer writes the code, so once a project is initialised
+// the main session edits only the wiki, the workflow, handoff files, the project
+// facts (top-level markdown), git and CI config. A path outside the repository
+// (a scratchpad, the memory folder) is none of the project's code.
+const CONDUCTOR_PATHS = [
+  /^docs\//,
+  /^\.claude\//,
+  /^\.handoff\//,
+  /^[^/]+\.md$/,
+  /^\.git(ignore|attributes)$/,
+  /^\.(github|circleci|buildkite)\//,
+  /^\.gitlab-ci\.yml$/,
+  /^(azure|bitbucket)-pipelines\.yml$/,
+  /^Jenkinsfile$/,
+]
+
+export function conductorMayEdit(path: string, root: string): boolean {
+  const file = slashed(path).replace(/^\.\//, '')
+  const base = `${slashed(root).replace(/\/$/, '')}/`
+  const isAbsolute = /^(\/|[A-Za-z]:\/)/.test(file)
+  if (isAbsolute && !file.startsWith(base)) return true
+  const relative = isAbsolute ? file.slice(base.length) : file
+  return CONDUCTOR_PATHS.some(p => p.test(relative))
+}
+
 // Rule 21: the git operations that discard working-tree changes, named as the
 // deny message names them. A command line is split on its shell operators, and
 // only a segment that runs git counts, so `echo git reset --hard` is not one.

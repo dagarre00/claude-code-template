@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { closeAction, entityLabel, isEntityPage, pageBody, todosLabel } from './nav'
+import { closeAction, conceptLabel, entityLabel, isEntityPage, pageBody, todosLabel } from './nav'
 
 describe('wiki navigator', () => {
   test('a page body drops the frontmatter and keeps the rest', () => {
@@ -11,6 +11,11 @@ describe('wiki navigator', () => {
   test('an entity is labelled by its slug and its Behavior cases', () => {
     expect(entityLabel('auth.md', '- [x] B1: When a, b.\n- [ ] B2: When c, d.')).toBe('auth — 1/2 cases')
     expect(entityLabel('draft.md', 'no cases yet')).toBe('draft — no cases')
+  })
+
+  test('a concept shows its title, or its case count when it is an [infra] page', () => {
+    expect(conceptLabel('error-handling.md', '# Error handling\n\nProse.')).toBe('Error handling')
+    expect(conceptLabel('ci-pipeline.md', '# CI\n- [x] B1: When a, b.\n- [ ] B2: When c, d.')).toBe('ci-pipeline — 1/2 cases')
   })
 
   test('the entities folder index is not an entity', () => {

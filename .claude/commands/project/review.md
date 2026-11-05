@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 **Argument:** `$ARGUMENTS`
 
-The argument **pins the scope** — an area (`the auth module`, `src/api/`), a lens (`security only`, `test coverage`), or both — and is passed verbatim to the reviewer. A leading `fast` or `handoff` is the **dispatch mode** instead, stripped first and never passed on (`subagent-dispatch` § Dispatch mode). Empty → the whole repository.
+The argument **pins the scope** (an area, lens, or both) and is passed verbatim to `reviewer`. A leading `fast` or `handoff` sets the **dispatch mode** (`subagent-dispatch § Dispatch mode`) and is stripped first. Empty → whole repository.
 
 ## State at invocation
 
@@ -18,30 +18,29 @@ Branch: !`git branch --show-current`
 git status --short
 ```
 
-You dispatch the `reviewer`, which audits code against the wiki in a fresh context. Run it roughly every 5 completed todos, after a batch of merges to `develop`, before a release, or on suspected drift — never inside `/project:work` (rule 12).
+Dispatch the read-only `reviewer` to audit the repository against `docs/wiki/` in a fresh context (run roughly every 5 completed todos, before a release, or on suspected drift — never inside `/project:work`, rule 12).
 
 ## Preconditions
 
-- On `develop`, or the active `feat/*`/`fix/*` branch mid-cycle (rule 19). Never `main` — step 1 moves off it.
-- A clean working tree, and at least one entity page in `docs/wiki/`.
+- On `develop` or the active `feat/*`/`fix/*` branch (never `main` — step 1 switches to `develop`).
+- Clean working tree, and at least one entity page in `docs/wiki/`.
 
 Any failure → `human-checkpoint`.
 
 ## Steps
 
-1. **Sync develop** with the guarded block in [`sync-develop.md`](../../skills/feature-branching/sync-develop.md) (its stop conditions apply).
-
-2. **Dispatch the `reviewer`** per `subagent-dispatch`, with the scope, the instruction to verify every claim independently, and today's date for the report. Nothing about recent work — its fresh context is the point.
-
-3. **Save its report** verbatim to `docs/wiki/reviews/review-YYYY-MM-DD.md`. The reviewer is read-only and returns the report already shaped for that file; a tracked file it changed is a read-only violation, not a delivery. New untracked files its test run left behind are residue: list them, and file a todo for a `.gitignore` line.
-
-4. **Distribute the findings:** each Critical, Warning and recommended todo → a line in `docs/wiki/todos.md` at its priority; each Drift item → `docs/wiki/wiki-todos.md`; each missing ADR → a todo for the next `/project:work` cycle; each todo to close → remove its line from `todos.md` once you have checked the cited evidence yourself.
-
-5. **Log, commit and push** per [`log-and-commit.md`](../../skills/feature-branching/log-and-commit.md) — kind `review`, fields `Report: [[reviews/review-YYYY-MM-DD]]`, `Critical: <N>, Warnings: <M>, Drift: <K>`, `New todos: <list>`, `Closed todos: <list, each with its evidence>`. Stage the review file, `todos.md`, `wiki-todos.md` and `log.md` by path; subject `docs(review): audit YYYY-MM-DD — <N critical, M warnings, K drift>`. Read `git status --porcelain` first: anything you did not write is another session's work — `human-checkpoint`, naming the paths (rule 21).
-
-6. **Report** critical items only, and recommend the next step: `/project:work` (fix a critical), `/project:interview` (a spec gap) or `/project:wiki` (heavy drift).
+1. **Sync develop** via [`sync-develop.md`](../../skills/feature-branching/sync-develop.md).
+2. **Dispatch `reviewer`** per `subagent-dispatch` with the scope, instruction to verify every claim independently, and today's date (`YYYY-MM-DD`). Include no recent work framing.
+3. **Save report** verbatim to `docs/wiki/reviews/review-YYYY-MM-DD.md` (if `reviewer` modified any tracked file, reject the round; if its test run left untracked residue, list it and file a `.gitignore` todo).
+4. **Distribute findings:**
+   - `Critical`, `Warnings`, and `Recommended new todos` → `docs/wiki/todos.md` at matching priority.
+   - `Drift` items → `docs/wiki/wiki-todos.md`.
+   - Missing ADRs → todo for next `/project:work`.
+   - `Todos to close` → remove from `docs/wiki/todos.md` after verifying the cited evidence yourself.
+5. **Log, commit and push** per [`log-and-commit.md`](../../skills/feature-branching/log-and-commit.md) — kind `review`, fields `Report: [[reviews/review-YYYY-MM-DD]]`, `Critical: <N>, Warnings: <M>, Drift: <K>`, `New todos: <list>`, `Closed todos: <list with evidence>`. Stage `docs/wiki/reviews/review-YYYY-MM-DD.md`, `todos.md`, `wiki-todos.md`, and `log.md`; subject `docs(review): audit YYYY-MM-DD — <N critical, M warnings, K drift>`.
+6. **Report** critical items and recommend the next step (`/project:work`, `/project:interview`, or `/project:wiki`).
 
 ## What you do NOT do
 
-- **No code edits.** Findings only; the next `/project:work` cycle fixes them.
-- **No reviewer inside `/project:work`** — the developer never audits its own work.
+- **No code edits** (findings are queued for `/project:work`).
+- **No running inside `/project:work`.**

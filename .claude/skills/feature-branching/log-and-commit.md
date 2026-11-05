@@ -22,7 +22,7 @@ Take the stamp from `date -u +'%Y-%m-%d %H:%M'` — **UTC**, so entries stay in 
 | `interview` | `/project:interview` |
 | `work` | `/project:work` |
 | `pr` | the `pr-create` skill |
-| `adversary` | `/project:adversary`, and `/project:work` step 7a |
+| `adversary` | `/project:adversary` (while `/project:work` step 8 records step 7a under `work`) |
 | `review` | `/project:review` |
 | `wiki-ingest` | `/project:wiki`, ingest mode |
 | `wiki-maintenance` | `/project:wiki`, health pass |

@@ -1,22 +1,21 @@
 ---
 name: wiki-update
-description: How to structure a docs/wiki/ page under the Obsidian LLM-wiki standard — placement and dedup before creating, the page templates, facet vocabulary and link ontology — and whether a discovery is fixed inline or queued for the maintainer.
-when_to_use: Trigger on "new entity page", "new concept page", "wiki page structure", "frontmatter", "wikilink property", "aliases", "inline vs maintainer", "wiki-todos queue", "found a pattern", "found a contradiction".
+description: How to structure a docs/wiki/ page under the Obsidian LLM-wiki standard — placement and dedup before creating, page templates, facet vocabulary, link ontology, and whether a discovery is fixed inline or queued in wiki-todos.md.
 user-invocable: false
 ---
 
 # Wiki Update — standard, templates, routing
 
-The single source of truth for the wiki standard; its invariants are also the "Obsidian LLM-wiki standard" behavioral rule. Ticking an entity's Behavior cases needs nothing from here.
+Single source of truth for the wiki schema (rule 18). Ticking an entity's Behavior cases needs nothing from here.
 
 ## Placement — before creating any page
 
-1. Write the concept's essence: one or two sentences that stand alone.
-2. Look for it under another name: walk the tree and `grep -r "aliases:" -A3 docs/wiki/`.
-3. **It exists** → update that page: merge the new material into the right section, add the new name to `aliases`, extend `sources`, bump `updated`.
-4. **It doesn't** → create it from a template below. Filename = the canonical concept name, with none of `* " \ / < > : | ? # ^ [ ]`; symbol-bearing variants go in `aliases`.
-5. **Link a page that doesn't exist yet → stub it** in the same change (template frontmatter, `status: stub`, a one-line placeholder) — a broken wikilink is a bug (rule 18), and `pr-create`'s pre-PR checks reject it. A stub outside the paths you may edit means no link: record a wiki-todo instead.
-6. **Merge** two pages on one concept into the more canonical filename, keeping the union of links and provenance and the discarded name in `aliases` — ask the human first if the contents are ambiguous. **Split** a page covering two concepts and rewire its links.
+1. Write the concept's essence (1–2 standalone sentences).
+2. Check for existing pages under another name: walk `docs/wiki/` and `grep -r "aliases:" -A3 docs/wiki/`.
+3. **Exists** → merge into that page, add the new name to `aliases`, extend `sources`, bump `updated`.
+4. **Does not exist** → create from a template below. Filename = canonical name without `* " \ / < > : | ? # ^ [ ]` (put symbol-bearing variants in `aliases`).
+5. **Target of a new link does not exist** → create a `status: stub` page in the same change (or if outside your write scope, omit the link and queue a `wiki-todos.md` item).
+6. **Merge** duplicate pages into the more canonical filename (keeping union of links/provenance and old name in `aliases`; ask the human if ambiguous). **Split** multi-concept pages and rewire links.
 
 ## Canonical page template
 
@@ -63,9 +62,9 @@ Edge cases, where it does NOT apply, open tensions and contradictions, *unverifi
 - Claim ← source; every non-trivial claim traces to a `docs/raw/` file.
 ```
 
-Depth is the body spine (Essence → Model → Detail → Boundaries); the semantic level is the `abstraction` facet — every page has both. Frontmatter wikilinks are quoted and one per list element; body wikilinks are plain.
+`type: concept` pages use the `Essence → Model → Detail → Boundaries → Provenance` spine and the `abstraction` facet (`entity` pages use `abstraction: instance` and the Entity spine below; `decision`, `summary`, and `reference` pages omit `abstraction` and use their own templates). Frontmatter wikilinks are quoted strings (one per list item); body wikilinks are unquoted.
 
-**`[infra]` concept pages** also carry a `## Behavior` section of verifiable operational assertions, with the same `[ ]`/`[~]`/`[x]` states as an entity. That section is valid there; lint must not flag it.
+**`[infra]` concept pages** also carry a `## Behavior` section of verifiable operational assertions (`[ ]`/`[~]`/`[x]`); lint must not flag it.
 
 ## Entity page template (`docs/wiki/entities/<slug>.md`)
 
@@ -116,45 +115,39 @@ updated: YYYY-MM-DD
 - Requirement ← `docs/raw/...`, a decision page, or a requirements section.
 ```
 
-Behavior is the entity's Model; Implementation and Tests are its Detail. Related pages link through the frontmatter relations, which the graph and the gap checks read.
-
 ## Other templates
 
-Supporting files beside this skill — open one only when creating or restructuring that page:
-
-- `summary-template.md` — a `docs/wiki/summaries/` page for an ingested source.
-- `design-system-template.md` — `docs/wiki/design-system.md`, **only for a project with a UI surface**; never created speculatively.
+Supporting files beside this skill (open only when creating or restructuring that page):
+- `summary-template.md` — `docs/wiki/summaries/<slug>.md` for an ingested source.
+- `design-system-template.md` — `docs/wiki/design-system.md`, **only for projects with a UI surface**.
 
 ## Facet vocabulary (closed)
 
 | Property | Allowed values | Use |
 |---|---|---|
-| `type` | `concept`, `procedure`, `reference`, `tutorial`, `entity`, `decision`, `summary` | What the page's reader needs. |
-| `abstraction` | `principle`, `pattern`, `technique`, `instance` | The rung on the generality ladder. |
-| `domains` | a controlled list (`agents`, `software`, `design`, …) | Application domains; several allowed. |
-| `status` | `stub`, `developing`, `stable` — decisions: `proposed`, `accepted`, `superseded`, `deprecated` | Maturity; `stub` is a known gap. |
+| `type` | `concept`, `procedure`, `reference`, `tutorial`, `entity`, `decision`, `summary` | Reader need. |
+| `abstraction` | `principle`, `pattern`, `technique`, `instance` | Generality rung (required on `concept` and `entity`). |
+| `domains` | controlled list (`agents`, `software`, `design`, …) | Application domains. |
+| `status` | `stub`, `developing`, `stable` — decisions: `proposed`, `accepted`, `superseded`, `deprecated` | Maturity (`stub` = known gap). |
 
-The ledgers (`log.md`, `todos.md`, `wiki-todos.md`, `gotchas.md`, `commands.md`) are `type: reference` with their own body formats — the frontmatter rules still apply. They, the root spec pages (`requirements.md`, `architecture.md`, `git-conventions.md`, `design-system.md`) and the folder `README.md` guides are **navigational**: reached through the tree, not the graph, so they are exempt from the orphan rule. Only content pages (entities, concepts, decisions, summaries) can be orphans.
+Ledgers (`log.md`, `todos.md`, `wiki-todos.md`, `gotchas.md`, `commands.md`), root spec pages (`requirements.md`, `architecture.md`, `git-conventions.md`, `design-system.md`), and folder `README.md` guides are `type: reference` navigational pages and are exempt from the orphan rule. Only content pages (`entity`, `concept`, `decision`, `summary`) can be orphans.
 
 ## Link ontology — and the gap each relation makes computable
 
 | Relation | Direction | Gap rule |
 |---|---|---|
 | `implements` | technique/pattern → principle | A `technique` implements ≥1 `principle`. |
-| `specializes` | instance/pattern → a more general concept | An `instance` without it is usually misclassified — except `type: entity` and `type: summary` pages: an entity specializes its own Behavior spec and a summary its raw source (`sources`), so a forced link would invent a parent concept nobody reads. |
+| `specializes` | instance/pattern → more general concept | Required on `instance` except `type: entity` and `type: summary`. |
 | `contrasts_with` | ↔ comparable alternatives | Symmetric. |
 | `alternative_to` | ↔ same function, different approach | Symmetric. |
-| `depends_on` | concept → prerequisite | The prerequisite exists as a page (else a `stub`). |
-| `contradicts` | ↔ explicit conflict | Any unresolved one goes to the human. |
-| `supersedes` / `superseded_by` | decision ↔ decision | A superseded ADR carries `status: superseded` and a `superseded_by` link. |
+| `depends_on` | concept → prerequisite | Target must exist (at least as `stub`). |
+| `contradicts` | ↔ explicit conflict | Unresolved conflicts escalate to the human. |
+| `supersedes` / `superseded_by` | decision ↔ decision | Superseded ADR has `status: superseded` + `superseded_by`. |
 
-A gap is a hole in the graph relative to this schema, never "what feels missing" — fill it with `status: stub` and `open_questions` or a question, never invented prose.
+Fill schema gaps with `status: stub` and `open_questions`, never invented prose.
 
 ## Inline or queued
 
-Whoever changes code makes the **small, in-scope** wiki edits in the same change. Review roles make none — they report. The wiki-maintainer is manual only and takes the large or cross-page work.
-
-- **Inline:** one ADR, one gotcha, the entity page you are working on, a single broken link you noticed, a stub for a missing link target.
-- **Queued** as a `docs/wiki/wiki-todos.md` line (appended if that file is yours, otherwise under `Follow-ups:`): orphans across many sections; a contradiction between two pages (set `contradicts` on both, don't resolve it); a pattern recurring 3+ times (promote to `concepts/`); an ambiguous merge or a split that rewires many links; mass cross-link cleanup or legacy migration; anything needing 5+ pages read to do safely.
-
-Discoveries route as: project pitfall → `gotchas.md`; design fork → ADR; repeated pattern → wiki-todo. The wiki-maintainer is never dispatched by another agent.
+- **Inline** (in the same change, by write roles): one ADR, one gotcha, the active entity page, a single broken link, or a stub for a new link target.
+- **Queued** in `docs/wiki/wiki-todos.md` (directly or via `Follow-ups:`): cross-section orphans, contradictions between pages (set `contradicts` on both; don't resolve), patterns recurring 3+ times (promote to `concepts/`), ambiguous merges/splits, or edits requiring 5+ pages read.
+- **Routing:** pitfall → `gotchas.md`; design fork → ADR; repeated pattern → `wiki-todos.md`. `wiki-maintainer` is manual only (`/project:wiki`).

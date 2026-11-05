@@ -1,59 +1,58 @@
 ---
 name: finding-disposition
-description: Conductor-only. How to run a review round and dispose of every finding — what to send the plan-adversary and adversary (and never send), Applied/Escalated/Rejected for brief findings, Filed/Fixed/Rejected for diff findings, the critical/major human gate, the round commit, P0 saturation, re-review, the round cap, and the yield record.
-when_to_use: Trigger on "triage findings", "dispose of findings", "adversary round", "plan review round", "file the findings", "round commit".
+description: Conductor-only. How to run a review round and dispose of every finding — briefing plan-adversary and adversary, Applied/Escalated/Rejected for brief findings, Filed/Fixed/Rejected for diff findings, the critical/major human gate, the round commit, P0 saturation, re-review, the round cap, and the yield record.
 user-invocable: false
 ---
 
 # Finding Disposition
 
-The reviewers' own procedures are `plan-review` and `adversarial-review`; they receive nothing from this file. Every dispatch below runs through `subagent-dispatch`.
+Reviewers use `plan-review` and `adversarial-review`; they receive nothing from this file. Every dispatch runs through `subagent-dispatch`.
 
-**Every finding gets exactly one written disposition, and the record is committed.** Silence is not a disposition; "unlikely" is not a reason. Rejecting by citing an unwritten invariant → write the invariant into the entity page or `gotchas.md` as part of the rejection.
+**Every finding gets one written disposition, and the record is committed.** Silence is not a disposition; "unlikely" is not a reason. Rejecting via an unwritten invariant requires writing that invariant into the entity page or `gotchas.md` as part of the rejection.
 
 ## Read first
 
-- `docs/wiki/gotchas.md` and the entity `## Behavior` cases the round covers — findings are scored against them.
+- `docs/wiki/gotchas.md` and the entity `## Behavior` cases the round covers.
 
 ## Brief round — before Red (`plan-adversary`)
 
-1. **Subject — exactly one.** The plan (`[complex]`/batched: its path, `.handoff/<slug>-plan.md`) or the todo line verbatim plus the `$ARGUMENTS` instruction (simple cycle, in the brief).
-2. **Send only** the subject, the entity slug(s), the case IDs, the test command, and the branch name. **Never** your opinion of the plan or a defence of the todo — pre-answering the objection gets you a rubber stamp.
-3. **Read the report.** No findings and no `Checked:` line → re-dispatch once demanding it.
-4. **Dispose — Applied is the default**, because no code exists yet to make fixing expensive:
+1. **Subject (exactly one):** `.handoff/<slug>-plan.md` (`[complex]`/batched cycle) or the verbatim todo line plus `$ARGUMENTS` instruction (simple cycle).
+2. **Send only:** subject, entity slug(s), case IDs, test command, and branch name — never your opinion or defense.
+3. **Verify report:** If no findings and no `Checked:` line, re-dispatch once demanding it.
+4. **Dispose (`Applied` is default):**
 
    | Disposition | When | Action |
    | --- | --- | --- |
-   | **Applied** | Right, and the fix is a plan edit, a sharper todo line, or an added case ID | Edit `.handoff/<slug>-plan.md` — the file the developer reads — or the todo line. |
-   | **Escalated** | The **spec** is wrong, ambiguous or missing | `human-checkpoint` recommending `/project:interview`. The cycle stops. |
-   | **Rejected** | Misreads the brief, or outside this cycle's cases | One sentence. Worth-doing out-of-scope work becomes an ordinary todo line. |
+   | **Applied** | Valid, and fixable via plan edit, sharper brief, or added case ID | On a planned cycle, edit `.handoff/<slug>-plan.md`. On a simple cycle, pass the refinement in the `developer`'s `Inputs:` brief (and if you update `docs/wiki/todos.md`, stage it in the `docs(<slug>): plan review` commit of step 6 below, so the tree is clean before the developer runs). |
+   | **Escalated** | The **spec** is wrong, ambiguous, or missing | `human-checkpoint` recommending `/project:interview`. Stop the cycle. |
+   | **Rejected** | Misreads the brief, or outside this cycle's cases | One sentence. Out-of-scope work worth doing becomes an ordinary todo line. |
 
-   A `blocker` you disagree with is a `human-checkpoint`, never a rejection. When a finding turns on code you cannot settle by reading, dispatch `triage` with the brief and the findings verbatim; the disposition stays yours.
-5. **Re-plan only for a structural blocker** (wrong decomposition, impossible order), once, with the findings attached. Everything smaller you apply. A second disagreement is a `human-checkpoint`.
-6. **Record** in the cycle's `work` log entry — no code commit exists yet to carry it — and commit that entry alone before the developer runs (`/project:work` step 4a): the plan is gitignored scratch, so this is the only copy that survives a recycled container.
+   A contested `blocker` is a `human-checkpoint`, never a unilateral rejection. Optionally dispatch `triage` when a finding hinges on code you have not read.
+5. **Re-plan** only for a structural blocker (wrong decomposition or impossible order), once, with findings attached. A second disagreement → `human-checkpoint`.
+6. **Commit the record** in the cycle's `work` log entry (`docs/wiki/log.md`, plus `docs/wiki/todos.md` if edited) as `docs(<slug>): plan review` before dispatching `developer` (`/project:work` step 4a):
 
    ```markdown
    - Plan review: 3 findings — 2 applied, 1 rejected
      - P1 blocker spec-fidelity — Applied: B3 had no step; plan step 4 now covers it.
-     - P3 note scope — Rejected: the retry policy is entity `billing`, not this cycle.
+     - P3 note scope — Rejected: retry policy belongs to entity `billing`, not this cycle.
    ```
 
 ## Diff round — after the cases land (`adversary`)
 
-1. **Scope small.** A commit range covering one case or a few closely related ones (`<sha-before>..HEAD`). Nothing landed → skip and say so.
-2. **Send only** the commit range, the entity slug(s), the case IDs, the test command — plus, on a re-review, the previous round's findings (step 9). **Never** the plan file, your reasoning, or what the change "is supposed to do". Check `git diff --stat <range>` first: an empty range is nothing to review.
-3. **Check independence.** A report that cites the plan, `.handoff/` or the cycle's `work` log entry read author material — say so if you use its findings. `HEAD` and the tree must be unchanged when it returns (`subagent-dispatch`).
-4. **Triage.** Optionally dispatch `triage` with the same range, slug, case IDs and the findings verbatim. It recommends; you own severity and disposition. Never accept a severity downgrade on the sole ground that a failure was not reproduced live.
-5. **Dispose — Filed is the default**, because fixing mid-cycle skips Red-first and reorders the queue:
-   - **Filed** — a todo line at the severity's section: `critical` → `## Now (P0 — next)`, `major` → `## Next (P1)`, `minor` → `## Later (P2)`. Line format: `docs/wiki/todos.md § Tags` (`[adversary]`). `nit` is never filed.
-   - **Fixed** — only a `critical`/`major` the human approved. Its own commit, failing test first, via a `developer` dispatch: `fix(<slug>): <what> — adversary F<n>`.
-   - **Rejected** — one sentence citing the invariant, what the finding misread, or the scope boundary.
-6. **The human gate.** Any `critical` or `major` → **one** `human-checkpoint` covering all of them: claim, failure scenario, what a fix touches, your recommendation. Declined or unreachable → Filed at P0/P1, said prominently in the cycle report. A human instruction such as "fix all the findings" is the approval at that scope.
-7. **Commit the record.**
+1. **Scope: the whole cycle, once.** `<sha-before-cycle>..HEAD`, where `<sha-before-cycle>` is the commit just before the cycle's first case commit (the `docs(<slug>): plan review` commit when step 4a ran). Never one review per case. Check `git diff --stat <range> -- . ':(exclude)docs/wiki/log.md'`; empty → skip and say so.
+2. **Send only:** commit range, entity slug(s), case IDs, test command — plus previous round findings on re-review (step 9). Never send `.handoff/`, conductor reasoning, or intent prose.
+3. **Check independence:** The adversary diffs with `docs/wiki/log.md` excluded; flag any report citing `.handoff/` or `log.md`. `HEAD` and tracked files must be unchanged.
+4. **Triage (optional):** Dispatch `triage` with the range, slug, case IDs, and verbatim findings. Never downgrade severity solely because a failure was not reproduced live.
+5. **Dispose (`Filed` is default):**
+   - **Filed:** Add a todo line (`docs/wiki/todos.md § Tags`, tagged `[adversary]`): `critical` → `## Now (P0 — next)`, `major` → `## Next (P1)`, `minor` → `## Later (P2)`. `nit` is never filed.
+   - **Fixed:** Only a human-approved `critical`/`major`. Dispatch `developer` for a failing test + fix commit: `fix(<slug>): <what> — adversary F<n>` (include `Wiki-Update: none (adversary fix)` footer if the entity page needs no change).
+   - **Rejected:** One sentence citing the invariant, misread, or scope boundary.
+6. **Human gate:** Group all `critical` and `major` findings into **one** `human-checkpoint` (claim, failure scenario, files touched, recommendation). If declined or unreachable in `fast` mode → file at P0/P1 and highlight in the cycle report. A human instruction such as "fix all the findings" is the approval, at that scope.
+7. **Commit the round record** (stage `docs/wiki/todos.md` plus any gotcha/ADR from triage; do **not** stage `log.md` in a round a re-review follows — `/project:work` records the tally in step 8's `work` entry, and `/project:adversary` stages its `adversary` entry in the final round's commit):
 
    ```bash
-   git add docs/wiki/todos.md docs/wiki/log.md   # plus a gotcha or ADR the triage produced
-   git commit -m "$(cat <<'MSG'
+   git add docs/wiki/todos.md   # plus any gotcha or ADR the triage produced
+   git commit --allow-empty -m "$(cat <<'MSG'
    docs(<slug>): adversary round 1 — 3 findings, 1 fixed, 1 filed, 1 rejected, 2 nits
 
    F1 critical correctness — Fixed in a1b2c3d (human approved): empty token rejected before lookup.
@@ -64,20 +63,17 @@ The reviewers' own procedures are `plan-review` and `adversarial-review`; they r
    )"
    ```
 
-   `--allow-empty` when every finding was rejected. `git log --grep="adversary round"` is the audit.
-8. **P0 saturation.** After staging todo lines, count open P0 items (`docs/wiki/todos.md § P0 saturation threshold`). At or above `P0_MAX` → `human-checkpoint` with the count, the `[adversary]` share, the three oldest entries, and a recommendation (drain P0, re-grade, or pause adversarial review).
-9. **Re-review only if something was fixed**, over the fix commits only. The brief adds the previous round's findings verbatim, each with its disposition line from the round commit: the Fixed ones for the adversary to confirm, the Rejected ones with their reasons for it to accept or contest once. A round with no fix ends there — its rejections stand, and the report names any the human might dispute. **Three rounds, then stop.** Findings still open at the cap: file the `critical`/`major` ones per step 5 (the human gate in step 6 still applies) and list the `minor`/`nit` ones in the round commit as unfiled, reason "round cap" — never open a fourth round. A unit still generating findings at round three was too big; split it before the *next* review.
+   `--allow-empty` handles rounds where every finding was rejected or Fixed in its own commit. `git log --grep="adversary round"` is the audit trail.
+8. **P0 saturation:** Count open P0 items (`docs/wiki/todos.md § P0 saturation threshold`). At or above `P0_MAX` → `human-checkpoint` with the count, `[adversary]` share, three oldest entries, and a recommendation.
+9. **Re-review only if something was Fixed**, over the fix commits only, attaching prior findings and their disposition lines. Stop after **3 rounds** maximum: at round 3, gate/file any open `critical`/`major` items and list open `minor`/`nit` items in the round commit as unfiled (`reason: round cap`).
 
 ## Record the yield — every round
 
-The counts in the round commit and the log entry are the only measure of whether a review role earns its tokens: raised per severity, and acted on per disposition. Keep them exact — they are the evidence for keeping the plan-adversary on simple todos, or for moving a role to another model (`subagent-dispatch` § Changing a role's model or effort). A reviewer run through a handoff (`dispatch-handoff`) names its harness and model in the round commit and the log entry: its counts are not evidence about the role's pinned model.
+Record exact counts per severity and disposition in the round commit and the cycle's log entry (if run via `dispatch-handoff`, name the external harness and model so its counts are not attributed to the role's pinned model). When open `[adversary]` todos reach `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`), note it in the cycle report.
 
 ## Anti-patterns
 
-- **Leaking author context** into either dispatch.
-- **Fixing findings because they are small.** A two-line `minor` is still filed.
-- **Fixing a `critical` without asking**, or quietly filing one.
-- **Filing as disposal.** Filed findings are consumed by the `/project:wiki` re-triage; when the open `[adversary]` count reaches `FINDINGS_MAX` (`docs/wiki/todos.md § Filed-findings backlog`), say so in the cycle report.
-- **Filing brief findings for later.** You are about to implement their subject.
-- **Re-reviewing the whole diff**, or opening a fourth round.
-- **Letting the record evaporate** — counts in the log are an index, not dispositions.
+- **Leaking author context** into either reviewer's brief.
+- **Fixing `minor` findings inline** or **fixing a `critical`/`major` without human approval**.
+- **Filing brief findings for later** when you are about to implement their subject.
+- **Re-reviewing the whole diff** or opening a fourth round.

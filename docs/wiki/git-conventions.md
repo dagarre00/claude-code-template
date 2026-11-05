@@ -7,7 +7,7 @@ sources: []
 contradicts: []
 open_questions: []
 created: 2026-05-11
-updated: 2026-09-23
+updated: 2026-10-16
 ---
 
 # Git Conventions
@@ -37,10 +37,10 @@ Conventional commits, present tense:
 
 ## Cadence
 
-- **One commit per Behavior case** — its test, minimal implementation and entity-page tick, committed and pushed before the next case starts. The developer runs no git; the **conductor** commits each case. A commit spanning several cases is a defect: it breaks `git bisect`, makes a case unrevertable, and bloats the review diff past converging.
+- **One commit per Behavior case** — its test, minimal implementation and entity-page tick, committed (its focused tests Green, its Red proven) before the next case starts. The developer runs no git; the **conductor** commits each case. A commit spanning several cases is a defect: it breaks `git bisect`, makes a case unrevertable, and bloats the review diff past converging.
 - A case's Refactor step ships in that case's commit: the suite is green on both sides of it, the refactored code sits in the same files as the implementation, and the Red proof covers the whole commit. No half-green commits.
 - Adversary findings are filed by default; an approved fix is its own `fix(<slug>): … — adversary F<N>` commit, and each round closes with `docs(<slug>): adversary round N` listing every disposition (`git log --grep="adversary round"`; protocol: the `finding-disposition` skill).
-- **Push after every commit** (`git push -u origin <branch>`) — an unpushed commit is lost when the container recycles. No remote (`git remote get-url origin` fails) → every push is skipped and noted in the report.
+- **Push after every commit** (`git push -u origin <branch>`) — an unpushed commit is lost when the container recycles. A cycle's case commits are the one batch: they push together once the full suite passes at the loop's close, or as they stand when the run pauses (`subagent-dispatch § Close the case loop`); a failure there is fixed in its own `fix(<slug>): B<N> keep <test> passing` commit. No remote (`git remote get-url origin` fails) → every push is skipped and noted in the report.
 
 ## PRs
 

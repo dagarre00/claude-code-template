@@ -1,7 +1,6 @@
 ---
 name: tdd-loop
-description: Red-green-refactor procedure for this project. Use when implementing any feature or bugfix, before writing any production code.
-when_to_use: Trigger on "TDD", "red phase", "green phase", "refactor", "failing test", "make test pass", "tdd loop".
+description: Subagent-side, preloaded into the developer. Red-green-refactor procedure for implementing one Behavior case at a time before writing any production code.
 user-invocable: false
 ---
 
@@ -9,56 +8,51 @@ user-invocable: false
 
 ## Read first
 
-- `docs/wiki/commands.md` — the test command, and the architecture check if the project has one.
-- `docs/wiki/architecture.md` — `## Testing strategy`, and `## Layers` for where new code goes.
+- `docs/wiki/commands.md` — test command and architecture check.
+- `docs/wiki/architecture.md` — `## Testing strategy` and `## Layers`.
 - `docs/wiki/gotchas.md` — known test pitfalls.
-- The entity page — its `## Behavior` section is the contract.
+- The entity page (`docs/wiki/entities/<slug>.md` or `[infra]` `concepts/<slug>.md`) — `## Behavior` is the contract.
 
 ## One case at a time
 
-Run Red → Green → Refactor → Finish for **one** Behavior case, then start the next. Five tests then five implementations is a change that cannot be bisected, reverted per case, or reviewed without manufacturing findings.
-
-Case states on the entity page: `[ ]` not started · `[~]` test written and confirmed failing · `[x]` passing.
+Run Red → Green → Refactor → Finish for **one** Behavior case (`[ ]` not started → `[~]` failing test confirmed → `[x]` passing).
 
 ## Red
 
-1. Write **one** focused test for the case, named after the behavior so it maps back to the case ID (`B3` in the name or its description).
-2. Run the test command. Confirm the new test fails.
-3. Confirm it fails for the **right reason**: the behavior is missing — an assertion, or the not-yet-written function or module the case introduces. Not a typo, a fixture error, or an import of something that should already exist. Wrong reason → fix the test and re-run.
+1. Write **one** focused test mapped to the case ID (`B3` in the test name or description).
+2. Run the test command and confirm the new test fails.
+3. Verify it fails for the **right reason**: missing behavior (assertion failure or not-yet-written target symbol), never a syntax error, broken fixture, or bad import of existing code.
 4. Mark the case `[ ]` → `[~]`.
-5. Quote the failing assertion in your report, not a pass/fail count. "12 tests, 1 failed" is not Red evidence.
+5. Quote the failing assertion line in your report (pass/fail counts alone are rejected).
 
-The conductor re-proves the case after you finish: your tests must pass with your changes in place, and fail once everything but your test paths is restored to the parent commit. A test that passes against the unchanged code, or fails with your implementation, is rejected no matter what the report says — so keep every test file, fixture and test helper inside the test paths you report.
+The conductor re-proves Red after you return by restoring everything except your reported test paths to `HEAD~1` and running the focused test command over them. Keep all new test files, fixtures, and test helpers inside the test paths you report.
 
 ## Green
 
-1. Write the **smallest** code that makes the test pass, picked by climbing `simplicity-ladder` first. No future-proofing, no helpers or abstractions the test does not force.
-2. Place it in the layer `architecture.md § Layers` assigns, and depend only in the allowed direction.
-3. Re-run the test command (and the architecture check, if the project has one). The new test passes; nothing else breaks.
-4. Broke another test → you over-reached. Narrow the change and retry.
+1. Climb `simplicity-ladder` and write the **smallest** code that makes the test pass.
+2. Place files in the layer `architecture.md § Layers` assigns, respecting dependency direction.
+3. Run the focused test command (`commands.md § Test (focused)`; the full test command while it is `<TBD>`) over the new test and every existing test file covering the code you changed, plus the architecture check, until they pass. Breaking another test means you over-reached: narrow the change and retry. The conductor runs the full suite once when the cycle's case loop closes.
 
 ## Refactor
 
-Only while green. One structural change at a time, re-running the tests after each. Stop at "good enough for this entity's current scope"; never refactor neighbours.
+Only while green: one small structural cleanup within the current entity's scope, re-running tests after each change.
 
 ## Finish
 
-1. Tick the case `[~]` → `[x]` and update the entity page's `## Implementation` and `## Tests` sections.
-2. Leave everything as plain files — you run no git. The conductor stages exactly the paths you report and commits them as one case.
-3. Report, for this case: **test paths**, **implementation paths**, any wiki paths, the Red assertion, and the final suite result. Name any refactor in one line: it ships in this case's commit, so the conductor describes it there.
-
-The next case starts at Red again — in its own dispatch when the conductor runs the loop.
+1. Tick `[~]` → `[x]` and update the entity page's `## Implementation` and `## Tests` sections.
+2. Leave all changes uncommitted (you run no git).
+3. Report: **test paths**, **implementation paths**, the existing test files you ran beside them, wiki paths, quoted Red assertion, final test output, and a one-line summary of any refactor.
 
 ## Stop and report instead of guessing
 
-- The test seems to encode wrong behavior. Never change the test to fit — report that the spec needs changing.
-- Green needs code outside the current entity's scope, or a dependency the architecture forbids.
-- A design fork the wiki doesn't pre-decide.
-- A second attempt on the same mechanism has failed (broken green, refactor explodes, unsolvable test). Stop; describe both attempts and what each ran into. Recovery — a checkpoint, a reset, a re-spec — is the conductor's and the human's call.
+- The test or spec appears to encode wrong behavior (never alter the test to force a pass).
+- Green requires out-of-scope files or a forbidden layer dependency.
+- Unresolved design fork not settled by the wiki.
+- Second failed attempt on the same mechanism (two-strike rule).
 
 ## Anti-patterns
 
-- **Modifying tests to make them pass.** Spec → test → code, in that order.
-- **Bulk green.** One test, one change.
-- **Refactor before green.**
-- **Skipping the failure-reason check.** A test that fails on a broken import is not Red.
+- **Modifying tests to make them pass.**
+- **Bulk green** (writing multiple cases before implementation).
+- **Refactoring before green.**
+- **Treating broken imports/fixtures as Red.**

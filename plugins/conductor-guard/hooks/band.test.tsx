@@ -63,6 +63,22 @@ test('the branch sits on a colored chip and each part keeps its own color', asyn
   expect(await ui.find({ type: 'Text', text: /^· 1 changed$/ })).toMatchObject({ props: { color: 'warning' } })
 })
 
+test('an [infra] branch reads its Behavior cases from docs/wiki/concepts/<slug>.md', async ($, on) => {
+  repo(
+    on,
+    { 'rev-parse': 'feat/ci-pipeline\n', 'rev-list': '0\n', 'status --porcelain': '' },
+    {
+      '.claude/rules/behavioral.md': '# Rules',
+      'docs/wiki/concepts/ci-pipeline.md': '- [x] B1: When a, b.\n- [x] B2: When c, d.\n',
+    },
+  )
+  await $.session.start({ cwd: '/p', surface: 'terminal', isInteractive: true })
+
+  const ui = await $.ui.mount({ plugin: 'conductor-guard', surface: 'terminal', component: 'AbovePrompt', props: PROPS })
+
+  expect(await ui.find({ type: 'Text', text: /^ci-pipeline 2\/2 cases$/ })).toMatchObject({ props: { color: 'success' } })
+})
+
 test('outside a repository the band stays empty', async ($, on) => {
   repo(on, {}, {})
   await $.session.start({ cwd: '/p', surface: 'terminal', isInteractive: true })

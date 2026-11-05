@@ -4,6 +4,7 @@ import type { EngineInterface, Register } from 'claude-code'
 import type { Band, Menu } from '../types'
 import {
   bandParts,
+  conductorMayEdit,
   countBacklog,
   countCases,
   destructiveGit,
@@ -22,6 +23,7 @@ import {
   SPEC_PAGES,
   WIKI_PANE,
   closeAction,
+  conceptLabel,
   entityLabel,
   isEntityPage,
   pageBody,
@@ -64,7 +66,10 @@ async function readBand($: EngineInterface): Promise<Band | null> {
   const unpushed = await git($, 'rev-list', '--count', '@{u}..HEAD')
   const porcelain = (await git($, 'status', '--porcelain')) ?? ''
   const slug = entitySlug(branch)
-  const page = slug === undefined ? undefined : await text($, `docs/wiki/entities/${slug}.md`)
+  const page =
+    slug === undefined
+      ? undefined
+      : ((await text($, `docs/wiki/entities/${slug}.md`)) ?? (await text($, `docs/wiki/concepts/${slug}.md`)))
   const todos = await text($, 'docs/wiki/todos.md')
 
   return {
@@ -80,7 +85,7 @@ async function readBand($: EngineInterface): Promise<Band | null> {
 type NavGroup = { heading: string; items: { path: string; label: string }[] }
 
 // The navigator's list, read fresh at each draw: the spec's fixed pages, then
-// every entity and decision. A page or folder the wiki lacks is left out.
+// every entity, concept, and decision. A page or folder the wiki lacks is left out.
 async function wikiIndex($: EngineInterface): Promise<NavGroup[]> {
   const spec: NavGroup = { heading: 'Spec', items: [] }
   for (const [file, label] of SPEC_PAGES) {
@@ -103,6 +108,7 @@ async function wikiIndex($: EngineInterface): Promise<NavGroup[]> {
   const groups = [
     spec,
     { heading: 'Entities', items: await folder('entities', entityLabel) },
+    { heading: 'Concepts', items: await folder('concepts', conceptLabel) },
     { heading: 'Decisions', items: await folder('decisions', (file, body) => pageTitle(body, file)) },
   ]
   return groups.filter(group => group.items.length > 0)
@@ -159,31 +165,66 @@ async function switchBranch($: EngineInterface, name: string) {
   await refresh($)
 }
 
-// Rule 19 applies once /project:init has filled CLAUDE.md: the template
-// itself keeps no log entries.
-async function missesLogEntry($: EngineInterface): Promise<boolean> {
+// /project:init fills CLAUDE.md's project fields; the template itself, and a
+// project mid-init, still carry the placeholder.
+async function isInitialised($: EngineInterface): Promise<boolean> {
   if (!(await isWorkflowProject($))) return false
   const claudeMd = await text($, 'CLAUDE.md')
-  if (claudeMd === undefined || claudeMd.includes('<set during project initialization>')) return false
+  return claudeMd !== undefined && !claudeMd.includes('<set during project initialization>')
+}
+
+// Rule 15: inside /project:work the developer writes the code. The main
+// session (a call with no agentId) may still edit it, for a typo, a CI fix or
+// an approved rule file, so a direct edit only raises a toast, once per file
+// per session; resolving a stopped merge, rebase, cherry-pick or revert is
+// the conductor's own work (git-recovery) and stays quiet.
+const warned = new Set<string>()
+async function warnsCodeEdit($: EngineInterface, agentId: string | undefined, path: string) {
+  if (agentId !== undefined || warned.has(path) || !(await isInitialised($))) return
+  if (conductorMayEdit(path, await $.session.cwd())) return
+  for (const ref of ['MERGE_HEAD', 'REBASE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD']) {
+    if ((await git($, 'rev-parse', '-q', '--verify', ref)) !== undefined) return
+  }
+  warned.add(path)
+  $.ui.toast(
+    `conductor-guard: the main session edited ${path} directly; inside /project:work that is developer's (rule 15).`,
+  )
+}
+
+// Rule 19 applies once /project:init has filled CLAUDE.md: the template
+// itself keeps no log entries. A direct commit to develop or main carries its
+// own entry; a code branch's commits are covered by its cycle's work and pr
+// entries (pr-create checks them). Empty commits and raw-only arrivals need none.
+async function missesLogEntry($: EngineInterface): Promise<boolean> {
+  if (!(await isInitialised($))) return false
   if (!(await $.fs.exists('docs/wiki/log.md'))) return false
-  const changed = (await git($, 'show', '--name-only', '--format=', 'HEAD')) ?? ''
-  return !changed.split('\n').includes('docs/wiki/log.md')
+  const branch = (await git($, 'rev-parse', '--abbrev-ref', 'HEAD'))?.trim()
+  if (branch !== 'develop' && branch !== 'main') return false
+  const files = lines(await git($, 'show', '--name-only', '--format=', 'HEAD'))
+  if (files.length === 0 || files.every(isRawSource)) return false
+  return !files.includes('docs/wiki/log.md')
 }
 
 export const register: Register = on => {
-  on('tool.call', { tool: 'Edit' }, async ($, e, next) =>
-    isRawSource(e.file_path) && (await isWorkflowProject($))
-      ? { deny: `conductor-guard: ${e.file_path} is a raw source; add a new file instead (rule 11).` }
-      : next(e),
-  ).catch(($, e, next) =>
+  on('tool.call', { tool: 'Edit' }, async ($, e, next) => {
+    if (isRawSource(e.file_path) && (await isWorkflowProject($))) {
+      return { deny: `conductor-guard: ${e.file_path} is a raw source; add a new file instead (rule 11).` }
+    }
+    const ran = await next(e)
+    if (ran.deny === undefined && ran.isError !== true) await warnsCodeEdit($, e.agentId, e.file_path).catch(() => {})
+    return ran
+  }).catch(($, e, next) =>
     next.called ? next(e) : { deny: 'conductor-guard: its raw-source check failed (rule 11).' },
   )
 
-  on('tool.call', { tool: 'Write' }, async ($, e, next) =>
-    isRawSource(e.file_path) && (await $.fs.exists(e.file_path)) && (await isWorkflowProject($))
-      ? { deny: `conductor-guard: ${e.file_path} is a raw source; add a new file instead (rule 11).` }
-      : next(e),
-  ).catch(($, e, next) =>
+  on('tool.call', { tool: 'Write' }, async ($, e, next) => {
+    if (isRawSource(e.file_path) && (await $.fs.exists(e.file_path)) && (await isWorkflowProject($))) {
+      return { deny: `conductor-guard: ${e.file_path} is a raw source; add a new file instead (rule 11).` }
+    }
+    const ran = await next(e)
+    if (ran.deny === undefined && ran.isError !== true) await warnsCodeEdit($, e.agentId, e.file_path).catch(() => {})
+    return ran
+  }).catch(($, e, next) =>
     next.called ? next(e) : { deny: 'conductor-guard: its raw-source check failed (rule 11).' },
   )
 

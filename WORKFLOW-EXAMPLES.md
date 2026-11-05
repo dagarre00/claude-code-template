@@ -144,7 +144,9 @@ Each question is written to the transcript **before** it is asked, and each answ
   Docker image), Q10 non-functional ("API token auth, 200 ms p95, structured
   logs") … Q11 skipped: no UI surface …
 
-● Q12. Architecture — the four layers mapped to this stack:
+● Q12. Architecture — a service with a database and an HTTP API is the
+  `layered` shape (a CLI would be core/shell, a frontend slices), its four
+  boundaries mapped to this stack:
     domain          src/linkshelf/domain/
     application     src/linkshelf/application/
     adapters        src/linkshelf/adapters/        (FastAPI routes, SQLite repo)
@@ -184,7 +186,7 @@ Each question is written to the transcript **before** it is asked, and each answ
 ● Planted src/linkshelf/domain/_probe.py importing linkshelf.infrastructure:
   lint-imports FAILED, naming that import. Probe deleted: PASSED.
   Recorded in commands.md § Architecture, allowlisted, ADR
-  decisions/2026-10-01-clean-architecture.md filed.
+  decisions/2026-10-01-architecture-shape.md filed.
 
 ● Step 5c — .gitattributes has log.md merge=union; wrote
   .github/workflows/verify.yml (install, pytest, lint-imports on every PR).
@@ -290,7 +292,7 @@ Note that the interview transcript in `docs/raw/` is **immutable**. If you chang
 
 ## 4. Session 3 — `/project:work`, the default mode
 
-With no mode word, the conductor **asks you at each dispatch** whether to run the role natively or as a handoff file. This example works the top todo, a simple (non-`[complex]`) one.
+With no mode word, every role runs **natively**, with no question per dispatch; the conductor still stops at real checkpoints. (Say `hand off the adversary`, in the argument or mid-run, to run one dispatch as a file.) This example works the top todo, a simple (non-`[complex]`) one.
 
 ```
 > /project:work
@@ -308,13 +310,6 @@ With no mode word, the conductor **asks you at each dispatch** whether to run th
 ### Step 4a — the brief review (every cycle)
 
 ```
-[ask] Dispatch plan-adversary (read-only) how?
-      ▸ Native (Recommended)
-        Handoff file
-        Native for the rest of this run
-        Handoff for the rest of this run
-> Native for the rest of this run
-
 ● Dispatching plan-adversary. Brief:
     Task: Review the brief for todo "Save a bookmark" before any test exists
     Inputs: todo line verbatim; entity bookmark; cases B1–B4; test command
@@ -358,32 +353,42 @@ If a finding had shown that **the spec itself** was wrong (two live readings of 
             brief additions from plan review
     Scope: src/linkshelf/**, tests/**, docs/wiki/entities/bookmark.md,
            docs/wiki/gotchas.md, docs/wiki/decisions/
-    Return: test paths and implementation paths separately, quoted Red,
-            final suite + lint-imports output, Follow-ups
+    Return: test paths and implementation paths separately, the existing
+            tests covering what you changed, quoted Red, final test +
+            lint-imports output, Follow-ups
 
   ⎿ developer: B1 done.
     Test paths: tests/bookmark/
     Implementation: src/linkshelf/domain/bookmark.py,
       src/linkshelf/application/save_bookmark.py,
       src/linkshelf/adapters/http/bookmarks.py, …, docs/wiki/entities/bookmark.md
+    Existing tests covering the change: none (first case)
     Red: "AssertionError: expected 201, got 404"
-    Suite: 3 passed. lint-imports: 1 contract kept.
+    Tests: 3 passed. lint-imports: 1 contract kept.
     Follow-ups: none
 
 ● HEAD unchanged; every changed path is inside scope.
 ● Proving B1:
-    uv run pytest           → 3 passed          (Green)
+    uv run pytest tests/bookmark/  → 3 passed   (focused Green)
     uv run lint-imports     → kept              (architecture)
     git commit              "feat(bookmark): B1 — save a bookmark with a valid URL"
     restore everything but tests/bookmark/ from HEAD~1
-    uv run pytest           → 3 failed: ModuleNotFoundError linkshelf.application
-                              .save_bookmark … AssertionError 404   (Red ✓ —
-                              the not-yet-written symbol, not a broken fixture)
+    uv run pytest tests/bookmark/  → 3 failed: ModuleNotFoundError
+                              linkshelf.application.save_bookmark …
+                              AssertionError 404   (Red ✓ — the not-yet-written
+                              symbol, not a broken fixture)
     restore HEAD, tree clean
-    git push
 ```
 
-You don't need to do anything here. That loop runs once per case: **B2, B3 and B4** each get a dispatch, a proof, one commit and a push. If Red had been *refuted* (the tests still pass with the implementation removed), the conductor would uncommit the case and send it back with that output. A second failure on the same mechanism stops the cycle under rule 5.
+You don't need to do anything here. That loop runs once per case: **B2, B3 and B4** each get a dispatch, a proof and one commit, running only their own tests (the focused command in `commands.md § Test (focused)`). Then the loop closes:
+
+```
+● Step 6a — closing the case loop:
+    uv run pytest           → 14 passed         (full suite, all four cases)
+    git push                → feat/bookmark, 4 commits
+```
+
+Had the full suite failed, the conductor would bisect the four commits to the case that broke it and dispatch the developer for a `fix(bookmark): B<N> keep <test> passing` commit. If Red had been *refuted* (the tests still pass with the implementation removed), the conductor would uncommit the case and send it back with that output. A second failure on the same mechanism stops the cycle under rule 5.
 
 ### Steps 7–11 — wiki check, log, PR, report
 
@@ -470,7 +475,7 @@ The todo is `[complex]`, so this cycle adds the **planner** (step 4) and the **a
 ● Committed "docs(auth-token): plan review", pushed.
 ```
 
-Steps 5 and 6 then run six developer cases, exactly as in Session 3. After them:
+Steps 5 and 6 then run six developer cases, exactly as in Session 3, and step 6a runs the full suite once and pushes them. After that:
 
 ```
 ● Step 7a — adversary (opus · high) on a1f3…HEAD (B1–B6), with entity slug,
@@ -559,7 +564,7 @@ You run it in a second terminal, then come back:
 > done — agy, gemini
 
 ● Report read. HEAD unchanged; changed paths inside scope.
-  Proving B1 exactly as for a native case: Green, lint-imports, commit, Red, push.
+  Proving B1 exactly as for a native case: focused Green, lint-imports, commit, Red.
 ```
 
 **Points that matter in handoff mode:**
@@ -571,7 +576,7 @@ You run it in a second terminal, then come back:
 - **Reviewer harnesses are recorded.** For example, a round commit says "plan-adversary via agy/gemini", so its finding counts aren't credited to the pinned model.
 - The conductor **deletes the handoff/report pair** once the result is accepted or thrown away.
 
-**Mixing modes:** with no mode word, every dispatch asks **Native / Handoff file / … for the rest of this run**. For example, you could run the developer natively and send only the adversary to another vendor's model for a truly independent second opinion.
+**Mixing modes:** with no mode word, every dispatch runs natively unless you name one role to hand off (`/project:work hand off the adversary`, or say so mid-run). For example, you could run the developer natively and send only the adversary to another vendor's model for a truly independent second opinion.
 
 ---
 
@@ -627,7 +632,7 @@ It **never** stashes, resets or restores to tidy up. Committed work is pushed, a
 | `/project:init` | Once per project. Answer ~12 questions and approve the skeleton. |
 | `/project:init review the legacy files` | Reads those paths first and asks only what they don't answer. |
 | `/project:interview <feature>` | One question at a time with a recommendation. Say `stop` when you've had enough. |
-| `/project:work` | Top todo. Asks native or handoff at each dispatch. |
+| `/project:work` | Top todo. Every role runs natively; checkpoints still ask you. |
 | `/project:work the login endpoint` | Works that todo or entity. Stops if nothing matches. |
 | `/project:work next 3` / `batch the auth todos` | A batch on one branch (planner + adversary run). |
 | `/project:work fast …` | Never waits on you. Defaults are recorded, and the run ends at real forks. |
@@ -640,7 +645,7 @@ It **never** stashes, resets or restores to tidy up. Committed work is pushed, a
 
 | Situation | Default mode | Fast mode |
 | --- | --- | --- |
-| Native or handoff for a dispatch | asked | native |
+| Native or handoff for a dispatch | native (say `hand off <role>` for a file) | native |
 | A plan-adversary `blocker` the conductor disputes | asked | Applied |
 | A `critical`/`major` adversary finding | asked: fix now or queue | Filed at P0/P1, reported first |
 | A design fork the wiki doesn't decide | asked | the recommendation, plus an ADR if one is called for |
@@ -655,7 +660,7 @@ It **never** stashes, resets or restores to tidy up. Committed work is pushed, a
 feat/<slug>
   docs(<slug>): plan review                 ← brief findings + dispositions (log entry)
   feat(<slug>): B1 — …                      ← test + code + entity tick, proven Red/Green
-  feat(<slug>): B2 — …
+  feat(<slug>): B2 — …                      ← pushed with B1 once the full suite passes
   docs(<slug>): adversary round 1 — …       ← complex/batched cycles only
   docs(<slug>): log cycle
   → PR to develop (you merge, merge-commit)

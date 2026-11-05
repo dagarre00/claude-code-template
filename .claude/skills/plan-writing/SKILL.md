@@ -1,28 +1,25 @@
 ---
 name: plan-writing
-description: How to write an implementation plan for a complex or batched todo — scope, one-test steps, layers, risks, and the plan template. Preloaded into the planner; also for when the human asks for a plan.
-when_to_use: Trigger on "a plan", "decomposition", "breakdown", "implementation strategy", "sequencing".
+description: Subagent-side, preloaded into the planner. How to write an implementation plan for a complex or batched todo — scope, one-test steps, layers, risks, and the plan template.
 user-invocable: false
 ---
 
 # Plan Writing
 
-Dispatched as the `planner`, write the plan to the path your brief names (`.handoff/<slug>-plan.md`), overwriting any earlier version, and report the path and a short summary — the plan-adversary and the developer read the file. Asked for a plan in conversation, give it there.
+When dispatched as `planner`, write the plan to `.handoff/<slug>-plan.md` (overwriting any prior version) and return the path plus a short summary. When asked for a plan in conversation, output it directly.
 
 ## Read first
 
-- `docs/wiki/entities/<slug>.md` — the `## Behavior` section is the contract you are decomposing. List the case IDs you cover this cycle.
-- `docs/wiki/requirements.md` — the relevant section.
-- `docs/wiki/architecture.md` — `## Stack`, `## Layers`, `## Testing strategy`. The plan fits the project's structure; it never invents a new one.
-- `docs/wiki/gotchas.md` — known failure points that should shape the sequence.
-- `docs/wiki/commands.md` — the test command and the architecture check, verbatim.
-- One similar existing entity's implementation — mirror its layout and naming.
+- `docs/wiki/entities/<slug>.md` (or `docs/wiki/concepts/<slug>.md` for `[infra]`) — decompose its `## Behavior` cases.
+- `docs/wiki/requirements.md` — relevant requirement section.
+- `docs/wiki/architecture.md` — `## Stack`, `## Layers`, `## Testing strategy`.
+- `docs/wiki/gotchas.md` — known failure points.
+- `docs/wiki/commands.md` — verbatim test command and architecture check.
+- One similar entity's implementation to mirror layout and naming.
 
 ## Plan structure
 
-Use this exact template:
-
-```
+```markdown
 # Plan: <slug>
 
 ## Goal
@@ -32,7 +29,7 @@ Use this exact template:
 - <slug> B1: <case text, copied from the entity page>
 
 ## Approach
-<2-4 sentences — the approach, with one-line justification vs alternatives. On retry, name the prior failed approach and why this one is fundamentally different.>
+<2-4 sentences — approach, one-line justification vs alternatives, and what existing code/stdlib/dependency it reuses. On retry, name the prior failed approach and why this one is fundamentally different.>
 
 ## Steps
 1. <action> (case: B1; layer: <layer>; touches: path)
@@ -46,7 +43,7 @@ Use this exact template:
 
 ## Risks / unknowns
 - <risk> → mitigation
-- <case no subagent can verify> → the command it needs, which only the conductor can run
+- <case no subagent can verify> → command only the conductor can run
 
 ## Out of scope
 - <explicit non-goal>
@@ -57,22 +54,19 @@ Use this exact template:
 
 ## Sizing rule
 
-Each step is small enough that **one test drives it**. More than three sub-changes, or more than one Behavior case, → split it. The developer maps step N → test N → green N without ambiguity, in `## Steps` order, so order the steps so each can fail Red on its own.
+Each step must be small enough that **one failing test drives it** (`step N → test N → green N`). Split any step that covers multiple Behavior cases or more than three sub-changes, and order steps so each can fail Red independently.
 
 ## Layers
 
-Every new file names its layer from `architecture.md § Layers`. A step that would make an inner layer (domain, application) import an outer one (adapters, infrastructure, a framework) is wrong as written: route it through a port the inner layer owns and an adapter the outer layer implements, and list that under `## New dependencies between layers`. If the plan cannot fit the declared layers, stop and report — changing the architecture is a human decision recorded as an ADR, never a plan step.
+Assign every new file a boundary from `architecture.md § Layers` (none under the `flat` shape). Route any need the table forbids (an inner boundary reaching an outer one, a slice reaching another's internals) through a port or public API and list it under `## New dependencies between layers`. If the task cannot fit the declared boundaries, stop and report (changing the shape or a boundary requires a human decision and an ADR).
 
 ## Update on retry
 
-When re-dispatched after a failed developer attempt, **overwrite the plan with a fundamentally different approach**. In `## Approach`, name the prior approach, why it failed, and why the new one should succeed. Keep `## Behavior cases covered` identical.
+When re-dispatched after a two-strike failure, **overwrite `.handoff/<slug>-plan.md` with a fundamentally different approach**, naming the failed approach and why the new one avoids that failure mode while keeping `## Behavior cases covered` identical.
 
 ## Anti-patterns
 
-- **Pseudocode in steps.** Steps name the action and the file, not the implementation.
-- **Inventing requirements.** A missing or ambiguous Behavior case is a blocker to report, recommending a fresh interview pass — never a plan that assumes behavior the entity page does not list.
-- **Editing entity pages.** Plans are how, not what.
-- **Cross-entity batching without a precedent.** A batch crossing architectural boundaries with no prior cycle doing so → stop and report.
-- **Skipping the risks section.** "No risks" on a complex todo usually means it should not have been flagged `[complex]` — say which.
-- **Far more steps than cases.** Usually scope creep; re-check `## Out of scope`.
-- **Over-building.** A new file, abstraction or dependency no case forces. Before planning one, check the codebase, the standard library, the platform and the installed dependencies, and say in `## Approach` which one the plan reuses, or why none fits. A port `§ Layers` requires is not over-building.
+- **Pseudocode in steps** (name actions and files, not code).
+- **Inventing requirements** (if a Behavior case is missing or ambiguous, stop and report).
+- **Editing wiki pages.**
+- **Over-building** (unforced files, abstractions, or dependencies when existing code/stdlib/platform suffices).

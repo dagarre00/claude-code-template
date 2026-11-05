@@ -33,6 +33,10 @@ export function todosLabel(text: string): string {
 export const pageTitle = (text: string, file: string): string =>
   /^# (.+)$/m.exec(pageBody(text))?.[1]?.trim() ?? file.replace(/\.md$/, '')
 
+// A concept with Behavior cases ([infra]) shows its case count; a prose concept shows its title.
+export const conceptLabel = (file: string, text: string): string =>
+  countCases(text).total > 0 ? entityLabel(file, text) : pageTitle(text, file)
+
 // The navigator's pane and the workflow pane the band's menu opens with it.
 export const WIKI_PANE = 'wiki-nav'
 export const MENU_PANE = 'workflow'
